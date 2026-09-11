@@ -7,9 +7,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
-import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
@@ -36,13 +37,21 @@ class MainActivity : Activity() {
     private lateinit var connectionRow: LinearLayout
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private val prefs by lazy { getSharedPreferences("hakim", MODE_PRIVATE) }
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var resumed = false
+
+    private val statusTicker = object : Runnable {
+        override fun run() {
+            if (!resumed) return
+            refreshPairingUi()
+            uiHandler.postDelayed(this, 1500L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         buildUi()
         configureBrowser()
-        HakimRuntime.attach(webView)
         refreshPairingUi()
         if (isPaired()) startHakimService()
         if (savedInstanceState == null) {
@@ -53,18 +62,40 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         HakimRuntime.attach(webView)
-        refreshPairingUi()
         val last = prefs.getString("last_url", "").orEmpty()
         if (last.startsWith("http") && webView.url != last) webView.loadUrl(last)
+        refreshPairingUi()
+        uiHandler.removeCallbacks(statusTicker)
+        uiHandler.post(statusTicker)
+    }
+
+    override fun onPause() {
+        val current = webView.url.orEmpty()
+        if (current.startsWith("http")) {
+            prefs.edit().putString("last_url", current).apply()
+            CookieManager.getInstance().flush()
+            syncBackgroundUrl(current)
+        }
+        HakimRuntime.detach(webView)
+        resumed = false
+        uiHandler.removeCallbacks(statusTicker)
+        super.onPause()
     }
 
     override fun onDestroy() {
         HakimRuntime.detach(webView)
+        uiHandler.removeCallbacksAndMessages(null)
         fileChooserCallback?.onReceiveValue(null)
         fileChooserCallback = null
         webView.destroy()
         super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (::webView.isInitialized && webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -72,8 +103,7 @@ class MainActivity : Activity() {
             val callback = fileChooserCallback
             fileChooserCallback = null
             if (callback != null) {
-                val result = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
-                callback.onReceiveValue(result)
+                callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
             }
             return
         }
@@ -92,7 +122,7 @@ class MainActivity : Activity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            javaScriptCanOpenWindowsAutomatically = true
+            javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
             userAgentString = userAgentString.replace("; wv", "")
         }
@@ -125,6 +155,7 @@ class MainActivity : Activity() {
                 val u = url.orEmpty()
                 address.setText(u)
                 if (u.startsWith("http")) prefs.edit().putString("last_url", u).apply()
+                CookieManager.getInstance().flush()
                 refreshPairingUi()
             }
         }
@@ -176,6 +207,10 @@ class MainActivity : Activity() {
             hint = "العنوان أو البحث"
             setSingleLine(true)
             textSize = 15f
+            setOnEditorActionListener { _, _, _ ->
+                navigate(text.toString())
+                true
+            }
         }
         val go = Button(this).apply {
             text = "اذهب"
@@ -216,21 +251,21 @@ class MainActivity : Activity() {
             text = "تشغيل حكيم"
             setOnClickListener {
                 startHakimService()
-                webView.postDelayed({ refreshPairingUi() }, 500)
+                refreshPairingUi()
             }
         })
         connectionRow.addView(Button(this).apply {
             text = "إيقاف حكيم"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, HakimService::class.java).setAction(HakimService.ACTION_STOP))
-                webView.postDelayed({ refreshPairingUi() }, 500)
+                uiHandler.postDelayed({ refreshPairingUi() }, 300)
             }
         })
         connectionRow.addView(Button(this).apply {
             text = "فصل الاقتران"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, HakimService::class.java).setAction(HakimService.ACTION_STOP))
-                prefs.edit().remove("command_topic").remove("result_topic").apply()
+                prefs.edit().remove("command_topic").remove("result_topic").remove("auth_key").apply()
                 refreshPairingUi()
                 Toast.makeText(this@MainActivity, "تم فصل الاقتران", Toast.LENGTH_SHORT).show()
             }
@@ -277,24 +312,30 @@ class MainActivity : Activity() {
         prefs.getString("result_topic", "").orEmpty().isNotBlank()
 
     private fun refreshPairingUi() {
+        if (!::pairField.isInitialized || !::status.isInitialized) return
         val row = pairField.tag as LinearLayout
         val paired = isPaired()
         row.visibility = if (paired) View.GONE else View.VISIBLE
         connectionRow.visibility = if (paired) View.VISIBLE else View.GONE
         status.text = when {
             !paired -> "الحالة: يحتاج رمز الاقتران"
-            HakimService.running -> "الحالة: متصل — حكيم جاهز"
-            else -> "الحالة: مقترن — الاتصال متوقف"
+            HakimService.connected -> "الحالة: متصل فعليًا — حكيم جاهز"
+            HakimService.running -> "الحالة: حكيم يعمل — جارٍ الاتصال"
+            else -> "الحالة: مقترن — الخدمة متوقفة"
         }
     }
 
     private fun savePairing() {
         val parts = pairField.text.toString().trim().split("|")
-        if (parts.size != 2 || parts.any { it.isBlank() }) {
+        if (parts.size !in 2..3 || parts.take(2).any { it.isBlank() }) {
             Toast.makeText(this, "رمز الاقتران غير صحيح", Toast.LENGTH_SHORT).show()
             return
         }
-        prefs.edit().putString("command_topic", parts[0]).putString("result_topic", parts[1]).apply()
+        val edit = prefs.edit()
+            .putString("command_topic", parts[0])
+            .putString("result_topic", parts[1])
+        if (parts.size == 3 && parts[2].isNotBlank()) edit.putString("auth_key", parts[2])
+        edit.apply()
         pairField.setText("")
         startHakimService()
         refreshPairingUi()
@@ -304,6 +345,23 @@ class MainActivity : Activity() {
     private fun startHakimService() {
         if (!isPaired()) return
         val intent = Intent(this, HakimService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, "تعذر تشغيل خدمة حكيم", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun syncBackgroundUrl(url: String) {
+        if (!HakimService.running || !url.startsWith("http")) return
+        try {
+            startService(
+                Intent(this, HakimService::class.java)
+                    .setAction(HakimService.ACTION_SYNC_URL)
+                    .putExtra(HakimService.EXTRA_URL, url)
+            )
+        } catch (_: Exception) {
+            // الخدمة تعمل أصلًا؛ فشل المزامنة اللحظية لا يمنع حفظ last_url في SharedPreferences.
+        }
     }
 }

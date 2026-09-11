@@ -46,16 +46,20 @@ object HakimSelfCheck {
         }
 
         val governance = HakimConstitution.status(context)
-        check("الذكاء ×٧", governance.optBoolean("intelligence_x7"))
-        check("التلقائية ×٧", governance.optBoolean("automatic_x7"))
-        check("الفائدة ×٧", governance.optBoolean("benefit_x7"))
-        check("بوابات الاكتمال ×٧", governance.optBoolean("completion_x7"))
-        check("قاعدة السبع افتراضية", governance.optBoolean("sevenfold_default"))
+        check("ن★ التكيفية مفعلة", governance.optBoolean("adaptive_nstar"))
+        check("لا عدد تكرار ثابت", governance.optBoolean("no_fixed_iteration_count"))
+        check("الدورة الإضافية تتطلب مكسبًا ماديًا", governance.optBoolean("material_gain_required"))
+        check("الفجوة المادية تمنع الاكتمال", governance.optBoolean("material_gap_blocks_complete"))
+        check("أفضل/أنسب/أعلى مفعلة", governance.optBoolean("best_fit_highest"))
+        check("كل شيء/من كل شيء/في كل شيء مفيد", governance.optBoolean("all_from_all_in_all_useful"))
+        check("كل ما يفيد افتراضي", governance.optBoolean("all_beneficial_default"))
         check("كل القواعد افتراضية", governance.optBoolean("all_rules_default"))
         check("التقاط القواعد تلقائي", governance.optBoolean("automatic_rule_capture"))
         check("الأحدث الصريح يعلو", governance.optBoolean("latest_explicit_rule_wins"))
         check("المهمة المؤقتة لا تصبح قاعدة عامة", governance.optBoolean("temporary_task_not_global"))
         check("البيانات الحساسة لا تُرقى لقاعدة", governance.optBoolean("sensitive_data_not_promoted"))
+        check("الإكمال التلقائي الافتراضي", governance.optBoolean("default_auto_completion"))
+        check("الاستمرار الآمن تلقائي", governance.optBoolean("safe_auto_continue"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
 
@@ -64,8 +68,10 @@ object HakimSelfCheck {
 
         val intent = HakimIntentEngine.status(context)
         check("محرك النية فعّال", intent.optBoolean("intent_engine"))
+        check("محرك النية يستخدم ن★", intent.optBoolean("adaptive_nstar"))
         check("الإكمال التلقائي افتراضي", intent.optBoolean("default_auto_completion"))
         check("الاستمرار الآمن تلقائي", intent.optBoolean("safe_auto_continue"))
+        check("الفجوة المادية تمنع إغلاق النية", intent.optBoolean("material_gap_blocks_complete"))
         check("بوابة الأفعال عالية الأثر فعالة", intent.optBoolean("high_impact_gate"))
 
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)

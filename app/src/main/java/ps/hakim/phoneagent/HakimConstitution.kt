@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 object HakimConstitution {
-    const val VERSION = "SEVENFOLD-2026-09-11-v1"
+    const val VERSION = "SEVENFOLD-AUTONOMOUS-DEFAULT-2026-09-11-v2"
     const val SEVEN = 7
 
     private val intelligence = listOf(
@@ -73,10 +73,30 @@ object HakimConstitution {
             .putBoolean("sevenfold_default_everywhere_useful", true)
             .putBoolean("best_fit_highest", true)
             .putBoolean("all_from_all_in_all_useful", true)
+            .putBoolean("all_rules_default", true)
+            .putBoolean("automatic_rule_capture", true)
+            .putBoolean("latest_explicit_rule_wins", true)
+            .putBoolean("temporary_task_not_global", true)
+            .putBoolean("sensitive_data_not_promoted", true)
             .putBoolean("self_learning_guarded", true)
             .putBoolean("self_evolution_guarded", true)
             .putBoolean("fail_closed_core_changes", true)
             .apply()
+    }
+
+    fun promptPrefix(context: Context): String {
+        val recent = HakimRuleLedger.recentRuleContext(context)
+        return buildString {
+            appendLine("[دستور حكيم الافتراضي الحاكم]")
+            appendLine("طبّق تلقائيًا: الذكاء ×٧، التلقائية ×٧، الفائدة ×٧، الاكتمال ×٧، وبأفضل وأنسب وأعلى مستوى مثبت، وبكل ما هو ذو صلة ومن كل مصدر/أداة موثوقة وفي كل موضع مفيد ومسموح.")
+            appendLine("نفّذ ما تستطيع بأقل عبء على المستخدم، تحقق من الناتج الفعلي، أصلح السبب الجذري، احفظ النجاح المثبت، وامنع الانحدار. لا تدّع نجاحًا بلا دليل ولا تستخدم خدمة مدفوعة أو صلاحية خطرة دون حاجة وموافقة لازمة.")
+            appendLine("أولوية التوجيهات: الأحدث الصريح يعلو عند التعارض؛ التصحيح يعلو على السابق؛ المهمة المؤقتة لا تصبح قاعدة عامة؛ البيانات الحساسة لا تتحول إلى قاعدة.")
+            if (recent.isNotBlank()) {
+                appendLine("[أحدث القواعد/التفضيلات الصريحة المثبتة محليًا]")
+                appendLine(recent)
+            }
+            appendLine("[المهمة الحالية]")
+        }.take(6200)
     }
 
     fun status(context: Context): JSONObject {
@@ -90,21 +110,36 @@ object HakimConstitution {
             .put("sevenfold_default", prefs.getBoolean("sevenfold_default_everywhere_useful", false))
             .put("best_fit_highest", prefs.getBoolean("best_fit_highest", false))
             .put("all_from_all_in_all_useful", prefs.getBoolean("all_from_all_in_all_useful", false))
+            .put("all_rules_default", prefs.getBoolean("all_rules_default", false))
+            .put("automatic_rule_capture", prefs.getBoolean("automatic_rule_capture", false))
+            .put("latest_explicit_rule_wins", prefs.getBoolean("latest_explicit_rule_wins", false))
+            .put("temporary_task_not_global", prefs.getBoolean("temporary_task_not_global", false))
+            .put("sensitive_data_not_promoted", prefs.getBoolean("sensitive_data_not_promoted", false))
             .put("self_learning_guarded", prefs.getBoolean("self_learning_guarded", false))
             .put("self_evolution_guarded", prefs.getBoolean("self_evolution_guarded", false))
             .put("fail_closed_core_changes", prefs.getBoolean("fail_closed_core_changes", false))
+            .put("rule_ledger", HakimRuleLedger.status(context))
             .put("sha256", prefs.getString("constitution_sha256", ""))
     }
 
     fun canonicalJson(): JSONObject = JSONObject()
-        .put("name", "دستور حكيم السباعي الأعلى")
+        .put("name", "دستور حكيم السباعي الأعلى الافتراضي")
         .put("version", VERSION)
         .put("intelligence_x7", JSONArray(intelligence))
         .put("automatic_x7", JSONArray(automatic))
         .put("benefit_x7", JSONArray(benefit))
         .put("completion_x7", JSONArray(completion))
         .put("invariants_x7", JSONArray(invariants))
-        .put("execution_chain", "غاية→فهم→تحليل→بدائل→اختيار→خطة→تنفيذ→تحقق→إصلاح→تعلم→منع انحدار→اكتمال")
+        .put("defaults", JSONArray(listOf(
+            "كل القواعد الحاكمة تعمل تلقائيًا ما لم يوجد تعارض أعلى أو منع أمان/نظام",
+            "كل توجيه صريح للمستخدم يُلتقط محليًا ويصنف قبل الترقية إلى قاعدة",
+            "الأحدث الصريح يعلو عند التعارض والتصحيح يعلو على السابق",
+            "المهمة المؤقتة لا تُرقى إلى قاعدة عامة",
+            "البيانات الحساسة لا تُرقى إلى قاعدة تنفيذية",
+            "كل أمر إلى ChatGPT يحمل تلقائيًا خلاصة الدستور وأحدث القواعد الصريحة",
+            "أفضل/أنسب/أعلى تعني أعلى نتيجة مثبتة لا مجرد أكبر حجم أو تعقيد"
+        )))
+        .put("execution_chain", "غاية→التقاط التوجيه→تصنيف→فهم→تحليل→بدائل→اختيار→خطة→تنفيذ→تحقق→إصلاح→تعلم→منع انحدار→اكتمال")
         .put("scope", "كل شيء ذي صلة، من كل مصدر/أداة موثوقة نافعة، وفي كل موضع مفيد ومسموح")
 
     private fun sha256(text: String): String = MessageDigest.getInstance("SHA-256")

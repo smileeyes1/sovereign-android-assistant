@@ -19,6 +19,7 @@ class HakimApp : Application() {
         HakimSelfCheck.schedule(this)
         AutoUpdater.checkAsync(this)
         HakimSelfCheck.runAsync(this)
+        HakimConstraintDoctor.runAsync(this, "app_start")
     }
 
     private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {

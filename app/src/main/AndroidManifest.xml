@@ -18,6 +18,10 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
 
+    <queries>
+        <package android:name="com.openai.chatgpt" />
+    </queries>
+
     <application
         android:name=".HakimApp"
         android:allowBackup="false"

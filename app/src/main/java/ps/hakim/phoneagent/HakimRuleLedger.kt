@@ -106,15 +106,22 @@ object HakimRuleLedger {
         }
     }
 
-    private fun decryptLine(line: String): String? = try {
-        val packed = Base64.decode(line.trim(), Base64.NO_WRAP)
-        if (packed.size <= 12) return null
-        val iv = packed.copyOfRange(0, 12)
-        val encrypted = packed.copyOfRange(12, packed.size)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
-        String(cipher.doFinal(encrypted), Charsets.UTF_8)
-    } catch (_: Exception) { null }
+    private fun decryptLine(line: String): String? {
+        return try {
+            val packed = Base64.decode(line.trim(), Base64.NO_WRAP)
+            if (packed.size <= 12) {
+                null
+            } else {
+                val iv = packed.copyOfRange(0, 12)
+                val encrypted = packed.copyOfRange(12, packed.size)
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
+                String(cipher.doFinal(encrypted), Charsets.UTF_8)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun key(): SecretKey {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

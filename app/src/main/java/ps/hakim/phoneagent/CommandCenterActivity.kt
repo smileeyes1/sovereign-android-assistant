@@ -52,7 +52,7 @@ class CommandCenterActivity : Activity() {
         })
 
         status = TextView(this).apply {
-            text = "الأساس: الذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧\nاكتب الغاية فقط، وحكيم يوجّهها إلى أنسب مسار متاح."
+            text = "الأساس الافتراضي: الذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧\nكل توجيه صريح يُلتقط ويُصنف، وترافق القواعد أوامر ChatGPT تلقائيًا."
             textSize = 15f
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 14)
@@ -60,7 +60,7 @@ class CommandCenterActivity : Activity() {
         root.addView(status)
 
         command = EditText(this).apply {
-            hint = "اكتب ما تريد إنجازه…"
+            hint = "اكتب الغاية فقط…"
             minLines = 4
             maxLines = 10
             textSize = 18f
@@ -103,7 +103,7 @@ class CommandCenterActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يمكن جعل حكيم وجهة للروابط والمشاركة ومعالجة النص من أي تطبيق. لا يرسل كلمات مرور أو رموز تحقق تلقائيًا، ولا يتجاوز تأكيدات أندرويد أو التطبيقات الأخرى."
+            text = "السجل المحلي للتوجيهات مشفّر بمفتاح الجهاز. الأحدث الصريح يعلو عند التعارض، والتصحيح يعلو على السابق، والمهمة المؤقتة لا تصبح قاعدة عامة."
             textSize = 13f
             gravity = Gravity.CENTER
             setPadding(10, 18, 10, 4)
@@ -131,25 +131,33 @@ class CommandCenterActivity : Activity() {
             Intent.ACTION_SEND -> {
                 inboundShare = Intent(i)
                 val text = i.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
-                if (text.isNotBlank()) command.setText(text)
-                status.text = "وصل محتوى من تطبيق آخر — اختر تنفيذَه في شات جي بي تي أو مشاركته أو فتحه في حكيم."
+                if (text.isNotBlank()) {
+                    command.setText(text)
+                    capture(text, "share_in")
+                }
+                status.text = "وصل محتوى من تطبيق آخر — قواعد حكيم الافتراضية فعالة تلقائيًا."
             }
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString().orEmpty()
-                if (text.isNotBlank()) command.setText(text)
-                status.text = "وصل نص محدد من تطبيق آخر — حكيم جاهز لتوجيهه."
+                if (text.isNotBlank()) {
+                    command.setText(text)
+                    capture(text, "process_text")
+                }
+                status.text = "وصل نص محدد — تم التقاطه محليًا وحكيم جاهز لتوجيهه."
             }
         }
     }
 
     private fun sendToChatGPT(text: String) {
+        capture(text, "chatgpt")
         recordRoute("chatgpt", null)
+        val governedText = buildGovernedText(text)
         val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
         }
         out.action = Intent.ACTION_SEND
         if (out.type.isNullOrBlank()) out.type = "text/plain"
-        if (text.isNotBlank()) out.putExtra(Intent.EXTRA_TEXT, text)
+        out.putExtra(Intent.EXTRA_TEXT, governedText)
         out.setPackage(CHATGPT_PACKAGE)
         out.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
@@ -157,15 +165,15 @@ class CommandCenterActivity : Activity() {
             startActivity(out)
             recordRoute("chatgpt", true)
         } catch (_: Exception) {
-            if (text.isNotBlank()) copyText(text)
+            copyText(governedText)
             val launch = packageManager.getLaunchIntentForPackage(CHATGPT_PACKAGE)
             if (launch != null) {
                 startActivity(launch)
-                toast("تم نسخ الأمر وفتح شات جي بي تي")
+                toast("تم نسخ الأمر المحكوم وفتح شات جي بي تي")
             } else {
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")))
-                    toast("تم نسخ الأمر وفتح شات جي بي تي على الويب")
+                    toast("تم نسخ الأمر المحكوم وفتح شات جي بي تي على الويب")
                 } catch (_: Exception) {
                     shareToAny(text)
                 }
@@ -175,6 +183,7 @@ class CommandCenterActivity : Activity() {
     }
 
     private fun shareToAny(text: String) {
+        capture(text, "share_out")
         recordRoute("share", null)
         val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -194,6 +203,7 @@ class CommandCenterActivity : Activity() {
     }
 
     private fun openInHakim(raw: String) {
+        capture(raw, "browser")
         recordRoute("browser", null)
         val q = raw.trim()
         if (q.isBlank()) {
@@ -211,6 +221,16 @@ class CommandCenterActivity : Activity() {
         recordRoute("browser", true)
     }
 
+    private fun buildGovernedText(text: String): String {
+        val prefix = HakimConstitution.promptPrefix(this)
+        return if (text.isBlank()) prefix else "$prefix\n$text"
+    }
+
+    private fun capture(text: String, source: String) {
+        if (text.isBlank()) return
+        HakimRuleLedger.capture(this, text, source)
+    }
+
     private fun recordRoute(route: String, success: Boolean?) {
         if (success == null) HakimLearning.recordAttempt(this, route)
         else HakimLearning.recordResult(this, route, success)
@@ -224,6 +244,7 @@ class CommandCenterActivity : Activity() {
     private fun copyCommand() {
         val text = command.text.toString().trim()
         if (text.isBlank()) return
+        capture(text, "copy")
         copyText(text)
         toast("تم النسخ")
     }

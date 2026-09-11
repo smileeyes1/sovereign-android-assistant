@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 object HakimSelfCheck {
     const val JOB_ID = 771207
-    private const val PERIOD_MS = 6L * 60L * 60L * 1000L
+    private const val PERIOD_MS = 60L * 60L * 1000L
 
     fun schedule(context: Context) {
         try {
@@ -51,8 +51,22 @@ object HakimSelfCheck {
         check("الفائدة ×٧", governance.optBoolean("benefit_x7"))
         check("بوابات الاكتمال ×٧", governance.optBoolean("completion_x7"))
         check("قاعدة السبع افتراضية", governance.optBoolean("sevenfold_default"))
+        check("كل القواعد افتراضية", governance.optBoolean("all_rules_default"))
+        check("التقاط القواعد تلقائي", governance.optBoolean("automatic_rule_capture"))
+        check("الأحدث الصريح يعلو", governance.optBoolean("latest_explicit_rule_wins"))
+        check("المهمة المؤقتة لا تصبح قاعدة عامة", governance.optBoolean("temporary_task_not_global"))
+        check("البيانات الحساسة لا تُرقى لقاعدة", governance.optBoolean("sensitive_data_not_promoted"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
+
+        val ledger = governance.optJSONObject("rule_ledger") ?: JSONObject()
+        check("سجل القواعد مشفر محليًا", ledger.optBoolean("encrypted_local_ledger"))
+
+        val intent = HakimIntentEngine.status(context)
+        check("محرك النية فعّال", intent.optBoolean("intent_engine"))
+        check("الإكمال التلقائي افتراضي", intent.optBoolean("default_auto_completion"))
+        check("الاستمرار الآمن تلقائي", intent.optBoolean("safe_auto_continue"))
+        check("بوابة الأفعال عالية الأثر فعالة", intent.optBoolean("high_impact_gate"))
 
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
@@ -93,10 +107,11 @@ object HakimSelfCheck {
             .put("warnings", warned)
             .put("checks", checks)
             .put("governance", governance)
+            .put("intent", intent)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(16000))
+            .putString("last_self_check", report.toString().take(24000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

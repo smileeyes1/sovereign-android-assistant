@@ -47,6 +47,8 @@ class HakimService : Service() {
     private lateinit var webView: WebView
     private val recentRequests = LinkedHashSet<String>()
 
+    private fun activeWebView(): WebView = HakimRuntime.visibleWebView() ?: webView
+
     override fun onCreate() {
         super.onCreate()
         running = true
@@ -185,7 +187,10 @@ class HakimService : Service() {
                     val envelope = JSONObject(text)
                     if (envelope.optString("event") != "message") return
                     val payload = envelope.optString("message")
-                    if (payload.isNotBlank()) webView.post { executeCommand(JSONObject(payload)) }
+                    if (payload.isNotBlank()) {
+                        val target = activeWebView()
+                        target.post { executeCommand(JSONObject(payload)) }
+                    }
                 } catch (_: Exception) {}
             }
 
@@ -225,36 +230,37 @@ class HakimService : Service() {
             sendResult(JSONObject().put("request_id", requestId).put("status", "duplicate").put("message", "تم تجاهل أمر مكرر"))
             return
         }
+        val target = activeWebView()
         when (cmd.optString("type")) {
-            "ping", "snapshot" -> sendSnapshot(requestId, "ok")
+            "ping", "snapshot" -> sendSnapshot(target, requestId, "ok")
             "open_url" -> {
-                navigate(cmd.optString("url").take(5000))
-                webView.postDelayed({ sendSnapshot(requestId, "ok") }, cmd.optLong("after_ms", 1500L).coerceIn(300L, 8000L))
+                navigate(target, cmd.optString("url").take(5000))
+                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, cmd.optLong("after_ms", 1500L).coerceIn(300L, 8000L))
             }
             "back" -> {
-                if (webView.canGoBack()) webView.goBack()
-                webView.postDelayed({ sendSnapshot(requestId, "ok") }, 500)
+                if (target.canGoBack()) target.goBack()
+                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 500)
             }
             "forward" -> {
-                if (webView.canGoForward()) webView.goForward()
-                webView.postDelayed({ sendSnapshot(requestId, "ok") }, 500)
+                if (target.canGoForward()) target.goForward()
+                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 500)
             }
             "reload" -> {
-                webView.reload()
-                webView.postDelayed({ sendSnapshot(requestId, "ok") }, 900)
+                target.reload()
+                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 900)
             }
-            "wait" -> webView.postDelayed({ sendSnapshot(requestId, "ok") }, cmd.optLong("ms", 1000L).coerceIn(100L, 8000L))
-            "scroll" -> runJsAction(requestId, scrollScript(cmd.optString("direction", "down"), cmd.optInt("amount", 0)))
-            "tap_text" -> runJsAction(requestId, tapTextScript(cmd.optString("text").take(500), cmd.optBoolean("exact", false)))
-            "tap_index" -> runJsAction(requestId, tapIndexScript(cmd.optInt("index", -1)))
-            "set_text" -> runJsAction(requestId, setTextScript(cmd.optString("target").take(300), cmd.optString("value").take(6000)))
-            "set_text_index" -> runJsAction(requestId, setTextIndexScript(cmd.optInt("index", -1), cmd.optString("value").take(6000)))
-            "press_enter" -> runJsAction(requestId, pressEnterScript())
+            "wait" -> target.postDelayed({ sendSnapshot(target, requestId, "ok") }, cmd.optLong("ms", 1000L).coerceIn(100L, 8000L))
+            "scroll" -> runJsAction(target, requestId, scrollScript(cmd.optString("direction", "down"), cmd.optInt("amount", 0)))
+            "tap_text" -> runJsAction(target, requestId, tapTextScript(cmd.optString("text").take(500), cmd.optBoolean("exact", false)))
+            "tap_index" -> runJsAction(target, requestId, tapIndexScript(cmd.optInt("index", -1)))
+            "set_text" -> runJsAction(target, requestId, setTextScript(cmd.optString("target").take(300), cmd.optString("value").take(6000)))
+            "set_text_index" -> runJsAction(target, requestId, setTextIndexScript(cmd.optInt("index", -1), cmd.optString("value").take(6000)))
+            "press_enter" -> runJsAction(target, requestId, pressEnterScript())
             else -> sendResult(JSONObject().put("request_id", requestId).put("status", "failed").put("message", "أمر غير معروف"))
         }
     }
 
-    private fun navigate(raw: String) {
+    private fun navigate(target: WebView, raw: String) {
         val q = raw.trim()
         if (q.isBlank()) return
         val url = when {
@@ -262,17 +268,17 @@ class HakimService : Service() {
             q.contains(".") && !q.contains(" ") -> "https://$q"
             else -> "https://www.google.com/search?q=" + Uri.encode(q)
         }
-        webView.loadUrl(url)
+        target.loadUrl(url)
     }
 
-    private fun runJsAction(requestId: String, script: String) {
-        webView.evaluateJavascript(script) { raw ->
+    private fun runJsAction(target: WebView, requestId: String, script: String) {
+        target.evaluateJavascript(script) { raw ->
             val ok = raw == "true" || raw == "\"true\""
-            webView.postDelayed({ sendSnapshot(requestId, if (ok) "ok" else "failed") }, 450)
+            target.postDelayed({ sendSnapshot(target, requestId, if (ok) "ok" else "failed") }, 450)
         }
     }
 
-    private fun sendSnapshot(requestId: String, actionStatus: String) {
+    private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String) {
         val script = """
             (function(){
               try {
@@ -309,7 +315,7 @@ class HakimService : Service() {
               } catch(e){ return JSON.stringify({title:'',url:location.href,text:'',interactive:[],error:String(e)}); }
             })();
         """.trimIndent()
-        webView.evaluateJavascript(script) { raw ->
+        target.evaluateJavascript(script) { raw ->
             val decoded = decodeJsString(raw)
             val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
             prefs.getString("last_web_error", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_error", it) }

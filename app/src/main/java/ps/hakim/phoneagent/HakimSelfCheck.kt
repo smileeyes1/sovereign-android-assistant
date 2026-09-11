@@ -80,16 +80,32 @@ object HakimSelfCheck {
             mainPrefs.getString("result_topic", "").orEmpty().isNotBlank()
         check("حالة الاقتران منطقية", userDisabled || paired, "warn", if (userDisabled) "فصل المستخدم محترم" else if (paired) "مقترن" else "غير مقترن")
 
+        val recovery = HakimConnectionResilience.status(context)
+        check(
+            "خدمة الاتصال قابلة للاستعادة",
+            userDisabled || !paired || recovery.optBoolean("service_running") || recovery.optString("state") == "restart_requested",
+            "warn",
+            recovery.optString("state")
+        )
+        check(
+            "الاتصال الحي متاح عند الاقتران",
+            userDisabled || !paired || recovery.optBoolean("service_connected"),
+            "warn",
+            recovery.optString("state")
+        )
+
         val scheduler = context.getSystemService(JobScheduler::class.java)
         val jobs = try { scheduler.allPendingJobs.map { it.id }.toSet() } catch (_: Exception) { emptySet() }
         check("التحديث الذاتي مجدول", jobs.contains(771204), "warn")
         check("الفحص/التطور الدوري مجدول", jobs.contains(JOB_ID), "warn")
+        check("حارس استعادة الاتصال مجدول", jobs.contains(HakimConnectionResilience.JOB_ID), "warn")
 
         val lastSocketError = mainPrefs.getString("last_socket_error", "").orEmpty()
         val lastAuthError = mainPrefs.getString("last_auth_error", "").orEmpty()
         val lastCommandError = mainPrefs.getString("last_command_error", "").orEmpty()
         val lastUpdateError = mainPrefs.getString("last_update_error", "").orEmpty()
-        val recentErrors = listOf(lastSocketError, lastAuthError, lastCommandError, lastUpdateError).count { it.isNotBlank() }
+        val lastRecoveryError = mainPrefs.getString("last_recovery_error", "").orEmpty()
+        val recentErrors = listOf(lastSocketError, lastAuthError, lastCommandError, lastUpdateError, lastRecoveryError).count { it.isNotBlank() }
         check("لا أخطاء تشغيلية مسجلة", recentErrors == 0, "warn", "الأخطاء المسجلة: $recentErrors")
 
         val version = try {
@@ -114,6 +130,7 @@ object HakimSelfCheck {
             .put("checks", checks)
             .put("governance", governance)
             .put("intent", intent)
+            .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()

@@ -10,6 +10,13 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED && action != Intent.ACTION_MY_PACKAGE_REPLACED) return
 
+        HakimConstitution.install(context)
+        HakimLearning.initialize(context)
+        AutoUpdater.schedule(context)
+        HakimSelfCheck.schedule(context)
+        AutoUpdater.checkAsync(context)
+        HakimSelfCheck.runAsync(context)
+
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -24,7 +31,7 @@ class BootReceiver : BroadcastReceiver() {
                 context.startService(service)
             }
         } catch (_: Exception) {
-            // إذا منع النظام البدء في لحظة الإقلاع، سيبدأ حكيم تلقائيًا عند فتح التطبيق لاحقًا.
+            // إذا منع النظام البدء لحظة الإقلاع، تبقى جداول الفحص والتحديث قائمة ويبدأ حكيم عند فتح التطبيق لاحقًا.
         }
     }
 }

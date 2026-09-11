@@ -65,7 +65,7 @@ class CommandCenterActivity : Activity() {
         })
 
         status = TextView(this).apply {
-            text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nالذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧"
+            text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nن★ التكيفية: كل شيء مفيد • من كل شيء موثوق • في كل شيء مؤثر • كيف نفسها"
             textSize = 15f
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 10)
@@ -126,7 +126,7 @@ class CommandCenterActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "كل توجيه صريح يُلتقط ويُصنّف تلقائيًا. لا يتوقف حكيم عند خطوة وسيطة ما دام يستطيع إكمال الخطوات الآمنة، ويتوقف فقط أمام موافقة نظامية أو فعل نهائي عالي الأثر."
+            text = "كل توجيه صريح يُلتقط ويُصنّف تلقائيًا. ن★ تزيد العمق تلقائيًا ما دام هناك مكسب مادي مثبت، ولا يتوقف حكيم عند خطوة وسيطة أو فجوة قابلة للإغلاق ما دام يستطيع إكمالها بأمان؛ ويتوقف فقط أمام عائق حقيقي أو موافقة نظامية/فعل نهائي عالي الأثر."
             textSize = 13f
             gravity = Gravity.CENTER
             setPadding(10, 18, 10, 4)
@@ -178,7 +178,7 @@ class CommandCenterActivity : Activity() {
                     command.setText(text)
                     capture(text, "share_in")
                 }
-                status.text = "وصل محتوى من تطبيق آخر — محرك النية والقواعد الافتراضية يعملان تلقائيًا."
+                status.text = "وصل محتوى من تطبيق آخر — ن★ ومحرك النية والقواعد الافتراضية يعملان تلقائيًا."
             }
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString().orEmpty()
@@ -186,7 +186,7 @@ class CommandCenterActivity : Activity() {
                     command.setText(text)
                     capture(text, "process_text")
                 }
-                status.text = "وصل نص محدد — تم التقاطه وحكيم جاهز لتحقيق الغاية."
+                status.text = "وصل نص محدد — تم التقاطه ون★ جاهزة لتحقيق الغاية وإكمالها."
             }
         }
     }
@@ -198,7 +198,7 @@ class CommandCenterActivity : Activity() {
         }
         capture(text, "best_route")
         val plan = HakimIntentEngine.resolve(this, text)
-        status.text = "فهم حكيم النية: ${plan.intent}\nالمسار: ${plan.route}"
+        status.text = "فهم حكيم النية: ${plan.intent}\nالمسار: ${plan.route} • العمق: ن★ تكيفي"
         when (plan.route) {
             "browser" -> openInHakim(text)
             else -> sendToChatGPT(text)

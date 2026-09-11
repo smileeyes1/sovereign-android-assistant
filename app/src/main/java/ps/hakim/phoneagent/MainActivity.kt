@@ -42,6 +42,7 @@ class MainActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         buildUi()
         configureBrowser()
+        HakimRuntime.attach(webView)
         refreshPairingUi()
         if (isPaired()) startHakimService()
         if (savedInstanceState == null) {
@@ -52,12 +53,14 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        HakimRuntime.attach(webView)
         refreshPairingUi()
         val last = prefs.getString("last_url", "").orEmpty()
         if (last.startsWith("http") && webView.url != last) webView.loadUrl(last)
     }
 
     override fun onDestroy() {
+        HakimRuntime.detach(webView)
         fileChooserCallback?.onReceiveValue(null)
         fileChooserCallback = null
         webView.destroy()

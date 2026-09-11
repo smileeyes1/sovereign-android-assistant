@@ -12,6 +12,7 @@ class HakimApp : Application() {
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         startHakimIfPaired(prefs)
+        HakimConnectionResilience.install(this)
         AutoUpdater.schedule(this)
         AutoUpdater.startRealtimeListener(this)
         HakimSelfCheck.schedule(this)

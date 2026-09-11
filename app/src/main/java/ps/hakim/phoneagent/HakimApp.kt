@@ -9,6 +9,7 @@ class HakimApp : Application() {
         HakimLearning.initialize(this)
         PairingDefaults.ensure(getSharedPreferences("hakim", MODE_PRIVATE))
         AutoUpdater.schedule(this)
+        AutoUpdater.startRealtimeListener(this)
         HakimSelfCheck.schedule(this)
         AutoUpdater.checkAsync(this)
         HakimSelfCheck.runAsync(this)

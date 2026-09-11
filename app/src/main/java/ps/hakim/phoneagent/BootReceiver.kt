@@ -14,14 +14,16 @@ class BootReceiver : BroadcastReceiver() {
         HakimLearning.initialize(context)
         AutoUpdater.schedule(context)
         HakimSelfCheck.schedule(context)
+        HakimConnectionResilience.install(context)
         AutoUpdater.checkAsync(context)
         HakimSelfCheck.runAsync(context)
 
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
+        val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
         val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
-        if (!paired) return
+        if (disabled || !paired) return
 
         try {
             val service = Intent(context, HakimService::class.java)
@@ -30,8 +32,9 @@ class BootReceiver : BroadcastReceiver() {
             } else {
                 context.startService(service)
             }
-        } catch (_: Exception) {
-            // إذا منع النظام البدء لحظة الإقلاع، تبقى جداول الفحص والتحديث قائمة ويبدأ حكيم عند فتح التطبيق لاحقًا.
+        } catch (e: Exception) {
+            prefs.edit().putString("last_boot_start_error", e.message.orEmpty().take(300)).apply()
+            HakimConnectionResilience.schedule(context)
         }
     }
 }

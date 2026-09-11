@@ -13,6 +13,7 @@ class HakimApp : Application() {
         PairingDefaults.ensure(prefs)
         startHakimIfPaired(prefs)
         HakimConnectionResilience.install(this)
+        HakimHealthBeacon.sendAsync(this, "app_start")
         AutoUpdater.schedule(this)
         AutoUpdater.startRealtimeListener(this)
         HakimSelfCheck.schedule(this)

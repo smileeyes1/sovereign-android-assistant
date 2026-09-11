@@ -14,10 +14,9 @@ class UpdateInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_INSTALL_RESULT) return
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
-        val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
-                prefs.edit().putLong("last_update_success_at", System.currentTimeMillis()).remove("last_update_error").apply()
+                AutoUpdater.recordInstallSuccess(context)
             }
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val confirm = if (Build.VERSION.SDK_INT >= 33) {
@@ -26,10 +25,11 @@ class UpdateInstallReceiver : BroadcastReceiver() {
                     @Suppress("DEPRECATION") intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                 }
                 if (confirm != null) AutoUpdater.notifyConfirmation(context, confirm)
+                else AutoUpdater.recordInstallFailure(context, status, "طلب أندرويد تأكيدًا لكن لم يصل Intent التأكيد")
             }
             else -> {
                 val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
-                prefs.edit().putString("last_update_error", "status=$status ${msg.take(220)}").apply()
+                AutoUpdater.recordInstallFailure(context, status, msg)
             }
         }
     }

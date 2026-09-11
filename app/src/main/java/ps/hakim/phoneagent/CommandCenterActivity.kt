@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -21,6 +22,7 @@ class CommandCenterActivity : Activity() {
 
     private lateinit var command: EditText
     private lateinit var status: TextView
+    private lateinit var updateStatus: TextView
     private var inboundShare: Intent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +31,17 @@ class CommandCenterActivity : Activity() {
         HakimLearning.initialize(this)
         buildUi()
         handleIntent(intent)
+        refreshUpdateStatus()
+        maybeOnboardAutoUpdate()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshUpdateStatus()
+        if (AutoUpdater.canInstallPackages(this)) {
+            AutoUpdater.checkAsync(this)
+            updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -55,9 +68,26 @@ class CommandCenterActivity : Activity() {
             text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nالذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧"
             textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 14)
+            setPadding(8, 4, 8, 10)
         }
         root.addView(status)
+
+        updateStatus = TextView(this).apply {
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(8, 4, 8, 4)
+        }
+        root.addView(updateStatus)
+
+        root.addView(actionButton("فحص/تهيئة التحديث التلقائي") {
+            if (!AutoUpdater.canInstallPackages(this)) {
+                AutoUpdater.openInstallPermissionSettings(this)
+            } else {
+                AutoUpdater.checkAsync(this)
+                toast("يجري فحص التحديث الآن")
+                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
+            }
+        })
 
         command = EditText(this).apply {
             hint = "اكتب الغاية فقط…"
@@ -104,6 +134,26 @@ class CommandCenterActivity : Activity() {
 
         setContentView(root)
     }
+
+    private fun maybeOnboardAutoUpdate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || AutoUpdater.canInstallPackages(this)) return
+        val p = getSharedPreferences("hakim", MODE_PRIVATE)
+        val version = currentVersionCode()
+        if (p.getLong("auto_update_onboarding_version", -1L) == version) return
+        p.edit().putLong("auto_update_onboarding_version", version).apply()
+        updateStatus.text = "التحديث التلقائي يحتاج تفعيل «السماح من هذا المصدر» مرة واحدة فقط. ستفتح إعدادات أندرويد الآن."
+        updateStatus.postDelayed({ AutoUpdater.openInstallPermissionSettings(this) }, 700L)
+    }
+
+    private fun refreshUpdateStatus() {
+        if (::updateStatus.isInitialized) updateStatus.text = AutoUpdater.statusSummary(this)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun currentVersionCode(): Long = try {
+        val info = packageManager.getPackageInfo(packageName, 0)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
+    } catch (_: Exception) { 0L }
 
     private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {
         text = label

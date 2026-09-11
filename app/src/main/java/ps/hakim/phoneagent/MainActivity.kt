@@ -265,9 +265,14 @@ class MainActivity : Activity() {
             text = "فصل الاقتران"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, HakimService::class.java).setAction(HakimService.ACTION_STOP))
-                prefs.edit().remove("command_topic").remove("result_topic").remove("auth_key").apply()
+                prefs.edit()
+                    .remove("command_topic")
+                    .remove("result_topic")
+                    .remove("auth_key")
+                    .putBoolean("pairing_disabled_by_user", true)
+                    .apply()
                 refreshPairingUi()
-                Toast.makeText(this@MainActivity, "تم فصل الاقتران", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "تم فصل الاقتران ولن يُعاد تلقائيًا", Toast.LENGTH_SHORT).show()
             }
         })
         root.addView(connectionRow)
@@ -318,6 +323,7 @@ class MainActivity : Activity() {
         row.visibility = if (paired) View.GONE else View.VISIBLE
         connectionRow.visibility = if (paired) View.VISIBLE else View.GONE
         status.text = when {
+            !paired && prefs.getBoolean("pairing_disabled_by_user", false) -> "الحالة: الاقتران مفصول بقرارك"
             !paired -> "الحالة: يحتاج رمز الاقتران"
             HakimService.connected -> "الحالة: متصل فعليًا — حكيم جاهز"
             HakimService.running -> "الحالة: حكيم يعمل — جارٍ الاتصال"
@@ -334,6 +340,7 @@ class MainActivity : Activity() {
         val edit = prefs.edit()
             .putString("command_topic", parts[0])
             .putString("result_topic", parts[1])
+            .putBoolean("pairing_disabled_by_user", false)
         if (parts.size == 3 && parts[2].isNotBlank()) edit.putString("auth_key", parts[2])
         edit.apply()
         pairField.setText("")

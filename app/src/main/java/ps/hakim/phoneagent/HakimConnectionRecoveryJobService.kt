@@ -8,6 +8,7 @@ class HakimConnectionRecoveryJobService : JobService() {
         Thread {
             try {
                 HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")
+                HakimConstraintDoctor.run(applicationContext, "periodic_watchdog")
                 HakimHealthBeacon.sendNow(applicationContext, "periodic_watchdog")
                 HakimSelfCheck.runAsync(applicationContext)
             } catch (_: Exception) {

@@ -52,7 +52,7 @@ class CommandCenterActivity : Activity() {
         })
 
         status = TextView(this).apply {
-            text = "الأساس الافتراضي: الذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧\nكل توجيه صريح يُلتقط ويُصنف، وترافق القواعد أوامر ChatGPT تلقائيًا."
+            text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nالذكاء ×٧ • التلقائية ×٧ • الفائدة ×٧ • الاكتمال ×٧"
             textSize = 15f
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 14)
@@ -69,15 +69,8 @@ class CommandCenterActivity : Activity() {
         }
         root.addView(command, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
-        root.addView(actionButton("نفّذ بأفضل مسار") {
-            val text = command.text.toString().trim()
-            if (text.isBlank() && inboundShare == null) {
-                toast("اكتب أمرًا أو شارك محتوى إلى حكيم")
-            } else if (looksLikeUrl(text)) {
-                openInHakim(text)
-            } else {
-                sendToChatGPT(text)
-            }
+        root.addView(actionButton("نفّذ الغاية كاملة") {
+            executeBestRoute(command.text.toString().trim())
         })
 
         val row1 = LinearLayout(this).apply {
@@ -103,7 +96,7 @@ class CommandCenterActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "السجل المحلي للتوجيهات مشفّر بمفتاح الجهاز. الأحدث الصريح يعلو عند التعارض، والتصحيح يعلو على السابق، والمهمة المؤقتة لا تصبح قاعدة عامة."
+            text = "كل توجيه صريح يُلتقط ويُصنّف تلقائيًا. لا يتوقف حكيم عند خطوة وسيطة ما دام يستطيع إكمال الخطوات الآمنة، ويتوقف فقط أمام موافقة نظامية أو فعل نهائي عالي الأثر."
             textSize = 13f
             gravity = Gravity.CENTER
             setPadding(10, 18, 10, 4)
@@ -135,7 +128,7 @@ class CommandCenterActivity : Activity() {
                     command.setText(text)
                     capture(text, "share_in")
                 }
-                status.text = "وصل محتوى من تطبيق آخر — قواعد حكيم الافتراضية فعالة تلقائيًا."
+                status.text = "وصل محتوى من تطبيق آخر — محرك النية والقواعد الافتراضية يعملان تلقائيًا."
             }
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString().orEmpty()
@@ -143,15 +136,29 @@ class CommandCenterActivity : Activity() {
                     command.setText(text)
                     capture(text, "process_text")
                 }
-                status.text = "وصل نص محدد — تم التقاطه محليًا وحكيم جاهز لتوجيهه."
+                status.text = "وصل نص محدد — تم التقاطه وحكيم جاهز لتحقيق الغاية."
             }
+        }
+    }
+
+    private fun executeBestRoute(text: String) {
+        if (text.isBlank() && inboundShare == null) {
+            toast("اكتب الغاية أو شارك محتوى إلى حكيم")
+            return
+        }
+        capture(text, "best_route")
+        val plan = HakimIntentEngine.resolve(this, text)
+        status.text = "فهم حكيم النية: ${plan.intent}\nالمسار: ${plan.route}"
+        when (plan.route) {
+            "browser" -> openInHakim(text)
+            else -> sendToChatGPT(text)
         }
     }
 
     private fun sendToChatGPT(text: String) {
         capture(text, "chatgpt")
         recordRoute("chatgpt", null)
-        val governedText = buildGovernedText(text)
+        val governedText = HakimIntentEngine.governedPrompt(this, text)
         val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
         }
@@ -221,11 +228,6 @@ class CommandCenterActivity : Activity() {
         recordRoute("browser", true)
     }
 
-    private fun buildGovernedText(text: String): String {
-        val prefix = HakimConstitution.promptPrefix(this)
-        return if (text.isBlank()) prefix else "$prefix\n$text"
-    }
-
     private fun capture(text: String, source: String) {
         if (text.isBlank()) return
         HakimRuleLedger.capture(this, text, source)
@@ -234,11 +236,6 @@ class CommandCenterActivity : Activity() {
     private fun recordRoute(route: String, success: Boolean?) {
         if (success == null) HakimLearning.recordAttempt(this, route)
         else HakimLearning.recordResult(this, route, success)
-    }
-
-    private fun looksLikeUrl(text: String): Boolean {
-        val q = text.trim()
-        return q.startsWith("https://") || q.startsWith("http://") || (q.contains(".") && !q.contains(" "))
     }
 
     private fun copyCommand() {

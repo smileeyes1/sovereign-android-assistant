@@ -14,9 +14,14 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -28,14 +33,20 @@ object AutoUpdater {
     private const val CHANNEL_ID = "hakim_updates"
     private const val JOB_ID = 771204
     private const val MAX_APK_BYTES = 1_900_000L
-    private const val PERIOD_MS = 2L * 60L * 60L * 1000L
+    private const val PERIOD_MS = 15L * 60L * 1000L
+    private const val PREFS = "hakim"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(45, TimeUnit.SECONDS)
+        .pingInterval(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
+
+    @Volatile private var updateSocket: WebSocket? = null
+    @Volatile private var realtimeStarting = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun schedule(context: Context) {
         try {
@@ -45,26 +56,44 @@ object AutoUpdater {
                 .setPersisted(true)
                 .setPeriodic(PERIOD_MS)
                 .build()
-            scheduler.schedule(job)
-        } catch (_: Exception) {}
+            val result = scheduler.schedule(job)
+            state(context, if (result == JobScheduler.RESULT_SUCCESS) "scheduled" else "schedule_failed")
+        } catch (e: Exception) {
+            state(context, "schedule_failed", e.message.orEmpty(), true)
+        }
     }
 
     fun checkAsync(context: Context) {
         Thread {
-            try { checkNow(context.applicationContext) } catch (_: Exception) {}
+            try {
+                checkNow(context.applicationContext)
+            } catch (e: Exception) {
+                state(context.applicationContext, "check_exception", e.message.orEmpty(), true)
+            }
         }.start()
     }
 
     fun checkNow(context: Context) {
         createUpdateChannel(context)
+        state(context, "checking")
+        prefs(context).edit().putLong("last_update_check_at", System.currentTimeMillis()).apply()
+
         val currentVersion = currentVersionCode(context)
         val request = Request.Builder()
-            .url("https://ntfy.sh/$UPDATE_TOPIC/json?poll=1&since=3h")
-            .header("User-Agent", "HAKIM-AutoUpdater/1")
+            .url("https://ntfy.sh/$UPDATE_TOPIC/json?poll=1&since=6h")
+            .header("User-Agent", "HAKIM-AutoUpdater/2")
             .build()
-        val response = client.newCall(request).execute()
+
+        val response = try { client.newCall(request).execute() } catch (e: Exception) {
+            state(context, "check_network_failed", e.message.orEmpty(), true)
+            return
+        }
+
         response.use { r ->
-            if (!r.isSuccessful) return
+            if (!r.isSuccessful) {
+                state(context, "check_http_failed", "HTTP ${r.code}", true)
+                return
+            }
             val body = r.body?.string().orEmpty()
             var chosen: JSONObject? = null
             var chosenTime = 0L
@@ -91,7 +120,16 @@ object AutoUpdater {
                         .put("size", size)
                 }
             }
-            val update = chosen ?: return
+            val update = chosen
+            if (update == null) {
+                state(context, "up_to_date")
+                return
+            }
+            prefs(context).edit()
+                .putLong("last_update_discovered_at", System.currentTimeMillis())
+                .putLong("last_update_discovered_version", update.optLong("version_code", -1L))
+                .apply()
+            state(context, "update_found", "v=${update.optLong("version_code")}")
             downloadVerifyAndInstall(context, update)
         }
     }
@@ -104,39 +142,155 @@ object AutoUpdater {
         val target = File(context.cacheDir, "hakim-update.apk")
         if (target.exists()) target.delete()
 
-        val req = Request.Builder().url(url).header("User-Agent", "HAKIM-AutoUpdater/1").build()
-        client.newCall(req).execute().use { r ->
-            if (!r.isSuccessful) return
-            val body = r.body ?: return
+        state(context, "downloading", "v=$expectedVersion")
+        val req = Request.Builder().url(url).header("User-Agent", "HAKIM-AutoUpdater/2").build()
+        val response = try { client.newCall(req).execute() } catch (e: Exception) {
+            state(context, "download_failed", e.message.orEmpty(), true)
+            return
+        }
+        response.use { r ->
+            if (!r.isSuccessful) {
+                state(context, "download_http_failed", "HTTP ${r.code}", true)
+                return
+            }
+            val body = r.body ?: run {
+                state(context, "download_empty", "", true)
+                return
+            }
             val length = body.contentLength()
-            if (length > MAX_APK_BYTES || (length > 0 && expectedSize > 0 && length != expectedSize)) return
-            target.outputStream().use { out ->
-                body.byteStream().use { input ->
-                    val buffer = ByteArray(32 * 1024)
-                    var total = 0L
-                    while (true) {
-                        val n = input.read(buffer)
-                        if (n <= 0) break
-                        total += n
-                        if (total > MAX_APK_BYTES) {
-                            target.delete()
-                            return
+            if (length > MAX_APK_BYTES || (length > 0 && expectedSize > 0 && length != expectedSize)) {
+                state(context, "download_size_mismatch", "$length/$expectedSize", true)
+                return
+            }
+            try {
+                target.outputStream().use { out ->
+                    body.byteStream().use { input ->
+                        val buffer = ByteArray(32 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n <= 0) break
+                            total += n
+                            if (total > MAX_APK_BYTES) {
+                                target.delete()
+                                state(context, "download_too_large", total.toString(), true)
+                                return
+                            }
+                            out.write(buffer, 0, n)
                         }
-                        out.write(buffer, 0, n)
                     }
                 }
+            } catch (e: Exception) {
+                target.delete()
+                state(context, "download_write_failed", e.message.orEmpty(), true)
+                return
             }
         }
 
-        if (target.length() != expectedSize) { target.delete(); return }
-        if (sha256(target) != expectedSha) { target.delete(); return }
-        if (!verifyApkIdentity(context, target, expectedVersion)) { target.delete(); return }
+        prefs(context).edit().putLong("last_update_download_at", System.currentTimeMillis()).apply()
+        if (target.length() != expectedSize) {
+            target.delete(); state(context, "verify_size_failed", "${target.length()}/$expectedSize", true); return
+        }
+        if (sha256(target) != expectedSha) {
+            target.delete(); state(context, "verify_sha_failed", "", true); return
+        }
+        if (!verifyApkIdentity(context, target, expectedVersion)) {
+            target.delete(); state(context, "verify_identity_failed", "v=$expectedVersion", true); return
+        }
+        prefs(context).edit().putLong("last_update_verified_at", System.currentTimeMillis()).apply()
+        state(context, "verified", "v=$expectedVersion")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+        if (!canInstallPackages(context)) {
+            state(context, "install_permission_required")
             notifyInstallPermission(context)
             return
         }
-        stageInstall(context, target)
+        stageInstall(context, target, expectedVersion)
+    }
+
+    fun canInstallPackages(context: Context): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
+
+    fun openInstallPermissionSettings(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            prefs(context).edit().putLong("last_install_permission_opened_at", System.currentTimeMillis()).apply()
+            state(context, "awaiting_install_permission")
+        } catch (e: Exception) {
+            state(context, "permission_settings_failed", e.message.orEmpty(), true)
+        }
+    }
+
+    fun startRealtimeListener(context: Context) {
+        val app = context.applicationContext
+        if (updateSocket != null || realtimeStarting) return
+        realtimeStarting = true
+        val req = Request.Builder()
+            .url("wss://ntfy.sh/$UPDATE_TOPIC/ws")
+            .header("User-Agent", "HAKIM-Update-Realtime/1")
+            .build()
+        updateSocket = client.newWebSocket(req, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                realtimeStarting = false
+                state(app, "realtime_connected")
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                val event = try { JSONObject(text) } catch (_: Exception) { return }
+                if (event.optString("event") != "message") return
+                if (event.optString("title") != UPDATE_TITLE) return
+                prefs(app).edit().putLong("last_update_push_at", System.currentTimeMillis()).apply()
+                state(app, "push_received")
+                checkAsync(app)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                updateSocket = null
+                realtimeStarting = false
+                state(app, "realtime_disconnected", t.message.orEmpty(), false)
+                mainHandler.postDelayed({ startRealtimeListener(app) }, 10_000L)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                updateSocket = null
+                realtimeStarting = false
+                state(app, "realtime_closed", "$code $reason", false)
+                mainHandler.postDelayed({ startRealtimeListener(app) }, 10_000L)
+            }
+        })
+    }
+
+    fun stopRealtimeListener() {
+        updateSocket?.cancel()
+        updateSocket = null
+        realtimeStarting = false
+    }
+
+    fun diagnostics(context: Context): JSONObject {
+        val p = prefs(context)
+        return JSONObject()
+            .put("current_version", currentVersionCode(context))
+            .put("can_install_packages", canInstallPackages(context))
+            .put("state", p.getString("last_update_state", "unknown"))
+            .put("detail", p.getString("last_update_detail", ""))
+            .put("error", p.getString("last_update_error", ""))
+            .put("last_check_at", p.getLong("last_update_check_at", 0L))
+            .put("last_push_at", p.getLong("last_update_push_at", 0L))
+            .put("last_discovered_version", p.getLong("last_update_discovered_version", -1L))
+            .put("last_verified_at", p.getLong("last_update_verified_at", 0L))
+            .put("last_commit_at", p.getLong("last_update_commit_at", 0L))
+            .put("last_success_at", p.getLong("last_update_success_at", 0L))
+    }
+
+    fun statusSummary(context: Context): String {
+        val d = diagnostics(context)
+        val permission = if (d.optBoolean("can_install_packages")) "إذن التثبيت: جاهز" else "إذن التثبيت: يحتاج تفعيل مرة واحدة"
+        val state = d.optString("state", "unknown")
+        val version = d.optLong("current_version", 0L)
+        return "التحديث التلقائي — الإصدار $version\n$permission\nالحالة: $state"
     }
 
     private fun verifyApkIdentity(context: Context, apk: File, expectedVersion: Long): Boolean {
@@ -200,8 +354,9 @@ object AutoUpdater {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private fun stageInstall(context: Context, apk: File) {
+    private fun stageInstall(context: Context, apk: File, expectedVersion: Long) {
         try {
+            state(context, "install_staging", "v=$expectedVersion")
             val installer = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
                 setAppPackageName(context.packageName)
@@ -221,11 +376,15 @@ object AutoUpdater {
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
                 val pending = PendingIntent.getBroadcast(context, 4401, resultIntent, flags)
+                prefs(context).edit()
+                    .putLong("last_update_commit_at", System.currentTimeMillis())
+                    .putLong("last_update_commit_version", expectedVersion)
+                    .apply()
+                state(context, "install_committed", "session=$id v=$expectedVersion")
                 session.commit(pending.intentSender)
             }
         } catch (e: Exception) {
-            context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
-                .edit().putString("last_update_error", e.message.orEmpty().take(300)).apply()
+            state(context, "install_exception", e.message.orEmpty(), true)
         }
     }
 
@@ -237,8 +396,8 @@ object AutoUpdater {
         )
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("تفعيل التحديث التلقائي لحكيم")
-            .setContentText("اضغط مرة واحدة واسمح لحكيم بتثبيت تحديثاته")
+            .setContentTitle("خطوة واحدة لتفعيل تحديث حكيم تلقائيًا")
+            .setContentText("اضغط وفعّل السماح من هذا المصدر؛ بعدها يحاول حكيم تثبيت تحديثاته تلقائيًا")
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()
@@ -247,6 +406,7 @@ object AutoUpdater {
 
     fun notifyConfirmation(context: Context, confirmIntent: Intent) {
         createUpdateChannel(context)
+        state(context, "pending_android_confirmation")
         confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pi = PendingIntent.getActivity(
             context, 4403, confirmIntent,
@@ -255,11 +415,23 @@ object AutoUpdater {
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle("تحديث حكيم جاهز")
-            .setContentText("أندرويد يطلب تأكيد التثبيت")
+            .setContentText("أندرويد يطلب تأكيد التثبيت لهذه المرة")
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(4403, notification)
+    }
+
+    fun recordInstallSuccess(context: Context) {
+        prefs(context).edit()
+            .putLong("last_update_success_at", System.currentTimeMillis())
+            .remove("last_update_error")
+            .apply()
+        state(context, "installed")
+    }
+
+    fun recordInstallFailure(context: Context, status: Int, message: String) {
+        state(context, "install_failed", "status=$status ${message.take(220)}", true)
     }
 
     private fun createUpdateChannel(context: Context) {
@@ -268,5 +440,17 @@ object AutoUpdater {
                 NotificationChannel(CHANNEL_ID, "تحديثات حكيم", NotificationManager.IMPORTANCE_HIGH)
             )
         }
+    }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun state(context: Context, value: String, detail: String = "", error: Boolean = false) {
+        val e = prefs(context).edit()
+            .putString("last_update_state", value)
+            .putString("last_update_detail", detail.take(300))
+            .putLong("last_update_state_at", System.currentTimeMillis())
+        if (error) e.putString("last_update_error", "$value ${detail.take(240)}")
+        else if (value == "installed" || value == "up_to_date" || value == "verified") e.remove("last_update_error")
+        e.apply()
     }
 }

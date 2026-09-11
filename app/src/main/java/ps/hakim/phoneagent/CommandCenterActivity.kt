@@ -25,6 +25,8 @@ class CommandCenterActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        HakimConstitution.install(this)
+        HakimLearning.initialize(this)
         buildUi()
         handleIntent(intent)
     }
@@ -141,6 +143,7 @@ class CommandCenterActivity : Activity() {
     }
 
     private fun sendToChatGPT(text: String) {
+        recordRoute("chatgpt", null)
         val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
         }
@@ -152,7 +155,7 @@ class CommandCenterActivity : Activity() {
 
         try {
             startActivity(out)
-            LearningEngine.recordRoute(this, "chatgpt", true)
+            recordRoute("chatgpt", true)
         } catch (_: Exception) {
             if (text.isNotBlank()) copyText(text)
             val launch = packageManager.getLaunchIntentForPackage(CHATGPT_PACKAGE)
@@ -167,11 +170,12 @@ class CommandCenterActivity : Activity() {
                     shareToAny(text)
                 }
             }
-            LearningEngine.recordRoute(this, "chatgpt", false)
+            recordRoute("chatgpt", false)
         }
     }
 
     private fun shareToAny(text: String) {
+        recordRoute("share", null)
         val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
         }
@@ -182,17 +186,19 @@ class CommandCenterActivity : Activity() {
         out.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try {
             startActivity(Intent.createChooser(out, "اختر التطبيق"))
-            LearningEngine.recordRoute(this, "share", true)
+            recordRoute("share", true)
         } catch (_: Exception) {
-            LearningEngine.recordRoute(this, "share", false)
+            recordRoute("share", false)
             toast("لا يوجد تطبيق مناسب لهذا المحتوى")
         }
     }
 
     private fun openInHakim(raw: String) {
+        recordRoute("browser", null)
         val q = raw.trim()
         if (q.isBlank()) {
             startActivity(Intent(this, MainActivity::class.java))
+            recordRoute("browser", true)
             return
         }
         val url = when {
@@ -202,7 +208,12 @@ class CommandCenterActivity : Activity() {
         }
         getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
         startActivity(Intent(this, MainActivity::class.java))
-        LearningEngine.recordRoute(this, "browser", true)
+        recordRoute("browser", true)
+    }
+
+    private fun recordRoute(route: String, success: Boolean?) {
+        if (success == null) HakimLearning.recordAttempt(this, route)
+        else HakimLearning.recordResult(this, route, success)
     }
 
     private fun looksLikeUrl(text: String): Boolean {

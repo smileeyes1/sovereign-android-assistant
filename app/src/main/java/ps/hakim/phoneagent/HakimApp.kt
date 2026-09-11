@@ -6,5 +6,7 @@ class HakimApp : Application() {
     override fun onCreate() {
         super.onCreate()
         PairingDefaults.ensure(getSharedPreferences("hakim", MODE_PRIVATE))
+        AutoUpdater.schedule(this)
+        AutoUpdater.checkAsync(this)
     }
 }

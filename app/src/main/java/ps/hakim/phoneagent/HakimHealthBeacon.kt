@@ -7,7 +7,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -38,17 +40,24 @@ object HakimHealthBeacon {
         }
 
         val now = System.currentTimeMillis()
-        val version = try {
+        var versionCode = 0L
+        var versionName = ""
+        try {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode
+            versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode
             else @Suppress("DEPRECATION") info.versionCode.toLong()
-        } catch (_: Exception) { 0L }
+            versionName = info.versionName.orEmpty()
+        } catch (_: Exception) {}
+        val installedApkSha256 = apkSha256(context)
 
         val payload = JSONObject()
             .put("request_id", "health-$now")
             .put("status", "health")
             .put("time", now)
-            .put("version_code", version)
+            .put("package", context.packageName)
+            .put("version_code", versionCode)
+            .put("version_name", versionName)
+            .put("apk_sha256", installedApkSha256)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
             .put("recovery", HakimConnectionResilience.status(context))
@@ -66,7 +75,7 @@ object HakimHealthBeacon {
 
         val req = Request.Builder()
             .url("https://ntfy.sh/$topic")
-            .header("User-Agent", "HAKIM-Health-Beacon/1")
+            .header("User-Agent", "HAKIM-Health-Beacon/2")
             .post(wrapper.toString().toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .build()
 
@@ -76,6 +85,7 @@ object HakimHealthBeacon {
                 prefs.edit()
                     .putString("last_health_beacon_state", if (ok) "sent" else "http_${response.code}")
                     .putLong("last_health_beacon_at", now)
+                    .putString("installed_apk_sha256", installedApkSha256)
                     .apply()
                 ok
             }
@@ -88,6 +98,20 @@ object HakimHealthBeacon {
             false
         }
     }
+
+    private fun apkSha256(context: Context): String = try {
+        val file = File(context.applicationInfo.sourceDir)
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) { "" }
 
     private fun hmacHex(keyText: String, data: String): String {
         val mac = Mac.getInstance("HmacSHA256")

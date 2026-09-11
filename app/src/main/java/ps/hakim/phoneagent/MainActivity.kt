@@ -1,17 +1,23 @@
 package ps.hakim.phoneagent
 
+import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.webkit.CookieManager
+import android.webkit.GeolocationPermissions
+import android.webkit.PermissionRequest
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -27,11 +33,13 @@ import android.widget.Toast
 class MainActivity : Activity() {
     companion object {
         private const val FILE_CHOOSER_REQUEST = 7001
+        private const val APP_PERMISSIONS_REQUEST = 7002
     }
 
     private lateinit var webView: WebView
     private lateinit var address: EditText
     private lateinit var status: TextView
+    private lateinit var permissionStatus: TextView
     private lateinit var pairField: EditText
     private lateinit var pairButton: Button
     private lateinit var connectionRow: LinearLayout
@@ -44,6 +52,7 @@ class MainActivity : Activity() {
         override fun run() {
             if (!resumed) return
             refreshPairingUi()
+            refreshPermissionStatus()
             uiHandler.postDelayed(this, 1500L)
         }
     }
@@ -53,10 +62,12 @@ class MainActivity : Activity() {
         buildUi()
         configureBrowser()
         refreshPairingUi()
+        refreshPermissionStatus()
         if (isPaired()) startHakimService()
         if (savedInstanceState == null) {
             val last = prefs.getString("last_url", "https://www.google.com").orEmpty().ifBlank { "https://www.google.com" }
             webView.loadUrl(last)
+            uiHandler.postDelayed({ requestUsefulPermissions() }, 500L)
         }
     }
 
@@ -67,6 +78,7 @@ class MainActivity : Activity() {
         val last = prefs.getString("last_url", "").orEmpty()
         if (last.startsWith("http") && webView.url != last) webView.loadUrl(last)
         refreshPairingUi()
+        refreshPermissionStatus()
         uiHandler.removeCallbacks(statusTicker)
         uiHandler.post(statusTicker)
     }
@@ -110,6 +122,19 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == APP_PERMISSIONS_REQUEST) {
+            refreshPermissionStatus()
+            val denied = permissions.indices.any { i -> grantResults.getOrNull(i) != PackageManager.PERMISSION_GRANTED }
+            Toast.makeText(
+                this,
+                if (denied) "مُنحت الصلاحيات التي وافقت عليها — يمكنك إكمال الباقي من إعدادات التطبيق" else "تم منح الصلاحيات النافعة لحكيم",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     @Suppress("SetJavaScriptEnabled")
     private fun configureBrowser() {
         webView.settings.apply {
@@ -125,6 +150,8 @@ class MainActivity : Activity() {
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
             userAgentString = userAgentString.replace("; wv", "")
+            setGeolocationEnabled(true)
+            mediaPlaybackRequiresUserGesture = true
         }
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
@@ -149,6 +176,21 @@ class MainActivity : Activity() {
                     false
                 }
             }
+
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                val r = request ?: return
+                runOnUiThread { handleWebMediaPermission(r) }
+            }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest?) {
+                request?.deny()
+            }
+
+            override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+                val safeOrigin = origin.orEmpty()
+                val cb = callback ?: return
+                runOnUiThread { handleWebLocationPermission(safeOrigin, cb) }
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -162,6 +204,70 @@ class MainActivity : Activity() {
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             enqueueDownload(url, userAgent, contentDisposition, mimeType)
         }
+    }
+
+    private fun handleWebMediaPermission(request: PermissionRequest) {
+        val origin = request.origin?.toString().orEmpty()
+        if (!origin.startsWith("https://")) {
+            request.deny()
+            Toast.makeText(this, "رُفض طلب الوسائط لأن الصفحة ليست آمنة", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val allowed = mutableListOf<String>()
+        val labels = mutableListOf<String>()
+        request.resources.forEach { resource ->
+            when (resource) {
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                    if (hasPermission(Manifest.permission.CAMERA)) {
+                        allowed += resource
+                        labels += "الكاميرا"
+                    }
+                }
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                    if (hasPermission(Manifest.permission.RECORD_AUDIO)) {
+                        allowed += resource
+                        labels += "الميكروفون"
+                    }
+                }
+            }
+        }
+
+        if (allowed.isEmpty()) {
+            request.deny()
+            requestUsefulPermissions()
+            Toast.makeText(this, "امنح حكيم صلاحية الكاميرا/الميكروفون ثم أعد المحاولة", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("صلاحية للموقع")
+            .setMessage("السماح للموقع:\n$origin\nباستخدام: ${labels.joinToString("، ")}؟")
+            .setPositiveButton("سماح") { _, _ -> request.grant(allowed.toTypedArray()) }
+            .setNegativeButton("رفض") { _, _ -> request.deny() }
+            .setOnCancelListener { request.deny() }
+            .show()
+    }
+
+    private fun handleWebLocationPermission(origin: String, callback: GeolocationPermissions.Callback) {
+        if (!origin.startsWith("https://")) {
+            callback.invoke(origin, false, false)
+            Toast.makeText(this, "رُفض طلب الموقع لأن الصفحة ليست آمنة", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val locationGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) || hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (!locationGranted) {
+            callback.invoke(origin, false, false)
+            requestUsefulPermissions()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("صلاحية الموقع")
+            .setMessage("السماح للموقع:\n$origin\nباستخدام موقع الجهاز؟")
+            .setPositiveButton("سماح") { _, _ -> callback.invoke(origin, true, false) }
+            .setNegativeButton("رفض") { _, _ -> callback.invoke(origin, false, false) }
+            .setOnCancelListener { callback.invoke(origin, false, false) }
+            .show()
     }
 
     private fun enqueueDownload(url: String?, userAgent: String?, contentDisposition: String?, mimeType: String?) {
@@ -242,6 +348,28 @@ class MainActivity : Activity() {
         }
         root.addView(status)
 
+        permissionStatus = TextView(this).apply {
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(12, 4, 12, 4)
+        }
+        root.addView(permissionStatus)
+
+        val permissionRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        permissionRow.addView(Button(this).apply {
+            text = "منح الصلاحيات"
+            setOnClickListener { requestUsefulPermissions() }
+        })
+        permissionRow.addView(Button(this).apply {
+            text = "إعدادات التطبيق"
+            setOnClickListener { openAppSettings() }
+        })
+        root.addView(permissionRow)
+
         connectionRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -299,6 +427,48 @@ class MainActivity : Activity() {
         webView = WebView(this)
         root.addView(webView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+    }
+
+    private fun usefulRuntimePermissions(): Array<String> {
+        val list = mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+        if (Build.VERSION.SDK_INT >= 33) list += Manifest.permission.POST_NOTIFICATIONS
+        if (Build.VERSION.SDK_INT <= 28) list += Manifest.permission.WRITE_EXTERNAL_STORAGE
+        return list.distinct().toTypedArray()
+    }
+
+    private fun requestUsefulPermissions() {
+        val missing = usefulRuntimePermissions().filterNot { hasPermission(it) }
+        if (missing.isEmpty()) {
+            refreshPermissionStatus()
+            Toast.makeText(this, "كل الصلاحيات النافعة ممنوحة", Toast.LENGTH_SHORT).show()
+            return
+        }
+        requestPermissions(missing.toTypedArray(), APP_PERMISSIONS_REQUEST)
+    }
+
+    private fun hasPermission(permission: String): Boolean =
+        checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun refreshPermissionStatus() {
+        if (!::permissionStatus.isInitialized) return
+        val all = usefulRuntimePermissions()
+        val granted = all.count { hasPermission(it) }
+        permissionStatus.text = "الصلاحيات النافعة: $granted/${all.size} ممنوحة"
+    }
+
+    private fun openAppSettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            })
+        } catch (_: Exception) {
+            Toast.makeText(this, "تعذر فتح إعدادات التطبيق", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun navigate(raw: String) {

@@ -12,7 +12,10 @@ object PairingDefaults {
     private const val AUTH_KEY = "__HAKIM_AUTH_KEY__"
 
     fun ensure(prefs: SharedPreferences) {
+        // سيادة المستخدم: إذا فصل الاقتران بنفسه فلا يُعاد تلقائيًا عند الإقلاع أو التحديث.
+        if (prefs.getBoolean("pairing_disabled_by_user", false)) return
         if (COMMAND_TOPIC.startsWith("__HAKIM_") || RESULT_TOPIC.startsWith("__HAKIM_")) return
+
         val edit = prefs.edit()
         if (prefs.getString("command_topic", "").orEmpty().isBlank()) {
             edit.putString("command_topic", COMMAND_TOPIC)
@@ -21,7 +24,7 @@ object PairingDefaults {
             edit.putString("result_topic", RESULT_TOPIC)
         }
         if (!AUTH_KEY.startsWith("__HAKIM_") && AUTH_KEY.isNotBlank()) {
-            // يُحدَّث دائمًا حتى تصل تدويرات مفتاح التحقق عبر تحديث التطبيق نفسه.
+            // يُحدَّث عند تحديث التطبيق ما دام المستخدم لم يفصل الاقتران يدويًا.
             edit.putString("auth_key", AUTH_KEY)
         }
         edit.apply()

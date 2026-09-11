@@ -19,8 +19,6 @@ import java.util.concurrent.TimeUnit
 class AgentAccessibilityService : AccessibilityService() {
     companion object {
         @Volatile var instance: AgentAccessibilityService? = null
-        private const val COMMAND_TOPIC = "__COMMAND_TOPIC__"
-        private const val RESULT_TOPIC = "__RESULT_TOPIC__"
     }
 
     private val client = OkHttpClient.Builder()
@@ -45,9 +43,22 @@ class AgentAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
 
+    fun reconnectNow() {
+        reconnectDelay = 1500L
+        connect()
+    }
+
+    private fun commandTopic(): String = getSharedPreferences("hakim", MODE_PRIVATE)
+        .getString("command_topic", "").orEmpty().trim()
+
+    private fun resultTopic(): String = getSharedPreferences("hakim", MODE_PRIVATE)
+        .getString("result_topic", "").orEmpty().trim()
+
     private fun connect() {
         socket?.cancel()
-        val req = Request.Builder().url("wss://ntfy.sh/$COMMAND_TOPIC/ws").build()
+        val topic = commandTopic()
+        if (topic.isBlank()) return
+        val req = Request.Builder().url("wss://ntfy.sh/$topic/ws").build()
         socket = client.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 reconnectDelay = 1500L
@@ -72,7 +83,7 @@ class AgentAccessibilityService : AccessibilityService() {
     private fun reconnectLater() {
         val delay = reconnectDelay.coerceAtMost(30000L)
         reconnectDelay = (reconnectDelay * 2).coerceAtMost(30000L)
-        android.os.Handler(mainLooper).postDelayed({ connect() }, delay)
+        android.os.Handler(mainLooper).postDelayed({ if (commandTopic().isNotBlank()) connect() }, delay)
     }
 
     private fun executeCommand(cmd: JSONObject) {
@@ -89,7 +100,6 @@ class AgentAccessibilityService : AccessibilityService() {
                     "global_action" -> doGlobal(cmd.getString("action"))
                     "scroll" -> scroll(cmd.optString("direction", "down"))
                     "tap_xy" -> tapXY(cmd.getDouble("x").toFloat(), cmd.getDouble("y").toFloat())
-                    "sequence" -> executeSequence(cmd.optJSONArray("steps") ?: JSONArray())
                     else -> false
                 }
                 android.os.Handler(mainLooper).postDelayed({
@@ -105,24 +115,6 @@ class AgentAccessibilityService : AccessibilityService() {
                 sendResult(JSONObject().put("request_id", requestId).put("status", "error").put("message", e.message ?: "خطأ"))
             }
         }
-    }
-
-    private fun executeSequence(steps: JSONArray): Boolean {
-        var result = true
-        for (i in 0 until steps.length()) {
-            val step = steps.optJSONObject(i) ?: continue
-            result = result && when (step.optString("type")) {
-                "open_url" -> openUrl(step.getString("url"))
-                "tap_text" -> tapText(step.getString("text"), step.optBoolean("exact", false))
-                "set_text" -> setText(step.optString("target"), step.getString("value"))
-                "global_action" -> doGlobal(step.getString("action"))
-                "scroll" -> scroll(step.optString("direction", "down"))
-                "tap_xy" -> tapXY(step.getDouble("x").toFloat(), step.getDouble("y").toFloat())
-                else -> false
-            }
-            try { Thread.sleep(step.optLong("wait_ms", 350L).coerceIn(0L, 2500L)) } catch (_: Exception) {}
-        }
-        return result
     }
 
     private fun openUrl(url: String): Boolean {
@@ -227,6 +219,8 @@ class AgentAccessibilityService : AccessibilityService() {
     }
 
     private fun sendResult(obj: JSONObject) {
+        val topic = resultTopic()
+        if (topic.isBlank()) return
         val raw = obj.toString()
         val requestId = obj.optString("request_id", "system")
         val chunkSize = 1900
@@ -234,7 +228,7 @@ class AgentAccessibilityService : AccessibilityService() {
         for (i in 0 until total) {
             val part = if (raw.isEmpty()) "" else raw.substring(i * chunkSize, minOf(raw.length, (i + 1) * chunkSize))
             val body = JSONObject().put("request_id", requestId).put("chunk", i + 1).put("total", total).put("data", part).toString()
-            val req = Request.Builder().url("https://ntfy.sh/$RESULT_TOPIC")
+            val req = Request.Builder().url("https://ntfy.sh/$topic")
                 .post(body.toRequestBody("text/plain; charset=utf-8".toMediaType())).build()
             client.newCall(req).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: java.io.IOException) {}

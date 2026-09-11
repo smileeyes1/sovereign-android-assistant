@@ -13,7 +13,8 @@ object HakimIntentEngine {
         val highImpact: Boolean,
         val needsUserGate: Boolean,
         val completion: List<String>,
-        val nextAction: String
+        val nextAction: String,
+        val depthPolicy: String = "ADAPTIVE_N_STAR"
     ) {
         fun asJson(): JSONObject = JSONObject()
             .put("intent", intent)
@@ -21,6 +22,7 @@ object HakimIntentEngine {
             .put("route", route)
             .put("high_impact", highImpact)
             .put("needs_user_gate", needsUserGate)
+            .put("depth_policy", depthPolicy)
             .put("completion", JSONArray(completion))
             .put("next_action", nextAction)
     }
@@ -52,19 +54,21 @@ object HakimIntentEngine {
         }
 
         val completion = mutableListOf(
-            "فهم الغاية دون تغيير معناها",
-            "اختيار أفضل مسار متاح ومسموح",
-            "تنفيذ كل الخطوات الآمنة المتاحة",
-            "التحقق من الناتج الفعلي",
-            "إصلاح أي فشل مثبت من السبب الجذري",
-            "عدم ترك خطوة ضرورية آمنة على المستخدم",
-            "الإغلاق فقط عند تحقق الغاية أو وجود عائق حقيقي"
+            "فهم الغاية والعقد دون تغيير المعنى",
+            "تطبيق ن★ على كل جزء و«كيف» ذي صلة",
+            "استخدام كل أداة/مصدر/دليل مفيد ومتاح ومسموح",
+            "اختيار أفضل وأنسب وأعلى مسار مثبت",
+            "تنفيذ كل الخطوات الآمنة المتاحة تلقائيًا",
+            "التحقق من الناتج الفعلي وإصلاح السبب الجذري",
+            "عدم ترك فجوة مادية قابلة للإغلاق أو خطوة لازمة على المستخدم",
+            "فحص الانحدار والتكامل عند انطباقهما",
+            "الإغلاق فقط عند تحقق الغاية أو وجود عائق حقيقي مثبت وعدم وجود مكسب مادي إضافي"
         )
 
         val nextAction = when {
-            highImpact -> "حضّر التنفيذ ثم اطلب الموافقة عند آخر خطوة عالية الأثر فقط"
-            route == "browser" -> "افتح أو ابحث داخل حكيم ثم تابع حتى تحقق الغاية"
-            else -> "مرّر الغاية مع الدستور والسياق إلى ChatGPT ليخطط وينفذ بالأدوات المتاحة"
+            highImpact -> "نفّذ كل التحضير الآمن ثم اطلب الموافقة عند آخر خطوة عالية الأثر فقط"
+            route == "browser" -> "افتح أو ابحث داخل حكيم ثم تابع وفق ن★ حتى تحقق الغاية"
+            else -> "مرّر الغاية مع الدستور والسياق إلى ChatGPT ليستخدم ن★ والأدوات المتاحة حتى الاكتمال"
         }
 
         val plan = IntentPlan(
@@ -82,6 +86,7 @@ object HakimIntentEngine {
             .edit()
             .putString("last_plan", plan.asJson().toString())
             .putLong("last_plan_at", System.currentTimeMillis())
+            .putString("depth_policy", plan.depthPolicy)
             .apply()
         return plan
     }
@@ -94,8 +99,9 @@ object HakimIntentEngine {
             appendLine("النية: ${plan.intent}")
             appendLine("الغاية: ${plan.goal}")
             appendLine("المسار المبدئي: ${plan.route}")
-            appendLine("قاعدة التشغيل: لا تتوقف عند الشرح أو الخطوة الوسيطة؛ أكمل كل الإجراءات الآمنة والمتاحة تلقائيًا حتى تحقق الغاية أو يظهر عائق حقيقي.")
-            appendLine("التحقق: نفّذ→تحقق من الناتج الفعلي→أصلح→أعد التحقق→أكمل.")
+            appendLine("سياسة العمق: ن★ تكيفية بلا رقم ثابت؛ زد الدورة ما دام هناك مكسب مادي مثبت، ولا تتوقف قبل سد الفجوات وتحقيق العقد، ولا تكرر بلا أثر.")
+            appendLine("قاعدة التشغيل: لا تتوقف عند الشرح أو خطوة وسيطة؛ أكمل كل الإجراءات الآمنة والمتاحة تلقائيًا، وغيّر الوسيلة عند فشلها، حتى تحقق الغاية أو يثبت عائق حقيقي.")
+            appendLine("دورة ن★: افهم→حلل→استكشف كل المفيد→اختر الأفضل/الأنسب/الأعلى→نفّذ→تحقق/أصلح→تعلّم وأعد التقدير→أكمل.")
             appendLine("عند الفعل عالي الأثر: حضّر كل شيء ثم توقف فقط قبل الفعل النهائي الذي يتطلب موافقة المستخدم.")
             appendLine("[معايير الاكتمال]")
             plan.completion.forEach { appendLine("• $it") }
@@ -108,8 +114,11 @@ object HakimIntentEngine {
         val p = context.getSharedPreferences("hakim_intent", Context.MODE_PRIVATE)
         return JSONObject()
             .put("intent_engine", true)
+            .put("adaptive_nstar", true)
+            .put("depth_policy", p.getString("depth_policy", "ADAPTIVE_N_STAR"))
             .put("default_auto_completion", true)
             .put("safe_auto_continue", true)
+            .put("material_gap_blocks_complete", true)
             .put("high_impact_gate", true)
             .put("last_plan", p.getString("last_plan", ""))
             .put("last_plan_at", p.getLong("last_plan_at", 0L))

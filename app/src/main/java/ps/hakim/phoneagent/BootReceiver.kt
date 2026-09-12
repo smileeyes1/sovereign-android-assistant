@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
         HakimConnectionResilience.install(context)
         AutoUpdater.checkAsync(context)
         HakimSelfCheck.runAsync(context)
+        HakimLocalPairing.reconnectAsync(context)
 
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)

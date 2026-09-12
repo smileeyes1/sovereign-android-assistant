@@ -11,6 +11,7 @@ class HakimApp : Application() {
         HakimLearning.initialize(this)
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
+        HakimUnifiedRelay.start(this)
         startHakimIfPaired(prefs)
         HakimConnectionResilience.install(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
@@ -24,9 +25,12 @@ class HakimApp : Application() {
 
     private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
-        val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+        val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
-        if (disabled || !paired) return
+        val securePaired = !prefs.getString(HakimUnifiedRelay.KEY_TOPIC, "").isNullOrBlank() &&
+            !prefs.getString(HakimUnifiedRelay.KEY_RESULT_URL, "").isNullOrBlank() &&
+            !prefs.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").isNullOrBlank()
+        if (disabled || (!legacyPaired && !securePaired)) return
         try {
             val intent = Intent(this, HakimService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)

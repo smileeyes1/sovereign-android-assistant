@@ -58,6 +58,19 @@
         </activity>
 
         <activity
+            android:name=".HakimPairingActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="hakim" android:host="pair" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".MainActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
@@ -66,6 +79,28 @@
             android:name=".HakimService"
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />
+
+        <service
+            android:name=".HakimAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".HakimNotificationListener"
+            android:exported="true"
+            android:label="حكيم — الوصول إلى الإشعارات"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".UpdateJobService"
@@ -84,6 +119,10 @@
 
         <receiver
             android:name=".UpdateInstallReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".HakimRemoteApprovalReceiver"
             android:exported="false" />
 
         <receiver

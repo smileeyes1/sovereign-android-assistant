@@ -1,0 +1,44 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def text(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise SystemExit(message)
+
+
+manifest = text("app/src/main/AndroidManifest.xml")
+build = text("app/build.gradle")
+app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
+pair = text("app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt")
+relay = text("app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt")
+accessibility = text("app/src/main/java/ps/hakim/phoneagent/HakimAccessibilityService.kt")
+notifications = text("app/src/main/java/ps/hakim/phoneagent/HakimNotificationListener.kt")
+
+require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
+require("versionCode 20017" in build, "P0: رقم إصدار التوحيد غير مثبت")
+require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
+require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
+require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
+require('android:name=".HakimAccessibilityService"' in manifest, "P0: خدمة الواجهة غير معلنة")
+require('android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest, "P0: ربط خدمة الوصول مفقود")
+require('android:name=".HakimNotificationListener"' in manifest, "P0: مستمع الإشعارات غير معلن")
+require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' in manifest, "P0: ربط مستمع الإشعارات مفقود")
+require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم")
+require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
+require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
+require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
+require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة الموافقة للأفعال المتغيرة مفقودة")
+require('"[مخفي]"' in accessibility and 'isPassword' in accessibility, "P0: تنقيح الحقول الحساسة مفقود")
+require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التحقق في الإشعارات مفقود")
+
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications])
+require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
+require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
+
+print("UNIFIED_HAKIM_CONTRACT=PASS")

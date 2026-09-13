@@ -23,13 +23,31 @@ with open(sys.argv[1], encoding='utf-8') as f:
 PY
 )"
 
-CERT_OUTPUT="$(LC_ALL=C keytool -printcert -jarfile "$APK" 2>&1 || true)"
-ACTUAL="$(printf '%s\n' "$CERT_OUTPUT" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -n1 | tr '[:lower:]' '[:upper:]')"
+APKSIGNER_BIN="${APKSIGNER:-$(command -v apksigner || true)}"
+if [[ -z "$APKSIGNER_BIN" ]]; then
+  echo "SIGNER_GUARD=FAIL reason=apksigner_missing" >&2
+  exit 3
+fi
 
-if [[ -z "$ACTUAL" ]]; then
+if ! CERT_OUTPUT="$(LC_ALL=C "$APKSIGNER_BIN" verify --verbose --print-certs "$APK" 2>&1)"; then
+  echo "SIGNER_GUARD=FAIL reason=apk_signature_invalid" >&2
+  exit 3
+fi
+
+mapfile -t ACTUAL_CERTS < <(
+  printf '%s\n' "$CERT_OUTPUT" |
+    sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' |
+    tr '[:lower:]' '[:upper:]'
+)
+
+EXPECTED="${EXPECTED//:/}"
+FORBIDDEN="${FORBIDDEN//:/}"
+
+if [[ ${#ACTUAL_CERTS[@]} -ne 1 ]]; then
   echo "SIGNER_GUARD=FAIL reason=certificate_unreadable_or_missing" >&2
   exit 3
 fi
+ACTUAL="${ACTUAL_CERTS[0]//:/}"
 if [[ "$ACTUAL" == "$FORBIDDEN" ]]; then
   echo "SIGNER_GUARD=FAIL reason=known_companion_signer_rejected" >&2
   exit 4

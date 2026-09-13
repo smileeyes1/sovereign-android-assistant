@@ -57,7 +57,7 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(adbStatus)
 
-        root.addView(button("تأسيس الاتصال المحلي") {
+        root.addView(button("تأسيس ADB المحلي") {
             ensureNotificationPermissionThenSetup()
         })
 

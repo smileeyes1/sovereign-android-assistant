@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY = json.loads((ROOT / "governance/HAKIM_FIELD_SIGNING_IDENTITY.json").read_text(encoding="utf-8"))
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 SCRIPT = (ROOT / "scripts/verify-field-signer.sh").read_text(encoding="utf-8")
+UPDATER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/AutoUpdater.kt").read_text(encoding="utf-8")
+WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
 
 EXPECTED = "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E"
 FORBIDDEN = "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99"
@@ -19,5 +21,10 @@ version = re.search(r"versionCode\s+(\d+)", BUILD)
 assert version and int(version.group(1)) >= 20017
 assert "field_signer_mismatch" in SCRIPT
 assert "known_companion_signer_rejected" in SCRIPT
-assert "keytool -printcert -jarfile" in SCRIPT
+assert "apksigner" in SCRIPT and "--print-certs" in SCRIPT
+assert EXPECTED.replace(":", "").lower() in UPDATER
+assert "MAX_APK_BYTES = 32L * 1024L * 1024L" in UPDATER
+assert "verify-field-signer.sh" in WORKFLOW
+assert "hakim-field-20018.apk" in WORKFLOW
+assert "NOT-INSTALLABLE" in WORKFLOW
 print("SIGNING_CONTINUITY_POLICY=PASS")

@@ -45,7 +45,7 @@ require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التح�
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
-require('تأسيس الاتصال المحلي' in home and 'مركز القيادة' in home, "P0: الواجهة الموحدة لا تعرض مسار التأسيس والقيادة")
+require('تأسيس ADB المحلي' in home and 'مركز القيادة' in home, "P0: الواجهة الموحدة لا تعرض مسار التأسيس والقيادة")
 
 all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")

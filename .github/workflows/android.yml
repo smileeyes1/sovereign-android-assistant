@@ -37,6 +37,7 @@ jobs:
         run: |
           python3 tests/verify_signing_continuity_policy.py
           bash -n scripts/verify-field-signer.sh
+          bash -n scripts/termux-hakim-adb-bootstrap.sh
       - name: إعداد جافا
         uses: actions/setup-java@v4
         with:

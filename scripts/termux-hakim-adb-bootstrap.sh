@@ -31,7 +31,7 @@ try_ep() {
   local ep="${1:-}"
   [ -n "$ep" ] || return 1
   adb connect "$ep" >/dev/null 2>&1 || true
-  sleep 0.4
+  sleep 0.35
   local now
   now="$(connected_ep)"
   if [ -n "$now" ]; then save_ep "$now"; return 0; fi
@@ -51,6 +51,16 @@ candidate_ips() {
   } | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/' | sort -u
 }
 
+listener_eps() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -lnt 2>/dev/null | awk '
+      NR>1 {
+        a=$4; sub(/^.*:/,"",a);
+        if (a ~ /^[0-9]+$/ && a>=30000 && a<=50000) print "127.0.0.1:" a
+      }' | sort -u
+  fi
+}
+
 scan_host() {
   local host="$1"
   python - "$host" <<'PY'
@@ -59,17 +69,34 @@ host=sys.argv[1]
 ports=range(30000,50001)
 def chk(p):
     try:
-        s=socket.socket(); s.settimeout(0.025); ok=(s.connect_ex((host,p))==0); s.close(); return p if ok else None
-    except Exception: return None
-with concurrent.futures.ThreadPoolExecutor(max_workers=256) as ex:
+        s=socket.socket(); s.settimeout(0.018)
+        ok=(s.connect_ex((host,p))==0); s.close()
+        return p if ok else None
+    except Exception:
+        return None
+with concurrent.futures.ThreadPoolExecutor(max_workers=320) as ex:
     for p in ex.map(chk,ports,chunksize=64):
         if p: print(f"{host}:{p}")
 PY
 }
 
+seed_hosts() {
+  local x host
+  for x in "$@"; do
+    host="${x%%:*}"
+    printf '%s\n' "$host"
+  done
+  if [ -f "$STATE_FILE" ]; then
+    x="$(head -1 "$STATE_FILE" | tr -d '\r\n')"
+    [ -n "$x" ] && printf '%s\n' "${x%%:*}"
+  fi
+  candidate_ips
+  printf '%s\n' 127.0.0.1
+}
+
 connect_best() {
   start_adb
-  local ep
+  local ep host
   ep="$(connected_ep)"
   if [ -n "$ep" ]; then save_ep "$ep"; return 0; fi
 
@@ -80,7 +107,7 @@ connect_best() {
 
   for ep in "$@"; do
     [ -n "$ep" ] || continue
-    try_ep "$ep" && return 0
+    [[ "$ep" == *:* ]] && try_ep "$ep" && return 0
   done
 
   while IFS= read -r ep; do
@@ -88,17 +115,19 @@ connect_best() {
     try_ep "$ep" && return 0
   done < <(mdns_eps)
 
-  for ep in $(scan_host 127.0.0.1 2>/dev/null); do
+  while IFS= read -r ep; do
+    [ -n "$ep" ] || continue
     try_ep "$ep" && return 0
-  done
+  done < <(listener_eps)
 
-  local ip
-  while IFS= read -r ip; do
-    [ -n "$ip" ] || continue
-    for ep in $(scan_host "$ip" 2>/dev/null); do
+  while IFS= read -r host; do
+    [ -n "$host" ] || continue
+    while IFS= read -r ep; do
+      [ -n "$ep" ] || continue
       try_ep "$ep" && return 0
-    done
-  done < <(candidate_ips)
+    done < <(scan_host "$host" 2>/dev/null)
+  done < <(seed_hosts "$@" | sort -u)
+
   return 1
 }
 
@@ -108,7 +137,7 @@ pair_now() {
   local ep
   ep="$(adb mdns services 2>/dev/null | awk '/_adb-tls-pairing\._tcp/ {print $NF; exit}')"
   if [ -z "$ep" ]; then
-    echo 'PAIR_PORT_REQUIRED: افتح «إقران الجهاز باستخدام رمز الاقتران» فقط؛ سيظهر المنفذ تلقائيًا عند إعادة الأمر.'
+    echo 'PAIR_PORT_REQUIRED: افتح «إقران الجهاز باستخدام رمز الاقتران» فقط ثم أعد الأمر.'
     return 2
   fi
   adb pair "$ep" "$code" || return 2
@@ -138,12 +167,14 @@ install_wrapper() {
 exec "$HOME/.omega/adb/hakim-adb-core.sh" "$@"
 WRAP
   chmod 700 "$BIN"
+
   cat > "$BOOT_DIR/hakim-adb-reconnect" <<'BOOT'
 #!/data/data/com.termux/files/usr/bin/bash
 sleep 8
 "$PREFIX/bin/hakim-adb" connect >/dev/null 2>&1 || true
 BOOT
   chmod 700 "$BOOT_DIR/hakim-adb-reconnect"
+
   if [ -f "$HOME/.bashrc" ]; then
     grep -q 'HAKIM_ADB_AUTORECONNECT' "$HOME/.bashrc" || cat >> "$HOME/.bashrc" <<'RC'
 # HAKIM_ADB_AUTORECONNECT
@@ -161,11 +192,20 @@ main() {
   ensure_deps || { echo 'DEPENDENCY_INSTALL_FAILED'; exit 10; }
   local cmd="${1:-connect}"; shift || true
   case "$cmd" in
-    connect) connect_best "$@" && { echo 'ADB_LOCAL=PASS'; adb devices -l; } || { echo 'ADB_LOCAL=NO_CONNECT'; exit 2; } ;;
+    connect)
+      connect_best "$@" && { echo 'ADB_LOCAL=PASS'; adb devices -l; } || { echo 'ADB_LOCAL=NO_CONNECT'; exit 2; }
+      ;;
     pair) pair_now "${1:-}" ;;
-    status) start_adb; echo "LAST_ENDPOINT=$(cat "$STATE_FILE" 2>/dev/null || true)"; adb devices -l ;;
+    status)
+      start_adb
+      echo "LAST_ENDPOINT=$(cat "$STATE_FILE" 2>/dev/null || true)"
+      adb devices -l
+      ;;
     selftest) selftest "$@" ;;
-    install) install_wrapper; connect_best "$@" && { echo 'INSTALL=PASS'; adb devices -l; } || { echo 'INSTALL=READY_BUT_NOT_CONNECTED'; exit 2; } ;;
+    install)
+      install_wrapper
+      connect_best "$@" && { echo 'INSTALL=PASS'; adb devices -l; } || { echo 'INSTALL=READY_BUT_NOT_CONNECTED'; exit 2; }
+      ;;
     *) echo 'الاستخدام: hakim-adb {connect|status|selftest|pair رمز|install [endpoint]}' ;;
   esac
 }

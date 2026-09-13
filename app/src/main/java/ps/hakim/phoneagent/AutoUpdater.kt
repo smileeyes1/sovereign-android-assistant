@@ -32,7 +32,8 @@ object AutoUpdater {
     private const val UPDATE_TITLE = "HAKIM_UPDATE"
     private const val CHANNEL_ID = "hakim_updates"
     private const val JOB_ID = 771204
-    private const val MAX_APK_BYTES = 1_900_000L
+    private const val MAX_APK_BYTES = 32L * 1024L * 1024L
+    private const val FIELD_CERT_SHA256 = "f42d71b0308a543e253099c02301bfdbfefa45f8755b12ab22a3c903305e442e"
     private const val PERIOD_MS = 15L * 60L * 1000L
     private const val PREFS = "hakim"
 
@@ -300,9 +301,10 @@ object AutoUpdater {
         if (versionCode(archive) != expectedVersion) return false
         if (expectedVersion <= currentVersionCode(context)) return false
         val current = installedPackage(pm, context.packageName) ?: return false
-        val archiveCert = certDigest(archive) ?: return false
-        val currentCert = certDigest(current) ?: return false
-        return archiveCert == currentCert
+        val archiveCerts = certDigests(archive)
+        val currentCerts = certDigests(current)
+        val expectedCerts = setOf(FIELD_CERT_SHA256)
+        return archiveCerts == expectedCerts && currentCerts == expectedCerts
     }
 
     @Suppress("DEPRECATION")
@@ -323,13 +325,17 @@ object AutoUpdater {
     } catch (_: Exception) { null }
 
     @Suppress("DEPRECATION")
-    private fun certDigest(info: PackageInfo): String? {
-        val bytes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+    private fun certDigests(info: PackageInfo): Set<String> {
+        val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.signingInfo?.apkContentsSigners?.toList().orEmpty()
         } else {
-            info.signatures?.firstOrNull()?.toByteArray()
-        } ?: return null
-        return MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            info.signatures?.toList().orEmpty()
+        }
+        return signatures.mapTo(mutableSetOf()) { signature ->
+            MessageDigest.getInstance("SHA-256")
+                .digest(signature.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        }
     }
 
     @Suppress("DEPRECATION")

@@ -46,13 +46,54 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: بناء نسخة الاختبار ومرشح الإصدار
+      - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace
-      - name: حفظ ملفات البناء
+      - name: إثبات رفض نسخة الاختبار كتحديث ميداني
+        run: |
+          if scripts/verify-field-signer.sh app/build/outputs/apk/debug/app-debug.apk; then
+            echo "Debug APK unexpectedly passed the field signer guard" >&2
+            exit 1
+          fi
+      - name: توقيع مرشح الإصدار بهوية حكيم الميدانية عند توفرها
+        id: field_sign
+        env:
+          HAKIM_FIELD_KEYSTORE_B64: ${{ secrets.HAKIM_FIELD_KEYSTORE_B64 }}
+          HAKIM_FIELD_KEYSTORE_PASSWORD: ${{ secrets.HAKIM_FIELD_KEYSTORE_PASSWORD }}
+          HAKIM_FIELD_KEY_ALIAS: ${{ secrets.HAKIM_FIELD_KEY_ALIAS }}
+          HAKIM_FIELD_KEY_PASSWORD: ${{ secrets.HAKIM_FIELD_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$HAKIM_FIELD_KEYSTORE_B64" ]]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "لم يتوفر مفتاح حكيم الميداني؛ لن يُنشأ APK قابل للتحديث."
+            exit 0
+          fi
+          if [[ -z "$HAKIM_FIELD_KEYSTORE_PASSWORD" || -z "$HAKIM_FIELD_KEY_ALIAS" || -z "$HAKIM_FIELD_KEY_PASSWORD" ]]; then
+            echo "بيانات اعتماد توقيع حكيم الميدانية غير مكتملة" >&2
+            exit 1
+          fi
+          printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/hakim-field.jks"
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" sign \
+            --ks "$RUNNER_TEMP/hakim-field.jks" \
+            --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
+            --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
+            --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
+            --out app/build/outputs/apk/release/hakim-field-20018.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" \
+            scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-20018.apk
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+      - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v4
         with:
-          name: hakim-one-app-build
+          name: hakim-ci-NOT-INSTALLABLE
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+      - name: حفظ تحديث حكيم الميداني
+        if: steps.field_sign.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-field-20018
+          path: app/build/outputs/apk/release/hakim-field-20018.apk
           if-no-files-found: error

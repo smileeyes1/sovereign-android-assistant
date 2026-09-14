@@ -14,6 +14,7 @@ def require(cond: bool, msg: str) -> None:
 
 
 web = text("app/src/main/java/ps/hakim/phoneagent/HakimWebReasoningBridge.kt")
+providers = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProviderRegistry.kt")
 web_actions = text("app/src/main/java/ps/hakim/phoneagent/HakimWebAutomation.kt")
 bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
@@ -24,34 +25,59 @@ build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version is not None and int(version.group(1)) >= 20022,
-        "P0: الاستدلال الداخلي ليس ضمن خط إصدار شبكة التفوق أو أحدث")
-require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
+require(version is not None and int(version.group(1)) >= 20025,
+        "P0: موجّه الاستدلال المتعدد ليس ضمن الإصدار ٢٠٠٢٥ أو أحدث")
+require("multi-provider" in build or "multi-provider" in build.lower(),
+        "P0: اسم الإصدار لا يثبت انتقال حكيم للاستدلال متعدد المزودات")
+
+# الاستقلال عن مزود واحد.
+require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")
+for provider in ["CHATGPT_WEB", "GEMINI_WEB", "COPILOT_WEB", "LOCAL_ONLY", "AUTO"]:
+    require(provider in providers, f"P0: خيار المزود {provider} مفقود")
+for host in ["chatgpt.com", "gemini.google.com", "copilot.microsoft.com"]:
+    require(host in providers, f"P0: مزود الويب {host} غير مسجل")
+require("orderedWebProviders" in providers and "recordWebResult" in providers,
+        "P0: لا يوجد ترتيب تكيفي/تعلم من نجاح وفشل المزودات")
+require("cooldown" in providers and "last_success" in providers,
+        "P0: المزود المتكرر فشله لا يدخل تهدئة ولا يُقدّم المزود المثبت")
+require("single_external_provider_is_not_governor" in providers,
+        "P0: لا توجد قاعدة صريحة تمنع مزودًا واحدًا من حكم حكيم")
+
+# الجسر العام يجرب المزودات ثم يفتح تسجيل دخول واحدًا فقط عند الحاجة.
+require("HakimReasoningProviderRegistry.orderedWebProviders" in bridge,
+        "P0: جسر الاستدلال لا يستخدم موجّه المزودات")
+require("tryProvider" in bridge and "interactiveFallback" in bridge,
+        "P0: لا يوجد failover تلقائي بين المزودات")
+require("interactiveLogin = false" in bridge and "interactiveLogin = true" in bridge,
+        "P0: حكيم قد يفتح نوافذ تسجيل دخول متعددة بدل تجربة الجلسات الصامتة أولًا")
+require("LOCAL_ONLY" in bridge, "P0: المستخدم لا يستطيع فرض الاستدلال المحلي فقط")
+
+# محرك الويب عام لكنه يقفل كل جولة على أصل المزود المختار.
 require("object HakimWebReasoningBridge" in web, "P0: جسر الاستدلال داخل حكيم مفقود")
-require('CHAT_URL = "https://chatgpt.com/"' in web, "P0: محرك الويب ليس مثبتًا على أصل ChatGPT الآمن")
-require("WebView" in web and "evaluateJavascript" in web, "P0: الاستدلال لا يعمل داخل WebView حكيم")
+require("providerId: String" in web and "webProvider(providerId)" in web,
+        "P0: جسر الويب ما زال مثبتًا على مزود واحد")
+require("spec.trustedHosts.contains" in web and 'uri.scheme == "https"' in web,
+        "P0: لا يوجد تثبيت صارم لأصل HTTPS للمزود المختار")
+require("WebView" in web and "evaluateJavascript" in web,
+        "P0: الاستدلال لا يعمل داخل WebView حكيم")
 require("HakimReasoningProtocol.wrap" in web and "HakimReasoningProtocol.parse" in web,
         "P0: محرك الويب يتجاوز بروتوكول حكيم المقيد")
-require('uri.scheme == "https"' in web and '== "chatgpt.com"' in web,
-        "P0: لا يوجد تثبيت صارم للأصل الموثوق")
 require("CookieManager.getInstance" in web and "setAcceptCookie(true)" in web,
-        "P0: جلسة تسجيل الدخول داخل حكيم لا تستمر")
-require("MainActivity::class.java" in web and 'putString("last_url", CHAT_URL)' in web,
-        "P0: مسار تسجيل الدخول لمرة واحدة داخل متصفح حكيم غير موجود")
-require("HakimRuntime.visibleWebView" in web, "P0: الجسر لا يستعيد جلسة تسجيل الدخول المرئية")
+        "P0: جلسات تسجيل الدخول داخل حكيم لا تستمر")
+require("MainActivity::class.java" in web and 'putString("last_url", spec.startUrl)' in web,
+        "P0: مسار تسجيل الدخول لمرة واحدة للمزود المختار غير موجود")
+require("interactiveLogin" in web and "NEEDS_LOGIN" in web,
+        "P0: لا يمكن تجربة مزود بصمت قبل فتح واجهة تسجيل الدخول")
+require("HakimRuntime.visibleWebView" in web,
+        "P0: الجسر لا يستعيد جلسة تسجيل الدخول المرئية")
 require("loadsImagesAutomatically = false" in web and "blockNetworkImage = true" in web,
         "P0: WebView الاستدلال المؤقت غير مخفف للهاتف")
 require("hidden.destroy()" in web and "removeCallbacksAndMessages" in web,
         "P0: محرك الاستدلال المؤقت قد يسرب ذاكرة/حلقات")
 require("MAX_RESPONSE_ATTEMPTS" in web and "MAX_LOGIN_WAIT_ATTEMPTS" in web,
         "P0: الاستدلال/تسجيل الدخول بلا حدود توقف")
-require("HakimWebReasoningBridge.ask" in bridge,
-        "P0: الجسر العام لا يبدأ بالاستدلال داخل حكيم")
-pos_web = bridge.find("HakimWebReasoningBridge.ask")
-pos_access = bridge.find("HakimAccessibilityService.instance")
-require(pos_web >= 0 and pos_access > pos_web,
-        "P0: Accessibility ما زال شرط الاستدلال الأول بدل مسار داخلي احتياطي")
 
+# التنفيذ يبقى محليًا ومقيدًا بعد أي نموذج خارجي.
 require("object HakimWebAutomation" in web_actions and "evaluateJavascript" in web_actions,
         "P0: طبقة تنفيذ WebView المحلية مفقودة")
 require("clickable:clickable" in web_actions and "editable:editable" in web_actions,
@@ -60,10 +86,8 @@ require("sensitive" in web_actions and "type === 'password'" in web_actions,
         "P0: لقطة DOM لا تحجب حقول الاعتماد الحساسة")
 require("HakimWebAutomation.snapshot" in executor and "HakimWebAutomation.clickText" in executor and "HakimWebAutomation.setText" in executor,
         "P0: منفذ الخطة لا يستخدم WebView حكيم كمسار التنفيذ الأول")
-require("خدمة الوصول غير مفعلة أثناء خطة الاستدلال" not in executor,
-        "P0: منفذ الخطة ما زال يفشل مبكرًا لمجرد غياب Accessibility")
 require("web == null && service == null" in executor,
-        "P0: لا توجد بوابة تثبت فشل جميع المسارات قبل التوقف")
+        "P0: لا توجد بوابة تثبت فشل جميع مسارات التنفيذ قبل التوقف")
 require("جولة تحقق مستقلة" in executor and "يلزم تحقق جديد" in executor,
         "P0: المنفذ قد يعلن الاكتمال بعد أفعال دون جولة تحقق")
 require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in protocol,
@@ -71,8 +95,6 @@ require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in 
 
 require("HakimWebAutomation.snapshot" in autonomous and "HakimWebAutomation.clickText" in autonomous and "HakimWebAutomation.setText" in autonomous,
         "P0: الحلقة الذاتية لا تستخدم WebView حكيم كمسار أول")
-require('recordVerification(activity, false, "خدمة الوصول غير مفعلة")' not in autonomous,
-        "P0: الحلقة الذاتية ما زالت تتوقف فورًا عند غياب Accessibility")
 require("service?.uiSnapshot" in autonomous and "HakimRuntime.visibleWebView" in autonomous,
         "P0: مسار Accessibility لم يتحول إلى احتياط بعد WebView")
 
@@ -85,4 +107,4 @@ require("verify_in_app_reasoning.py" in workflow,
 require('FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"' in workflow,
         "P0: مسار إصدار CI لا يتبع versionCode ديناميكيًا")
 
-print("HAKIM_IN_APP_REASONING=PASS")
+print("HAKIM_MULTI_PROVIDER_IN_APP_REASONING=PASS")

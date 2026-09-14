@@ -64,7 +64,10 @@ object HakimSovereignPortability {
             return ImportResult(false, 0, "رفضت النسخة لأنها تعلن احتواء أسرار أو مفتاح توقيع")
         }
 
-        val global = root.optString("governance_global", "").take(24000)
+        // لا نثق بإعلان الملف وحده: ننقّي نصوص الحاكمية مرة أخرى عند الاستيراد.
+        val global = HakimGovernanceStore.exportSafeText(
+            root.optString("governance_global", "")
+        ).take(24000)
         val sitesObj = root.optJSONObject("site_instructions") ?: JSONObject()
         val profileObj = root.optJSONObject("profile_non_sensitive") ?: JSONObject()
         val trustedArr = root.optJSONArray("trusted_profile_hosts") ?: JSONArray()
@@ -73,7 +76,11 @@ object HakimSovereignPortability {
         }
 
         val sites = linkedMapOf<String, String>()
-        sitesObj.keys().forEach { host -> sites[host] = sitesObj.optString(host, "").take(12000) }
+        sitesObj.keys().forEach { host ->
+            sites[host] = HakimGovernanceStore.exportSafeText(
+                sitesObj.optString(host, "")
+            ).take(12000)
+        }
         val trusted = linkedSetOf<String>()
         for (i in 0 until trustedArr.length()) {
             trustedArr.optString(i).trim().takeIf { it.isNotBlank() }?.let { trusted += it }
@@ -97,7 +104,7 @@ object HakimSovereignPortability {
         HakimPersonalVault.setReasoningSharing(context, root.optBoolean("share_profile_with_reasoning", false))
         HakimProactiveEngine.setEnabled(context, root.optBoolean("proactive_enabled", true))
         changed += 2
-        return ImportResult(true, changed, "تمت الاستعادة محليًا. لم تُستورد أسرار أو مفاتيح توقيع.")
+        return ImportResult(true, changed, "تمت الاستعادة محليًا بعد تنقيح نصوص الحاكمية. لم تُستورد أسرار أو مفاتيح توقيع.")
     }
 
     fun status(context: Context): JSONObject = JSONObject()

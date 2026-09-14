@@ -16,6 +16,15 @@ object HakimSovereignPortability {
 
     data class ImportResult(val success: Boolean, val changed: Int, val message: String)
 
+    private data class LocalSnapshot(
+        val global: String,
+        val sites: Map<String, String>,
+        val profile: Map<String, String>,
+        val trustedHosts: Set<String>,
+        val proactiveEnabled: Boolean,
+        val reasoningSharing: Boolean
+    )
+
     fun exportJson(context: Context): String {
         HakimQuranicInvariantKernel.requireInherited("sovereign_export")
         val sites = JSONObject()
@@ -92,20 +101,123 @@ object HakimSovereignPortability {
             if (profileObj.has(field.id)) profile[field.id] = profileObj.optString(field.id, "").take(4000)
         }
 
-        var changed = 0
-        if (!HakimGovernanceStore.setGlobal(context, global)) return ImportResult(false, changed, "تعذر استعادة النظام الحاكم")
-        changed++
-        if (!HakimGovernanceStore.replaceSites(context, sites)) return ImportResult(false, changed, "تعذر استعادة تعليمات المواقع")
-        changed += sites.size
-        if (!HakimSiteTrust.replaceTrustedHosts(context, trusted)) return ImportResult(false, changed, "تعذر استعادة ثقة المواقع")
-        changed += trusted.size
-        profile.forEach { (id, value) ->
-            if (HakimPersonalVault.save(context, id, value)) changed++
+        // PREVENT: التقط الحالة قبل أي كتابة حتى لا تبقى استعادة نصف مكتملة.
+        val before = snapshot(context)
+        fun fail(message: String): ImportResult {
+            val rolledBack = restoreSnapshot(context, before)
+            val suffix = if (rolledBack) {
+                "أُعيدت الحالة السابقة كاملة."
+            } else {
+                "تعذر إثبات استعادة الحالة السابقة كاملة؛ أوقف الاستخدام الحساس وافتح فحص حكيم الذاتي."
+            }
+            return ImportResult(false, 0, "$message $suffix")
         }
-        HakimPersonalVault.setReasoningSharing(context, root.optBoolean("share_profile_with_reasoning", false))
-        HakimProactiveEngine.setEnabled(context, root.optBoolean("proactive_enabled", true))
-        changed += 2
-        return ImportResult(true, changed, "تمت الاستعادة محليًا بعد تنقيح نصوص الحاكمية. لم تُستورد أسرار أو مفاتيح توقيع.")
+
+        if (!HakimGovernanceStore.setGlobal(context, global)) {
+            return fail("تعذر استعادة النظام الحاكم.")
+        }
+        if (!replaceSitesSafely(context, sites)) {
+            return fail("تعذر استعادة تعليمات المواقع.")
+        }
+        if (!HakimSiteTrust.replaceTrustedHosts(context, trusted)) {
+            return fail("تعذر استعادة ثقة المواقع.")
+        }
+        if (!replaceProfileSafely(context, profile)) {
+            return fail("تعذر استعادة خزنة البيانات غير السرية.")
+        }
+
+        HakimPersonalVault.setReasoningSharing(
+            context,
+            root.optBoolean("share_profile_with_reasoning", false)
+        )
+        HakimProactiveEngine.setEnabled(
+            context,
+            root.optBoolean("proactive_enabled", true)
+        )
+
+        val changed = 1 + sites.size + trusted.size + profile.size + 2
+        return ImportResult(
+            true,
+            changed,
+            "تمت الاستعادة محليًا كوحدة واحدة قابلة للتراجع بعد تنقيح نصوص الحاكمية. لم تُستورد أسرار أو مفاتيح توقيع."
+        )
+    }
+
+    /** يكتب الهدف أولًا ثم يحذف القديم؛ وعند فشل أي كتابة يعيد لقطة المواقع السابقة. */
+    private fun replaceSitesSafely(context: Context, target: Map<String, String>): Boolean {
+        val before = HakimGovernanceStore.allSites(context)
+        for ((host, instructions) in target) {
+            if (instructions.isBlank()) continue
+            if (!HakimGovernanceStore.setSite(context, host, instructions)) {
+                restoreSitesBestEffort(context, before)
+                return false
+            }
+        }
+        val desired = target.filterValues { it.isNotBlank() }.keys
+        before.keys.filter { it !in desired }.forEach { HakimGovernanceStore.setSite(context, it, "") }
+        return true
+    }
+
+    /** يجعل الخزنة مساوية للنسخة، لا مجرد دمجها؛ ويعيد القيم القديمة عند فشل كتابة مشفرة. */
+    private fun replaceProfileSafely(context: Context, target: Map<String, String>): Boolean {
+        val before = HakimPersonalVault.all(context)
+        for ((id, value) in target) {
+            if (value.isBlank()) continue
+            if (!HakimPersonalVault.save(context, id, value)) {
+                restoreProfileBestEffort(context, before)
+                return false
+            }
+        }
+        val desired = target.filterValues { it.isNotBlank() }.keys
+        HakimPersonalVault.fields.map { it.id }.filter { it !in desired }.forEach {
+            HakimPersonalVault.remove(context, it)
+        }
+        return true
+    }
+
+    private fun snapshot(context: Context): LocalSnapshot = LocalSnapshot(
+        global = HakimGovernanceStore.global(context),
+        sites = HakimGovernanceStore.allSites(context),
+        profile = HakimPersonalVault.all(context),
+        trustedHosts = HakimSiteTrust.trustedHosts(context),
+        proactiveEnabled = HakimProactiveEngine.isEnabled(context),
+        reasoningSharing = HakimPersonalVault.reasoningSharingEnabled(context)
+    )
+
+    private fun restoreSnapshot(context: Context, before: LocalSnapshot): Boolean {
+        var ok = true
+        if (!HakimGovernanceStore.setGlobal(context, before.global)) ok = false
+        if (!restoreSitesBestEffort(context, before.sites)) ok = false
+        if (!HakimSiteTrust.replaceTrustedHosts(context, before.trustedHosts)) ok = false
+        if (!restoreProfileBestEffort(context, before.profile)) ok = false
+        HakimPersonalVault.setReasoningSharing(context, before.reasoningSharing)
+        HakimProactiveEngine.setEnabled(context, before.proactiveEnabled)
+        return ok
+    }
+
+    private fun restoreSitesBestEffort(context: Context, target: Map<String, String>): Boolean {
+        var ok = true
+        val current = HakimGovernanceStore.allSites(context)
+        target.forEach { (host, instructions) ->
+            if (!HakimGovernanceStore.setSite(context, host, instructions)) ok = false
+        }
+        current.keys.filter { it !in target.keys }.forEach {
+            if (!HakimGovernanceStore.setSite(context, it, "")) ok = false
+        }
+        return ok
+    }
+
+    private fun restoreProfileBestEffort(context: Context, target: Map<String, String>): Boolean {
+        var ok = true
+        HakimPersonalVault.fields.forEach { field ->
+            val value = target[field.id]
+            if (value.isNullOrBlank()) {
+                HakimPersonalVault.remove(context, field.id)
+            } else if (!HakimPersonalVault.save(context, field.id, value)) {
+                ok = false
+            }
+        }
+        return ok
     }
 
     fun status(context: Context): JSONObject = JSONObject()
@@ -115,6 +227,8 @@ object HakimSovereignPortability {
         .put("portable_governance", true)
         .put("portable_non_sensitive_profile", true)
         .put("portable_site_trust", true)
+        .put("restore_rollback_guard", true)
+        .put("profile_restore_replaces_not_merges", true)
         .put("secrets_excluded", true)
         .put("signing_private_key_excluded", true)
         .put("export_may_contain_personal_data", HakimPersonalVault.all(context).isNotEmpty())

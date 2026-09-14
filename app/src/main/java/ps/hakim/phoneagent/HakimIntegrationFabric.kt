@@ -6,15 +6,16 @@ import org.json.JSONObject
 
 /**
  * نسيج التكامل والوصل لحكيم.
- * يوحد القلب الحاكم والقرآن كله والإنسان أولًا والقدرات والاتصال والتنفيذ والتحقق والتعلم والمبادرة والتعافي دون خلط
+ * يوحد القلب الحاكم والقرآن كله ومنهج القرآن والهدي النبوي والإنسان أولًا والقدرات والاتصال والتنفيذ والتحقق والتعلم والمبادرة والتعافي دون خلط
  * سلامة البنية بجاهزية الشبكة/الهاتف اللحظية.
  */
 object HakimIntegrationFabric {
-    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v5"
+    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v6"
 
     private val structuralNodes = listOf(
         "quranic_kernel",
         "quranic_corpus_114",
+        "quran_sunnah_method",
         "human_first_policy",
         "constitution",
         "intent_context",
@@ -38,6 +39,10 @@ object HakimIntegrationFabric {
 
     private val structuralEdges = listOf(
         "quranic_kernel→quranic_corpus_114",
+        "quranic_kernel→quran_sunnah_method",
+        "quranic_corpus_114→quran_sunnah_method",
+        "quran_sunnah_method→constitution",
+        "quran_sunnah_method→sovereign_engine",
         "quranic_corpus_114→constitution",
         "quranic_kernel→constitution",
         "human_first_policy→intent_context",
@@ -85,10 +90,14 @@ object HakimIntegrationFabric {
         check(context.packageName == "ps.hakim.stable") { "نسيج التكامل يعمل فقط داخل هوية حكيم الأصلية" }
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
+        val method = HakimQuranSunnahMethod.status()
         val human = HakimHumanFirstPolicy.status()
         check(governance.optBoolean("quranic_normative_default")) { "الدستور القرآني الحاكم غير مثبت" }
         check(corpus.optBoolean("all_114_surahs_covered")) { "تغطية القرآن كله/السور الـ١١٤ غير مثبتة" }
         check(corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")) { "الفصل بين الوحي والتفسير/الاستنباط غير مثبت" }
+        check(method.optBoolean("quran_is_highest_normative_source")) { "القرآن ليس مثبتًا كمصدر معياري أعلى" }
+        check(method.optBoolean("authentic_sunnah_is_authoritative_explanation_and_guidance")) { "الهدي النبوي الصحيح غير مثبت في القلب" }
+        check(method.optBoolean("worldly_facts_and_means_require_domain_evidence")) { "الفصل بين الوحي والدليل الدنيوي غير مثبت" }
         check(human.optBoolean("human_first")) { "سياسة الإنسان أولًا غير مثبتة" }
         check(human.optBoolean("dignity_is_hard_constraint")) { "كرامة المستخدم ليست قيدًا حاكمًا" }
         check(human.optBoolean("silence_is_not_consent")) { "السكوت قد يفسر كموافقة" }
@@ -100,6 +109,7 @@ object HakimIntegrationFabric {
         HakimQuranicInvariantKernel.requireInherited("integration_status:$scope")
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
+        val method = HakimQuranSunnahMethod.status()
         val human = HakimHumanFirstPolicy.status()
         val adaptive = HakimAdaptiveLearning.status(context)
         val proactive = HakimProactiveEngine.status(context)
@@ -107,6 +117,12 @@ object HakimIntegrationFabric {
         val quranicOk = governance.optBoolean("quranic_normative_default")
         val corpusOk = corpus.optBoolean("all_114_surahs_covered") &&
             corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")
+        val methodOk = method.optBoolean("quran_is_highest_normative_source") &&
+            method.optBoolean("authentic_sunnah_is_authoritative_explanation_and_guidance") &&
+            method.optBoolean("prophetic_example_applies_to_method_and_conduct") &&
+            method.optBoolean("exact_attribution_requires_verification") &&
+            method.optBoolean("worldly_facts_and_means_require_domain_evidence") &&
+            method.optBoolean("no_religious_technical_mystification")
         val humanOk = human.optBoolean("human_first") &&
             human.optBoolean("dignity_is_hard_constraint") &&
             human.optBoolean("zero_technical_burden_default") &&
@@ -124,7 +140,7 @@ object HakimIntegrationFabric {
             proactive.optBoolean("silence_not_consent") &&
             proactive.optBoolean("no_secret_or_permission_escalation")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && humanOk && adaptiveOk && proactiveOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && methodOk && humanOk && adaptiveOk && proactiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -132,10 +148,12 @@ object HakimIntegrationFabric {
             .put("single_app_identity", packageOk)
             .put("quranic_root_inherited", quranicOk)
             .put("quranic_corpus_114_integrated", corpusOk)
+            .put("quran_sunnah_method_integrated", methodOk)
             .put("human_first_integrated", humanOk)
             .put("adaptive_learning_integrated", adaptiveOk)
             .put("proactive_engine_integrated", proactiveOk)
             .put("quranic_corpus", corpus)
+            .put("quran_sunnah_method", method)
             .put("human_first", human)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
@@ -177,7 +195,7 @@ object HakimIntegrationFabric {
         return buildString {
             appendLine("[نسيج التكامل والوصل السيادي]")
             appendLine("القلب البنيوي=${if (s.optJSONObject("structural")?.optBoolean("structural_integrity") == true) "سليم" else "غير سليم"}؛ اتصال الشبكة/المتصفح/الهاتف جاهزية لحظية وليست بديلًا عن سلامة القلب.")
-            appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، مع فصل النص عن التفسير والقراءات وأسباب النزول والاستنباط، ومنع الانتقائية والتكلف.")
+            appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، ومعه منهج القرآن والهدي النبوي الصحيح: القرآن مصدر الهداية والقيم والحدود الشرعية، والسنة الصحيحة بيان وهدي وقدوة؛ مع فصل الوحي عن التفسير والفقه والسيرة والاجتهاد والدليل التجريبي.")
             appendLine("الإنسان أولًا جزء من القلب: كرامة المستخدم، أقل عبء تقني، عدم استغلال الطيبة/الرحمة، وعدم اعتبار السكوت موافقة، وحفظ سيادته وقراره الجوهري.")
             appendLine("التعلم التكيفي جزء من القلب: محلي، لا يوسع السلطة، لا يغير الكود تلقائيًا، ويعيد ترتيب البدائل الآمنة فقط مع رجوع إلى خط الأساس عند الانحدار.")
             appendLine("المبادرة الذاتية جزء من القلب: تنفذ تلقائيًا كل مكسب آمن منخفض الأثر داخل السلطة، ولا تعتبر الصمت تفويضًا للأثر العالي.")
@@ -185,7 +203,7 @@ object HakimIntegrationFabric {
             appendLine("لا توجد طبقة حرجة معزولة: المقصد والقرار والوكلاء والتنفيذ والتحقق والتعلم والمبادرة والتعافي والاتصال والتحديث تعود إلى القلب الحاكم وسجل المهمة.")
             appendLine("عند فقد وصلة خارجية: غيّر المسار أو استعد الاتصال إذا كان ذلك آمنًا ومسموحًا؛ لا توسع السلطة ولا تدّع أن الوصلة جاهزة.")
             appendLine("المتصفح=${s.optBoolean("browser_ready_now")}، الوصول=${s.optBoolean("accessibility_ready_now")}، ChatGPT=${s.optBoolean("chatgpt_official_installed")}، القناة الآمنة=${s.optBoolean("secure_relay_configured")}.")
-        }.take(5600)
+        }.take(6400)
     }
 
     fun status(context: Context): JSONObject = JSONObject()

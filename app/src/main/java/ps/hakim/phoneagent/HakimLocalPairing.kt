@@ -119,7 +119,7 @@ object HakimLocalPairing {
 
         if (allowInput) {
             val remoteInput = RemoteInput.Builder(REMOTE_INPUT_CODE)
-                .setLabel("رمز أندرويد — ٦ أرقام")
+                .setLabel("رمز الاقتران — ٦ أرقام من أندرويد")
                 .build()
             val intent = Intent(context, HakimPairingReceiver::class.java).apply {
                 action = ACTION_SUBMIT_PAIRING_CODE
@@ -129,7 +129,7 @@ object HakimLocalPairing {
             val pendingIntent = PendingIntent.getBroadcast(context, 42042, intent, flags)
             val action = NotificationCompat.Action.Builder(
                 android.R.drawable.ic_menu_send,
-                "إدخال الرمز لمرة واحدة",
+                "إدخال رمز الاقتران — مرة واحدة",
                 pendingIntent,
             ).addRemoteInput(remoteInput).build()
             builder.addAction(action)
@@ -147,7 +147,7 @@ object HakimLocalPairing {
             "تأسيس اتصال حكيم المحلي",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "إدخال رمز أندرويد لمرة واحدة لتأسيس ADB المحلي داخل حكيم"
+            description = "إدخال رمز الاقتران المحلي من أندرويد لمرة واحدة لتأسيس ADB داخل حكيم"
             setSound(null, null)
         }
         manager.createNotificationChannel(channel)

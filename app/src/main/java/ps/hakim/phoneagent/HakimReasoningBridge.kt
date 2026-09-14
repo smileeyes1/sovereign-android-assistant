@@ -6,10 +6,9 @@ import android.os.Handler
 import android.os.Looper
 
 /**
- * جسر الاستدلال لحكيم بلا API مدفوع.
- * المسار الافتراضي داخل تطبيق حكيم عبر WebView موثوق إلى chatgpt.com؛
- * مسار تطبيق ChatGPT الرسمي عبر Accessibility يبقى احتياطيًا لبيئات التطوير فقط عندما يكون متاحًا.
- * لا ينفذ نص النموذج مباشرة؛ يعيد فقط خطة HakimReasoningProtocol لتُفحص محليًا.
+ * جسر الاستدلال المتقدم متعدد المزودات.
+ * التنفيذ المحلي يسبق هذه الطبقة؛ عند الحاجة للاستدلال المتقدم يجرب حكيم مزودات الويب الموثوقة تلقائيًا
+ * ويبدل بينها عند الفشل. لا مزود خارجي يحكم حكيم أو يملك التنفيذ المباشر.
  */
 object HakimReasoningBridge {
     private const val PACKAGE = "com.openai.chatgpt"
@@ -20,7 +19,8 @@ object HakimReasoningBridge {
         val available: Boolean,
         val plan: HakimReasoningProtocol.Plan?,
         val responseText: String,
-        val reason: String
+        val reason: String,
+        val providerId: String = ""
     )
 
     fun ask(
@@ -29,34 +29,98 @@ object HakimReasoningBridge {
         onProgress: (String) -> Unit = {},
         onComplete: (Result) -> Unit
     ) {
-        HakimWebReasoningBridge.ask(
-            activity = activity,
-            basePrompt = basePrompt,
-            onProgress = onProgress,
-            onComplete = webDone@ { web ->
-                if (web.available && (web.plan != null || web.reason.contains("تسجيل الدخول") || web.reason.contains("عاد الرد") || web.reason.contains("مهلة"))) {
-                    onComplete(Result(true, web.plan, web.responseText, web.reason))
-                    return@webDone
-                }
+        val preference = HakimReasoningProviderRegistry.preferredProviderId(activity)
+        if (preference == HakimReasoningProviderRegistry.LOCAL_ONLY) {
+            onComplete(Result(true, null, "", "الوضع محلي فقط؛ لم تُرسل المهمة إلى مزود خارجي", "local_deterministic"))
+            return
+        }
 
-                val service = HakimAccessibilityService.instance
-                if (service == null) {
-                    // النسخة الميدانية Play-Protect-safe لا تعلن Accessibility. ابقَ داخل حكيم بدل القفز لتطبيق خارجي.
-                    onComplete(
-                        Result(
-                            true,
-                            web.plan,
-                            web.responseText,
-                            if (web.reason.isBlank()) "محرك الاستدلال الداخلي غير جاهز؛ المهمة محفوظة داخل حكيم" else web.reason
-                        )
-                    )
-                    return@webDone
-                }
+        val candidates = HakimReasoningProviderRegistry.orderedWebProviders(activity)
+        if (candidates.isEmpty()) {
+            onComplete(Result(true, null, "", "لا يوجد مزود استدلال متقدم مختار؛ استمر حكيم محليًا فيما يمكن إثباته", "local_deterministic"))
+            return
+        }
 
-                onProgress("تعذر مسار الويب الداخلي؛ أستخدم المسار الرسمي الاحتياطي المقيد دون توسيع السلطة.")
-                askViaOfficialApp(activity, basePrompt, service, onProgress, onComplete)
+        val failures = ArrayList<String>()
+
+        fun interactiveFallback() {
+            val first = candidates.firstOrNull()
+            if (first == null) {
+                onComplete(Result(true, null, "", "لا يوجد مزود متقدم متاح", ""))
+                return
             }
-        )
+            onProgress("يحتاج الاستدلال المتقدم جلسة دخول. سأفتح مزودًا واحدًا فقط ثم أعود إلى حكيم.")
+            HakimWebReasoningBridge.ask(
+                activity = activity,
+                basePrompt = basePrompt,
+                providerId = first.id,
+                interactiveLogin = true,
+                onProgress = onProgress,
+                onComplete = { web ->
+                    if (web.plan != null || web.responseText.isNotBlank()) {
+                        onComplete(Result(true, web.plan, web.responseText, web.reason, web.providerId))
+                    } else {
+                        maybeOfficialAppFallback(activity, basePrompt, web.reason, onProgress, onComplete)
+                    }
+                }
+            )
+        }
+
+        fun tryProvider(index: Int) {
+            if (index >= candidates.size) {
+                interactiveFallback()
+                return
+            }
+            val provider = candidates[index]
+            onProgress(if (index == 0) "حكيم يفكر عبر أفضل مزود متاح…" else "أبدّل تلقائيًا إلى مزود استدلال آخر دون فقد المهمة…")
+            HakimWebReasoningBridge.ask(
+                activity = activity,
+                basePrompt = basePrompt,
+                providerId = provider.id,
+                interactiveLogin = false,
+                onProgress = onProgress,
+                onComplete = { web ->
+                    when {
+                        web.plan != null -> onComplete(Result(true, web.plan, web.responseText, web.reason, web.providerId))
+                        web.responseText.isNotBlank() && !web.reason.startsWith("NEEDS_LOGIN") -> {
+                            failures += "${provider.title}: عاد رد بلا خطة موثوقة"
+                            tryProvider(index + 1)
+                        }
+                        else -> {
+                            failures += "${provider.title}: ${web.reason.take(160)}"
+                            tryProvider(index + 1)
+                        }
+                    }
+                }
+            )
+        }
+
+        tryProvider(0)
+    }
+
+    /**
+     * احتياط قديم لا يعمل في ملف Play-Protect-safe عادةً لأن Accessibility غير معلن.
+     * يبقى فقط لبيئات تطوير ثبتت فيها الخدمة، ولا يصبح المسار الافتراضي أو نقطة فشل واحدة.
+     */
+    private fun maybeOfficialAppFallback(
+        activity: Activity,
+        basePrompt: String,
+        webReason: String,
+        onProgress: (String) -> Unit,
+        onComplete: (Result) -> Unit
+    ) {
+        val service = HakimAccessibilityService.instance
+        if (service == null) {
+            onComplete(Result(true, null, "", if (webReason.isBlank()) "لم يثبت مزود متقدم جاهز؛ المهمة محفوظة داخل حكيم" else webReason, ""))
+            return
+        }
+        val launch = activity.packageManager.getLaunchIntentForPackage(PACKAGE)
+        if (launch == null) {
+            onComplete(Result(true, null, "", "لم يثبت مزود متقدم جاهز؛ المهمة محفوظة داخل حكيم", ""))
+            return
+        }
+        onProgress("أستخدم مسار ChatGPT الرسمي الاحتياطي المقيد في بيئة التطوير.")
+        askViaOfficialApp(activity, basePrompt, service, onProgress, onComplete)
     }
 
     private fun askViaOfficialApp(
@@ -68,16 +132,15 @@ object HakimReasoningBridge {
     ) {
         val launch = activity.packageManager.getLaunchIntentForPackage(PACKAGE)
         if (launch == null) {
-            onComplete(Result(true, null, "", "تطبيق ChatGPT الرسمي غير متاح؛ بقيت المهمة داخل حكيم دون تنفيذ تخميني"))
+            onComplete(Result(true, null, "", "تطبيق ChatGPT الرسمي غير متاح", "chatgpt_official"))
             return
         }
 
         val request = HakimReasoningProtocol.wrap(basePrompt)
         val handler = Handler(Looper.getMainLooper())
         activity.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-        onProgress("فتحت محرك الاستدلال الرسمي الاحتياطي وأجهز تمرير المهمة المحكومة.")
 
-        fun fail(reason: String) = onComplete(Result(true, null, "", reason))
+        fun fail(reason: String) = onComplete(Result(true, null, "", reason, "chatgpt_official"))
 
         fun pollResponse(baseline: String) {
             var attempts = 0
@@ -88,24 +151,22 @@ object HakimReasoningBridge {
                 if (activity.isFinishing || activity.isDestroyed) {
                     fail("انتهت واجهة الطلب")
                 } else if (service.foregroundPackage() != PACKAGE) {
-                    fail("خرج محرك الاستدلال من الواجهة قبل وصول الخطة")
+                    fail("خرج مسار الاستدلال الاحتياطي قبل وصول الخطة")
                 } else {
                     attempts += 1
                     val visible = service.visibleTextForPackage(PACKAGE)
                     val plan = HakimReasoningProtocol.parse(visible, request)
                     if (plan != null) {
-                        onComplete(Result(true, plan, visible.takeLast(8000), "وصلت خطة حكيم المقيدة"))
+                        onComplete(Result(true, plan, visible.takeLast(8000), "وصلت خطة حكيم المقيدة", "chatgpt_official"))
                     } else {
                         if (visible == lastText && visible.isNotBlank()) stable += 1 else stable = 0
                         lastText = visible
                         val changed = visible.isNotBlank() && visible != baseline
                         if (changed && attempts >= 8 && stable >= 4) {
-                            onComplete(Result(true, null, visible.takeLast(8000), "عاد الاستدلال دون خطة قابلة للتنفيذ"))
+                            onComplete(Result(true, null, visible.takeLast(8000), "عاد الاستدلال دون خطة قابلة للتنفيذ", "chatgpt_official"))
                         } else if (attempts >= MAX_POLL_ATTEMPTS) {
-                            onComplete(Result(true, null, visible.takeLast(8000), "لم تظهر خطة حكيم ضمن حد المراقبة"))
-                        } else {
-                            handler.postDelayed(poll, 800L)
-                        }
+                            fail("لم تظهر خطة حكيم ضمن حد المراقبة")
+                        } else handler.postDelayed(poll, 800L)
                     }
                 }
             }
@@ -118,21 +179,16 @@ object HakimReasoningBridge {
                 return
             }
             if (service.foregroundPackage() != PACKAGE) {
-                if (attempt >= MAX_LAUNCH_ATTEMPTS) {
-                    fail("تعذر الوصول إلى واجهة ChatGPT الرسمية")
-                } else {
-                    handler.postDelayed({ inject(attempt + 1) }, 450L)
-                }
+                if (attempt >= MAX_LAUNCH_ATTEMPTS) fail("تعذر الوصول إلى واجهة ChatGPT الرسمية")
+                else handler.postDelayed({ inject(attempt + 1) }, 450L)
                 return
             }
-
             val inserted = service.setFirstEditableForPackage(PACKAGE, request.prompt)
             if (!inserted) {
                 if (attempt >= MAX_LAUNCH_ATTEMPTS) fail("تعذر العثور على حقل المحادثة بأمان")
                 else handler.postDelayed({ inject(attempt + 1) }, 450L)
                 return
             }
-
             val baseline = service.visibleTextForPackage(PACKAGE)
             handler.postDelayed({
                 val labels = listOf("إرسال", "Send", "إرسال الرسالة", "send message")
@@ -144,15 +200,10 @@ object HakimReasoningBridge {
                     }
                 }
                 if (!sent) sent = service.performImeEnterForPackage(PACKAGE)
-                if (!sent) {
-                    fail("تعذر إرسال الرسالة من واجهة ChatGPT بأمان")
-                } else {
-                    onProgress("أرسلت المهمة المحكومة وأراقب نتيجة الاستدلال دون قراءة الحقول الحساسة.")
-                    pollResponse(baseline)
-                }
+                if (!sent) fail("تعذر إرسال الرسالة من الواجهة الاحتياطية بأمان")
+                else pollResponse(baseline)
             }, 350L)
         }
-
         handler.postDelayed({ inject(0) }, 900L)
     }
 }

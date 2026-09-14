@@ -1,0 +1,37 @@
+name: تصدير أدوات توقيع أندرويد المؤقتة
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: تحديد أحدث Build Tools
+        id: bt
+        run: |
+          BT="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          echo "version=$BT" >> "$GITHUB_OUTPUT"
+          echo "Build Tools: $BT"
+          test -x "$ANDROID_HOME/build-tools/$BT/apksigner"
+          test -x "$ANDROID_HOME/build-tools/$BT/zipalign"
+          test -f "$ANDROID_HOME/build-tools/$BT/lib/apksigner.jar"
+      - name: تجهيز الحزمة
+        run: |
+          BT="${{ steps.bt.outputs.version }}"
+          mkdir -p export/lib
+          cp "$ANDROID_HOME/build-tools/$BT/apksigner" export/apksigner
+          cp "$ANDROID_HOME/build-tools/$BT/zipalign" export/zipalign
+          cp "$ANDROID_HOME/build-tools/$BT/lib/apksigner.jar" export/lib/apksigner.jar
+          chmod +x export/apksigner export/zipalign
+          printf '%s\n' "$BT" > export/BUILD_TOOLS_VERSION.txt
+      - name: رفع الأدوات فقط بلا أي مفاتيح
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signing-tools-temporary
+          path: export/
+          if-no-files-found: error

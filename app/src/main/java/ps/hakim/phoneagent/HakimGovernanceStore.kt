@@ -113,9 +113,9 @@ object HakimGovernanceStore {
     }
 
     fun promptContext(context: Context): String {
-        val global = redactEmbeddedSecrets(global(context).trim())
+        val global = exportSafeText(global(context).trim())
         val host = currentHost(context)
-        val site = if (host.isBlank()) "" else redactEmbeddedSecrets(site(context, host).trim())
+        val site = if (host.isBlank()) "" else exportSafeText(site(context, host).trim())
         return buildString {
             appendLine("[نظام المستخدم الحاكم المحلي]")
             appendLine(global.take(15000))
@@ -127,7 +127,8 @@ object HakimGovernanceStore {
         }.take(20000)
     }
 
-    private fun redactEmbeddedSecrets(raw: String): String {
+    /** نسخة نصية آمنة للخروج من المخزن المحلي؛ تمنع تسريب الأسرار المضمّنة عرضًا. */
+    fun exportSafeText(raw: String): String {
         var out = raw
         val labelled = Regex(
             "(?i)(password|passcode|otp|pin|cvv|cvc|api.?key|token|secret|كلمة\\s*المرور|رمز\\s*التحقق|رمز\\s*الأمان|مفتاح\\s*سري)\\s*[:=]\\s*([^\\s,;]{2,})"

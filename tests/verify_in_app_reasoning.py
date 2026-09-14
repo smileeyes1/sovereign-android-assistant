@@ -79,7 +79,7 @@ require("allowedTypes" in protocol and "arr.length() > 8" in protocol and "conta
         "P0: خطة الاستدلال الداخلي غير مقيدة بما يكفي")
 require("verify_in_app_reasoning.py" in workflow,
         "P0: لا توجد بوابة CI للاستدلال داخل واجهة حكيم")
-require("hakim-field-20022.apk" in workflow,
-        "P0: مسار إصدار CI لم يرتفع إلى ٢٠٠٢٢")
+require('FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"' in workflow,
+        "P0: مسار إصدار CI لا يتبع versionCode ديناميكيًا")
 
 print("HAKIM_IN_APP_REASONING=PASS")

@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 /**
  * حلقة تنفيذ محلية مغلقة: شاشة -> فعل آمن -> تحقق -> إعادة تقدير.
- * لا تتخذ قرارًا عالي الأثر ولا تكتب في حقل حساس.
+ * لا تتخذ قرارًا عالي الأثر ولا تكتب في حقل حساس ولا تكشف بيانات الخزنة لموقع غير معتمد.
  */
 object HakimAutonomousExecutor {
     data class Outcome(
@@ -17,6 +17,7 @@ object HakimAutonomousExecutor {
         val steps: Int,
         val needsApproval: Boolean,
         val needsCredential: Boolean,
+        val needsDataTrust: Boolean,
         val reason: String
     )
 
@@ -31,7 +32,7 @@ object HakimAutonomousExecutor {
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
         if (service == null) {
-            onComplete(Outcome(false, false, 0, false, false, "خدمة الوصول غير مفعلة"))
+            onComplete(Outcome(false, false, 0, false, false, false, "خدمة الوصول غير مفعلة"))
             return
         }
 
@@ -44,11 +45,12 @@ object HakimAutonomousExecutor {
             completed: Boolean,
             needsApproval: Boolean = false,
             needsCredential: Boolean = false,
+            needsDataTrust: Boolean = false,
             reason: String
         ) {
             if (finished) return
             finished = true
-            onComplete(Outcome(progressed, completed, steps, needsApproval, needsCredential, reason))
+            onComplete(Outcome(progressed, completed, steps, needsApproval, needsCredential, needsDataTrust, reason))
         }
 
         lateinit var iterate: () -> Unit
@@ -68,46 +70,55 @@ object HakimAutonomousExecutor {
                     if (!seen.add(fingerprint) && progressed) {
                         finish(false, reason = "لم تتغير الشاشة بعد آخر خطوة؛ أوقفت التكرار")
                     } else {
-                        val fill = nextAutofill(activity, snapshot)
-                        if (fill != null) {
-                            val (node, match) = fill
-                            val field = match.first
-                            val value = match.second
-                            val id = node.optString("id")
-                            val textHint = visibleLabel(node)
-                            val ok = service.action(
-                                JSONObject()
-                                    .put("action", "set_text")
-                                    .put("id", id)
-                                    .put("text", textHint)
-                                    .put("value", value)
+                        val profileCandidate = firstProfileCandidate(activity, snapshot)
+                        if (profileCandidate != null && !HakimSiteTrust.canUseProfile(activity, snapshot)) {
+                            finish(
+                                false,
+                                needsDataTrust = true,
+                                reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم"
                             )
-                            if (ok) {
-                                progressed = true
-                                steps += 1
-                                onProgress("عبأت «${field.title}» محليًا من خزنة حكيم دون إرسال القيمة إلى نموذج الذكاء.")
-                                handler.postDelayed(iterate, 500L)
-                            } else {
-                                finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
-                            }
-                        } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
-                            finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
-                        } else if (HakimActionPolicy.screenHasHighImpactContext(snapshot)) {
-                            finish(false, needsApproval = true, reason = "السياق الحالي قد يقود إلى أثر عالٍ؛ يلزم حسم الفعل النهائي")
                         } else {
-                            val next = nextSafeContinuation(snapshot)
-                            if (next != null) {
-                                val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
+                            val fill = if (profileCandidate != null) profileCandidate else null
+                            if (fill != null) {
+                                val (node, match) = fill
+                                val field = match.first
+                                val value = match.second
+                                val id = node.optString("id")
+                                val textHint = visibleLabel(node)
+                                val ok = service.action(
+                                    JSONObject()
+                                        .put("action", "set_text")
+                                        .put("id", id)
+                                        .put("text", textHint)
+                                        .put("value", value)
+                                )
                                 if (ok) {
                                     progressed = true
                                     steps += 1
-                                    onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
-                                    handler.postDelayed(iterate, 650L)
+                                    onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
+                                    handler.postDelayed(iterate, 500L)
                                 } else {
-                                    finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                    finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
                                 }
+                            } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
+                                finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
+                            } else if (HakimActionPolicy.screenHasHighImpactContext(snapshot)) {
+                                finish(false, needsApproval = true, reason = "السياق الحالي قد يقود إلى أثر عالٍ؛ يلزم حسم الفعل النهائي")
                             } else {
-                                finish(false, reason = if (progressed) "أغلقت كل الخطوات المحلية الواضحة وتحتاج المهمة استدلالًا إضافيًا" else "لا يوجد فعل محلي واضح وآمن يمكن استنتاجه من الشاشة")
+                                val next = nextSafeContinuation(snapshot)
+                                if (next != null) {
+                                    val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
+                                    if (ok) {
+                                        progressed = true
+                                        steps += 1
+                                        onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
+                                        handler.postDelayed(iterate, 650L)
+                                    } else {
+                                        finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                    }
+                                } else {
+                                    finish(false, reason = if (progressed) "أغلقت كل الخطوات المحلية الواضحة وتحتاج المهمة استدلالًا إضافيًا" else "لا يوجد فعل محلي واضح وآمن يمكن استنتاجه من الشاشة")
+                                }
                             }
                         }
                     }
@@ -119,7 +130,7 @@ object HakimAutonomousExecutor {
         handler.post(iterate)
     }
 
-    private fun nextAutofill(activity: Activity, snapshot: JSONArray): Pair<JSONObject, Pair<HakimPersonalVault.Field, String>>? {
+    private fun firstProfileCandidate(activity: Activity, snapshot: JSONArray): Pair<JSONObject, Pair<HakimPersonalVault.Field, String>>? {
         for (i in 0 until snapshot.length()) {
             val node = snapshot.optJSONObject(i) ?: continue
             if (!node.optBoolean("editable", false) || node.optBoolean("sensitive", false)) continue

@@ -6,15 +6,16 @@ import org.json.JSONObject
 
 /**
  * نسيج التكامل والوصل لحكيم.
- * يوحد القلب الحاكم والقرآن كله والقدرات والاتصال والتنفيذ والتحقق والتعلم والتعافي دون خلط
+ * يوحد القلب الحاكم والقرآن كله والإنسان أولًا والقدرات والاتصال والتنفيذ والتحقق والتعلم والتعافي دون خلط
  * سلامة البنية بجاهزية الشبكة/الهاتف اللحظية.
  */
 object HakimIntegrationFabric {
-    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v2"
+    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v3"
 
     private val structuralNodes = listOf(
         "quranic_kernel",
         "quranic_corpus_114",
+        "human_first_policy",
         "constitution",
         "intent_context",
         "decision_matrix",
@@ -37,6 +38,9 @@ object HakimIntegrationFabric {
         "quranic_kernel→quranic_corpus_114",
         "quranic_corpus_114→constitution",
         "quranic_kernel→constitution",
+        "human_first_policy→intent_context",
+        "human_first_policy→authority_envelope",
+        "human_first_policy→sovereign_engine",
         "constitution→intent_context",
         "intent_context→decision_matrix",
         "decision_matrix→sovereign_engine",
@@ -58,7 +62,7 @@ object HakimIntegrationFabric {
         val report = requireCore(context, "integration_install")
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
             .putString("integration_fabric_version", VERSION)
-            .putString("integration_fabric_last", report.toString().take(16000))
+            .putString("integration_fabric_last", report.toString().take(18000))
             .putLong("integration_fabric_checked_at", System.currentTimeMillis())
             .apply()
     }
@@ -71,9 +75,13 @@ object HakimIntegrationFabric {
         check(context.packageName == "ps.hakim.stable") { "نسيج التكامل يعمل فقط داخل هوية حكيم الأصلية" }
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
+        val human = HakimHumanFirstPolicy.status()
         check(governance.optBoolean("quranic_normative_default")) { "الدستور القرآني الحاكم غير مثبت" }
         check(corpus.optBoolean("all_114_surahs_covered")) { "تغطية القرآن كله/السور الـ١١٤ غير مثبتة" }
         check(corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")) { "الفصل بين الوحي والتفسير/الاستنباط غير مثبت" }
+        check(human.optBoolean("human_first")) { "سياسة الإنسان أولًا غير مثبتة" }
+        check(human.optBoolean("dignity_is_hard_constraint")) { "كرامة المستخدم ليست قيدًا حاكمًا" }
+        check(human.optBoolean("silence_is_not_consent")) { "السكوت قد يفسر كموافقة" }
         check(governance.optBoolean("fail_closed_core_changes")) { "حماية تغييرات القلب غير مفعلة" }
         return structuralStatus(context, scope)
     }
@@ -82,12 +90,19 @@ object HakimIntegrationFabric {
         HakimQuranicInvariantKernel.requireInherited("integration_status:$scope")
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
+        val human = HakimHumanFirstPolicy.status()
         val packageOk = context.packageName == "ps.hakim.stable"
         val quranicOk = governance.optBoolean("quranic_normative_default")
         val corpusOk = corpus.optBoolean("all_114_surahs_covered") &&
             corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")
+        val humanOk = human.optBoolean("human_first") &&
+            human.optBoolean("dignity_is_hard_constraint") &&
+            human.optBoolean("zero_technical_burden_default") &&
+            human.optBoolean("kindness_must_not_be_exploited") &&
+            human.optBoolean("silence_is_not_consent") &&
+            human.optBoolean("preserve_user_agency")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && humanOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -95,7 +110,9 @@ object HakimIntegrationFabric {
             .put("single_app_identity", packageOk)
             .put("quranic_root_inherited", quranicOk)
             .put("quranic_corpus_114_integrated", corpusOk)
+            .put("human_first_integrated", humanOk)
             .put("quranic_corpus", corpus)
+            .put("human_first", human)
             .put("fail_closed_core_changes", failClosed)
             .put("nodes", JSONArray(structuralNodes))
             .put("edges", JSONArray(structuralEdges))
@@ -131,10 +148,11 @@ object HakimIntegrationFabric {
             appendLine("[نسيج التكامل والوصل السيادي]")
             appendLine("القلب البنيوي=${if (s.optJSONObject("structural")?.optBoolean("structural_integrity") == true) "سليم" else "غير سليم"}؛ اتصال الشبكة/المتصفح/الهاتف جاهزية لحظية وليست بديلًا عن سلامة القلب.")
             appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، مع فصل النص عن التفسير والقراءات وأسباب النزول والاستنباط، ومنع الانتقائية والتكلف.")
+            appendLine("الإنسان أولًا جزء من القلب: كرامة المستخدم، أقل عبء تقني، عدم استغلال الطيبة/الرحمة، وعدم اعتبار السكوت موافقة، وحفظ سيادته وقراره الجوهري.")
             appendLine("لا توجد طبقة حرجة معزولة: المقصد والقرار والوكلاء والتنفيذ والتحقق والتعلم والتعافي والاتصال والتحديث تعود إلى القلب الحاكم وسجل المهمة.")
             appendLine("عند فقد وصلة خارجية: غيّر المسار أو استعد الاتصال إذا كان ذلك آمنًا ومسموحًا؛ لا توسع السلطة ولا تدّع أن الوصلة جاهزة.")
             appendLine("المتصفح=${s.optBoolean("browser_ready_now")}، الوصول=${s.optBoolean("accessibility_ready_now")}، ChatGPT=${s.optBoolean("chatgpt_official_installed")}، القناة الآمنة=${s.optBoolean("secure_relay_configured")}.")
-        }.take(3600)
+        }.take(4400)
     }
 
     fun status(context: Context): JSONObject = JSONObject()

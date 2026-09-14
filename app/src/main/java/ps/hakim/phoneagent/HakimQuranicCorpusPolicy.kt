@@ -10,7 +10,7 @@ import org.json.JSONObject
  * وعند المهمة المحددة لا يُستعمل إلا ما ثبتت صلته بعد التحقق.
  */
 object HakimQuranicCorpusPolicy {
-    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-14-v1"
+    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-14-v2"
     const val SURAH_COUNT = 114
 
     enum class Layer {
@@ -70,6 +70,7 @@ object HakimQuranicCorpusPolicy {
     fun promptContext(raw: String): String {
         val a = assess(raw)
         return buildString {
+            append(HakimQuranicSourceAuthority.promptContext())
             appendLine("[سياسة القرآن كله — السور الـ١١٤]")
             appendLine("التغطية الافتراضية تشمل جميع سور القرآن من ١ إلى ١١٤. لا تنتقِ سورة أو آية لمجرد موافقة نتيجة مسبقة، ولا تُسقط ما يخالف الترجيح البشري.")
             appendLine("عند طلب استقراء شامل: ابحث عبر corpus السور الـ١١٤ كلها، ثم استخرج فقط الدلالات ذات الصلة المثبتة مع بيان المصدر والسياق؛ لا تُجبر كل سورة على كل مسألة.")
@@ -78,7 +79,7 @@ object HakimQuranicCorpusPolicy {
             appendLine("في أسماء السور ومقاصدها والمكي والمدني ووجوه التسمية وأسباب النزول: ميّز المشهور والتوقيفي والاجتهادي والخلاف المنقول، ولا تدّع الإجماع بلا دليل.")
             appendLine("في العلوم الدنيوية، بما فيها الذرة والنواة والطب والهندسة: القرآن يحكم الهداية والغاية والقيم والحدود؛ أما القانون التجريبي والسبب الفني فيثبت بالعلم والتجربة والدليل المستقل.")
             if (a.requiresSourceVerification) appendLine("هذه المهمة تتطلب تحققًا مصدريًا قبل الجزم أو الاقتباس أو نسبة معنى محدد إلى سورة/آية.")
-        }.take(5000)
+        }.take(7800)
     }
 
     fun status(): JSONObject = JSONObject()
@@ -95,6 +96,7 @@ object HakimQuranicCorpusPolicy {
         .put("asbab_requires_source_verification", true)
         .put("surah_metadata_requires_documented_source", true)
         .put("worldly_science_requires_independent_evidence", true)
+        .put("source_authority", HakimQuranicSourceAuthority.status())
         .put("layers", JSONArray(Layer.values().map { it.name }))
 
     private val wholeCorpusRegex = Regex(

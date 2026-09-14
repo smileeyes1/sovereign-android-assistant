@@ -20,7 +20,8 @@ object HakimSiteTrust {
 
     fun isTrusted(context: Context, rawHost: String): Boolean {
         val host = normalizeHost(rawHost) ?: return false
-        return host in trustedHosts(context)
+        val set = trustedHosts(context)
+        return host in set
     }
 
     fun trustedHosts(context: Context): Set<String> =

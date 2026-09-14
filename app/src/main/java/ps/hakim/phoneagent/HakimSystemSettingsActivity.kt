@@ -3,6 +3,7 @@ package ps.hakim.phoneagent
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -23,6 +24,7 @@ class HakimSystemSettingsActivity : Activity() {
     private lateinit var trustSiteForProfile: CheckBox
     private lateinit var shareWithReasoning: CheckBox
     private lateinit var proactiveEnabled: CheckBox
+    private lateinit var quranCorpusStatus: TextView
     private val profileInputs = linkedMapOf<String, EditText>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +49,7 @@ class HakimSystemSettingsActivity : Activity() {
                     Toast.LENGTH_LONG
                 ).show()
             }.onFailure {
+                HakimFaultLedger.record(this, "sovereign_export", it, severity = HakimFaultLedger.Severity.WARNING)
                 Toast.makeText(this, "تعذر حفظ النسخة السيادية: ${it.message.orEmpty().take(160)}", Toast.LENGTH_LONG).show()
             }
 
@@ -72,8 +75,11 @@ class HakimSystemSettingsActivity : Activity() {
                     .setNegativeButton("إلغاء", null)
                     .show()
             }.onFailure {
+                HakimFaultLedger.record(this, "sovereign_import", it, severity = HakimFaultLedger.Severity.WARNING)
                 Toast.makeText(this, "تعذر قراءة النسخة: ${it.message.orEmpty().take(160)}", Toast.LENGTH_LONG).show()
             }
+
+            REQ_QURAN_IMPORT -> importVerifiedQuran(uri)
         }
     }
 
@@ -86,7 +92,37 @@ class HakimSystemSettingsActivity : Activity() {
         val scroll = ScrollView(this).apply { addView(root) }
 
         root.addView(title("النظام الحاكم والبيانات — حكيم"))
-        root.addView(note("حكيم يبدأ الآن بنواة حاكمة مكتملة تلقائيًا، لا بخانة فارغة. يمكنك تخصيصها، والفراغ يعني الرجوع إلى النواة الافتراضية لا إزالة الحاكمية. لا تضع كلمات مرور أو رموز تحقق أو بطاقات هنا."))
+        root.addView(note("حكيم يبدأ بنواة حاكمة مكتملة تلقائيًا، لا بخانة فارغة. يمكنك تخصيصها، والفراغ يعني الرجوع إلى النواة الافتراضية لا إزالة الحاكمية. لا تضع كلمات مرور أو رموز تحقق أو بطاقات هنا."))
+
+        root.addView(section("الاختبار الميداني ومنع الأخطاء الصامتة"))
+        root.addView(note("هذا الاختبار يعمل على الهاتف نفسه ويفرق بين سلامة الكود وبين الجاهزية الفعلية. لا يعلن FIELD_VERIFIED تلقائيًا؛ بل يعطي PASS/PARTIAL/BLOCKED بالدليل."))
+        root.addView(Button(this).apply {
+            text = "تشغيل الاختبار الميداني الشامل"
+            textSize = 16f
+            setOnClickListener { runFieldValidation() }
+        })
+
+        root.addView(section("القرآن المحلي المتحقق — حفص"))
+        quranCorpusStatus = note("")
+        root.addView(quranCorpusStatus)
+        root.addView(note("تغطية السور الـ١١٤ في الحاكمية لا تعني تلقائيًا أن نص كل آية مخزن محليًا. حكيم لا يعتمد النص المحلي إلا بعد مطابقة بصمة ملف رسمي منشور من مجمع الملك فهد وفحص ١١٤ سورة و٦٢٣٦ آية."))
+        val quranRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        quranRow.addView(Button(this).apply {
+            text = "فتح المصدر الرسمي"
+            textSize = 15f
+            setOnClickListener {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(HakimVerifiedQuranCorpus.OFFICIAL_SOURCE_PAGE)))
+            }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        quranRow.addView(Button(this).apply {
+            text = "اعتماد الملف الرسمي"
+            textSize = 15f
+            setOnClickListener { chooseOfficialQuranArchive() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(quranRow)
 
         root.addView(section("الاستقلال السيادي والمبادرة"))
         root.addView(note("الحالة: ${if (HakimSovereignIndependence.isCoreSovereign(this)) "القلب السيادي مستقل عن مزود خارجي منفرد" else "توجد فجوة استقلال بنيوية تحتاج إصلاحًا"}. الخدمات الخارجية قدرات قابلة للاستبدال وليست حاكمًا."))
@@ -193,6 +229,59 @@ class HakimSystemSettingsActivity : Activity() {
         setContentView(scroll)
     }
 
+    private fun runFieldValidation() {
+        Toast.makeText(this, "يجري حكيم الاختبار الميداني غير الهدّام…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val report = runCatching { HakimFieldValidation.run(this) }.getOrElse {
+                HakimFaultLedger.record(this, "field_validation_ui", it, severity = HakimFaultLedger.Severity.CRITICAL)
+                org.json.JSONObject().put("overall", "BLOCKED").put("blocked", 1).put("partial", 0)
+            }
+            runOnUiThread {
+                val overall = report.optString("overall", "BLOCKED")
+                val checks = report.optJSONArray("checks")
+                val lines = ArrayList<String>()
+                if (checks != null) for (i in 0 until checks.length()) {
+                    val c = checks.optJSONObject(i) ?: continue
+                    lines += "${c.optString("level")}: ${c.optString("name")} — ${c.optString("detail")}"
+                }
+                AlertDialog.Builder(this)
+                    .setTitle("نتيجة الاختبار الميداني: $overall")
+                    .setMessage((lines.joinToString("\n\n") + "\n\nFIELD_VERIFIED لا يُعلن حتى تنجح سيناريوهات فعلية كاملة على الهاتف.").take(14000))
+                    .setPositiveButton("حسنًا", null)
+                    .show()
+            }
+        }.start()
+    }
+
+    private fun chooseOfficialQuranArchive() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(intent, REQ_QURAN_IMPORT)
+    }
+
+    private fun importVerifiedQuran(uri: Uri) {
+        Toast.makeText(this, "يتحقق حكيم من البصمة الرسمية وبنية القرآن…", Toast.LENGTH_LONG).show()
+        Thread {
+            val result = HakimVerifiedQuranCorpus.importOfficialArchive(this, uri)
+            runOnUiThread {
+                refreshQuranCorpusStatus()
+                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+            }
+        }.start()
+    }
+
+    private fun refreshQuranCorpusStatus() {
+        if (!::quranCorpusStatus.isInitialized) return
+        val s = HakimVerifiedQuranCorpus.status(this)
+        quranCorpusStatus.text = if (s.optBoolean("ready")) {
+            "جاهز ومتحقق محليًا: ${s.optInt("surah_count")} سورة، ${s.optInt("ayah_count")} آية، المصدر=${s.optString("source_title")}, تحديث=${s.optString("source_update")}."
+        } else {
+            "غير مثبت محليًا بعد. تبقى الحاكمية القرآنية مفعلة، لكن النص الدقيق لا يُنسب من الذاكرة؛ استخدم المصدر الرسمي ثم اختر «اعتماد الملف الرسمي»."
+        }
+    }
+
     private fun exportSovereignBackup() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -213,6 +302,7 @@ class HakimSystemSettingsActivity : Activity() {
     private fun load() {
         proactiveEnabled.isChecked = HakimProactiveEngine.isEnabled(this)
         globalInstructions.setText(HakimGovernanceStore.global(this))
+        refreshQuranCorpusStatus()
         val currentHost = HakimGovernanceStore.currentHost(this)
         if (currentHost.isNotBlank()) {
             siteHost.setText(currentHost)
@@ -273,5 +363,6 @@ class HakimSystemSettingsActivity : Activity() {
     companion object {
         private const val REQ_EXPORT = 7301
         private const val REQ_IMPORT = 7302
+        private const val REQ_QURAN_IMPORT = 7303
     }
 }

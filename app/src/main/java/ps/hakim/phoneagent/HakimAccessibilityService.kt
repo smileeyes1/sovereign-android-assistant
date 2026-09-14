@@ -59,6 +59,8 @@ class HakimAccessibilityService : AccessibilityService() {
         "quick_settings" -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
         "click_text" -> clickText(obj.optString("text"))
         "set_text" -> setText(obj.optString("id"), obj.optString("text"), obj.optString("value"))
+        "set_first_editable" -> setFirstEditableForPackage(obj.optString("package"), obj.optString("value"))
+        "click_text_in_package" -> clickTextInPackage(obj.optString("package"), obj.optString("text"))
         "tap" -> tap(obj.optDouble("x").toFloat(), obj.optDouble("y").toFloat())
         "swipe" -> swipe(
             obj.optDouble("x1").toFloat(), obj.optDouble("y1").toFloat(),
@@ -66,6 +68,66 @@ class HakimAccessibilityService : AccessibilityService() {
             obj.optLong("duration", 400L)
         )
         else -> false
+    }
+
+    fun foregroundPackage(): String = rootInActiveWindow?.packageName?.toString().orEmpty()
+
+    /** نص مرئي من حزمة مسموحة فقط، مع تنقيح الحقول الحساسة. */
+    fun visibleTextForPackage(packageName: String, limit: Int = 220): String {
+        if (!safeAutomationPackages.contains(packageName)) return ""
+        val root = rootInActiveWindow ?: return ""
+        if (root.packageName?.toString() != packageName) return ""
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        val lines = linkedSetOf<String>()
+        while (queue.isNotEmpty() && lines.size < limit) {
+            val n = queue.removeFirst()
+            if (!isSensitive(n) && n.isVisibleToUser) {
+                val text = n.text?.toString().orEmpty().trim()
+                val desc = n.contentDescription?.toString().orEmpty().trim()
+                if (text.isNotBlank()) lines += text.take(1200)
+                else if (desc.isNotBlank()) lines += desc.take(600)
+            }
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
+        }
+        return lines.joinToString("\n").take(30000)
+    }
+
+    /** كتابة مقيدة بمحرك مسموح، ولا تعمل على أي حقل حساس. */
+    fun setFirstEditableForPackage(packageName: String, value: String): Boolean {
+        if (!safeAutomationPackages.contains(packageName) || value.isBlank()) return false
+        val root = rootInActiveWindow ?: return false
+        if (root.packageName?.toString() != packageName) return false
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        val editable = mutableListOf<AccessibilityNodeInfo>()
+        while (queue.isNotEmpty() && editable.size < 12) {
+            val n = queue.removeFirst()
+            if (n.isEditable && n.isVisibleToUser && !isSensitive(n)) editable += n
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
+        }
+        val preferred = editable.firstOrNull { n ->
+            val probe = listOf(n.viewIdResourceName.orEmpty(), n.contentDescription?.toString().orEmpty())
+                .joinToString(" ").lowercase()
+            Regex("message|prompt|composer|chat|رسالة|اكتب|محادثة").containsMatchIn(probe)
+        } ?: editable.lastOrNull() ?: return false
+        val b = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value.take(24000)) }
+        return preferred.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b)
+    }
+
+    fun clickTextInPackage(packageName: String, text: String): Boolean {
+        if (!safeAutomationPackages.contains(packageName) || text.isBlank()) return false
+        val root = rootInActiveWindow ?: return false
+        if (root.packageName?.toString() != packageName) return false
+        for (n in root.findAccessibilityNodeInfosByText(text)) {
+            if (isSensitive(n)) continue
+            var cur: AccessibilityNodeInfo? = n
+            repeat(5) {
+                if (cur?.isClickable == true) return cur!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                cur = cur?.parent
+            }
+        }
+        return false
     }
 
     private fun isSensitive(n: AccessibilityNodeInfo): Boolean {
@@ -152,6 +214,7 @@ class HakimAccessibilityService : AccessibilityService() {
     }
 
     companion object {
+        private val safeAutomationPackages = setOf("com.openai.chatgpt")
         @Volatile var instance: HakimAccessibilityService? = null
             private set
     }

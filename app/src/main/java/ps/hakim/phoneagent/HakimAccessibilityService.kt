@@ -113,15 +113,17 @@ class HakimAccessibilityService : AccessibilityService() {
         if (!safeAutomationPackages.contains(packageName) || text.isBlank()) return false
         val root = rootInActiveWindow ?: return false
         if (root.packageName?.toString() != packageName) return false
-        val target = text.trim().lowercase()
+        val target = normalizeLabel(text)
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         while (queue.isNotEmpty()) {
             val n = queue.removeFirst()
             if (!isSensitive(n)) {
-                val label = listOf(n.text?.toString().orEmpty(), n.contentDescription?.toString().orEmpty())
-                    .joinToString(" ").trim().lowercase()
-                if (label == target || label.contains(target)) {
+                val candidates = listOf(
+                    n.text?.toString().orEmpty(),
+                    n.contentDescription?.toString().orEmpty()
+                ).map(::normalizeLabel).filter { it.isNotBlank() }
+                if (candidates.any { it == target }) {
                     var cur: AccessibilityNodeInfo? = n
                     repeat(5) {
                         if (cur?.isClickable == true) return cur!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)
@@ -153,6 +155,10 @@ class HakimAccessibilityService : AccessibilityService() {
         }
         return editable
     }
+
+    private fun normalizeLabel(v: String): String = v.lowercase()
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
     private fun isSensitive(n: AccessibilityNodeInfo): Boolean {
         if (n.isPassword) return true

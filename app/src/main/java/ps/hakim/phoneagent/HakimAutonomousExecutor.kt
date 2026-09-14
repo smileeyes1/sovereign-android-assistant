@@ -31,7 +31,10 @@ object HakimAutonomousExecutor {
     ) {
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
+        HakimMissionLedger.beginOrResume(activity, goal)
+        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء حلقة التنفيذ المحلي", attempted = true)
         if (service == null) {
+            HakimSovereignEngine.recordVerification(activity, false, "خدمة الوصول غير مفعلة")
             onComplete(Outcome(false, false, 0, false, false, false, "خدمة الوصول غير مفعلة"))
             return
         }
@@ -50,7 +53,18 @@ object HakimAutonomousExecutor {
         ) {
             if (finished) return
             finished = true
+            when {
+                completed -> HakimSovereignEngine.complete(activity, reason)
+                needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
+                needsCredential -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_CREDENTIAL, reason)
+                needsDataTrust -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_TRUST, reason)
+                else -> HakimSovereignEngine.recordVerification(activity, false, reason)
+            }
             onComplete(Outcome(progressed, completed, steps, needsApproval, needsCredential, needsDataTrust, reason))
+        }
+
+        fun recordStep(evidence: String) {
+            HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
         lateinit var iterate: () -> Unit
@@ -62,6 +76,7 @@ object HakimAutonomousExecutor {
                 if (snapshot.length() == 0) {
                     finish(false, reason = "لا توجد عناصر شاشة قابلة للفهم الآن")
                 } else if (HakimActionPolicy.isSuccessState(snapshot) && progressed) {
+                    HakimSovereignEngine.recordVerification(activity, true, "ظهرت حالة نجاح مرئية بعد التنفيذ")
                     finish(true, reason = "ظهرت حالة نجاح مرئية بعد التنفيذ")
                 } else if (steps >= MAX_STEPS) {
                     finish(false, reason = "وصلت الحلقة إلى حد الخطوات الآمن وتحتاج إعادة تقدير")
@@ -93,6 +108,7 @@ object HakimAutonomousExecutor {
                             if (ok) {
                                 progressed = true
                                 steps += 1
+                                recordStep("عبئت ${field.id} محليًا في موقع معتمد")
                                 onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
                                 handler.postDelayed(iterate, 500L)
                             } else {
@@ -103,14 +119,22 @@ object HakimAutonomousExecutor {
                         } else {
                             val next = nextSafeContinuation(snapshot)
                             if (next != null) {
-                                val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
-                                if (ok) {
-                                    progressed = true
-                                    steps += 1
-                                    onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
-                                    handler.postDelayed(iterate, 650L)
+                                val matrix = HakimDecisionMatrix.evaluate(next)
+                                if (matrix.mode == HakimDecisionMatrix.Mode.BLOCK) {
+                                    finish(false, reason = "منعت مصفوفة القرار الخطوة التالية")
+                                } else if (matrix.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE) {
+                                    finish(false, needsApproval = true, reason = "مصفوفة القرار تطلب موافقة قبل «$next»")
                                 } else {
-                                    finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                    val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
+                                    if (ok) {
+                                        progressed = true
+                                        steps += 1
+                                        recordStep("نفذت متابعة آمنة: ${next.take(160)}")
+                                        onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
+                                        handler.postDelayed(iterate, 650L)
+                                    } else {
+                                        finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                    }
                                 }
                             } else {
                                 val gated = nextApprovalAction(snapshot)

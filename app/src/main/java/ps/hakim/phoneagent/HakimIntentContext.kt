@@ -1,12 +1,11 @@
 package ps.hakim.phoneagent
 
 import android.content.Context
-import org.json.JSONObject
 
 /**
  * استنتاج المقصد من أقل إشارة ممكنة مع تقليل الأسئلة على المستخدم.
  * يعتمد على آخر غاية موثوقة + الشاشة الحالية بعد تنقيح الحقول الحساسة + آخر مسار ويب.
- * لا يحفظ محتوى الشاشة ولا الأسرار.
+ * لا يحفظ محتوى الشاشة ولا الأسرار، ولا يعتبر واجهات حكيم الإدارية دليلًا على حالة مهمة الويب.
  */
 object HakimIntentContext {
     data class Inference(
@@ -49,6 +48,11 @@ object HakimIntentContext {
                 confidence = "HIGH"
                 source = "last_goal+screen"
             }
+            lastGoal.isNotBlank() && lastUrl.isNotBlank() -> {
+                resolved = "$lastGoal\nاستأنف من مسار الويب الحالي $lastUrl. إشارة المستخدم: ${cue.ifBlank { "أكمل" }}. لا تكرر المنجز."
+                confidence = "HIGH"
+                source = "last_goal+last_url"
+            }
             lastGoal.isNotBlank() -> {
                 resolved = "$lastGoal\nإشارة المستخدم الآن: ${cue.ifBlank { "أكمل" }}. أكمل من آخر حالة معروفة دون إعادة الخطوات المنجزة."
                 confidence = "MEDIUM"
@@ -61,7 +65,7 @@ object HakimIntentContext {
             }
             lastUrl.isNotBlank() -> {
                 resolved = "استأنف العمل على المسار الحالي $lastUrl وفق إشارة المستخدم «${cue.ifBlank { "أكمل" }}»، واستنتج الخطوة التالية الآمنة."
-                confidence = "LOW"
+                confidence = "MEDIUM"
                 source = "last_url"
             }
             else -> {
@@ -83,7 +87,7 @@ object HakimIntentContext {
             resolvedRequest = resolved,
             confidence = confidence,
             source = source,
-            canAutoContinue = confidence != "LOW" || screen.isNotBlank()
+            canAutoContinue = confidence != "LOW" || screen.isNotBlank() || lastUrl.isNotBlank()
         )
     }
 
@@ -127,6 +131,12 @@ object HakimIntentContext {
 
     private fun screenSummary(): String {
         val snapshot = HakimAccessibilityService.instance?.uiSnapshot(80) ?: return ""
+        // لا نستخدم شاشة المحادثة/الإعدادات نفسها كدليل على حالة المهمة الخارجية.
+        for (i in 0 until snapshot.length()) {
+            val obj = snapshot.optJSONObject(i) ?: continue
+            val t = (obj.optString("text") + " " + obj.optString("desc")).trim()
+            if (t.contains("حكيم — محادثة الوكلاء") || t.contains("النظام الحاكم والبيانات — حكيم")) return ""
+        }
         val lines = linkedSetOf<String>()
         for (i in 0 until snapshot.length()) {
             val obj = snapshot.optJSONObject(i) ?: continue

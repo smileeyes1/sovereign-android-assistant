@@ -21,7 +21,9 @@ object HakimSelfCheck {
                 .setPeriodic(PERIOD_MS)
                 .build()
             scheduler.schedule(job)
-        } catch (_: Exception) {}
+        } catch (t: Throwable) {
+            HakimFaultLedger.record(context, "selfcheck_schedule", t, severity = HakimFaultLedger.Severity.WARNING)
+        }
     }
 
     fun runAsync(context: Context) {
@@ -29,7 +31,9 @@ object HakimSelfCheck {
             try {
                 val report = run(context.applicationContext)
                 HakimLearning.recordHealth(context.applicationContext, report)
-            } catch (_: Exception) {}
+            } catch (t: Throwable) {
+                HakimFaultLedger.record(context.applicationContext, "selfcheck_async", t, severity = HakimFaultLedger.Severity.MATERIAL)
+            }
         }.start()
     }
 
@@ -40,13 +44,14 @@ object HakimSelfCheck {
         var warned = 0
 
         fun check(name: String, ok: Boolean, severity: String = "fail", detail: String = "") {
-            checks.put(JSONObject().put("name", name).put("ok", ok).put("severity", severity).put("detail", detail.take(240)))
+            checks.put(JSONObject().put("name", name).put("ok", ok).put("severity", severity).put("detail", detail.take(320)))
             if (!ok) {
                 if (severity == "warn") warned++ else failed++
             }
         }
 
         val governance = HakimConstitution.status(context)
+        check("بسم الله الرحمن الرحيم مفعلة في النواة الافتراضية", HakimGovernanceStore.DEFAULT_GLOBAL_INSTRUCTIONS.trimStart().startsWith("بسم الله الرحمن الرحيم"))
         check("ن★ التكيفية مفعلة", governance.optBoolean("adaptive_nstar"))
         check("لا عدد تكرار ثابت", governance.optBoolean("no_fixed_iteration_count"))
         check("الدورة الإضافية تتطلب مكسبًا ماديًا", governance.optBoolean("material_gain_required"))
@@ -64,6 +69,20 @@ object HakimSelfCheck {
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
 
+        val quranPolicy = HakimQuranicCorpusPolicy.status()
+        check("سياسة القرآن تغطي السور الـ١١٤", quranPolicy.optBoolean("all_114_surahs_covered") && quranPolicy.optInt("surah_count") == 114)
+        check("منع الانتقاء المريح من القرآن", quranPolicy.optBoolean("no_cherry_picking"))
+        check("الوحي منفصل عن التفسير والاستنباط", quranPolicy.optBoolean("revelation_distinct_from_tafsir_and_inference"))
+        check("النص الدقيق يتطلب مصدر مصحفي موثوق", quranPolicy.optBoolean("exact_text_requires_verified_mushaf_source"))
+        val verifiedQuran = HakimVerifiedQuranCorpus.status(context)
+        check(
+            "نص القرآن الكامل متحقق محليًا",
+            verifiedQuran.optBoolean("ready"),
+            "warn",
+            if (verifiedQuran.optBoolean("ready")) "${verifiedQuran.optInt("surah_count")} سورة / ${verifiedQuran.optInt("ayah_count")} آية" else "غير مثبت محليًا؛ النص الدقيق يبقى على مسار المصدر الرسمي"
+        )
+        check("لا خلط بين سياسة التغطية وامتلاك النص", verifiedQuran.optBoolean("policy_coverage_is_not_text_coverage"))
+
         val human = HakimHumanFirstPolicy.status()
         check("الإنسان أولًا مفعّل", human.optBoolean("human_first"))
         check("كرامة المستخدم قيد حاكم", human.optBoolean("dignity_is_hard_constraint"))
@@ -72,6 +91,12 @@ object HakimSelfCheck {
         check("السكوت ليس موافقة", human.optBoolean("silence_is_not_consent"))
         check("حفظ سيادة المستخدم", human.optBoolean("preserve_user_agency"))
         check("التصميم يتحمل السهو والتعب", human.optBoolean("human_error_and_fatigue_tolerant"))
+
+        val capabilityBoundary = HakimHumanCapabilityBoundary.status()
+        check("لا ادعاء تكافؤ كامل مع الإنسان", !capabilityBoundary.optBoolean("human_equivalence_claimed"))
+        check("هدف أقصى مساعدة رقمية", capabilityBoundary.optBoolean("maximal_digital_assistance_goal"))
+        check("لا تجاوز لصلاحيات أندرويد", capabilityBoundary.optBoolean("system_permissions_cannot_be_bypassed"))
+        check("لا اختلاق للأسرار المفقودة", capabilityBoundary.optBoolean("missing_secrets_cannot_be_invented"))
 
         val adaptive = HakimAdaptiveLearning.status(context)
         check("التعلم التكيفي المحلي موجود", adaptive.optBoolean("adaptive_learning"))
@@ -120,6 +145,11 @@ object HakimSelfCheck {
         val ledger = governance.optJSONObject("rule_ledger") ?: JSONObject()
         check("سجل القواعد مشفر محليًا", ledger.optBoolean("encrypted_local_ledger"))
 
+        val faultLedger = HakimFaultLedger.status(context)
+        check("منع الفشل الصامت مفعّل", faultLedger.optBoolean("silent_failure_forbidden"))
+        check("تكرار العطل يفرض السبب الجذري", faultLedger.optBoolean("root_cause_required_on_repeat"))
+        check("لا يوجد عطل مادي متكرر غير معالج", !faultLedger.optBoolean("repeated_material_fault"), "fail", faultLedger.toString().take(260))
+
         val intent = HakimIntentEngine.status(context)
         check("محرك النية فعّال", intent.optBoolean("intent_engine"))
         check("محرك النية يستخدم ن★", intent.optBoolean("adaptive_nstar"))
@@ -149,7 +179,10 @@ object HakimSelfCheck {
         )
 
         val scheduler = context.getSystemService(JobScheduler::class.java)
-        val jobs = try { scheduler.allPendingJobs.map { it.id }.toSet() } catch (_: Exception) { emptySet() }
+        val jobs = try { scheduler.allPendingJobs.map { it.id }.toSet() } catch (t: Throwable) {
+            HakimFaultLedger.record(context, "selfcheck_jobs", t, severity = HakimFaultLedger.Severity.WARNING)
+            emptySet()
+        }
         check("التحديث الذاتي مجدول", jobs.contains(771204), "warn")
         check("الفحص/التطور/المبادرة الدورية مجدولة", jobs.contains(JOB_ID), "warn")
         check("حارس استعادة الاتصال مجدول", jobs.contains(HakimConnectionResilience.JOB_ID), "warn")
@@ -165,7 +198,10 @@ object HakimSelfCheck {
         val version = try {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
             if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
-        } catch (_: Exception) { 0L }
+        } catch (t: Throwable) {
+            HakimFaultLedger.record(context, "selfcheck_package_version", t, severity = HakimFaultLedger.Severity.MATERIAL)
+            0L
+        }
         check("هوية الحزمة الصحيحة", context.packageName == "ps.hakim.stable")
         check("رقم إصدار صالح", version > 0)
 
@@ -183,17 +219,21 @@ object HakimSelfCheck {
             .put("warnings", warned)
             .put("checks", checks)
             .put("governance", governance)
+            .put("quran_policy", quranPolicy)
+            .put("verified_quran_corpus", verifiedQuran)
             .put("human_first", human)
+            .put("human_capability_boundary", capabilityBoundary)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
             .put("sovereign_independence", independence)
             .put("integration", integration)
+            .put("fault_ledger", faultLedger)
             .put("intent", intent)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(48000))
+            .putString("last_self_check", report.toString().take(60000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

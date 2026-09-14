@@ -17,6 +17,7 @@ web_actions = text("app/src/main/java/ps/hakim/phoneagent/HakimWebAutomation.kt"
 bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
 executor = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
+autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
@@ -51,6 +52,8 @@ require(pos_web >= 0 and pos_access > pos_web,
 # التنفيذ الفعلي بعد الاستدلال يجب أن يرث نفس قاعدة أقل صلاحية.
 require("object HakimWebAutomation" in web_actions and "evaluateJavascript" in web_actions,
         "P0: طبقة تنفيذ WebView المحلية مفقودة")
+require("clickable:clickable" in web_actions and "editable:editable" in web_actions,
+        "P0: لقطة WebView لا تقدم عقد العناصر اللازم للحلقة الذاتية")
 require("sensitive" in web_actions and "type === 'password'" in web_actions,
         "P0: لقطة DOM لا تحجب حقول الاعتماد الحساسة")
 require("HakimWebAutomation.snapshot" in executor and "HakimWebAutomation.clickText" in executor and "HakimWebAutomation.setText" in executor,
@@ -63,6 +66,14 @@ require("جولة تحقق مستقلة" in executor and "يلزم تحقق جد
         "P0: المنفذ قد يعلن الاكتمال بعد أفعال دون جولة تحقق")
 require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in protocol,
         "P0: خطة تحتوي أفعالًا ما زالت قادرة على إعلان done=true قبل التنفيذ والتحقق")
+
+# الحلقة الذاتية التي تسبق الاستدلال يجب ألا تناقض ملف التثبيت منخفض الصلاحية.
+require("HakimWebAutomation.snapshot" in autonomous and "HakimWebAutomation.clickText" in autonomous and "HakimWebAutomation.setText" in autonomous,
+        "P0: الحلقة الذاتية لا تستخدم WebView حكيم كمسار أول")
+require('recordVerification(activity, false, "خدمة الوصول غير مفعلة")' not in autonomous,
+        "P0: الحلقة الذاتية ما زالت تتوقف فورًا عند غياب Accessibility")
+require("service?.uiSnapshot" in autonomous and "HakimRuntime.visibleWebView" in autonomous,
+        "P0: مسار Accessibility لم يتحول إلى احتياط بعد WebView")
 
 require('android:name=".HakimAccessibilityService"' not in manifest,
         "P0: النسخة الميدانية تعيد إعلان Accessibility وتكسر ملف Play Protect الآمن")

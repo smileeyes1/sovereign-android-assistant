@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20022
-        versionName '2.0.22-capability-mesh'
+        versionCode 20023
+        versionName '2.0.23-sovereign-portability'
     }
 
     compileOptions {

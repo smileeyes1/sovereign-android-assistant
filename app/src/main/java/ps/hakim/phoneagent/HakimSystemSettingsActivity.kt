@@ -15,7 +15,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
-/** إعداد النظام الحاكم والبيانات المتكررة؛ لا يقبل كلمات المرور أو رموز التحقق أو البطاقات. */
+/** إعداد النظام الحاكم وبيانات التعبئة الشخصية؛ لا يقبل كلمات المرور أو رموز التحقق أو البطاقات. */
 class HakimSystemSettingsActivity : Activity() {
     private lateinit var globalInstructions: EditText
     private lateinit var siteHost: EditText
@@ -41,7 +41,11 @@ class HakimSystemSettingsActivity : Activity() {
                 contentResolver.openOutputStream(uri, "w")?.use { it.write(bytes) }
                     ?: error("تعذر فتح وجهة الحفظ")
             }.onSuccess {
-                Toast.makeText(this, "تم حفظ النسخة السيادية في المكان الذي اخترته — بلا كلمات مرور أو مفاتيح خاصة", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "تم حفظ النسخة السيادية في المكان الذي اخترته. الأسرار مستبعدة، لكن النسخة قد تتضمن بياناتك الشخصية المحفوظة؛ احفظها في وجهة موثوقة.",
+                    Toast.LENGTH_LONG
+                ).show()
             }.onFailure {
                 Toast.makeText(this, "تعذر حفظ النسخة السيادية: ${it.message.orEmpty().take(160)}", Toast.LENGTH_LONG).show()
             }
@@ -55,7 +59,7 @@ class HakimSystemSettingsActivity : Activity() {
             }.onSuccess { raw ->
                 AlertDialog.Builder(this)
                     .setTitle("استعادة نسخة حكيم السيادية")
-                    .setMessage("سيتم استبدال النظام الحاكم وتعليمات المواقع وبيانات التعبئة غير الحساسة والثقة والمبادرة بما في هذه النسخة. لا تُستورد كلمات مرور أو OTP أو مفاتيح توقيع. هل تريد المتابعة؟")
+                    .setMessage("سيتم استبدال النظام الحاكم وتعليمات المواقع وبيانات التعبئة الشخصية المحفوظة والثقة والمبادرة بما في هذه النسخة. لا تُستورد كلمات مرور أو رموز تحقق أو مفاتيح توقيع. هل تريد المتابعة؟")
                     .setPositiveButton("استعادة") { _, _ ->
                         val result = HakimSovereignPortability.importJson(this, raw, confirmed = true)
                         if (result.success) {
@@ -108,7 +112,7 @@ class HakimSystemSettingsActivity : Activity() {
             setOnClickListener { importSovereignBackup() }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(portabilityRow)
-        root.addView(note("النسخة السيادية تنقل النواة المخصصة وتعليمات المواقع وبيانات التعبئة غير الحساسة والثقة والتفضيلات. كلمات المرور ورموز التحقق والبطاقات ومفتاح توقيع التطبيق مستبعدة عمدًا."))
+        root.addView(note("النسخة السيادية تنقل النواة المخصصة وتعليمات المواقع وبيانات التعبئة الشخصية التي حفظتها والثقة والتفضيلات. كلمات المرور ورموز التحقق والبطاقات ومفتاح توقيع التطبيق مستبعدة عمدًا؛ ملف النسخة نفسه يحتاج مكان حفظ موثوقًا."))
 
         root.addView(section("النظام الحاكم العام — مفعّل افتراضيًا"))
         globalInstructions = EditText(this).apply {
@@ -151,7 +155,8 @@ class HakimSystemSettingsActivity : Activity() {
         root.addView(trustSiteForProfile)
         root.addView(note("حكيم لا يملأ الاسم أو البريد أو الهاتف من خزنته في موقع غير معتمد، حتى لو كان الحقل يبدو صحيحًا."))
 
-        root.addView(section("بيانات متكررة للتعبئة المحلية"))
+        root.addView(section("بيانات شخصية متكررة للتعبئة المحلية"))
+        root.addView(note("هذه البيانات قد تشمل الاسم والبريد والهاتف والعنوان وجهة العمل. ليست كلمات مرور أو رموز تحقق، لكنها بيانات شخصية وتبقى محلية افتراضيًا."))
         HakimPersonalVault.fields.forEach { field ->
             root.addView(TextView(this).apply {
                 text = field.title
@@ -173,11 +178,11 @@ class HakimSystemSettingsActivity : Activity() {
         }
 
         shareWithReasoning = CheckBox(this).apply {
-            text = "السماح لمحرك الاستدلال برؤية هذه البيانات غير الحساسة عند الحاجة"
+            text = "السماح لمحرك الاستدلال برؤية بيانات التعبئة الشخصية عند الحاجة"
             textSize = 15f
         }
         root.addView(shareWithReasoning)
-        root.addView(note("الافتراضي أكثر خصوصية: حكيم يملأ القيم محليًا دون إرسالها إلى نموذج الذكاء. تفعيل الخيار أعلاه مفيد فقط عندما يحتاج النموذج القيم نفسها لاتخاذ القرار."))
+        root.addView(note("الافتراضي أكثر خصوصية: حكيم يملأ القيم محليًا دون إرسالها إلى نموذج الذكاء. فعّل المشاركة فقط عندما تريد أن يرى محرك الاستدلال القيم نفسها لمهمة تحتاجها."))
 
         root.addView(Button(this).apply {
             text = "حفظ واعتماد"

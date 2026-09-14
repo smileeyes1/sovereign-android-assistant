@@ -57,8 +57,14 @@ require("لا تجعل القرآن بديلًا عن السبب العلمي" i
 
 for mode in ["AUTO", "AUTO_VERIFY", "RESEARCH_FIRST", "APPROVAL_GATE", "BLOCK"]:
     require(mode in decision, f"P0: نمط مصفوفة القرار {mode} مفقود")
-for dim in ["benefit", "evidence", "reversibility", "authority", "privacy", "safety", "clarity", "costFit", "burdenReduction", "freshness"]:
+for dim in ["benefit", "evidence", "reversibility", "authority", "privacy", "safety", "normativeIntegrity", "clarity", "costFit", "burdenReduction", "freshness"]:
     require(dim in decision, f"P0: بُعد القرار {dim} مفقود")
+require("السلامة المعيارية/الشرعية" in decision, "P0: البعد المعياري القرآني غير ظاهر في مصفوفة القرار")
+require("HakimQuranicFramework.assess" in decision, "P0: مصفوفة القرار لا تقرأ الإطار القرآني")
+require("quranic.exactQuranTextRequired || sig.normativeIntegrity < 45" in decision,
+        "P0: السلامة المعيارية ليست بوابة تحقق غير قابلة للتعويض")
+require("السلامة المعيارية بوابة لا تعوضها نقاط المنفعة" in decision,
+        "P0: المصفوفة قد تسمح للمنفعة بتجاوز الحاجة للتحقق الشرعي")
 require("القيود الحاكمة بوابات لا أوزان تعويضية" in decision, "P0: المصفوفة قد تعوض خطرًا حاكمًا بنقاط منفعة")
 require("HakimDecisionMatrix.evaluate" in sovereign, "P0: المحرك السيادي لا يقيّم مصفوفة القرار")
 require("HakimDecisionMatrix.promptContext" in sovereign, "P0: المحرك السيادي لا يمرر تفسير المصفوفة")

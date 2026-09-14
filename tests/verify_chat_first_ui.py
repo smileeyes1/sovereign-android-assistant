@@ -39,7 +39,8 @@ require("TRANSCRIPT_MODE_ALWAYS_SCROLL" in chat, "P0: قائمة الرسائل 
 
 # واجهة حديثة: محادثة أولًا، Composer ثابت، صوت، إرسال، أدوات مخفية بدل ازدحام الشاشة.
 require('text = "حكيم"' in chat, "P0: رأس واجهة حكيم مفقود")
-require('contentDescription = "نفّذ/أكمل"' in chat, "P0: زر الإرسال/الاستمرار غير واضح")
+require('"نفّذ/أكمل"' in chat and "contentDescription = description" in chat,
+        "P0: زر الإرسال/الاستمرار غير واضح أو غير موسوم لسهولة الوصول")
 require("IME_ACTION_SEND" in chat, "P0: لوحة المفاتيح لا تملك إرسالًا مباشرًا")
 require("تلقائي — حكيم يختار" in chat, "P0: اختيار الوكيل التلقائي ليس الافتراضي الظاهر")
 require("PopupMenu" in chat and "showToolsMenu" in chat and "showAgentMenu" in chat,

@@ -19,8 +19,8 @@ resource = text("app/src/main/java/ps/hakim/phoneagent/HakimResourceGovernor.kt"
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
-require("versionCode 20021" in build, "P0: واجهة حكيم والاستدلال الداخلي ليست إصدارًا أعلى مستقلًا")
-require("2.0.21-chat-first-inapp-reasoning" in build, "P0: اسم إصدار واجهة حكيم الحديثة مفقود")
+require("versionCode 20022" in build, "P0: واجهة حكيم الحديثة ليست ضمن إصدار ٢٠٠٢٢")
+require("2.0.22-capability-mesh" in build, "P0: اسم إصدار حكيم ٢٠٠٢٢ مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: التطبيق لا يفتح مباشرة على المحادثة")

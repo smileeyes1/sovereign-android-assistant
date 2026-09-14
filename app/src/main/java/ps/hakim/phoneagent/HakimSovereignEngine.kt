@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 /**
- * طبقة تجميع سيادية: مقصد + إطار قرآني + مصفوفة قرار + محسن تفوق شامل + نزاهة شرعية + سجل مهمة + ميزانية فشل.
+ * طبقة تجميع سيادية: مقصد + إطار قرآني + مصفوفة قرار + تفوق شامل + قيادة ذاتية + نزاهة شرعية + سجل مهمة.
  * الاستقلالية لا تتجاوز حدود السلطة أو الأمان أو الخصوصية؛ عند الفشل تعيد التخطيط ولا توسع الصلاحيات.
  */
 object HakimSovereignEngine {
@@ -35,13 +35,16 @@ object HakimSovereignEngine {
         val religious = HakimReligiousIntegrity.assess(goal)
         val failures = mission.failures
         val blockedByFailures = failures >= HARD_FAILURE_LIMIT
+        val cancelledOrBlocked = mission.phase == HakimMissionLedger.Phase.CANCELLED ||
+            mission.phase == HakimMissionLedger.Phase.BLOCKED
         val forceResearch = failures >= MAX_CONSECUTIVE_FAILURES ||
             decision.mode == HakimDecisionMatrix.Mode.RESEARCH_FIRST ||
             quranic.exactQuranTextRequired ||
             religious.exactSourceRequired
-        val blocked = blockedByFailures || decision.mode == HakimDecisionMatrix.Mode.BLOCK
+        val blocked = cancelledOrBlocked || blockedByFailures || decision.mode == HakimDecisionMatrix.Mode.BLOCK
         val approval = !blocked && decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE
         val route = when {
+            mission.phase == HakimMissionLedger.Phase.CANCELLED -> "cancelled"
             blocked -> "blocked"
             forceResearch -> "research_then_replan"
             decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE -> "prepare_then_approval"
@@ -75,12 +78,13 @@ object HakimSovereignEngine {
             append(HakimQuranicFramework.promptContext(goal))
             append(HakimDecisionMatrix.promptContext(goal, highImpact, sensitive))
             append(HakimExcellenceOptimizer.promptContext())
+            append(HakimSelfLeadershipController.promptContext(context, goal))
             append(HakimReligiousIntegrity.promptContext(goal))
-            appendLine("سلسلة الاستقلالية: اعرض الغاية والأثر على الميزان القرآني→افهم→ثبّت العقد→قدّر الواقع→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→اختر المسار→نفّذ أقل خطوة كافية→تحقق من الأثر→أصلح السبب→أعد التقدير→أغلق أو توقف عند بوابة لازمة.")
+            appendLine("سلسلة الاستقلالية: ميزان حاكم→فهم المقصد→تثبيت العقد→فحص القدرات والسلطة→توليد البدائل→ترشيح الأعلى→تفويض الوكلاء→تنفيذ أقل خطوة كافية→تحقق من الأثر→إصلاح السبب→تعافٍ/إعادة تخطيط→إغلاق بالدليل.")
             appendLine("عند فشل وسيلة لا تعتبر الغاية فاشلة؛ بدّل إلى بديل مشروع ومصرح. بعد ثلاثة إخفاقات متتابعة أعد البحث/التخطيط، وبعد خمسة أوقف التكرار حتى يتغير الدليل أو الحالة.")
             appendLine("لا تُنشئ نشاطًا لمجرد النشاط؛ إذا لم يبق مكسب مادي آمن ومثبت فأغلق المهمة. لا تعيد خطوة ثبت نجاحها، ولا تغيّر خط الأساس المثبت لتحسين شكلي.")
-            appendLine("الاستمرارية تعني حفظ الحالة والتعافي وإعادة الاتصال واستئناف المهمة، ولا تعني التحكم الخفي أو تجاوز موافقة مطلوبة.")
-        }.take(13800)
+            appendLine("الاستمرارية لا تعني التحكم الخفي أو تجاوز موافقة؛ وكلمة إلغاء/توقف من المستخدم توقف المهمة وتعلو على الاستئناف.")
+        }.take(19000)
     }
 
     fun recordExecution(context: Context, evidence: String) {
@@ -88,6 +92,7 @@ object HakimSovereignEngine {
     }
 
     fun recordVerification(context: Context, success: Boolean, evidence: String) {
+        if (HakimMissionLedger.isCancelled(context)) return
         if (success) {
             HakimMissionLedger.progress(context, HakimMissionLedger.Phase.VERIFY, evidence)
             HakimLearning.recordResult(context, "sovereign_mission", true)
@@ -98,6 +103,7 @@ object HakimSovereignEngine {
     }
 
     fun complete(context: Context, evidence: String) {
+        if (HakimMissionLedger.isCancelled(context)) return
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
     }
@@ -112,6 +118,9 @@ object HakimSovereignEngine {
         .put("decision_dimensions", HakimDecisionMatrix.dimensions())
         .put("quranic_framework", HakimQuranicFramework.status())
         .put("excellence_optimizer", HakimExcellenceOptimizer.status())
+        .put("self_leadership", HakimSelfLeadershipController.status(context))
+        .put("authority_envelope", HakimAuthorityEnvelope.status())
+        .put("capability_registry", HakimCapabilityRegistry.status(context))
         .put("religious_integrity", true)
-        .put("independence_policy", "أقصى استقلالية آمنة ومشروعة ومصرح بها: القرآن ميزان الغاية والقيم، والدليل العلمي/التجريبي يحكم الوسائل الدنيوية، والتحسين معجمي متعدد الأهداف بلا انحدار في الطبقات الأعلى")
+        .put("independence_policy", "قيادة ذاتية سيادية كاملة داخل غلاف السلطة: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW والتفويض والتعافي والتحقق؛ لا توسع صلاحيات ولا نجاح بلا دليل")
 }

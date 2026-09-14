@@ -31,10 +31,14 @@ object HakimAutonomousExecutor {
     ) {
         val handler = Handler(Looper.getMainLooper())
         HakimMissionLedger.beginOrResume(activity, goal)
+        if (HakimMissionLedger.isCancelled(activity)) {
+            onComplete(Outcome(false, false, 0, false, false, false, "المهمة ملغاة بأمر المستخدم"))
+            return
+        }
         val sovereign = HakimSovereignEngine.assess(activity, goal)
         if (sovereign.blocked) {
-            HakimMissionLedger.block(activity, "المحرك السيادي منع التنفيذ المحلي")
-            onComplete(Outcome(false, false, 0, false, false, false, "المحرك السيادي منع التنفيذ حتى يتغير الدليل أو الحالة"))
+            if (!HakimMissionLedger.isCancelled(activity)) HakimMissionLedger.block(activity, "المحرك السيادي منع التنفيذ المحلي")
+            onComplete(Outcome(false, false, 0, false, false, false, if (HakimMissionLedger.isCancelled(activity)) "المهمة ملغاة بأمر المستخدم" else "المحرك السيادي منع التنفيذ حتى يتغير الدليل أو الحالة"))
             return
         }
         if (sovereign.shouldResearchFirst) {
@@ -65,6 +69,10 @@ object HakimAutonomousExecutor {
         ) {
             if (finished) return
             finished = true
+            if (HakimMissionLedger.isCancelled(activity)) {
+                onComplete(Outcome(progressed, false, steps, false, false, false, "المهمة ملغاة بأمر المستخدم"))
+                return
+            }
             when {
                 completed -> HakimSovereignEngine.complete(activity, reason)
                 needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
@@ -82,7 +90,9 @@ object HakimAutonomousExecutor {
 
         lateinit var iterate: () -> Unit
         iterate = {
-            if (finished || activity.isFinishing || activity.isDestroyed) {
+            if (HakimMissionLedger.isCancelled(activity)) {
+                finish(false, reason = "المهمة ملغاة بأمر المستخدم")
+            } else if (finished || activity.isFinishing || activity.isDestroyed) {
                 if (!finished) finish(false, reason = "انتهت واجهة التنفيذ")
             } else {
                 val snapshot = service.uiSnapshot(160)
@@ -107,38 +117,54 @@ object HakimAutonomousExecutor {
                             val value = match.second
                             val id = node.optString("id")
                             val textHint = visibleLabel(node)
-                            val ok = service.action(
-                                JSONObject().put("action", "set_text").put("id", id).put("text", textHint).put("value", value)
-                            )
-                            if (ok) {
-                                progressed = true
-                                steps += 1
-                                recordStep("عبئت ${field.id} محليًا في موقع معتمد")
-                                onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
-                                handler.postDelayed(iterate, 500L)
-                            } else {
-                                finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
+                            val authority = HakimAuthorityEnvelope.classifyUiAction(textHint, snapshot)
+                            when (authority.gate) {
+                                HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
+                                HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
+                                else -> {
+                                    val ok = service.action(
+                                        JSONObject().put("action", "set_text").put("id", id).put("text", textHint).put("value", value)
+                                    )
+                                    if (ok) {
+                                        progressed = true
+                                        steps += 1
+                                        recordStep("عبئت ${field.id} محليًا في موقع معتمد")
+                                        onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
+                                        handler.postDelayed(iterate, 500L)
+                                    } else {
+                                        finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
+                                    }
+                                }
                             }
                         } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
                             finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
                         } else {
                             val next = nextSafeContinuation(snapshot)
                             if (next != null) {
-                                val matrix = HakimDecisionMatrix.evaluate(next)
-                                if (matrix.mode == HakimDecisionMatrix.Mode.BLOCK) {
-                                    finish(false, reason = "منعت مصفوفة القرار الخطوة التالية")
-                                } else if (matrix.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE) {
-                                    finish(false, needsApproval = true, reason = "مصفوفة القرار تطلب موافقة قبل «$next»")
-                                } else {
-                                    val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
-                                    if (ok) {
-                                        progressed = true
-                                        steps += 1
-                                        recordStep("نفذت متابعة آمنة: ${next.take(160)}")
-                                        onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
-                                        handler.postDelayed(iterate, 650L)
-                                    } else {
-                                        finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                val authority = HakimAuthorityEnvelope.classifyUiAction(next, snapshot)
+                                when (authority.gate) {
+                                    HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
+                                    HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                    HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
+                                    else -> {
+                                        val matrix = HakimDecisionMatrix.evaluate(next)
+                                        if (matrix.mode == HakimDecisionMatrix.Mode.BLOCK) {
+                                            finish(false, reason = "منعت مصفوفة القرار الخطوة التالية")
+                                        } else if (matrix.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE) {
+                                            finish(false, needsApproval = true, reason = "مصفوفة القرار تطلب موافقة قبل «$next»")
+                                        } else {
+                                            val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
+                                            if (ok) {
+                                                progressed = true
+                                                steps += 1
+                                                recordStep("نفذت متابعة آمنة: ${next.take(160)}")
+                                                onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
+                                                handler.postDelayed(iterate, 650L)
+                                            } else {
+                                                finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
+                                            }
+                                        }
                                     }
                                 }
                             } else {
@@ -203,7 +229,8 @@ object HakimAutonomousExecutor {
             if (!node.optBoolean("clickable", false) || node.optBoolean("sensitive", false)) continue
             val label = visibleLabel(node)
             if (label.isBlank()) continue
-            if (HakimActionPolicy.classify(label, snapshot).level == HakimActionPolicy.Level.APPROVAL) return label
+            val authority = HakimAuthorityEnvelope.classifyUiAction(label, snapshot)
+            if (authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION) return label
         }
         return null
     }

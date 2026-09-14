@@ -4,19 +4,16 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * نظام الأنظمة لحكيم.
- * لا ينشئ كودًا ذاتيًا ولا خدمات دائمة جديدة؛ يولّد تركيبًا تشغيليًا مؤقتًا من الأنظمة الموثوقة بحسب المقصد.
- * كل نظام منبثق يرث القرآن والهدي النبوي والإنسان أولًا وغلاف السلطة وحاكم الموارد والتحقق.
- */
+/** نظام الأنظمة: تركيب مؤقت من الأنظمة والقدرات الموثوقة بحسب المقصد والموارد. */
 object HakimSystemOfSystems {
-    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-14-v1"
+    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-15-v2"
 
     enum class Unit(val title: String, val duty: String) {
         GOVERNANCE("الحاكمية", "يثبت العقد والحدود وترتيب الأولويات"),
         QURAN_SUNNAH("منهج القرآن والهدي النبوي", "يحكم الغاية والقيم والحدود الشرعية مع التثبت"),
         HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وأقل عبء وسيادة المستخدم"),
         INTENT("فهم المقصد", "يفهم أقل إشارة ويستعيد السياق الموثوق"),
+        CAPABILITY_MESH("شبكة التفوق والقدرات", "تكتشف الأدوات والخدمات وتختار الأعلى وتجهز البدائل"),
         RESEARCH("البحث والدليل", "يجمع الأدلة ويقارن البدائل ويحدّث الواقع"),
         BROWSER("المتصفح", "ينفذ خطوات الويب المسموحة ويتحقق من الأثر"),
         FORMS("النماذج", "يعبئ الحقول غير الحساسة ضمن الثقة والسلطة"),
@@ -36,6 +33,7 @@ object HakimSystemOfSystems {
         val protocol: List<String>,
         val executionMode: String,
         val resourceMode: String,
+        val preferredCapabilities: List<String>,
         val reason: String
     ) {
         fun toJson(): JSONObject = JSONObject()
@@ -44,9 +42,11 @@ object HakimSystemOfSystems {
             .put("protocol", JSONArray(protocol))
             .put("execution_mode", executionMode)
             .put("resource_mode", resourceMode)
+            .put("preferred_capabilities", JSONArray(preferredCapabilities))
             .put("reason", reason)
             .put("ephemeral_derived_system", true)
             .put("inherits_governance", true)
+            .put("inherits_capability_mesh", true)
             .put("cannot_expand_authority", true)
             .put("cannot_mutate_code", true)
             .put("wip_one_under_pressure", true)
@@ -57,7 +57,7 @@ object HakimSystemOfSystems {
         "و؟ المقصد: ماذا يريد المستخدم حقًا؟",
         "و؟ القيود: ما الثوابت والمجهولات وحدود السلطة؟",
         "لِمَ؟ لماذا هذا المسار أعلى قيمة وأقل خطرًا وعبئًا؟",
-        "و؟ البدائل: ما أفضل البدائل المشروعة والمتاحة؟",
+        "و؟ البدائل: ما أفضل البدائل والقدرات المشروعة والمتاحة؟",
         "و؟ الدليل: ما الذي يثبت الاختيار والنتيجة؟",
         "اعتمد: اختر الأعلى المثبت داخل العقد",
         "أصلح: عالج السبب الجذري لا العرض فقط",
@@ -74,6 +74,7 @@ object HakimSystemOfSystems {
             Unit.QURAN_SUNNAH,
             Unit.HUMAN_FIRST,
             Unit.INTENT,
+            Unit.CAPABILITY_MESH,
             Unit.RESOURCE,
             Unit.AUTHORITY
         )
@@ -84,32 +85,26 @@ object HakimSystemOfSystems {
         if (containsAny(s, "ملف", "pdf", "وورد", "صورة", "تنزيل", "تحميل", "حفظ")) units += Unit.FILES
         if (containsAny(s, "رسالة", "بريد", "واتساب", "ارسل", "أرسل", "رد")) units += Unit.COMMUNICATION
         if (containsAny(s, "طالب", "درس", "صف", "مدرسة", "منهاج", "تعليم", "رياضيات", "ورقة عمل")) units += Unit.EDUCATION
-
-        // لا يوجد نظام منبثق بلا تحقق وتعافٍ وتعلم: هذه حلقات إغلاق لا إضافات شكلية.
         units += Unit.VERIFICATION
         units += Unit.RECOVERY
         units += Unit.LEARNING
 
         val resources = HakimResourceGovernor.snapshot(context)
+        val ranked = HakimCapabilityMesh.rank(context, goal, if (resources.mode == HakimResourceGovernor.Mode.PRESSURE) 3 else 5)
         val execution = when (resources.mode) {
             HakimResourceGovernor.Mode.PRESSURE -> "SEQUENTIAL_WIP1_MINIMAL_BACKGROUND"
             HakimResourceGovernor.Mode.CONSERVE -> "SEQUENTIAL_WIP1_LIGHT_BACKGROUND"
             HakimResourceGovernor.Mode.PERFORMANCE -> "SEQUENTIAL_PRIMARY_WITH_SAFE_IO_OVERLAP"
             HakimResourceGovernor.Mode.BALANCED -> "SEQUENTIAL_PRIMARY"
         }
-        val reason = buildString {
-            append("نظام منبثق مؤقت للمقصد الحالي من ")
-            append(units.size)
-            append(" أنظمة موثوقة؛ الوضع=")
-            append(resources.mode.name)
-            append(". لا كود ذاتي جديد ولا صلاحيات جديدة؛ التركيب فقط يتكيف مع المهمة والموارد.")
-        }
+        val reason = "نظام منبثق من ${units.size} أنظمة، وأعلى القدرات=${ranked.joinToString(",") { it.node.id }}؛ الموارد=${resources.mode}. لا كود ذاتي ولا صلاحيات جديدة."
         return DerivedSystem(
             goal = goal.take(1800),
             units = units.toList(),
             protocol = hakimProtocol,
             executionMode = execution,
             resourceMode = resources.mode.name,
+            preferredCapabilities = ranked.map { it.node.id },
             reason = reason
         )
     }
@@ -123,11 +118,13 @@ object HakimSystemOfSystems {
             appendLine("وضع التنفيذ=${d.executionMode}؛ وضع الموارد=${d.resourceMode}.")
             appendLine("الأنظمة النشطة:")
             d.units.forEach { appendLine("• ${it.title}: ${it.duty}") }
+            appendLine("القدرات المفضلة بالترتيب: ${d.preferredCapabilities.joinToString(" ← ")}")
             appendLine("بروتوكول التشغيل الحاكم:")
             d.protocol.forEach { appendLine("• $it") }
-            appendLine("يجوز للنظام المنبثق إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث نفس العقد والحاكمية والسلطة والموارد، وتبقى داخل WIP=1 إذا كان الهاتف تحت ضغط.")
-            appendLine("لا تعتبر كثرة الأنظمة جودة بحد ذاتها؛ فعّل أقل مجموعة تحقق الغاية بأعلى أثر صافٍ، ثم أضف نظامًا فقط عند وجود فجوة مادية مثبتة.")
-        }.take(9000)
+            append(HakimCapabilityMesh.promptContext(context, d.goal))
+            appendLine("يجوز إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث العقد والحاكمية والسلطة والموارد وشبكة القدرات، وتبقى WIP=1 تحت الضغط.")
+            appendLine("لا تعتبر كثرة الأنظمة أو الأدوات جودة بحد ذاتها؛ فعّل أقل مجموعة تحقق الغاية بأعلى أثر صافٍ، ثم أضف فقط عند فجوة مادية مثبتة.")
+        }.take(15000)
     }
 
     fun status(context: Context): JSONObject = JSONObject()
@@ -139,11 +136,13 @@ object HakimSystemOfSystems {
         .put("derived_systems_inherit_human_first", true)
         .put("derived_systems_inherit_authority_envelope", true)
         .put("derived_systems_inherit_resource_governor", true)
+        .put("derived_systems_inherit_capability_mesh", true)
         .put("derived_systems_cannot_expand_authority", true)
         .put("derived_systems_cannot_mutate_code", true)
         .put("wip_one_under_resource_pressure", true)
         .put("protocol", JSONArray(hakimProtocol))
         .put("resource_mode", HakimResourceGovernor.snapshot(context).mode.name)
+        .put("capability_mesh", HakimCapabilityMesh.status(context))
 
     private fun containsAny(text: String, vararg needles: String): Boolean = needles.any { text.contains(it) }
 }

@@ -109,8 +109,9 @@ object HakimPersonalVault {
         return " $label ".contains(" $phrase ")
     }
 
-    private fun normalize(v: String): String = v.lowercase()
-        .replace(Regex("([a-z])([A-Z])"), "$1 $2")
+    private fun normalize(v: String): String = v
+        .replace(Regex("([a-z])([A-Z])")) { m -> "${m.groupValues[1]} ${m.groupValues[2]}" }
+        .lowercase()
         .replace(Regex("[_\\-.:/]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()

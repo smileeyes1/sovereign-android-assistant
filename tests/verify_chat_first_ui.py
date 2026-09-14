@@ -31,8 +31,9 @@ require("hasStableIds" in ui, "P0: محول الرسائل لا يعلن IDs ث�
 require("maxMessages" in ui and "trimToBudget" in ui, "P0: سجل الرسائل قد ينمو بلا حد")
 for mode in ["PRESSURE", "CONSERVE", "BALANCED", "PERFORMANCE"]:
     require(f"HakimResourceGovernor.Mode.{mode}" in ui, f"P0: ميزانية الرسائل لا تراعي وضع {mode}")
-require("ScrollView" not in chat, "P0: عادت واجهة transcript/ScrollView المتضخمة")
-require("transcript" not in chat, "P0: عاد TextView المتضخم للمحادثة")
+require("ScrollView" not in chat, "P0: عادت واجهة ScrollView المتضخمة")
+require("private lateinit var transcript: TextView" not in chat, "P0: عاد TextView transcript القديم للمحادثة")
+require("transcript.append" not in chat, "P0: عاد تراكم النص الكامل في TextView واحد")
 require("ListView" in chat and "HakimChatMessageAdapter" in chat, "P0: واجهة المحادثة لا تستخدم السجل الخفيف")
 require("TRANSCRIPT_MODE_ALWAYS_SCROLL" in chat, "P0: قائمة الرسائل لا تتبع آخر الرسائل بكفاءة")
 

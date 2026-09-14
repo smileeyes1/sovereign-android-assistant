@@ -90,16 +90,33 @@ object HakimPersonalVault {
         context.getSharedPreferences(META, Context.MODE_PRIVATE)
             .getBoolean(SHARE_WITH_REASONING, false)
 
-    fun promptContext(context: Context): String {
-        if (!reasoningSharingEnabled(context)) {
-            val available = fields.filter { !get(context, it.id).isNullOrBlank() }.map { it.title }
-            return if (available.isEmpty()) "" else "[بيانات محلية متاحة للتعبئة دون كشف القيم للنموذج]\n${available.joinToString("، ")}\n"
-        }
-        val pairs = fields.mapNotNull { f -> get(context, f.id)?.takeIf { it.isNotBlank() }?.let { f.title to it } }
-        if (pairs.isEmpty()) return ""
+    /**
+     * النموذج يرى أسماء الحقول المتاحة دائمًا فقط؛ القيم لا تظهر إلا مع تفعيل المشاركة
+     * وذكر الحقل نفسه صراحة في المهمة. التعبئة العامة تعتمد fill_profile محليًا.
+     */
+    fun promptContext(context: Context, task: String = ""): String {
+        val available = fields.filter { !get(context, it.id).isNullOrBlank() }
+        if (available.isEmpty()) return ""
+        val taskNorm = normalize(task)
+        val explicitlyRelevant = if (reasoningSharingEnabled(context) && taskNorm.isNotBlank()) {
+            available.filter { field ->
+                phraseMatch(taskNorm, normalize(field.id)) ||
+                    phraseMatch(taskNorm, normalize(field.title)) ||
+                    field.aliases.any { phraseMatch(taskNorm, normalize(it)) }
+            }
+        } else emptyList()
+
         return buildString {
-            appendLine("[بيانات غير حساسة سمح المستخدم بمشاركتها مع محرك الاستدلال عند الحاجة فقط]")
-            pairs.forEach { (name, value) -> appendLine("• $name: ${value.take(500)}") }
+            appendLine("[خزنة بيانات حكيم المحلية]")
+            appendLine("الحقول المتاحة محليًا: ${available.joinToString("، ") { "${it.id}=${it.title}" }}")
+            appendLine("للتعبئة استخدم fill_profile{target,field_id} حتى تبقى القيمة على الجهاز.")
+            if (explicitlyRelevant.isNotEmpty()) {
+                appendLine("[قيم غير حساسة سمح المستخدم بمشاركتها وذكرها صراحة في هذه المهمة]")
+                explicitlyRelevant.forEach { field ->
+                    val value = get(context, field.id).orEmpty()
+                    if (value.isNotBlank()) appendLine("• ${field.title}: ${value.take(500)}")
+                }
+            }
         }.take(3500)
     }
 

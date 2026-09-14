@@ -43,6 +43,8 @@ jobs:
         run: python3 tests/verify_quranic_kernel_inheritance.py
       - name: بوابة شمول سور القرآن ١١٤ وفصل طبقات المعرفة
         run: python3 tests/verify_quranic_corpus_coverage.py
+      - name: بوابة الإنسان أولًا والكرامة والرحمة
+        run: python3 tests/verify_human_first_policy.py
       - name: بوابة التكامل والوصل السيادي
         run: python3 tests/verify_integration_fabric.py
       - name: بوابة التفوق الشامل ومنع الانحدار

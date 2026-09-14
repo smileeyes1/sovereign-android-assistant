@@ -54,6 +54,7 @@ object HakimWebReasoningBridge {
         var loginLaunched = false
 
         fun cleanup() {
+            handler.removeCallbacksAndMessages(null)
             runCatching {
                 (hidden.parent as? ViewGroup)?.removeView(hidden)
                 hidden.stopLoading()
@@ -74,7 +75,7 @@ object HakimWebReasoningBridge {
                         .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 )
             }
-            handler.postDelayed({ onComplete(result) }, 120L)
+            Handler(Looper.getMainLooper()).postDelayed({ onComplete(result) }, 120L)
         }
 
         fun isTrustedChatOrigin(web: WebView): Boolean {
@@ -83,9 +84,9 @@ object HakimWebReasoningBridge {
         }
 
         fun decodeJsString(raw: String?): String {
-            val v = raw.orEmpty()
-            if (v == "null" || v.isBlank()) return ""
-            return runCatching { JSONArray("[$v]").optString(0) }.getOrDefault("")
+            val value = raw.orEmpty()
+            if (value == "null" || value.isBlank()) return ""
+            return runCatching { JSONArray("[$value]").optString(0) }.getOrDefault("")
         }
 
         fun evaluateText(web: WebView, callback: (String) -> Unit) {
@@ -112,46 +113,44 @@ object HakimWebReasoningBridge {
                 Intent(activity, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             )
-            handler.postDelayed(waitForLogin, 900L)
+            handler.postDelayed({ waitForLogin() }, 900L)
         }
 
-        waitForLogin = object : () -> Unit {
-            var attempt = 0
-            override fun invoke() {
-                if (finished) return
-                if (activity.isFinishing || activity.isDestroyed) {
-                    finish(Result(false, null, "", "انتهت واجهة حكيم أثناء تسجيل الدخول"))
-                    return
-                }
-                attempt += 1
-                val visible = HakimRuntime.visibleWebView()
-                if (visible != null && isTrustedChatOrigin(visible)) {
-                    visible.evaluateJavascript(composerProbeScript()) { raw ->
-                        when (decodeJsString(raw)) {
-                            "READY" -> {
-                                onProgress("اكتمل تسجيل الدخول داخل حكيم؛ أرسل المهمة المحكومة الآن وأعيد النتيجة إلى واجهتك.")
-                                injectAndSend(visible)
-                            }
-                            else -> {
-                                if (attempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
-                                    finish(Result(true, null, "", "انتهت مهلة تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة ولم تُرسل خارجيًا"))
-                                } else handler.postDelayed(this, 900L)
-                            }
+        var loginAttempt = 0
+        waitForLogin = loginLoop@ {
+            if (finished) return@loginLoop
+            if (activity.isFinishing || activity.isDestroyed) {
+                finish(Result(false, null, "", "انتهت واجهة حكيم أثناء تسجيل الدخول"))
+                return@loginLoop
+            }
+            loginAttempt += 1
+            val visible = HakimRuntime.visibleWebView()
+            if (visible != null && isTrustedChatOrigin(visible)) {
+                visible.evaluateJavascript(composerProbeScript()) { raw ->
+                    when (decodeJsString(raw)) {
+                        "READY" -> {
+                            onProgress("اكتمل تسجيل الدخول داخل حكيم؛ أرسل المهمة المحكومة الآن وأعيد النتيجة إلى واجهتك.")
+                            injectAndSend(visible)
+                        }
+                        else -> {
+                            if (loginAttempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
+                                finish(Result(true, null, "", "انتهت مهلة تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة ولم تُرسل خارجيًا"))
+                            } else handler.postDelayed({ waitForLogin() }, 900L)
                         }
                     }
-                } else if (attempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
-                    finish(Result(true, null, "", "لم يكتمل تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة"))
-                } else {
-                    handler.postDelayed(this, 900L)
                 }
+            } else if (loginAttempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
+                finish(Result(true, null, "", "لم يكتمل تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة"))
+            } else {
+                handler.postDelayed({ waitForLogin() }, 900L)
             }
         }
 
-        injectAndSend = { web ->
-            if (finished) return@injectAndSend
+        injectAndSend = inject@ { web ->
+            if (finished) return@inject
             if (!isTrustedChatOrigin(web)) {
                 finish(Result(false, null, "", "رفض حكيم تمرير الاستدلال لأن الأصل ليس chatgpt.com"))
-                return@injectAndSend
+                return@inject
             }
 
             val baselineHolder = arrayOf("")
@@ -194,8 +193,8 @@ object HakimWebReasoningBridge {
                             onProgress("أدخلت المهمة داخل محرك الويب الموثوق في حكيم؛ أرسلها الآن دون كشف أسرار محلية.")
                             var sendAttempt = 0
                             lateinit var sendTry: () -> Unit
-                            sendTry = {
-                                if (finished) return@sendTry
+                            sendTry = sendLoop@ {
+                                if (finished) return@sendLoop
                                 sendAttempt += 1
                                 web.evaluateJavascript(sendButtonScript()) { sendRaw ->
                                     when (decodeJsString(sendRaw)) {
@@ -205,8 +204,8 @@ object HakimWebReasoningBridge {
                                             var lastText = ""
                                             var stable = 0
                                             lateinit var poll: () -> Unit
-                                            poll = {
-                                                if (finished) return@poll
+                                            poll = pollLoop@ {
+                                                if (finished) return@pollLoop
                                                 responseAttempt += 1
                                                 evaluateText(web) { visible ->
                                                     val plan = HakimReasoningProtocol.parse(visible, request)
@@ -220,21 +219,21 @@ object HakimWebReasoningBridge {
                                                             finish(Result(true, null, visible.takeLast(9000), "عاد الرد داخل حكيم لكن لم تظهر خطة بروتوكول موثوقة"))
                                                         } else if (responseAttempt >= MAX_RESPONSE_ATTEMPTS) {
                                                             finish(Result(true, null, visible.takeLast(9000), "انتهت مهلة الاستدلال الداخلي دون خطة قابلة للتنفيذ"))
-                                                        } else handler.postDelayed(poll, 900L)
+                                                        } else handler.postDelayed({ poll() }, 900L)
                                                     }
                                                 }
                                             }
-                                            handler.postDelayed(poll, 900L)
+                                            handler.postDelayed({ poll() }, 900L)
                                         }
                                         else -> {
                                             if (sendAttempt >= MAX_SEND_ATTEMPTS) {
                                                 finish(Result(false, null, "", "تعذر العثور على زر إرسال موثوق داخل محرك الويب"))
-                                            } else handler.postDelayed(sendTry, 450L)
+                                            } else handler.postDelayed({ sendTry() }, 450L)
                                         }
                                     }
                                 }
                             }
-                            handler.postDelayed(sendTry, 450L)
+                            handler.postDelayed({ sendTry() }, 450L)
                         }
                         else -> launchLoginOnce()
                     }
@@ -281,11 +280,11 @@ object HakimWebReasoningBridge {
 
         var readyAttempt = 0
         lateinit var probe: () -> Unit
-        probe = {
-            if (finished) return@probe
+        probe = probeLoop@ {
+            if (finished) return@probeLoop
             readyAttempt += 1
             if (!isTrustedChatOrigin(hidden)) {
-                if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce() else handler.postDelayed(probe, 600L)
+                if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce() else handler.postDelayed({ probe() }, 600L)
             } else {
                 hidden.evaluateJavascript(composerProbeScript()) { raw ->
                     when (decodeJsString(raw)) {
@@ -293,13 +292,13 @@ object HakimWebReasoningBridge {
                         "LOGIN" -> launchLoginOnce()
                         else -> {
                             if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce()
-                            else handler.postDelayed(probe, 600L)
+                            else handler.postDelayed({ probe() }, 600L)
                         }
                     }
                 }
             }
         }
-        handler.postDelayed(probe, 800L)
+        handler.postDelayed({ probe() }, 800L)
     }
 
     private fun composerProbeScript(): String = """

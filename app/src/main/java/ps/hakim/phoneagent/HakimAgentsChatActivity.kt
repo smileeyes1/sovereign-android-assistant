@@ -125,25 +125,99 @@ class HakimAgentsChatActivity : Activity() {
             goal = inference.resolvedRequest,
             onProgress = { message -> appendAssistant(message) },
             onComplete = { outcome ->
-                busy = false
                 when {
-                    outcome.completed -> appendAssistant("اكتملت الدورة المحلية بعد ${outcome.steps} خطوة، وظهرت علامة نجاح مرئية.")
-                    outcome.needsCredential -> appendAssistant("وصلت إلى خطوة اعتماد حساسة. لم ألمس السر؛ استخدم مدير اعتماد أندرويد أو أدخل السر في الحقل الآمن، ثم قل فقط «كمل».")
+                    outcome.completed -> {
+                        busy = false
+                        appendAssistant("اكتملت الدورة المحلية بعد ${outcome.steps} خطوة، وظهرت علامة نجاح مرئية.")
+                    }
+                    outcome.needsCredential -> {
+                        busy = false
+                        appendAssistant("وصلت إلى خطوة اعتماد حساسة. لم ألمس السر؛ استخدم مدير اعتماد أندرويد أو أدخل السر في الحقل الآمن، ثم قل فقط «كمل».")
+                    }
                     outcome.needsDataTrust -> {
-                        appendAssistant("الموقع الحالي يحتاج استخدام بيانات خزنة حكيم لكنه غير معتمد لذلك. افتح «النظام والبيانات»، راجع اسم الموقع وفعّل الثقة به؛ بعدها يكفي أن تقول «كمل».")
+                        busy = false
+                        appendAssistant("الموقع الحالي يحتاج استخدام بيانات خزنة حكيم لكنه غير معتمد لذلك. راجع الموقع وفعّل الثقة به؛ بعدها يكفي «كمل».")
                         startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
                     }
-                    outcome.needsApproval -> appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
+                    outcome.needsApproval -> {
+                        busy = false
+                        appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
+                    }
                     else -> {
                         if (outcome.progressed) appendAssistant("أنجزت ${outcome.steps} خطوة محلية. ${outcome.reason}")
-                        sendToReasoningEngine(HakimAgentSystem.agentPrompt(this, cue, preferred))
+                        runReasoningCycle(HakimAgentSystem.agentPrompt(this, cue, preferred), 0)
                     }
                 }
             }
         )
     }
 
-    private fun sendToReasoningEngine(governedPrompt: String) {
+    /** استدلال -> خطة مقيدة -> تنفيذ -> إعادة استدلال، بحد يمنع الدوران. */
+    private fun runReasoningCycle(governedPrompt: String, cycle: Int) {
+        busy = true
+        HakimReasoningBridge.ask(
+            activity = this,
+            basePrompt = governedPrompt,
+            onProgress = { message -> appendAssistant(message) },
+            onComplete = { result ->
+                if (!result.available) {
+                    busy = false
+                    fallbackShare(governedPrompt, result.reason)
+                    return@ask
+                }
+                val plan = result.plan
+                if (plan == null) {
+                    busy = false
+                    bringChatToFront()
+                    appendAssistant("عاد محرك الاستدلال دون خطة تنفيذ موثوقة؛ لم أنفذ أي تخمين. ${result.reason}")
+                    return@ask
+                }
+                if (plan.message.isNotBlank()) appendAssistant(plan.message)
+                HakimReasoningPlanExecutor.run(
+                    activity = this,
+                    plan = plan,
+                    onProgress = { message -> appendAssistant(message) },
+                    onComplete = { outcome ->
+                        when {
+                            outcome.needsApproval -> {
+                                busy = false
+                                bringChatToFront()
+                                appendAssistant("توقفت قبل خطوة عالية الأثر اقترحها الاستدلال. لا تُنفذ إلا بموافقتك الصريحة.")
+                            }
+                            outcome.needsDataTrust -> {
+                                busy = false
+                                bringChatToFront()
+                                appendAssistant("الخطة تحتاج قيمة من خزنتك في موقع غير معتمد. سأطلب اعتماد الموقع بدل كشف البيانات تلقائيًا.")
+                                startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
+                            }
+                            outcome.blocked -> {
+                                busy = false
+                                bringChatToFront()
+                                appendAssistant("رفضت خطوة من خطة الاستدلال لأنها خالفت حاكم الأمان المحلي: ${outcome.reason}")
+                            }
+                            plan.done || outcome.completed -> {
+                                busy = false
+                                bringChatToFront()
+                                appendAssistant("اكتملت جولة الاستدلال والتنفيذ والتحقق.")
+                            }
+                            outcome.progressed && cycle < 2 -> {
+                                val follow = HakimAgentSystem.agentPrompt(this, "أكمل", null) +
+                                    "\n[نتيجة الجولة السابقة]\n${outcome.reason}\nواصل من الحالة الحالية ولا تكرر المنجز."
+                                runReasoningCycle(follow, cycle + 1)
+                            }
+                            else -> {
+                                busy = false
+                                bringChatToFront()
+                                appendAssistant("توقفت الدورة بعد التحقق لأن الاستمرار لم يعد مثبتًا وآمنًا: ${outcome.reason}")
+                            }
+                        }
+                    }
+                )
+            }
+        )
+    }
+
+    private fun fallbackShare(governedPrompt: String, reason: String) {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, governedPrompt)
@@ -151,16 +225,20 @@ class HakimAgentsChatActivity : Activity() {
         }
         try {
             startActivity(send)
-            appendAssistant("حوّلت فقط ما بقي من المهمة والسياق الضروري إلى محرك الذكاء مع نظام الوكلاء، دون تمرير الحقول الحساسة افتراضيًا.")
+            appendAssistant("تعذر الجسر الآلي ($reason)، فانتقلت للمسار الرسمي الاحتياطي دون فقد المهمة.")
         } catch (_: Exception) {
             copy(governedPrompt)
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")))
-                appendAssistant("نسخت المهمة المحكومة وفتحت محرك الذكاء داخل الويب؛ الصقها إذا لم تظهر تلقائيًا.")
+                appendAssistant("تعذر التطبيق الرسمي؛ نسخت المهمة المحكومة وفتحت الويب كمسار احتياطي.")
             } catch (_: Exception) {
                 appendAssistant("تعذر فتح محرك الذكاء. تم حفظ المهمة في الحافظة حتى لا تضيع.")
             }
         }
+    }
+
+    private fun bringChatToFront() {
+        startActivity(Intent(this, HakimAgentsChatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
     }
 
     private fun appendUser(text: String) = append("أنت", text)

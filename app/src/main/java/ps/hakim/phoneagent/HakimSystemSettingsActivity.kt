@@ -18,6 +18,7 @@ class HakimSystemSettingsActivity : Activity() {
     private lateinit var globalInstructions: EditText
     private lateinit var siteHost: EditText
     private lateinit var siteInstructions: EditText
+    private lateinit var trustSiteForProfile: CheckBox
     private lateinit var shareWithReasoning: CheckBox
     private val profileInputs = linkedMapOf<String, EditText>()
 
@@ -63,6 +64,13 @@ class HakimSystemSettingsActivity : Activity() {
         }
         root.addView(siteInstructions)
 
+        trustSiteForProfile = CheckBox(this).apply {
+            text = "أثق بهذا الموقع لاستخدام بيانات التعبئة الشخصية داخل متصفح حكيم"
+            textSize = 15f
+        }
+        root.addView(trustSiteForProfile)
+        root.addView(note("حكيم لا يملأ الاسم أو البريد أو الهاتف من خزنته في موقع غير معتمد، حتى لو كان الحقل يبدو صحيحًا."))
+
         root.addView(section("بيانات متكررة للتعبئة المحلية"))
         HakimPersonalVault.fields.forEach { field ->
             root.addView(TextView(this).apply {
@@ -106,6 +114,7 @@ class HakimSystemSettingsActivity : Activity() {
         if (currentHost.isNotBlank()) {
             siteHost.setText(currentHost)
             siteInstructions.setText(HakimGovernanceStore.site(this, currentHost))
+            trustSiteForProfile.isChecked = HakimSiteTrust.isTrusted(this, currentHost)
         }
         HakimPersonalVault.fields.forEach { field ->
             profileInputs[field.id]?.setText(HakimPersonalVault.get(this, field.id).orEmpty())
@@ -118,6 +127,8 @@ class HakimSystemSettingsActivity : Activity() {
         val host = siteHost.text.toString().trim()
         val siteOk = if (host.isBlank() && siteInstructions.text.toString().isBlank()) true
         else HakimGovernanceStore.setSite(this, host, siteInstructions.text.toString())
+        val trustOk = if (host.isBlank()) !trustSiteForProfile.isChecked
+        else HakimSiteTrust.setTrusted(this, host, trustSiteForProfile.isChecked)
 
         var profileOk = true
         profileInputs.forEach { (id, edit) ->
@@ -125,8 +136,8 @@ class HakimSystemSettingsActivity : Activity() {
         }
         HakimPersonalVault.setReasoningSharing(this, shareWithReasoning.isChecked)
 
-        if (globalOk && siteOk && profileOk) {
-            Toast.makeText(this, "تم حفظ النظام والبيانات محليًا ومشفرة", Toast.LENGTH_LONG).show()
+        if (globalOk && siteOk && trustOk && profileOk) {
+            Toast.makeText(this, "تم حفظ النظام والبيانات والثقة بالموقع محليًا", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(this, "لم يُحفظ أحد الحقول لأنه حساس أو غير صالح. لم تُخزَّن القيمة المحظورة.", Toast.LENGTH_LONG).show()
         }

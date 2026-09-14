@@ -75,13 +75,13 @@ class UnifiedHomeActivity : Activity() {
         root.addView(adbStatus)
 
         root.addView(TextView(this).apply {
-            text = "الاتصال المحلي يحتاج في أول مرة فقط رمز اقتران من أندرويد (٦ أرقام). هذا حاجز أمان للنظام نفسه؛ بعد نجاحه يحفظ حكيم هويته في AndroidKeyStore ويعيد الاتصال تلقائيًا دون إعادة الرمز عادةً."
+            text = "تأسيس الاتصال المحلي — مرة واحدة: أندرويد يطلب في أول مرة فقط رمز اقتران من ٦ أرقام. هذا حاجز أمان للنظام نفسه؛ بعد نجاحه يحفظ حكيم هويته في AndroidKeyStore ويعيد الاتصال تلقائيًا دون إعادة الرمز عادةً."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 0, 12, 10)
         })
 
-        root.addView(button("تأسيس الاتصال المحلي — مرة واحدة") {
+        root.addView(button("تأسيس ADB المحلي — الاتصال المحلي لمرة واحدة") {
             startGuidedLocalAdbSetup()
         })
 

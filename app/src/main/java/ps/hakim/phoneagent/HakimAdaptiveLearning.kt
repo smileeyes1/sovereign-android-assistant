@@ -74,12 +74,24 @@ object HakimAdaptiveLearning {
             .apply()
     }
 
+    fun noteMissionRoute(context: Context, missionId: String, route: String) {
+        initialize(context)
+        if (missionId.isBlank()) return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("pending_mission_id", missionId)
+            .putString("pending_route", sanitizeRoute(route))
+            .apply()
+    }
+
     /** يسجل نتيجة المهمة مرة واحدة فقط؛ WIP=1 يجعل منع التكرار واضحًا. */
-    fun recordMissionOutcome(context: Context, missionId: String, success: Boolean, route: String) {
+    fun recordMissionOutcome(context: Context, missionId: String, success: Boolean) {
         initialize(context)
         if (missionId.isBlank()) return
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (p.getString("last_outcome_mission_id", "") == missionId) return
+        val route = if (p.getString("pending_mission_id", "") == missionId) {
+            p.getString("pending_route", "unknown").orEmpty()
+        } else "unknown"
         val recent = safeArray(p.getString("recent_missions", "[]").orEmpty())
         recent.put(
             JSONObject()
@@ -157,6 +169,7 @@ object HakimAdaptiveLearning {
             .put("best_mission_rate", nullableRate(p.getDoubleCompat("best_mission_rate", -1.0)))
             .put("last_mission_rate", nullableRate(p.getDoubleCompat("last_mission_rate", -1.0)))
             .put("recent_mission_count", recent.length())
+            .put("pending_route", p.getString("pending_route", ""))
             .put("last_adaptation_decision", p.getString("last_adaptation_decision", "COLLECTING_EVIDENCE"))
             .put("cooldown_until", p.getLong("cooldown_until", 0L))
     }

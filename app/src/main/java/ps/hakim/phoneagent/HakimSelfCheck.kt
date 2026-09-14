@@ -73,6 +73,14 @@ object HakimSelfCheck {
         check("حفظ سيادة المستخدم", human.optBoolean("preserve_user_agency"))
         check("التصميم يتحمل السهو والتعب", human.optBoolean("human_error_and_fatigue_tolerant"))
 
+        val adaptive = HakimAdaptiveLearning.status(context)
+        check("التعلم التكيفي المحلي موجود", adaptive.optBoolean("adaptive_learning"))
+        check("التكيف محلي فقط", adaptive.optBoolean("local_only"))
+        check("التكيف لا يعدل الكود تلقائيًا", !adaptive.optBoolean("changes_code_automatically"))
+        check("التكيف لا يوسع السلطة", !adaptive.optBoolean("can_expand_authority"))
+        check("التكيف يعيد ترتيب مرشحات آمنة فقط", adaptive.optBoolean("safe_candidates_only"))
+        check("الرجوع إلى خط الأساس متاح", adaptive.optBoolean("baseline_fallback"))
+
         val integration = HakimIntegrationFabric.status(context)
         val structural = integration.optJSONObject("structural") ?: JSONObject()
         val runtime = integration.optJSONObject("runtime") ?: JSONObject()
@@ -80,6 +88,7 @@ object HakimSelfCheck {
         check("لا توجد طبقة حرجة معزولة", structural.optBoolean("no_isolated_critical_layer"), "fail")
         check("الجذر القرآني موروث داخل نسيج التكامل", structural.optBoolean("quranic_root_inherited"), "fail")
         check("الإنسان أولًا مدمج في نسيج التكامل", structural.optBoolean("human_first_integrated"), "fail")
+        check("التعلم التكيفي مدمج في نسيج التكامل", structural.optBoolean("adaptive_learning_integrated"), "fail")
         check(
             "الجاهزية الخارجية مفصولة عن سلامة القلب",
             runtime.optBoolean("runtime_readiness_is_not_structural_integrity"),
@@ -153,13 +162,14 @@ object HakimSelfCheck {
             .put("checks", checks)
             .put("governance", governance)
             .put("human_first", human)
+            .put("adaptive_learning", adaptive)
             .put("integration", integration)
             .put("intent", intent)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(34000))
+            .putString("last_self_check", report.toString().take(38000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

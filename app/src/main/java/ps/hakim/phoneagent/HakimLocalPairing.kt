@@ -26,7 +26,7 @@ object HakimLocalPairing {
             .apply()
         update(
             context,
-            "افتح «إقران الجهاز باستخدام رمز الاقتران»، ثم أدخل رمز الـ٦ أرقام هنا فقط",
+            "رمز أندرويد لمرة واحدة: افتح «إقران الجهاز باستخدام رمز الاقتران»، اترك الشاشة مفتوحة، ثم أدخل الأرقام الـ٦ هنا",
             allowInput = true,
         )
     }
@@ -48,11 +48,11 @@ object HakimLocalPairing {
     fun submitCode(context: Context, code: String) {
         val normalized = code.filter { it.isDigit() }
         if (!normalized.matches(Regex("^[0-9]{6}$"))) {
-            update(context, "الرمز يجب أن يكون ٦ أرقام فقط", allowInput = true)
+            update(context, "الرمز يجب أن يكون ٦ أرقام فقط من نافذة اقتران أندرويد", allowInput = true)
             return
         }
 
-        update(context, "جارٍ الاقتران المحلي داخل حكيم… أبقِ نافذة الاقتران مفتوحة", allowInput = false)
+        update(context, "جارٍ الاقتران المحلي داخل حكيم… أبقِ نافذة رمز أندرويد مفتوحة", allowInput = false)
         val app = context.applicationContext
         executor.execute {
             val result = HakimAdbConnectionManager.get(app).pairAndConnect(app, normalized)
@@ -65,7 +65,7 @@ object HakimLocalPairing {
                     .putLong("local_adb_last_success", System.currentTimeMillis())
                     .remove("local_adb_error")
                     .apply()
-                update(app, "تم الاقتران والاتصال المحلي بنجاح داخل حكيم", allowInput = false, ongoing = false)
+                update(app, "تم التأسيس. سيعيد حكيم الاتصال تلقائيًا دون طلب الرمز عادةً", allowInput = false, ongoing = false)
             } else {
                 prefs.edit()
                     .putString("local_adb_state", if (result.paired) "PAIRED_NOT_CONNECTED" else "PAIR_FAILED")
@@ -73,7 +73,7 @@ object HakimLocalPairing {
                     .putBoolean("local_adb_connected", result.connected)
                     .putString("local_adb_error", result.error ?: "UNKNOWN")
                     .apply()
-                update(app, "تعذر الاكتمال: ${friendly(result.error)} — يمكنك إعادة إدخال رمز جديد", allowInput = true)
+                update(app, "تعذر الاكتمال: ${friendly(result.error)} — افتح رمزًا جديدًا فقط إذا طلب أندرويد ذلك", allowInput = true)
             }
         }
     }
@@ -97,11 +97,11 @@ object HakimLocalPairing {
     fun currentSummary(context: Context): String {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         return when (prefs.getString("local_adb_state", "IDLE")) {
-            "CONNECTED" -> "ADB المحلي داخل حكيم: متصل"
-            "PAIRED_NOT_CONNECTED" -> "ADB المحلي داخل حكيم: مقترن، ويجري التعافي تلقائيًا"
-            "PAIR_FAILED" -> "ADB المحلي داخل حكيم: فشل الاقتران"
-            "ARMED" -> "ADB المحلي داخل حكيم: جاهز لاستقبال رمز الاقتران"
-            else -> "ADB المحلي داخل حكيم: غير مهيأ بعد"
+            "CONNECTED" -> "الاتصال المحلي: متصل — لا يلزم رمز جديد"
+            "PAIRED_NOT_CONNECTED" -> "الاتصال المحلي: مقترن، وحكيم يحاول التعافي تلقائيًا"
+            "PAIR_FAILED" -> "الاتصال المحلي: لم يكتمل الاقتران؛ افتح رمز أندرويد جديدًا عند المحاولة"
+            "ARMED" -> "الاتصال المحلي: بانتظار رمز أندرويد ذي ٦ أرقام لهذه المرة فقط"
+            else -> "الاتصال المحلي: غير مهيأ بعد — التأسيس لمرة واحدة"
         }
     }
 
@@ -109,7 +109,7 @@ object HakimLocalPairing {
         ensureChannel(context)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setContentTitle("حكيم — الاقتران المحلي")
+            .setContentTitle("حكيم — تأسيس الاتصال المحلي")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -119,7 +119,7 @@ object HakimLocalPairing {
 
         if (allowInput) {
             val remoteInput = RemoteInput.Builder(REMOTE_INPUT_CODE)
-                .setLabel("رمز الاقتران — ٦ أرقام")
+                .setLabel("رمز أندرويد — ٦ أرقام")
                 .build()
             val intent = Intent(context, HakimPairingReceiver::class.java).apply {
                 action = ACTION_SUBMIT_PAIRING_CODE
@@ -129,7 +129,7 @@ object HakimLocalPairing {
             val pendingIntent = PendingIntent.getBroadcast(context, 42042, intent, flags)
             val action = NotificationCompat.Action.Builder(
                 android.R.drawable.ic_menu_send,
-                "إدخال رمز الاقتران",
+                "إدخال الرمز لمرة واحدة",
                 pendingIntent,
             ).addRemoteInput(remoteInput).build()
             builder.addAction(action)
@@ -144,10 +144,10 @@ object HakimLocalPairing {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "اقتران حكيم المحلي",
+            "تأسيس اتصال حكيم المحلي",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "إدخال رمز الاقتران المحلي لـ ADB داخل حكيم"
+            description = "إدخال رمز أندرويد لمرة واحدة لتأسيس ADB المحلي داخل حكيم"
             setSound(null, null)
         }
         manager.createNotificationChannel(channel)

@@ -78,6 +78,10 @@ require(portability.count("HakimGovernanceStore.exportSafeText(") >= 4,
 require("تصدير نسخة سيادية" in settings and "استعادة نسخة سيادية" in settings, "P0: المستخدم لا يملك واجهة نقل بياناته")
 require("ACTION_CREATE_DOCUMENT" in settings and "ACTION_OPEN_DOCUMENT" in settings, "P0: النقل لا يستخدم منتقي Android الذي يختاره المستخدم")
 require("HakimSovereignPortability.exportJson" in settings and "HakimSovereignPortability.importJson" in settings, "P0: واجهة الاستقلال غير موصولة فعليًا")
+require('openOutputStream(uri, "w")' in settings,
+        "P0: تصدير النسخة السيادية لا يستخدم وضع الكتابة المدعوم من ContentResolver")
+require('openOutputStream(uri, "wt")' not in settings,
+        "P0: عاد وضع wt غير المدعوم وقد يفشل حفظ النسخة السيادية")
 
 require("حقق الاستقلال السيادي بأعلى قدر واقعي" in governance, "P0: النواة الافتراضية لا تحمل مبدأ الاستقلال")
 require("لا تدّع تكافؤ ذكاء متقدم" in governance, "P0: النواة قد تبالغ في الاستقلال عن المزود")

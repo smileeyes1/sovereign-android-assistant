@@ -38,7 +38,7 @@ class HakimSystemSettingsActivity : Activity() {
         val scroll = ScrollView(this).apply { addView(root) }
 
         root.addView(title("النظام الحاكم والبيانات — حكيم"))
-        root.addView(note("اكتب قواعدك مرة واحدة. تُحفظ محليًا ومشفرة. لا تضع كلمات مرور أو رموز تحقق أو بطاقات هنا؛ هذه تبقى لدى مدير اعتماد أندرويد أو الموقع نفسه."))
+        root.addView(note("حكيم يبدأ الآن بنواة حاكمة مكتملة تلقائيًا، لا بخانة فارغة. يمكنك تخصيصها، والفراغ يعني الرجوع إلى النواة الافتراضية لا إزالة الحاكمية. لا تضع كلمات مرور أو رموز تحقق أو بطاقات هنا."))
 
         root.addView(section("الاستقلال والمبادرة"))
         proactiveEnabled = CheckBox(this).apply {
@@ -48,15 +48,24 @@ class HakimSystemSettingsActivity : Activity() {
         root.addView(proactiveEnabled)
         root.addView(note("مفعلة افتراضيًا. تشمل الفحص والتعلم والتحسين والتعافي واستعادة الاتصال وفحص التحديثات واستئناف المهمة الآمنة. المال والحذف النهائي والإرسال الحساس والأسرار والصلاحيات الكبيرة تبقى عند بوابة موافقتك."))
 
-        root.addView(section("النظام الحاكم العام"))
+        root.addView(section("النظام الحاكم العام — مفعّل افتراضيًا"))
         globalInstructions = EditText(this).apply {
-            hint = "قواعدك وتفضيلاتك الدائمة…"
-            minLines = 6
-            maxLines = 16
+            hint = "نواة حكيم الحاكمة ستظهر هنا تلقائيًا"
+            minLines = 10
+            maxLines = 24
             gravity = Gravity.TOP or Gravity.RIGHT
             textDirection = View.TEXT_DIRECTION_RTL
         }
         root.addView(globalInstructions)
+        root.addView(Button(this).apply {
+            text = "استعادة نواة حكيم الأعلى"
+            textSize = 16f
+            setOnClickListener {
+                globalInstructions.setText(HakimGovernanceStore.DEFAULT_GLOBAL_INSTRUCTIONS)
+                Toast.makeText(this@HakimSystemSettingsActivity, "تمت استعادة نواة حكيم الافتراضية في الحقل — اضغط حفظ واعتماد لتثبيت تخصيصك إن أردت", Toast.LENGTH_LONG).show()
+            }
+        })
+        root.addView(note("المسار الحاكم المدمج: و؟ → و؟ → و؟ → لِمَ؟ → و؟ → و؟ → اعتمد → أصلح → أكمل → هَيّا. وهو يعمل مع المقصد والدليل والإنسان أولًا والتعلم والتعافي ومنع التخمين والانحدار."))
 
         root.addView(section("تعليمات خاصة بالموقع"))
         siteHost = EditText(this).apply {
@@ -135,6 +144,9 @@ class HakimSystemSettingsActivity : Activity() {
     private fun save() {
         HakimProactiveEngine.setEnabled(this, proactiveEnabled.isChecked)
         val globalOk = HakimGovernanceStore.setGlobal(this, globalInstructions.text.toString())
+        // بعد الحفظ الفارغ أعد إظهار خط الأساس الافتراضي فورًا حتى لا تبدو الحاكمية مفقودة.
+        if (globalInstructions.text.toString().isBlank()) globalInstructions.setText(HakimGovernanceStore.global(this))
+
         val host = siteHost.text.toString().trim()
         val siteOk = if (host.isBlank() && siteInstructions.text.toString().isBlank()) true
         else HakimGovernanceStore.setSite(this, host, siteInstructions.text.toString())
@@ -148,7 +160,7 @@ class HakimSystemSettingsActivity : Activity() {
         HakimPersonalVault.setReasoningSharing(this, shareWithReasoning.isChecked)
 
         if (globalOk && siteOk && trustOk && profileOk) {
-            Toast.makeText(this, "تم حفظ النظام والمبادرة الذاتية والبيانات والثقة بالموقع محليًا", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "تم حفظ واعتماد نظام حكيم والمبادرة الذاتية والبيانات والثقة بالموقع محليًا", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(this, "لم يُحفظ أحد الحقول لأنه حساس أو غير صالح. لم تُخزَّن القيمة المحظورة.", Toast.LENGTH_LONG).show()
         }

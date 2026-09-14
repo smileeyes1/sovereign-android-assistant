@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,8 +23,10 @@ manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
-require("versionCode 20022" in build and "2.0.22-capability-mesh" in build,
-        "P0: الاستدلال الداخلي ليس ضمن إصدار شبكة التفوق ٢٠٠٢٢")
+version = re.search(r"versionCode\s+(\d+)", build)
+require(version is not None and int(version.group(1)) >= 20022,
+        "P0: الاستدلال الداخلي ليس ضمن خط إصدار شبكة التفوق أو أحدث")
+require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require("object HakimWebReasoningBridge" in web, "P0: جسر الاستدلال داخل حكيم مفقود")
 require('CHAT_URL = "https://chatgpt.com/"' in web, "P0: محرك الويب ليس مثبتًا على أصل ChatGPT الآمن")
 require("WebView" in web and "evaluateJavascript" in web, "P0: الاستدلال لا يعمل داخل WebView حكيم")

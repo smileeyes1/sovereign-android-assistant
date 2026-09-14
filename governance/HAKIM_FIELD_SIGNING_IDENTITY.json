@@ -1,19 +1,28 @@
 {
-  "schema_version": 1,
-  "status": "FIELD_LINEAGE_IDENTITY_PINNED_PRIVATE_KEY_RECOVERY_PENDING",
+  "schema_version": 2,
+  "status": "NEW_SINGLE_APP_LINEAGE_PINNED_AFTER_EXPLICIT_MIGRATION",
   "canonical_package": "ps.hakim.stable",
-  "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+  "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "public_key": "RSA-3072",
+  "public_key": "RSA-4096",
   "signature_algorithm": "SHA384withRSA",
-  "valid_from_utc": "2026-09-11T16:44:32Z",
-  "known_matching_versions": [20013, 20016],
+  "valid_from_utc": "2026-09-14T19:05:28Z",
+  "known_matching_versions": [20018],
+  "legacy_certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
+  "migration": {
+    "explicit_user_authorization": true,
+    "decision": "Delete the previous Hakim app if needed and install exactly one new ps.hakim.stable app under this new signing lineage.",
+    "data_loss_accepted": true,
+    "one_app_only": true,
+    "private_key_storage": "/HAKIM/private/HAKIM_STABLE_NEW_LINEAGE_2026.p12",
+    "private_credentials_storage": "/HAKIM/private/HAKIM_STABLE_NEW_LINEAGE_2026_PRIVATE.json"
+  },
   "rules": [
-    "Do not release an in-place ps.hakim.stable update unless its signer exactly matches certificate_sha256.",
-    "Do not use the known nonmatching Companion signer for ps.hakim.stable.",
+    "All future ps.hakim.stable updates must use certificate_sha256 unless a new explicit migration decision is made.",
+    "Do not use the legacy or Companion signer for future updates of the new lineage.",
     "Do not store private signing material in this public repository.",
-    "Do not uninstall or clear the field app as a signing workaround without an explicit migration decision and state-preservation evidence.",
+    "Maintain exactly one user-facing Hakim Android app: ps.hakim.stable.",
     "Build or CI success alone does not establish physical-phone field installation."
   ]
 }

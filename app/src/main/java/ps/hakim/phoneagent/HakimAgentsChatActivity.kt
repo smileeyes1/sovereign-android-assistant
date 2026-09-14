@@ -41,6 +41,7 @@ class HakimAgentsChatActivity : Activity() {
         super.onCreate(savedInstanceState)
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        HakimProactiveEngine.initialize(this)
         voiceRepliesEnabled = getSharedPreferences("hakim_ui", MODE_PRIVATE).getBoolean("voice_replies", false)
         tts = TextToSpeech(this) { status ->
             ttsReady = status == TextToSpeech.SUCCESS &&
@@ -48,8 +49,13 @@ class HakimAgentsChatActivity : Activity() {
             updateVoiceReplyLabel()
         }
         buildUi()
-        setStatus("جاهز • يفهم من أقل إشارة • يتعلم محليًا")
-        appendAssistant("أنا حكيم. تحدث معي أو اكتب أقل تلميح: حرف، رمز، كلمة، «كمل»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أقود كيف تلقائيًا داخل حدودك، وأتعلم من النجاح والفشل محليًا، ويمكنك قول «توقف» في أي وقت لإلغاء المهمة فورًا.")
+        setStatus("جاهز • يفهم من أقل إشارة • يتعلم ويبادر محليًا")
+        appendAssistant("أنا حكيم. تحدث معي أو اكتب أقل تلميح: حرف، رمز، كلمة، «كمل»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أقود كيف تلقائيًا داخل حدودك، وأتعلم من النجاح والفشل محليًا، وأبادر بالأعمال المفيدة الآمنة دون انتظار طلب جديد. يمكنك قول «توقف» في أي وقت لإلغاء المهمة فورًا.")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        uiHandler.postDelayed({ maybeResumeProactively() }, 700L)
     }
 
     override fun onDestroy() {
@@ -149,6 +155,33 @@ class HakimAgentsChatActivity : Activity() {
         root.addView(button("النظام والبيانات") { startActivity(Intent(this, HakimSystemSettingsActivity::class.java)) })
         root.addView(button("فتح متصفح حكيم") { startActivity(Intent(this, MainActivity::class.java)) })
         setContentView(root)
+    }
+
+    private fun maybeResumeProactively() {
+        if (busy || isFinishing || isDestroyed) return
+        val mission = HakimProactiveEngine.foregroundOpportunity(this) ?: return
+        val plan = HakimAgentSystem.plan(this, mission.goal, null)
+        if (plan.sensitiveInputDetected || plan.needsApproval || plan.route == "blocked") return
+        HakimProactiveEngine.markForegroundResume(this, mission)
+        appendAssistant("وجدت مهمة مفيدة وآمنة غير مكتملة، وسأستأنفها تلقائيًا من حالتها الحالية دون أن أطلب منك تكرار الأمر.")
+        setStatus("أبادر تلقائيًا بمهمة آمنة غير مكتملة…")
+        busy = true
+        if (plan.route == "browser" && hasLastWebUrl()) {
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+            waitForHakimBrowser(0) { ready ->
+                if (HakimMissionLedger.isCancelled(this)) {
+                    busy = false
+                    setStatus("المهمة ملغاة")
+                } else if (!ready) {
+                    setStatus("أستعيد المسار بالاستدلال…")
+                    runReasoningCycle(HakimAgentSystem.agentPrompt(this, "أكمل", null), 0)
+                } else {
+                    executeLocalThenAutonomous("أكمل", null, mission.goal, plan.route)
+                }
+            }
+        } else {
+            executeLocalThenAutonomous("أكمل", null, mission.goal, plan.route)
+        }
     }
 
     private fun startVoiceInput() {

@@ -1,0 +1,49 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def text(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise SystemExit(message)
+
+
+method = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt")
+sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+integration = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
+governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
+
+require("HakimQuranicInvariantKernel.requireInherited" in method, "P0: منهج القرآن والسنة لا يرث الجذر القرآني")
+require("quran_is_highest_normative_source" in method, "P0: القرآن غير مثبت كمصدر معياري أعلى")
+require("authentic_sunnah_is_authoritative_explanation_and_guidance" in method, "P0: السنة الصحيحة غير مثبتة كبيان وهدي")
+require("prophetic_example_applies_to_method_and_conduct" in method, "P0: الاقتداء النبوي غير مدمج في طريقة العمل")
+require("exact_attribution_requires_verification" in method, "P0: التثبت قبل نسبة النصوص مفقود")
+require("revelation_distinct_from_tafsir_fiqh_sirah_and_ijtihad" in method, "P0: الفصل بين الوحي والفهم البشري مفقود")
+require("worldly_facts_and_means_require_domain_evidence" in method, "P0: الوسائل الدنيوية لا تُحكم بالدليل المتخصص")
+require("no_religious_technical_mystification" in method, "P0: منع تحويل الدين إلى آلية تقنية مفقود")
+require("لا تنسب حديثًا أو سنة أو قصة أو فضيلة أو وعدًا" in method, "P0: منع النسبة النبوية غير المتحققة مفقود")
+require("لا تحوّل القرآن أو السنة أو البركة أو الدعاء إلى خوارزمية تقنية أو ضمان نتيجة مادية" in method, "P0: حاجز الخلط التقني/الغَيبي مفقود")
+
+require("HakimQuranSunnahMethod.assess(goal)" in sovereign, "P0: المحرك السيادي لا يمر على منهج القرآن والسنة")
+require("HakimQuranSunnahMethod.promptContext(goal)" in sovereign, "P0: منهج القرآن والسنة لا يدخل سياق القرار")
+require('put("quran_sunnah_method", HakimQuranSunnahMethod.status())' in sovereign, "P0: حالة المنهج غير ظاهرة في المحرك السيادي")
+require("افحص الهدي النبوي الصحيح ذي الصلة" in sovereign, "P0: الهدي النبوي غير موجود في سلسلة الاستقلالية")
+
+require('"quran_sunnah_method"' in integration, "P0: منهج القرآن والسنة ليس عقدة في نسيج التكامل")
+require('"quranic_kernel→quran_sunnah_method"' in integration, "P0: الجذر القرآني غير موصول بالمنهج")
+require('"quran_sunnah_method→sovereign_engine"' in integration, "P0: المنهج غير موصول بالمحرك السيادي")
+require("quran_sunnah_method_integrated" in integration, "P0: سلامة دمج المنهج غير مقاسة")
+require("methodOk" in integration and "&& methodOk &&" in integration, "P0: فقد المنهج لا يُسقط سلامة القلب")
+
+require("القرآن الكريم هو المصدر الأعلى للهداية" in governance, "P0: النواة الافتراضية لا تصرح بمكانة القرآن الحاكمة")
+require("السنة الصحيحة عن سيدنا محمد ﷺ بيان وهدي وقدوة عملية" in governance, "P0: الهدي النبوي غير حاضر في النواة الافتراضية")
+require("افصل الوحي عن التفسير والفقه والسيرة والاجتهاد" in governance, "P0: الفصل المعرفي مفقود من النواة الافتراضية")
+require("الوقائع والوسائل الدنيوية للعلم والدليل والخبرة الموثوقة" in governance, "P0: الدليل الدنيوي مفقود من النواة الافتراضية")
+require("و؟ → و؟ → و؟ → لِمَ؟ → و؟ → و؟ → اعتمد → أصلح → أكمل → هَيّا" in governance, "P0: مسار حكيم الحاكم انحدر")
+require("أعلى رفعة مشروعة مثبتة" in governance, "P0: طلب الرفعة غير مقيد بالحقيقة والمشروعية والدليل")
+
+print("QURAN_SUNNAH_METHOD=PASS")

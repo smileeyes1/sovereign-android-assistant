@@ -30,7 +30,7 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <activity
-            android:name=".UnifiedHomeActivity"
+            android:name=".HakimAgentsChatActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:screenOrientation="portrait">
@@ -41,7 +41,7 @@
         </activity>
 
         <activity
-            android:name=".HakimAgentsChatActivity"
+            android:name=".UnifiedHomeActivity"
             android:exported="false"
             android:launchMode="singleTop"
             android:screenOrientation="portrait" />
@@ -101,9 +101,8 @@
 
         <!--
           ملف التثبيت الافتراضي لا يعلن AccessibilityService أو NotificationListener.
-          Google Play Protect قد يحظر تطبيقات الإنترنت الجانبية التي تعلن هاتين القدرتين
-          بسبب إساءة استخدامهما في الاحتيال المالي. الأتمتة الافتراضية تستخدم متصفح حكيم
-          وADB المحلي المصرح بدل طلب وصول شامل للشاشة/الإشعارات عند التثبيت.
+          الأتمتة الافتراضية تستخدم متصفح حكيم وADB المحلي المصرح بدل طلب وصول شامل
+          للشاشة/الإشعارات عند التثبيت، حفاظًا على توافق Play Protect وأقل صلاحية.
         -->
 
         <service

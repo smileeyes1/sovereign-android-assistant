@@ -37,6 +37,8 @@ jobs:
         run: python3 tests/verify_agent_system.py
       - name: بوابة عمق الأتمتة وأقل إشارة
         run: python3 tests/verify_deep_autonomy.py
+      - name: بوابة الذكاء السيادي والنزاهة الشرعية
+        run: python3 tests/verify_sovereign_intelligence.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py

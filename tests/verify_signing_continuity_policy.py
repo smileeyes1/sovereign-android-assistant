@@ -24,6 +24,9 @@ assert POLICY["migration"]["one_app_only"] is True
 assert "applicationId 'ps.hakim.stable'" in BUILD
 version = re.search(r"versionCode\s+(\d+)", BUILD)
 assert version and int(version.group(1)) >= 20022
+current = int(version.group(1))
+assert POLICY["current_candidate_version"] == current
+assert max(POLICY["known_matching_versions"]) <= current
 assert 20022 in POLICY["known_matching_versions"]
 assert "field_signer_mismatch" in SCRIPT
 assert "known_companion_signer_rejected" in SCRIPT

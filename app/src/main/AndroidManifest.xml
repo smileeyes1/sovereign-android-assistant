@@ -49,6 +49,12 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".HakimSystemSettingsActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".CommandCenterActivity"
             android:exported="true"
             android:launchMode="singleTop"

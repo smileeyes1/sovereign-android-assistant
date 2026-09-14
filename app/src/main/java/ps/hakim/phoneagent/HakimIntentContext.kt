@@ -6,7 +6,7 @@ import android.content.Context
  * استنتاج المقصد من أقل إشارة ممكنة مع تقليل الأسئلة على المستخدم.
  * يعتمد على آخر غاية موثوقة + الشاشة الحالية بعد تنقيح الحقول الحساسة + آخر مسار ويب.
  * يدعم الصمت/الرمز/الحرف/الكلمة القصيرة، لكن الإشارة الدقيقة لا تمنح سلطة عالية الأثر.
- * لا يحفظ محتوى الشاشة ولا الأسرار، ولا يعتبر واجهات حكيم الإدارية دليلًا على حالة مهمة الويب.
+ * لا يحفظ محتوى الشاشة على القرص ولا الأسرار، ولا يعتبر واجهات حكيم الإدارية دليلًا على حالة مهمة الويب.
  */
 object HakimIntentContext {
     data class Inference(
@@ -22,8 +22,19 @@ object HakimIntentContext {
     )
 
     private const val PREFS = "hakim_intent_context"
+    private const val MICRO_CACHE_MS = 300L
+    @Volatile private var cachedAt = 0L
+    @Volatile private var cachedRaw = ""
+    @Volatile private var cachedPackage = ""
+    @Volatile private var cachedInference: Inference? = null
 
     fun infer(context: Context, raw: String): Inference {
+        val now = System.currentTimeMillis()
+        val cached = cachedInference
+        if (cached != null && raw == cachedRaw && context.packageName == cachedPackage && now - cachedAt in 0..MICRO_CACHE_MS) {
+            return cached
+        }
+
         val signal = HakimMicroCueEngine.classify(raw)
         val cue = signal.normalizedCue.trim()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -87,11 +98,11 @@ object HakimIntentContext {
             .putString("last_cue_kind", signal.kind.name)
             .putString("last_inference_source", source)
             .putString("last_confidence", confidence)
-            .putLong("last_inferred_at", System.currentTimeMillis())
+            .putLong("last_inferred_at", now)
             .apply()
 
         val contextual = lastGoal.isNotBlank() || screen.isNotBlank() || lastUrl.isNotBlank()
-        return Inference(
+        val result = Inference(
             cue = cue,
             resolvedRequest = resolved,
             confidence = confidence,
@@ -102,6 +113,11 @@ object HakimIntentContext {
             screenContext = screen,
             lastUrlContext = lastUrl.take(500)
         )
+        cachedRaw = raw
+        cachedPackage = context.packageName
+        cachedAt = now
+        cachedInference = result
+        return result
     }
 
     fun promptContext(context: Context, raw: String): String {

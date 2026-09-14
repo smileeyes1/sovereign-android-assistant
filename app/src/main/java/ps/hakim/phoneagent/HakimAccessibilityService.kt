@@ -137,11 +137,11 @@ class HakimAccessibilityService : AccessibilityService() {
     }
 
     fun performImeEnterForPackage(packageName: String): Boolean {
-        if (!safeAutomationPackages.contains(packageName) || Build.VERSION.SDK_INT < 30) return false
+        if (!safeAutomationPackages.contains(packageName) || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         val root = rootInActiveWindow ?: return false
         if (root.packageName?.toString() != packageName) return false
         val editable = editableNodes(root).lastOrNull() ?: return false
-        return editable.performAction(AccessibilityNodeInfo.ACTION_IME_ENTER)
+        return editable.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
     }
 
     private fun editableNodes(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {

@@ -29,15 +29,25 @@ if [[ -z "$APKSIGNER_BIN" ]]; then
   exit 3
 fi
 
-if ! CERT_OUTPUT="$(LC_ALL=C "$APKSIGNER_BIN" verify --verbose --print-certs "$APK" 2>&1)"; then
+if ! CERT_OUTPUT="$(LC_ALL=C "$APKSIGNER_BIN" verify --verbose --print-certs-pem "$APK" 2>&1)"; then
   echo "SIGNER_GUARD=FAIL reason=apk_signature_invalid" >&2
   exit 3
 fi
 
 mapfile -t ACTUAL_CERTS < <(
   printf '%s\n' "$CERT_OUTPUT" |
-    sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' |
-    tr '[:lower:]' '[:upper:]'
+    python3 -c 'import sys,re,base64,hashlib
+text=sys.stdin.read()
+seen=set()
+for body in re.findall(r"-----BEGIN CERTIFICATE-----\\s*(.*?)\\s*-----END CERTIFICATE-----", text, re.S):
+    try:
+        der=base64.b64decode(re.sub(r"\\s+", "", body), validate=True)
+    except Exception:
+        continue
+    digest=hashlib.sha256(der).hexdigest().upper()
+    if digest not in seen:
+        seen.add(digest)
+        print(digest)'
 )
 
 EXPECTED="${EXPECTED//:/}"

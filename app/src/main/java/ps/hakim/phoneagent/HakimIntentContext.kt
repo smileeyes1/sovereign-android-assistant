@@ -5,6 +5,7 @@ import android.content.Context
 /**
  * استنتاج المقصد من أقل إشارة ممكنة مع تقليل الأسئلة على المستخدم.
  * يعتمد على آخر غاية موثوقة + الشاشة الحالية بعد تنقيح الحقول الحساسة + آخر مسار ويب.
+ * يدعم الصمت/الرمز/الحرف/الكلمة القصيرة، لكن الإشارة الدقيقة لا تمنح سلطة عالية الأثر.
  * لا يحفظ محتوى الشاشة ولا الأسرار، ولا يعتبر واجهات حكيم الإدارية دليلًا على حالة مهمة الويب.
  */
 object HakimIntentContext {
@@ -13,19 +14,25 @@ object HakimIntentContext {
         val resolvedRequest: String,
         val confidence: String,
         val source: String,
-        val canAutoContinue: Boolean
+        val canAutoContinue: Boolean,
+        val cueKind: String = "EXPLICIT",
+        val fastPathEligible: Boolean = false,
+        val screenContext: String = "",
+        val lastUrlContext: String = ""
     )
 
     private const val PREFS = "hakim_intent_context"
 
     fun infer(context: Context, raw: String): Inference {
-        val cue = raw.trim()
+        val signal = HakimMicroCueEngine.classify(raw)
+        val cue = signal.normalizedCue.trim()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val lastGoal = prefs.getString("last_resolved_goal", "").orEmpty().trim()
         val lastUrl = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
             .getString("last_url", "").orEmpty().trim()
+        // لقطة واحدة لكل استنتاج لتقليل العمل والتناقض بين قراءتين متتاليتين.
         val screen = screenSummary()
-        val minimal = isMinimalCue(cue)
+        val minimal = signal.kind != HakimMicroCueEngine.Kind.EXPLICIT
 
         val resolved: String
         val confidence: String
@@ -46,79 +53,86 @@ object HakimIntentContext {
                     append(". لا تعِد ما تم؛ استنتج الخطوة التالية من الشاشة الحالية ونفّذ الآمن تلقائيًا.")
                 }
                 confidence = "HIGH"
-                source = "last_goal+screen"
+                source = "last_goal+screen+micro_cue"
             }
             lastGoal.isNotBlank() && lastUrl.isNotBlank() -> {
                 resolved = "$lastGoal\nاستأنف من مسار الويب الحالي $lastUrl. إشارة المستخدم: ${cue.ifBlank { "أكمل" }}. لا تكرر المنجز."
                 confidence = "HIGH"
-                source = "last_goal+last_url"
+                source = "last_goal+last_url+micro_cue"
             }
             lastGoal.isNotBlank() -> {
                 resolved = "$lastGoal\nإشارة المستخدم الآن: ${cue.ifBlank { "أكمل" }}. أكمل من آخر حالة معروفة دون إعادة الخطوات المنجزة."
                 confidence = "MEDIUM"
-                source = "last_goal"
+                source = "last_goal+micro_cue"
             }
             screen.isNotBlank() -> {
                 resolved = "استنتج المقصد الأكثر ترجيحًا من الشاشة الحالية وإشارة المستخدم «${cue.ifBlank { "أكمل" }}»، ثم نفّذ فقط الخطوات الآمنة القابلة للتراجع حتى يتضح المقصد أو يتحقق."
                 confidence = "MEDIUM"
-                source = "screen"
+                source = "screen+micro_cue"
             }
             lastUrl.isNotBlank() -> {
                 resolved = "استأنف العمل على المسار الحالي $lastUrl وفق إشارة المستخدم «${cue.ifBlank { "أكمل" }}»، واستنتج الخطوة التالية الآمنة."
                 confidence = "MEDIUM"
-                source = "last_url"
+                source = "last_url+micro_cue"
             }
             else -> {
-                resolved = cue.ifBlank { "أكمل المهمة الحالية بأفضل مسار آمن ممكن، واستنتج المقصد من أي سياق متاح دون اختلاق حقائق." }
+                resolved = "الإشارة «${cue.ifBlank { "…" }}» دقيقة ولا يوجد سياق موثوق كافٍ. لا تختلق غاية ولا تنفذ فعلًا عالي الأثر؛ استخدمها فقط كطلب استمرار إذا ظهر سياق موثوق لاحقًا."
                 confidence = "LOW"
-                source = "minimal_only"
+                source = "micro_cue_without_context"
             }
         }
 
         prefs.edit()
             .putString("last_cue", cue.take(300))
+            .putString("last_cue_kind", signal.kind.name)
             .putString("last_inference_source", source)
             .putString("last_confidence", confidence)
             .putLong("last_inferred_at", System.currentTimeMillis())
             .apply()
 
+        val contextual = lastGoal.isNotBlank() || screen.isNotBlank() || lastUrl.isNotBlank()
         return Inference(
             cue = cue,
             resolvedRequest = resolved,
             confidence = confidence,
             source = source,
-            canAutoContinue = confidence != "LOW" || screen.isNotBlank() || lastUrl.isNotBlank()
+            canAutoContinue = !minimal || (contextual && confidence != "LOW"),
+            cueKind = signal.kind.name,
+            fastPathEligible = signal.mayFastContinue && contextual && confidence != "LOW",
+            screenContext = screen,
+            lastUrlContext = lastUrl.take(500)
         )
     }
 
     fun promptContext(context: Context, raw: String): String {
         val inference = infer(context, raw)
-        val screen = screenSummary()
-        val lastUrl = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
-            .getString("last_url", "").orEmpty().take(500)
         return buildString {
             append(HakimHumanFirstPolicy.promptContext())
             appendLine("[فهم المقصد بأقل إشارة]")
-            appendLine("درجة الاستنتاج: ${inference.confidence} • المصدر: ${inference.source}")
+            appendLine("نوع الإشارة: ${inference.cueKind} • درجة الاستنتاج: ${inference.confidence} • المصدر: ${inference.source}")
+            appendLine("المسار السريع المحلي=${inference.fastPathEligible}")
             appendLine("المقصد المستعاد/المستنتج: ${inference.resolvedRequest}")
-            if (lastUrl.isNotBlank()) appendLine("المسار الحالي/الأخير: $lastUrl")
-            if (screen.isNotBlank()) {
+            if (inference.lastUrlContext.isNotBlank()) appendLine("المسار الحالي/الأخير: ${inference.lastUrlContext}")
+            if (inference.screenContext.isNotBlank()) {
                 appendLine("ملخص الشاشة الحالية المنقّح:")
-                appendLine(screen)
+                appendLine(inference.screenContext)
             }
             appendLine("افتراض إنساني: لا تتطلب من المستخدم معرفة تقنية أو مصطلحات يمكن لحكيم استنتاجها أو تنفيذها بنفسه؛ اشرح ببساطة عند الحاجة وارفع العمق فقط إذا طلبه المستخدم أو أثبت خبرة.")
+            appendLine("الإشارة قد تكون صمتًا أو رمزًا أو حرفًا أو كلمة قصيرة. لا تمنح الإشارة الدقيقة وحدها موافقة على ضرر/كلفة/كشف بيانات/صلاحية/فعل غير قابل للتراجع.")
             appendLine("افترض حسن المقصد لا السذاجة المطلقة: لا تطلب إعادة شرح ما يمكن استنتاجه بثقة من السياق، ولا تفسر الطيبة أو السكوت أو «كمل» كموافقة على فعل عالي الأثر.")
             appendLine("قاعدة: عند غموض منخفض الأثر اختر أفضل افتراض قابل للتراجع ونفّذ ثم تحقق. اسأل فقط إذا كان الغموض جوهريًا ويغيّر النتيجة أو يسبق فعلًا عالي الأثر.")
         }.take(9800)
     }
 
-    fun isMinimalCue(raw: String): Boolean {
+    fun isMinimalCue(raw: String): Boolean = HakimMicroCueEngine.classify(raw).kind != HakimMicroCueEngine.Kind.EXPLICIT
+
+    fun isKnownMinimalCue(raw: String): Boolean {
         val s = raw.trim().lowercase()
         if (s.isBlank()) return true
-        if (s.length <= 2) return true
         val cues = setOf(
             "كمل", "كمّل", "اكمل", "أكمل", "تابع", "نفذ", "نفّذ", "اعملها", "سويها", "دبرها", "دبّرها",
-            "هاي", "هذي", "هذا", "هون", "هنا", "هيك", "تمام", "يلا", "هيا", "هَيّا", "خلصها", "رتبها", "اضبطها"
+            "هاي", "هذي", "هذا", "هون", "هنا", "هيك", "تمام", "يلا", "هيا", "هَيّا", "خلصها", "رتبها", "اضبطها",
+            "نعم", "لا", "اوكي", "أوكي", "ok", "go", "next"
         )
         if (s in cues) return true
         return s.split(Regex("\\s+")).size <= 2 && cues.any { s.contains(it) }

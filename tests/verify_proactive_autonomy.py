@@ -14,6 +14,7 @@ def require(cond: bool, msg: str) -> None:
 
 proactive = text("app/src/main/java/ps/hakim/phoneagent/HakimProactiveEngine.kt")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
+boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 evolution = text("app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
@@ -29,7 +30,7 @@ require('"silence_not_consent", true' in proactive, "P0: السكوت قد يت�
 require('"no_secret_or_permission_escalation", true' in proactive, "P0: المبادرة قد توسع سرًا أو صلاحية")
 
 # الخلفية تنفذ صيانة آمنة فقط ولا تتلاعب بواجهات المستخدم مباشرة.
-for token in ["HakimLearning.maintenance", "HakimAdaptiveLearning.consolidate", "HakimConnectionResilience.recover", "HakimConstraintDoctor.run", "AutoUpdater.checkAsync"]:
+for token in ["HakimLearning.maintenance", "HakimAdaptiveLearning.consolidate", "HakimConnectionResilience.recover", "HakimConstraintDoctor.run", "AutoUpdater.checkAsync", "AutoUpdater.startRealtimeListener"]:
     require(token in proactive, f"P0: دورة المبادرة الخلفية فقدت {token}")
 require("HakimAutonomousExecutor.run" not in proactive, "P0: محرك الخلفية ينفذ واجهة تفاعلية بلا Activity/سياق")
 require("service.action(" not in proactive, "P0: محرك المبادرة ينقر/يكتب مباشرة في الخلفية")
@@ -42,10 +43,16 @@ for phase in ["WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "CANCEL
 require("maybeResumeProactively" in chat and "HakimProactiveEngine.foregroundOpportunity" in chat, "P0: الواجهة لا تستأنف المهمة الآمنة تلقائيًا")
 require("plan.needsApproval" in chat and "plan.sensitiveInputDetected" in chat, "P0: الاستئناف التلقائي لا يعيد تطبيق بوابات الأثر/الأسرار")
 
-# يعمل عند بدء التطبيق وفي دورة التطور دون طلب جديد.
+# التحديث/التطور الآني متعدد المسارات: تشغيل فوري + فحص مباشر + استعادة بعد الإقلاع + دورة دورية.
 require("HakimProactiveEngine.initialize(this)" in app, "P0: المبادرة لا تبدأ مع التطبيق")
 require('runSafeBackground(this, "app_start")' in app, "P0: لا توجد دورة مبادرة عند بدء التطبيق")
+require("AutoUpdater.startRealtimeListener(this)" in app, "P0: مستمع التحديث الفوري لا يبدأ مع التطبيق")
+require("AutoUpdater.checkAsync(this)" in app, "P0: لا يوجد فحص تحديث مباشر عند بدء التطبيق")
+require("AutoUpdater.startRealtimeListener(context)" in boot, "P0: قناة التحديث الفوري لا تستعاد بعد الإقلاع/استبدال الحزمة")
+require("AutoUpdater.checkAsync(context)" in boot, "P0: فحص التحديث لا يستعاد بعد الإقلاع/استبدال الحزمة")
+require("HakimProactiveEngine.initialize(context)" in boot, "P0: المبادرة لا تستعاد بعد الإقلاع")
 require("HakimProactiveEngine.runSafeBackground" in evolution, "P0: المبادرة ليست جزءًا من الدورة الدورية")
+require('"realtime_update_reasserted", true' in proactive, "P0: لا توجد حالة مثبتة لإعادة ضمان التحديث الفوري")
 
 # المستخدم يحتفظ بحق الإيقاف العام للمبادرة.
 require("proactiveEnabled" in settings, "P0: لا يوجد مفتاح سيادي للمبادرة")

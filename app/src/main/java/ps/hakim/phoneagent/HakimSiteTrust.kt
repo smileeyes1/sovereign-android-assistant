@@ -20,14 +20,26 @@ object HakimSiteTrust {
 
     fun isTrusted(context: Context, rawHost: String): Boolean {
         val host = normalizeHost(rawHost) ?: return false
-        val set = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getStringSet(TRUSTED_HOSTS, emptySet()) ?: emptySet()
-        // الثقة دقيقة للمضيف فقط؛ لا توريث تلقائي للأب أو النطاقات الفرعية.
-        return host in set
+        return host in trustedHosts(context)
+    }
+
+    fun trustedHosts(context: Context): Set<String> =
+        LinkedHashSet(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getStringSet(TRUSTED_HOSTS, emptySet()) ?: emptySet())
+
+    fun replaceTrustedHosts(context: Context, rawHosts: Set<String>): Boolean {
+        val normalized = linkedSetOf<String>()
+        for (raw in rawHosts) {
+            val host = normalizeHost(raw) ?: return false
+            normalized += host
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putStringSet(TRUSTED_HOSTS, normalized)
+            .apply()
+        return true
     }
 
     fun currentHost(context: Context): String {
-        // الحكم أولًا لعنوان WebView الظاهر فعليًا حتى لا يسمح last_url القديم بتسريب بعد إعادة توجيه.
         val live = HakimRuntime.visibleWebView()?.url.orEmpty()
         normalizeHost(live)?.let { return it }
         val stored = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
@@ -41,7 +53,6 @@ object HakimSiteTrust {
             val pkg = snapshot.optJSONObject(i)?.optString("package").orEmpty().trim()
             if (pkg.isNotBlank()) packages += pkg
         }
-        // تعبئة البيانات محصورة في واجهة حكيم نفسها. دعم تطبيقات خارجية يحتاج ثقة منفصلة لاحقًا.
         if (packages.isNotEmpty() && packages.any { !it.startsWith("ps.hakim.stable") }) return false
         val host = currentHost(context)
         return host.isNotBlank() && isTrusted(context, host)

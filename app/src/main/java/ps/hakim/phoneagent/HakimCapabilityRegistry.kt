@@ -23,13 +23,23 @@ object HakimCapabilityRegistry {
     }
 
     fun discover(context: Context): List<Capability> {
+        HakimQuranicInvariantKernel.requireInherited("capability_registry")
         val accessibilityReady = HakimAccessibilityService.instance != null
         val web = HakimRuntime.visibleWebView()
         val chatGptInstalled = runCatching {
             context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt") != null
         }.getOrDefault(false)
+        val integrationReady = runCatching {
+            HakimIntegrationFabric.structuralStatus(context, "capability_registry")
+                .optBoolean("structural_integrity")
+        }.getOrDefault(false)
+        val relayConfigured = HakimUnifiedRelay.isConfigured(context)
+        val recovery = HakimConnectionResilience.status(context)
+        val connectionReady = recovery.optBoolean("service_connected") || relayConfigured
 
         return listOf(
+            Capability("quranic_kernel", true, true, "جذر الثقة القرآني من النواة إلى الحافة مدمج ومحروس"),
+            Capability("integration_fabric", true, integrationReady, if (integrationReady) "نسيج التكامل البنيوي سليم" else "فشل تكامل بنيوي؛ لا يجوز ادعاء الجاهزية"),
             Capability("secure_store", true, true, "AndroidKeyStore/AES-GCM مدمج"),
             Capability("mission_ledger", true, true, "WIP=1 وحالة مشفرة مدمجان"),
             Capability("quranic_governance", true, true, "الإطار القرآني والنزاهة الشرعية مدمجان"),
@@ -37,6 +47,8 @@ object HakimCapabilityRegistry {
             Capability("browser", true, web != null, if (web != null) "WebView حكيم حاضر" else "المتصفح مدمج لكنه ليس حاضرًا الآن"),
             Capability("accessibility_actions", true, accessibilityReady, if (accessibilityReady) "خدمة الوصول متاحة الآن" else "خدمة الوصول غير مفعلة/غير متصلة الآن"),
             Capability("chatgpt_official", true, chatGptInstalled, if (chatGptInstalled) "تطبيق ChatGPT الرسمي مثبت" else "التطبيق الرسمي غير مثبت؛ يبقى مسار الويب الاحتياطي"),
+            Capability("secure_relay", true, relayConfigured, if (relayConfigured) "قناة حكيم الآمنة مهيأة" else "القناة الآمنة غير مهيأة الآن"),
+            Capability("connection_resilience", true, connectionReady, if (connectionReady) "وصلة خارجية متاحة أو مهيأة" else "نسيج التعافي موجود لكن الوصلة الخارجية غير جاهزة الآن"),
             Capability("profile_vault", true, true, "خزنة البيانات غير الحساسة مدمجة مع ثقة موقع دقيقة"),
             Capability("field_update", true, false, "لا تُعد جاهزة إلا بعد توفر توقيع حكيم الميداني الأصلي والتحقق منه")
         )
@@ -45,14 +57,15 @@ object HakimCapabilityRegistry {
     fun isReady(context: Context, id: String): Boolean = discover(context).firstOrNull { it.id == id }?.readyNow == true
 
     fun promptContext(context: Context): String = buildString {
-        appendLine("[معرفة حكيم الذاتية بالقدرات]")
+        appendLine("[معرفة حكيم الذاتية بالقدرات والتكامل]")
         discover(context).forEach { c ->
             appendLine("• ${c.id}: ${if (c.readyNow) "جاهزة الآن" else if (c.available) "موجودة لكن غير جاهزة الآن" else "غير متاحة"} — ${c.reason}")
         }
-        appendLine("لا تدّع قدرة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
-    }.take(3600)
+        appendLine("لا تدّع قدرة أو وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
+    }.take(4600)
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("self_capability_awareness", true)
+        .put("integration_aware", true)
         .put("capabilities", JSONArray(discover(context).map { it.toJson() }))
 }

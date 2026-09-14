@@ -60,6 +60,14 @@ require("return host in set" in trust, "P0: ثقة الموقع ليست مطا�
 require("candidates(host)" not in trust and "takeLast(2)" not in trust,
         "P0: ثقة نطاق أب قد تمتد ضمنيًا إلى نطاقات فرعية غير مقصودة")
 
+# تعليمات المواقع يجب أن تتبع المضيف الظاهر الفعلي وألا تُورّث إلى نطاقات أخرى.
+require("HakimRuntime.visibleWebView()?.url" in governance,
+        "P0: تعليمات الموقع تعتمد last_url المخزن بدل الصفحة الفعلية")
+require("siteCandidates" not in governance and "takeLast(2)" not in governance,
+        "P0: تعليمات النطاق الأب قد تُطبق ضمنيًا على نطاقات فرعية")
+require("val key = SITE_PREFIX + normalized.replace('.', '_')" in governance,
+        "P0: قراءة تعليمات الموقع ليست مرتبطة بالمضيف الدقيق")
+
 # خطة الاستدلال يجب أن تُفحص بعد العودة لشاشة الموقع.
 click_pos = plan_exec.find('"click_text"')
 ensure_pos = plan_exec.find("ensureHakimBrowser", click_pos)

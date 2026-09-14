@@ -116,17 +116,25 @@ jobs:
             echo "بيانات اعتماد توقيع حكيم الميدانية غير مكتملة" >&2
             exit 1
           fi
+          VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' app/build.gradle | head -n1)"
+          if [[ -z "$VERSION_CODE" ]]; then
+            echo "تعذر استخراج versionCode من app/build.gradle" >&2
+            exit 1
+          fi
+          FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"
           printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/hakim-field.jks"
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" sign \
             --ks "$RUNNER_TEMP/hakim-field.jks" \
             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
-            --out app/build/outputs/apk/release/hakim-field-20021.apk \
+            --out "$FIELD_APK" \
             app/build/outputs/apk/release/app-release-unsigned.apk
           APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" \
-            bash scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-20021.apk
+            bash scripts/verify-field-signer.sh "$FIELD_APK"
           echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$FIELD_APK" >> "$GITHUB_OUTPUT"
       - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v4
         with:
@@ -139,6 +147,6 @@ jobs:
         if: steps.field_sign.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hakim-field-20021
-          path: app/build/outputs/apk/release/hakim-field-20021.apk
+          name: hakim-field-${{ steps.field_sign.outputs.version_code }}
+          path: ${{ steps.field_sign.outputs.apk_path }}
           if-no-files-found: error

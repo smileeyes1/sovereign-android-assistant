@@ -34,6 +34,7 @@ object HakimSelfCheck {
     }
 
     fun run(context: Context): JSONObject {
+        HakimQuranicInvariantKernel.requireInherited("self_check")
         val checks = JSONArray()
         var failed = 0
         var warned = 0
@@ -62,6 +63,18 @@ object HakimSelfCheck {
         check("الاستمرار الآمن تلقائي", governance.optBoolean("safe_auto_continue"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
+
+        val integration = HakimIntegrationFabric.status(context)
+        val structural = integration.optJSONObject("structural") ?: JSONObject()
+        val runtime = integration.optJSONObject("runtime") ?: JSONObject()
+        check("نسيج التكامل البنيوي سليم", structural.optBoolean("structural_integrity"), "fail")
+        check("لا توجد طبقة حرجة معزولة", structural.optBoolean("no_isolated_critical_layer"), "fail")
+        check("الجذر القرآني موروث داخل نسيج التكامل", structural.optBoolean("quranic_root_inherited"), "fail")
+        check(
+            "الجاهزية الخارجية مفصولة عن سلامة القلب",
+            runtime.optBoolean("runtime_readiness_is_not_structural_integrity"),
+            "fail"
+        )
 
         val ledger = governance.optJSONObject("rule_ledger") ?: JSONObject()
         check("سجل القواعد مشفر محليًا", ledger.optBoolean("encrypted_local_ledger"))
@@ -129,12 +142,13 @@ object HakimSelfCheck {
             .put("warnings", warned)
             .put("checks", checks)
             .put("governance", governance)
+            .put("integration", integration)
             .put("intent", intent)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(24000))
+            .putString("last_self_check", report.toString().take(30000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

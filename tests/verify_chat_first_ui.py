@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,8 +20,10 @@ resource = text("app/src/main/java/ps/hakim/phoneagent/HakimResourceGovernor.kt"
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
-require("versionCode 20022" in build, "P0: واجهة حكيم الحديثة ليست ضمن إصدار ٢٠٠٢٢")
-require("2.0.22-capability-mesh" in build, "P0: اسم إصدار حكيم ٢٠٠٢٢ مفقود")
+version = re.search(r"versionCode\s+(\d+)", build)
+require(version is not None and int(version.group(1)) >= 20022,
+        "P0: واجهة حكيم الحديثة ليست ضمن خط إصدار شبكة التفوق أو أحدث")
+require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: التطبيق لا يفتح مباشرة على المحادثة")

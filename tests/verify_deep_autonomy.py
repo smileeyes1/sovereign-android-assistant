@@ -71,13 +71,14 @@ require("val key = SITE_PREFIX + normalized.replace('.', '_')" in governance,
 
 # خطة الاستدلال يجب أن تُفحص بعد العودة لشاشة الموقع، وغلاف السلطة يرث حاكم الأفعال المثبت.
 require("HakimActionPolicy.classify" in authority, "P0: غلاف السلطة لا يرث حاكم الأفعال")
+require("HakimAuthorityEnvelope.classifyUiAction" in plan_exec, "P0: منفذ الخطة لا يستخدم غلاف السلطة")
 click_pos = plan_exec.find('"click_text"')
 ensure_pos = plan_exec.find("ensureHakimBrowser", click_pos)
-classify_pos = plan_exec.find("HakimAuthorityEnvelope.classifyUiAction", click_pos)
+classify_pos = plan_exec.find("gateAction(target, targetSnapshot)", ensure_pos)
 require(click_pos >= 0 and ensure_pos >= 0 and classify_pos > ensure_pos, "P0: النقرة تُصنَّف قبل استعادة شاشة الموقع")
 set_pos = plan_exec.find('"set_text"')
 ensure_set = plan_exec.find("ensureHakimBrowser", set_pos)
-classify_set = plan_exec.find("gateAction", ensure_set)
+classify_set = plan_exec.find('gateAction("$target $value", targetSnapshot)', ensure_set)
 require(set_pos >= 0 and ensure_set >= 0 and classify_set > ensure_set, "P0: الكتابة تُصنَّف قبل استعادة شاشة الموقع")
 
 # جسر ChatGPT اختياري ومقيد بالحزمة الرسمية وبروتوكول مغلق.

@@ -3,6 +3,8 @@ package ps.hakim.phoneagent
 import android.app.Application
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 
 class HakimApp : Application() {
     override fun onCreate() {
@@ -13,20 +15,55 @@ class HakimApp : Application() {
         HakimProactiveEngine.initialize(this)
         HakimIntegrationFabric.install(this)
         restoreActiveMissionState()
+
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
-        HakimUnifiedRelay.start(this)
+
+        // لا ننشئ خيط شبكة دائمًا بلا إعداد فعلي؛ هذه كانت كلفة بلا منفعة على الهاتف.
+        if (HakimUnifiedRelay.isConfigured(this)) {
+            HakimUnifiedRelay.start(this)
+        }
         startHakimIfPaired(prefs)
+
+        // الجدولة رخيصة؛ التنفيذ الفعلي يُحكم لاحقًا بحالة الموارد.
         HakimConnectionResilience.install(this)
-        HakimHealthBeacon.sendAsync(this, "app_start")
         AutoUpdater.schedule(this)
-        AutoUpdater.startRealtimeListener(this)
-        AutoUpdater.checkAsync(this)
         HakimSelfCheck.schedule(this)
-        HakimSelfCheck.runAsync(this)
-        Thread {
-            runCatching { HakimProactiveEngine.runSafeBackground(this, "app_start") }
-        }.start()
+        scheduleDeferredMaintenance()
+    }
+
+    private fun scheduleDeferredMaintenance() {
+        if (!HakimResourceGovernor.shouldRunStartupMaintenance(this)) return
+        val delay = HakimResourceGovernor.startupDeferralMs(this)
+        Handler(Looper.getMainLooper()).postDelayed({
+            Thread {
+                runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
+                val app = applicationContext
+                if (!HakimResourceGovernor.canRunNonEssentialBackground(app)) return@Thread
+                runCatching { HakimHealthBeacon.sendAsync(app, "app_start_deferred") }
+                runCatching {
+                    if (HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)) {
+                        AutoUpdater.startRealtimeListener(app)
+                    }
+                }
+                runCatching {
+                    val report = HakimSelfCheck.run(app)
+                    HakimLearning.recordHealth(app, report)
+                }
+                runCatching { HakimProactiveEngine.runSafeBackground(app, "app_start_deferred") }
+                HakimResourceGovernor.markStartupMaintenance(app)
+            }.start()
+        }, delay)
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        HakimResourceGovernor.noteTrimMemory(this, level)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        HakimResourceGovernor.noteLowMemory(this)
     }
 
     private fun restoreActiveMissionState() {

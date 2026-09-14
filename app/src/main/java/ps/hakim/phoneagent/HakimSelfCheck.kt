@@ -16,7 +16,7 @@ object HakimSelfCheck {
         try {
             val scheduler = context.getSystemService(JobScheduler::class.java)
             val job = JobInfo.Builder(JOB_ID, ComponentName(context, HakimEvolutionJobService::class.java))
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_NONE)
                 .setPersisted(true)
                 .setPeriodic(PERIOD_MS)
                 .build()

@@ -27,10 +27,12 @@ object HakimPersonalVault {
         Field("organization", "جهة العمل", listOf("جهة العمل", "المؤسسة", "المدرسة", "الشركة", "organization", "company", "school", "employer"))
     )
 
+    private val allowedFieldIds: Set<String> by lazy { fields.map { it.id }.toSet() }
+
     fun save(context: Context, id: String, value: String): Boolean {
         val key = id.trim().lowercase()
         val clean = value.trim()
-        if (key.isBlank() || forbidden(key) || forbidden(clean)) return false
+        if (key !in allowedFieldIds || forbidden(key) || forbidden(clean)) return false
         if (clean.isBlank()) {
             remove(context, key)
             return true
@@ -45,11 +47,15 @@ object HakimPersonalVault {
         return ok
     }
 
-    fun get(context: Context, id: String): String? =
-        HakimSecureStore.get(context, PREFS, id.trim().lowercase())
+    fun get(context: Context, id: String): String? {
+        val key = id.trim().lowercase()
+        if (key !in allowedFieldIds) return null
+        return HakimSecureStore.get(context, PREFS, key)
+    }
 
     fun remove(context: Context, id: String) {
         val key = id.trim().lowercase()
+        if (key !in allowedFieldIds) return
         HakimSecureStore.remove(context, PREFS, key)
         val meta = context.getSharedPreferences(META, Context.MODE_PRIVATE)
         val index = LinkedHashSet(meta.getStringSet(KEY_INDEX, emptySet()) ?: emptySet())
@@ -60,7 +66,7 @@ object HakimPersonalVault {
         val meta = context.getSharedPreferences(META, Context.MODE_PRIVATE)
         val index = meta.getStringSet(KEY_INDEX, emptySet()) ?: emptySet()
         val out = linkedMapOf<String, String>()
-        index.sorted().forEach { id ->
+        index.filter { it in allowedFieldIds }.sorted().forEach { id ->
             get(context, id)?.takeIf { it.isNotBlank() }?.let { out[id] = it }
         }
         return out

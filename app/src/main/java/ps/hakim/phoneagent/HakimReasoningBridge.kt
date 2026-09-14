@@ -6,8 +6,10 @@ import android.os.Handler
 import android.os.Looper
 
 /**
- * جسر اختياري بدون API إلى تطبيق ChatGPT الرسمي.
- * لا ينفذ نص النموذج مباشرة؛ يعيد فقط خطة بروتوكول حكيم لتُفحص محليًا.
+ * جسر الاستدلال لحكيم بلا API مدفوع.
+ * المسار الافتراضي داخل تطبيق حكيم عبر WebView موثوق إلى chatgpt.com؛
+ * مسار تطبيق ChatGPT الرسمي عبر Accessibility يبقى احتياطيًا لبيئات التطوير فقط عندما يكون متاحًا.
+ * لا ينفذ نص النموذج مباشرة؛ يعيد فقط خطة HakimReasoningProtocol لتُفحص محليًا.
  */
 object HakimReasoningBridge {
     private const val PACKAGE = "com.openai.chatgpt"
@@ -27,23 +29,55 @@ object HakimReasoningBridge {
         onProgress: (String) -> Unit = {},
         onComplete: (Result) -> Unit
     ) {
-        val service = HakimAccessibilityService.instance
-        if (service == null) {
-            onComplete(Result(false, null, "", "خدمة الوصول غير مفعلة"))
-            return
-        }
+        HakimWebReasoningBridge.ask(
+            activity = activity,
+            basePrompt = basePrompt,
+            onProgress = onProgress,
+            onComplete = webDone@ { web ->
+                if (web.available && (web.plan != null || web.reason.contains("تسجيل الدخول") || web.reason.contains("عاد الرد") || web.reason.contains("مهلة"))) {
+                    onComplete(Result(true, web.plan, web.responseText, web.reason))
+                    return@webDone
+                }
+
+                val service = HakimAccessibilityService.instance
+                if (service == null) {
+                    // النسخة الميدانية Play-Protect-safe لا تعلن Accessibility. ابقَ داخل حكيم بدل القفز لتطبيق خارجي.
+                    onComplete(
+                        Result(
+                            true,
+                            web.plan,
+                            web.responseText,
+                            if (web.reason.isBlank()) "محرك الاستدلال الداخلي غير جاهز؛ المهمة محفوظة داخل حكيم" else web.reason
+                        )
+                    )
+                    return@webDone
+                }
+
+                onProgress("تعذر مسار الويب الداخلي؛ أستخدم المسار الرسمي الاحتياطي المقيد دون توسيع السلطة.")
+                askViaOfficialApp(activity, basePrompt, service, onProgress, onComplete)
+            }
+        )
+    }
+
+    private fun askViaOfficialApp(
+        activity: Activity,
+        basePrompt: String,
+        service: HakimAccessibilityService,
+        onProgress: (String) -> Unit,
+        onComplete: (Result) -> Unit
+    ) {
         val launch = activity.packageManager.getLaunchIntentForPackage(PACKAGE)
         if (launch == null) {
-            onComplete(Result(false, null, "", "تطبيق ChatGPT الرسمي غير متاح"))
+            onComplete(Result(true, null, "", "تطبيق ChatGPT الرسمي غير متاح؛ بقيت المهمة داخل حكيم دون تنفيذ تخميني"))
             return
         }
 
         val request = HakimReasoningProtocol.wrap(basePrompt)
         val handler = Handler(Looper.getMainLooper())
         activity.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-        onProgress("فتحت محرك الاستدلال الرسمي وأجهز تمرير المهمة المحكومة.")
+        onProgress("فتحت محرك الاستدلال الرسمي الاحتياطي وأجهز تمرير المهمة المحكومة.")
 
-        fun fail(reason: String) = onComplete(Result(false, null, "", reason))
+        fun fail(reason: String) = onComplete(Result(true, null, "", reason))
 
         fun pollResponse(baseline: String) {
             var attempts = 0
@@ -68,7 +102,7 @@ object HakimReasoningBridge {
                         if (changed && attempts >= 8 && stable >= 4) {
                             onComplete(Result(true, null, visible.takeLast(8000), "عاد الاستدلال دون خطة قابلة للتنفيذ"))
                         } else if (attempts >= MAX_POLL_ATTEMPTS) {
-                            onComplete(Result(true, null, visible.takeLast(8000), "لم تظهر خطة حكيم ضمن حد المراقبة") )
+                            onComplete(Result(true, null, visible.takeLast(8000), "لم تظهر خطة حكيم ضمن حد المراقبة"))
                         } else {
                             handler.postDelayed(poll, 800L)
                         }

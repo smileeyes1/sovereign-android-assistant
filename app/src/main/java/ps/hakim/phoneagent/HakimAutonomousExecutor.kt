@@ -30,8 +30,20 @@ object HakimAutonomousExecutor {
         onComplete: (Outcome) -> Unit
     ) {
         val handler = Handler(Looper.getMainLooper())
-        val service = HakimAccessibilityService.instance
         HakimMissionLedger.beginOrResume(activity, goal)
+        val sovereign = HakimSovereignEngine.assess(activity, goal)
+        if (sovereign.blocked) {
+            HakimMissionLedger.block(activity, "المحرك السيادي منع التنفيذ المحلي")
+            onComplete(Outcome(false, false, 0, false, false, false, "المحرك السيادي منع التنفيذ حتى يتغير الدليل أو الحالة"))
+            return
+        }
+        if (sovereign.shouldResearchFirst) {
+            HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, "يلزم تحقق/بحث قبل أي تنفيذ محلي")
+            onComplete(Outcome(false, false, 0, false, false, false, "يلزم تحقق/بحث وإعادة تخطيط قبل التنفيذ"))
+            return
+        }
+
+        val service = HakimAccessibilityService.instance
         HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء حلقة التنفيذ المحلي", attempted = true)
         if (service == null) {
             HakimSovereignEngine.recordVerification(activity, false, "خدمة الوصول غير مفعلة")
@@ -58,6 +70,7 @@ object HakimAutonomousExecutor {
                 needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
                 needsCredential -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_CREDENTIAL, reason)
                 needsDataTrust -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_TRUST, reason)
+                isLegitimateHandoff(reason) -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, reason)
                 else -> HakimSovereignEngine.recordVerification(activity, false, reason)
             }
             onComplete(Outcome(progressed, completed, steps, needsApproval, needsCredential, needsDataTrust, reason))
@@ -87,11 +100,7 @@ object HakimAutonomousExecutor {
                     } else {
                         val profileCandidate = firstProfileCandidate(activity, snapshot)
                         if (profileCandidate != null && !HakimSiteTrust.canUseProfile(activity, snapshot)) {
-                            finish(
-                                false,
-                                needsDataTrust = true,
-                                reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم"
-                            )
+                            finish(false, needsDataTrust = true, reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم")
                         } else if (profileCandidate != null) {
                             val (node, match) = profileCandidate
                             val field = match.first
@@ -99,11 +108,7 @@ object HakimAutonomousExecutor {
                             val id = node.optString("id")
                             val textHint = visibleLabel(node)
                             val ok = service.action(
-                                JSONObject()
-                                    .put("action", "set_text")
-                                    .put("id", id)
-                                    .put("text", textHint)
-                                    .put("value", value)
+                                JSONObject().put("action", "set_text").put("id", id).put("text", textHint).put("value", value)
                             )
                             if (ok) {
                                 progressed = true
@@ -154,6 +159,9 @@ object HakimAutonomousExecutor {
         handler.post(iterate)
     }
 
+    private fun isLegitimateHandoff(reason: String): Boolean =
+        reason.contains("استدلال") || reason.contains("لا يوجد فعل محلي") || reason.contains("إعادة تقدير") || reason.contains("تحقق/بحث")
+
     private fun firstProfileCandidate(activity: Activity, snapshot: JSONArray): Pair<JSONObject, Pair<HakimPersonalVault.Field, String>>? {
         for (i in 0 until snapshot.length()) {
             val node = snapshot.optJSONObject(i) ?: continue
@@ -174,10 +182,7 @@ object HakimAutonomousExecutor {
     }
 
     private fun nextSafeContinuation(snapshot: JSONArray): String? {
-        val preferred = listOf(
-            "التالي", "متابعة", "استمرار", "أكمل", "اكمل", "تابع", "حسنًا", "حسنا",
-            "next", "continue", "proceed", "ok"
-        )
+        val preferred = listOf("التالي", "متابعة", "استمرار", "أكمل", "اكمل", "تابع", "حسنًا", "حسنا", "next", "continue", "proceed", "ok")
         for (candidate in preferred) {
             for (i in 0 until snapshot.length()) {
                 val node = snapshot.optJSONObject(i) ?: continue
@@ -203,8 +208,7 @@ object HakimAutonomousExecutor {
         return null
     }
 
-    private fun visibleLabel(node: JSONObject): String =
-        node.optString("text").trim().ifBlank { node.optString("desc").trim() }.take(240)
+    private fun visibleLabel(node: JSONObject): String = node.optString("text").trim().ifBlank { node.optString("desc").trim() }.take(240)
 
     private fun fingerprint(snapshot: JSONArray): String {
         val s = buildString {

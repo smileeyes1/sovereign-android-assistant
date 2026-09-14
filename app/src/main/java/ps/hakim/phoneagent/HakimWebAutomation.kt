@@ -24,19 +24,28 @@ object HakimWebAutomation {
               const clean = v => String(v ?? '').replace(/\s+/g, ' ').trim();
               const sensitiveRx = /(password|passcode|otp|pin|cvv|cvc|security.?code|secret|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|مفتاح.?سري)/i;
               const items = [];
-              items.push({package:'$PACKAGE', text:clean(document.body?.innerText || '').slice(0,12000), desc:clean(location.host).slice(0,180), sensitive:false});
+              items.push({package:'$PACKAGE', id:'document', text:clean(document.body?.innerText || '').slice(0,12000), desc:clean(location.host).slice(0,180), sensitive:false, clickable:false, editable:false});
               const nodes = Array.from(document.querySelectorAll('button,a,input,textarea,select,[role="button"],[contenteditable="true"],summary')).slice(0,140);
               for (const el of nodes) {
+                const tag = String(el.tagName || '').toLowerCase();
                 const type = clean(el.getAttribute('type')).toLowerCase();
+                const role = clean(el.getAttribute('role')).toLowerCase();
                 const aria = clean(el.getAttribute('aria-label'));
                 const placeholder = clean(el.getAttribute('placeholder'));
                 const name = clean(el.getAttribute('name'));
-                const id = clean(el.id);
+                const id = clean(el.id || name || aria || placeholder).slice(0,180);
                 const title = clean(el.getAttribute('title'));
                 const meta = [type,aria,placeholder,name,id,title].join(' ');
                 const sensitive = type === 'password' || sensitiveRx.test(meta);
-                const label = sensitive ? (aria || placeholder || name || id || type) : clean(el.innerText || aria || placeholder || el.getAttribute('value') || title || name || id);
-                items.push({package:'$PACKAGE', text:label.slice(0,220), desc:[aria,placeholder,title,name,id,type].filter(Boolean).join(' ').slice(0,260), sensitive:sensitive});
+                const editable = tag === 'input' || tag === 'textarea' || el.getAttribute('contenteditable') === 'true';
+                const clickable = tag === 'button' || tag === 'a' || tag === 'summary' || role === 'button' || (tag === 'input' && (type === 'button' || type === 'submit'));
+                const buttonValue = clickable ? clean(el.getAttribute('value')) : '';
+                const label = sensitive ? (aria || placeholder || name || id || type) : clean(el.innerText || aria || placeholder || buttonValue || title || name || id);
+                items.push({
+                  package:'$PACKAGE', id:id, text:label.slice(0,220),
+                  desc:[aria,placeholder,title,name,id,type].filter(Boolean).join(' ').slice(0,260),
+                  sensitive:sensitive, clickable:clickable, editable:editable
+                });
               }
               return JSON.stringify(items);
             })()

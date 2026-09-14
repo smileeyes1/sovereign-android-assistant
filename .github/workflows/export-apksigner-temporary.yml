@@ -1,0 +1,36 @@
+name: تصدير أداة توقيع أندرويد مؤقتًا
+
+on:
+  push:
+    branches:
+      - feature/hakim-governance-editor
+    paths:
+      - '.github/workflows/export-apksigner-temporary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: تحديد أداة التوقيع الموثوقة
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOL_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -x "$TOOL_DIR/apksigner"
+          test -f "$TOOL_DIR/lib/apksigner.jar"
+          mkdir -p "$RUNNER_TEMP/hakim-apksigner/lib"
+          cp "$TOOL_DIR/apksigner" "$RUNNER_TEMP/hakim-apksigner/"
+          cp "$TOOL_DIR/lib/apksigner.jar" "$RUNNER_TEMP/hakim-apksigner/lib/"
+          "$TOOL_DIR/apksigner" version > "$RUNNER_TEMP/hakim-apksigner/VERSION.txt"
+          sha256sum "$RUNNER_TEMP/hakim-apksigner/apksigner" "$RUNNER_TEMP/hakim-apksigner/lib/apksigner.jar" > "$RUNNER_TEMP/hakim-apksigner/SHA256SUMS.txt"
+      - name: حفظ الأداة فقط بلا أي أسرار
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-trusted-apksigner-tool
+          path: ${{ runner.temp }}/hakim-apksigner
+          if-no-files-found: error
+          retention-days: 1

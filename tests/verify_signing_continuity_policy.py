@@ -23,8 +23,8 @@ assert POLICY["migration"]["data_loss_accepted"] is True
 assert POLICY["migration"]["one_app_only"] is True
 assert "applicationId 'ps.hakim.stable'" in BUILD
 version = re.search(r"versionCode\s+(\d+)", BUILD)
-assert version and int(version.group(1)) >= 20020
-assert 20020 in POLICY["known_matching_versions"]
+assert version and int(version.group(1)) >= 20021
+assert 20021 in POLICY["known_matching_versions"]
 assert "field_signer_mismatch" in SCRIPT
 assert "known_companion_signer_rejected" in SCRIPT
 assert "apksigner" in SCRIPT and "--print-certs" in SCRIPT
@@ -32,6 +32,6 @@ assert EXPECTED.replace(":", "").lower() in UPDATER
 assert LEGACY.replace(":", "").lower() not in UPDATER
 assert "MAX_APK_BYTES = 32L * 1024L * 1024L" in UPDATER
 assert "verify-field-signer.sh" in WORKFLOW
-assert "hakim-field-20020.apk" in WORKFLOW
+assert "hakim-field-20021.apk" in WORKFLOW
 assert "NOT-INSTALLABLE" in WORKFLOW
 print("SIGNING_CONTINUITY_POLICY=PASS")

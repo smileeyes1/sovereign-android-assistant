@@ -10,7 +10,7 @@ import org.json.JSONObject
  * سلامة البنية بجاهزية الشبكة/الهاتف اللحظية.
  */
 object HakimIntegrationFabric {
-    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v3"
+    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v4"
 
     private val structuralNodes = listOf(
         "quranic_kernel",
@@ -29,6 +29,7 @@ object HakimIntegrationFabric {
         "reasoning_executor",
         "verification",
         "learning",
+        "adaptive_learning",
         "connection_resilience",
         "unified_relay",
         "self_check"
@@ -53,8 +54,11 @@ object HakimIntegrationFabric {
         "authority_envelope→reasoning_executor",
         "capability_registry→self_leadership",
         "execution→verification→learning",
+        "learning→adaptive_learning→safe_execution_order",
+        "adaptive_learning→baseline_fallback",
         "connection_resilience↔unified_relay",
         "self_check→integration_fabric",
+        "self_check→adaptive_learning",
         "recovery→mission_ledger→replan"
     )
 
@@ -91,6 +95,7 @@ object HakimIntegrationFabric {
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
         val human = HakimHumanFirstPolicy.status()
+        val adaptive = HakimAdaptiveLearning.status(context)
         val packageOk = context.packageName == "ps.hakim.stable"
         val quranicOk = governance.optBoolean("quranic_normative_default")
         val corpusOk = corpus.optBoolean("all_114_surahs_covered") &&
@@ -101,8 +106,13 @@ object HakimIntegrationFabric {
             human.optBoolean("kindness_must_not_be_exploited") &&
             human.optBoolean("silence_is_not_consent") &&
             human.optBoolean("preserve_user_agency")
+        val adaptiveOk = adaptive.optBoolean("adaptive_learning") &&
+            adaptive.optBoolean("local_only") &&
+            !adaptive.optBoolean("can_expand_authority") &&
+            adaptive.optBoolean("safe_candidates_only") &&
+            adaptive.optBoolean("baseline_fallback")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && humanOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && humanOk && adaptiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -111,8 +121,10 @@ object HakimIntegrationFabric {
             .put("quranic_root_inherited", quranicOk)
             .put("quranic_corpus_114_integrated", corpusOk)
             .put("human_first_integrated", humanOk)
+            .put("adaptive_learning_integrated", adaptiveOk)
             .put("quranic_corpus", corpus)
             .put("human_first", human)
+            .put("adaptive_learning", adaptive)
             .put("fail_closed_core_changes", failClosed)
             .put("nodes", JSONArray(structuralNodes))
             .put("edges", JSONArray(structuralEdges))
@@ -137,6 +149,7 @@ object HakimIntegrationFabric {
             .put("chatgpt_official_installed", chatGptInstalled)
             .put("secure_relay_configured", HakimUnifiedRelay.isConfigured(context))
             .put("connection_recovery", recovery)
+            .put("adaptive_learning", HakimAdaptiveLearning.status(context))
             .put("mission_active", activeMission != null)
             .put("mission_phase", activeMission?.phase?.name ?: "IDLE")
             .put("missing_external_link_changes_route_not_governance", true)
@@ -144,15 +157,18 @@ object HakimIntegrationFabric {
 
     fun promptContext(context: Context): String {
         val s = runtimeStatus(context)
+        val adaptive = s.optJSONObject("adaptive_learning") ?: JSONObject()
         return buildString {
             appendLine("[نسيج التكامل والوصل السيادي]")
             appendLine("القلب البنيوي=${if (s.optJSONObject("structural")?.optBoolean("structural_integrity") == true) "سليم" else "غير سليم"}؛ اتصال الشبكة/المتصفح/الهاتف جاهزية لحظية وليست بديلًا عن سلامة القلب.")
             appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، مع فصل النص عن التفسير والقراءات وأسباب النزول والاستنباط، ومنع الانتقائية والتكلف.")
             appendLine("الإنسان أولًا جزء من القلب: كرامة المستخدم، أقل عبء تقني، عدم استغلال الطيبة/الرحمة، وعدم اعتبار السكوت موافقة، وحفظ سيادته وقراره الجوهري.")
+            appendLine("التعلم التكيفي جزء من القلب: محلي، لا يوسع السلطة، لا يغير الكود تلقائيًا، ويعيد ترتيب البدائل الآمنة فقط مع رجوع إلى خط الأساس عند الانحدار.")
+            appendLine("حالة التكيف=${adaptive.optString("last_adaptation_decision", "COLLECTING_EVIDENCE")}؛ epoch=${adaptive.optLong("epoch", 1L)}.")
             appendLine("لا توجد طبقة حرجة معزولة: المقصد والقرار والوكلاء والتنفيذ والتحقق والتعلم والتعافي والاتصال والتحديث تعود إلى القلب الحاكم وسجل المهمة.")
             appendLine("عند فقد وصلة خارجية: غيّر المسار أو استعد الاتصال إذا كان ذلك آمنًا ومسموحًا؛ لا توسع السلطة ولا تدّع أن الوصلة جاهزة.")
             appendLine("المتصفح=${s.optBoolean("browser_ready_now")}، الوصول=${s.optBoolean("accessibility_ready_now")}، ChatGPT=${s.optBoolean("chatgpt_official_installed")}، القناة الآمنة=${s.optBoolean("secure_relay_configured")}.")
-        }.take(4400)
+        }.take(5200)
     }
 
     fun status(context: Context): JSONObject = JSONObject()

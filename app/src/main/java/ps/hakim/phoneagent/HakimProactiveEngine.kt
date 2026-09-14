@@ -38,7 +38,7 @@ object HakimProactiveEngine {
     }
 
     /**
-     * دورة خلفية آمنة: صيانة التعلم، فحص القيود، استعادة الاتصال، وفحص التحديثات الموثوقة.
+     * دورة خلفية آمنة ومتكيفة مع الهاتف: في ضغط الموارد تُؤجل الصيانة غير العاجلة بدل منافسة المستخدم.
      * لا تنقر واجهات المستخدم ولا ترسل/تحذف/تدفع من الخلفية.
      */
     fun runSafeBackground(context: Context, reason: String, healthStatus: String? = null): JSONObject {
@@ -50,6 +50,13 @@ object HakimProactiveEngine {
         val actions = JSONArray()
         if (!isEnabled(app)) return report(app, reason, "DISABLED_BY_USER", actions)
 
+        val resources = HakimResourceGovernor.snapshot(app)
+        if (resources.mode == HakimResourceGovernor.Mode.PRESSURE) {
+            actions.put("deferred_nonessential_background_due_to_resource_pressure")
+            return report(app, reason, "DEFERRED_RESOURCE_PRESSURE", actions)
+        }
+
+        // هذه العمليات محلية وخفيفة وتحافظ على التعلم دون شبكة أو نموذج محلي ثقيل.
         runCatching {
             HakimLearning.maintenance(app)
             actions.put("learning_maintenance")
@@ -58,22 +65,36 @@ object HakimProactiveEngine {
             HakimAdaptiveLearning.consolidate(app, healthStatus ?: lastHealthStatus(app))
             actions.put("adaptive_consolidation")
         }
-        runCatching {
-            val recovery = HakimConnectionResilience.recover(app, "proactive_${reason.take(48)}")
-            actions.put("connection_recovery:${recovery.optString("state", "unknown")}")
-        }
-        runCatching {
-            HakimConstraintDoctor.run(app, "proactive_${reason.take(48)}")
-            actions.put("constraint_doctor")
-        }
-        runCatching {
-            AutoUpdater.schedule(app)
-            AutoUpdater.startRealtimeListener(app)
-            AutoUpdater.checkAsync(app)
-            actions.put("trusted_update_realtime_and_check")
-        }
 
         val active = HakimMissionLedger.active(app)
+        if (active != null) {
+            runCatching {
+                val recovery = HakimConnectionResilience.recover(app, "proactive_${reason.take(48)}")
+                actions.put("connection_recovery:${recovery.optString("state", "unknown")}")
+            }
+        }
+
+        // الفحوص الأثقل لا تعمل في وضع الاقتصاد إلا عند الحاجة؛ جودة المهمة الحالية لا تتأثر.
+        if (resources.mode != HakimResourceGovernor.Mode.CONSERVE) {
+            runCatching {
+                HakimConstraintDoctor.run(app, "proactive_${reason.take(48)}")
+                actions.put("constraint_doctor")
+            }
+        } else {
+            actions.put("constraint_doctor_deferred_conserve_mode")
+        }
+
+        runCatching {
+            AutoUpdater.schedule(app)
+            if (HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)) {
+                AutoUpdater.startRealtimeListener(app)
+                AutoUpdater.checkAsync(app)
+                actions.put("trusted_update_realtime_and_check")
+            } else {
+                actions.put("trusted_update_scheduled_background_network_deferred")
+            }
+        }
+
         if (active != null) {
             val opportunity = foregroundOpportunity(app)
             actions.put(if (opportunity != null) "safe_mission_ready_for_foreground_resume" else "active_mission_not_auto_resumable")
@@ -131,6 +152,7 @@ object HakimProactiveEngine {
             .put("enabled", p.getBoolean("enabled", true))
             .put("beneficial_safe_actions_auto", true)
             .put("background_safe_maintenance", true)
+            .put("resource_adaptive_background", true)
             .put("foreground_safe_resume", true)
             .put("realtime_update_reasserted", true)
             .put("high_impact_never_silently_authorized", true)
@@ -138,20 +160,23 @@ object HakimProactiveEngine {
             .put("no_secret_or_permission_escalation", true)
             .put("active_mission", mission != null)
             .put("active_phase", mission?.phase?.name ?: "IDLE")
+            .put("resource_governor", HakimResourceGovernor.status(context))
             .put("last_run_at", p.getLong("last_run_at", 0L))
             .put("last_auto_resume_at", p.getLong("last_auto_resume_at", 0L))
     }
 
     fun promptContext(context: Context): String {
         val s = status(context)
+        val resource = s.optJSONObject("resource_governor") ?: JSONObject()
         return buildString {
             appendLine("[المبادرة الذاتية المفيدة]")
             appendLine("مفعلة=${s.optBoolean("enabled")}. ابحث تلقائيًا عن كل مكسب مفيد وآمن داخل العقد ولا تنتظر طلبًا جديدًا إذا كان التنفيذ منخفض الأثر وقابلًا للتراجع ومصرحًا.")
+            appendLine("حالة موارد الهاتف=${resource.optString("mode", "UNKNOWN")}. الأولوية دائمًا لسرعة المهمة الحالية؛ عند ضغط الموارد تُؤجل الصيانة غير العاجلة ولا تُخفَّض جودة القرار أو الحاكمية.")
             appendLine("نفذ تلقائيًا: الصيانة، التحقق، التعلم، تحسين الأداء، التعافي، استعادة الاتصال، فحص التحديثات الموثوقة، واستئناف المهمة الآمنة غير المكتملة عند توفر سياق كافٍ.")
-            appendLine("حافظ على قناة التحديث الفوري، ومعها فحص مباشر ودوري كمسارات بديلة؛ انقطاع مسار واحد لا يلغي التطور أو التحديث.")
+            appendLine("حافظ على قناة التحديث الفوري عندما تسمح الموارد والشبكة، ومعها الفحص الدوري كمسار بديل؛ انقطاع مسار واحد لا يلغي التطور أو التحديث.")
             appendLine("حضّر فقط وتوقف عند آخر بوابة: دفع/شراء، حذف نهائي، إرسال حساس أو علني، كشف سر أو بيانات محمية، منح صلاحية نظام، تغيير حق أو التزام، أو فعل غير قابل للتراجع.")
             appendLine("لا تعتبر الصمت أو الطيبة أو عبارة عامة تفويضًا جديدًا. المبادرة تزيد الفائدة داخل السلطة ولا توسع السلطة نفسها.")
-        }.take(3600)
+        }.take(4200)
     }
 
     private fun lastHealthStatus(context: Context): String =
@@ -163,7 +188,9 @@ object HakimProactiveEngine {
         .put("reason", reason.take(100))
         .put("time", System.currentTimeMillis())
         .put("enabled", context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("enabled", true))
+        .put("resource_mode", HakimResourceGovernor.snapshot(context).mode.name)
         .put("actions", actions)
         .put("authority_not_expanded", true)
+        .put("quality_not_downgraded_for_background_savings", true)
         .put("high_impact_requires_gate", true)
 }

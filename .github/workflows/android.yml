@@ -35,6 +35,8 @@ jobs:
         run: python3 tests/verify_unified_hakim.py
       - name: بوابة توافق Play Protect للتثبيت
         run: python3 tests/verify_play_protect_install_profile.py
+      - name: بوابة النواة الحاكمة والتأسيس منخفض العبء
+        run: python3 tests/verify_zero_burden_governance_bootstrap.py
       - name: بوابة قبول منظومة الوكلاء
         run: python3 tests/verify_agent_system.py
       - name: بوابة عمق الأتمتة وأقل إشارة

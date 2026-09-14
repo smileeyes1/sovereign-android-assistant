@@ -13,7 +13,7 @@ object HakimMissionLedger {
     enum class Phase {
         UNDERSTAND, PLAN, EXECUTE, VERIFY, RECOVER,
         WAITING_APPROVAL, WAITING_CREDENTIAL, WAITING_TRUST,
-        COMPLETE, BLOCKED
+        COMPLETE, CANCELLED, BLOCKED
     }
 
     data class Mission(
@@ -36,7 +36,7 @@ object HakimMissionLedger {
         val clean = sanitizeGoal(rawGoal).ifBlank { "استمرار المهمة الحالية" }.take(5000)
         val hash = sha256(clean)
         val current = active(context)
-        // BLOCKED يبقى حاجزًا لنفس الغاية؛ لا تعيد إنشاء المهمة لتصفير الفشل.
+        // BLOCKED/CANCELLED يبقيان حاجزًا لنفس الغاية؛ لا تعيد إنشاء المهمة لتصفير الحالة.
         if (current != null && current.goalHash == hash && current.phase != Phase.COMPLETE) return current
 
         val now = System.currentTimeMillis()
@@ -80,6 +80,7 @@ object HakimMissionLedger {
     fun progress(context: Context, phase: Phase, evidence: String = "", attempted: Boolean = false) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.getBoolean("active", false)) return
+        if (p.getString("phase", "") == Phase.CANCELLED.name && phase != Phase.CANCELLED) return
         val edit = p.edit()
             .putString("phase", phase.name)
             .putLong("updated_at", System.currentTimeMillis())
@@ -91,6 +92,7 @@ object HakimMissionLedger {
     fun failure(context: Context, reason: String) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.getBoolean("active", false)) return
+        if (p.getString("phase", "") == Phase.CANCELLED.name) return
         p.edit()
             .putString("phase", Phase.RECOVER.name)
             .putInt("failures", p.getInt("failures", 0) + 1)
@@ -100,9 +102,23 @@ object HakimMissionLedger {
     }
 
     fun complete(context: Context, evidence: String) {
+        if (active(context)?.phase == Phase.CANCELLED) return
         progress(context, Phase.COMPLETE, evidence)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("active", false).apply()
     }
+
+    fun cancel(context: Context, reason: String = "ألغى المستخدم المهمة") {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!p.getBoolean("active", false)) return
+        p.edit()
+            .putString("phase", Phase.CANCELLED.name)
+            .putString("evidence", sanitizeEvidence(reason))
+            .putLong("updated_at", System.currentTimeMillis())
+            .putBoolean("active", true)
+            .apply()
+    }
+
+    fun isCancelled(context: Context): Boolean = active(context)?.phase == Phase.CANCELLED
 
     fun block(context: Context, reason: String) {
         progress(context, Phase.BLOCKED, reason)
@@ -121,6 +137,7 @@ object HakimMissionLedger {
             .put("encrypted_goal", true)
             .put("secret_redaction", true)
             .put("blocked_same_goal_persists", true)
+            .put("user_cancel_is_sovereign", true)
     }
 
     private fun sanitizeGoal(v: String): String {

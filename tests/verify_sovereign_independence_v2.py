@@ -75,6 +75,26 @@ require('sites[host] = sitesObj.optString(host, "").take' not in portability,
 require(portability.count("HakimGovernanceStore.exportSafeText(") >= 4,
         "P0: التنقيح يجب أن يغطي التصدير والاستيراد للنظام العام وتعليمات المواقع")
 
+# الاستعادة يجب أن تكون قابلة للتراجع وألا تترك نصف حالة جديدة.
+require("data class LocalSnapshot" in portability and "val before = snapshot(context)" in portability,
+        "P0: الاستعادة لا تلتقط الحالة الموثوقة قبل أول كتابة")
+require("restoreSnapshot(context, before)" in portability,
+        "P0: فشل الاستعادة لا يعيد الحالة السابقة")
+require("restore_rollback_guard" in portability,
+        "P0: حالة قابلية النقل لا تعلن حاجز التراجع")
+require("replaceSitesSafely" in portability and "restoreSitesBestEffort" in portability,
+        "P0: تعليمات المواقع ما زالت عرضة لمسح جزئي عند فشل الكتابة")
+require("replaceProfileSafely" in portability and "restoreProfileBestEffort" in portability,
+        "P0: خزنة البيانات ما زالت عرضة لاستعادة جزئية")
+require("profile_restore_replaces_not_merges" in portability,
+        "P0: استعادة الخزنة قد تترك حقولًا قديمة غير موجودة في النسخة")
+require("HakimGovernanceStore.replaceSites(context, sites)" not in portability,
+        "P0: الاستيراد عاد إلى مسار يمسح المواقع القديمة قبل إثبات كتابة الجديدة")
+require("if (!HakimPersonalVault.save(context, id, value))" in portability,
+        "P0: فشل كتابة حقل مشفر في الخزنة لا يوقف الاستعادة ويستدعي التراجع")
+require("أُعيدت الحالة السابقة كاملة" in portability and "تعذر إثبات استعادة الحالة السابقة كاملة" in portability,
+        "P0: نتيجة الفشل لا تميز بين تراجع مثبت وتراجع غير مثبت")
+
 require("تصدير نسخة سيادية" in settings and "استعادة نسخة سيادية" in settings, "P0: المستخدم لا يملك واجهة نقل بياناته")
 require("ACTION_CREATE_DOCUMENT" in settings and "ACTION_OPEN_DOCUMENT" in settings, "P0: النقل لا يستخدم منتقي Android الذي يختاره المستخدم")
 require("HakimSovereignPortability.exportJson" in settings and "HakimSovereignPortability.importJson" in settings, "P0: واجهة الاستقلال غير موصولة فعليًا")

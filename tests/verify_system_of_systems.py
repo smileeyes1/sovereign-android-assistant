@@ -20,12 +20,15 @@ workflow = text(".github/workflows/android.yml")
 
 require("object HakimSystemOfSystems" in sos, "P0: نظام الأنظمة مفقود")
 require("DerivedSystem" in sos and "compose(context" in sos, "P0: توليد النظام المنبثق غير منفذ")
-for unit in ["GOVERNANCE", "QURAN_SUNNAH", "HUMAN_FIRST", "INTENT", "RESOURCE", "AUTHORITY", "VERIFICATION", "RECOVERY", "LEARNING"]:
+for unit in ["GOVERNANCE", "QURAN_SUNNAH", "HUMAN_FIRST", "INDEPENDENCE", "INTENT", "CAPABILITY_MESH", "RESOURCE", "AUTHORITY", "VERIFICATION", "RECOVERY", "LEARNING"]:
     require(unit in sos, f"P0: نظام حاكم أساسي مفقود من نظام الأنظمة: {unit}")
 require("ephemeral_derived_system" in sos, "P0: الأنظمة المنبثقة قد تتحول إلى خدمات دائمة")
+require("inherits_sovereign_independence" in sos, "P0: النظام المنبثق لا يثبت وراثة الاستقلال")
+require("derived_systems_inherit_sovereign_independence" in sos, "P0: حالة نظام الأنظمة لا تحرس وراثة الاستقلال")
 require("cannot_expand_authority" in sos, "P0: النظام المنبثق قد يوسع السلطة")
 require("cannot_mutate_code" in sos, "P0: النظام المنبثق قد يعدل الكود ذاتيًا")
 require("HakimResourceGovernor.snapshot" in sos, "P0: نظام الأنظمة غير واعٍ بموارد الهاتف")
+require("HakimSovereignIndependence.promptContext" in sos, "P0: نظام الأنظمة لا يمر عبر عقد الاستقلال السيادي")
 require("SEQUENTIAL_WIP1_MINIMAL_BACKGROUND" in sos, "P0: ضغط الموارد لا يفرض مسارًا خفيفًا متسلسلًا")
 
 for phrase in [
@@ -62,6 +65,7 @@ for edge in [
     require(edge in fabric, f"P0: وصلة نظام الأنظمة مفقودة: {edge}")
 
 require("اعمل بنظام الأنظمة افتراضيًا" in governance, "P0: نواة المستخدم لا تفعل نظام الأنظمة افتراضيًا")
+require("حقق الاستقلال السيادي بأعلى قدر واقعي" in governance, "P0: نواة نظام الأنظمة لا تحمل الاستقلال الواقعي")
 require("مسار حكيم الحاكم المستمر لكل نظام وكل نظام منبثق" in governance,
         "P0: بروتوكول و؟ غير مطبق على الأنظمة المنبثقة")
 require("verify_system_of_systems.py" in workflow, "P0: لا توجد بوابة CI لنظام الأنظمة")

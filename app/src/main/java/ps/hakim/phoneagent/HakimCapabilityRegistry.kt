@@ -42,7 +42,7 @@ object HakimCapabilityRegistry {
             Capability("integration_fabric", true, integrationReady, if (integrationReady) "نسيج التكامل البنيوي سليم" else "فشل تكامل بنيوي؛ لا يجوز ادعاء الجاهزية"),
             Capability("secure_store", true, true, "AndroidKeyStore/AES-GCM مدمج"),
             Capability("mission_ledger", true, true, "WIP=1 وحالة مشفرة مدمجان"),
-            Capability("quranic_governance", true, true, "الإطار القرآني والنزاهة الشرعية مدمجان"),
+            Capability("quranic_governance", true, true, "الإطار القرآني وسياسة القرآن كله/السور ١١٤ مدمجان"),
             Capability("excellence_optimizer", true, true, "محسن التفوق الشامل مدمج"),
             Capability("browser", true, web != null, if (web != null) "WebView حكيم حاضر" else "المتصفح مدمج لكنه ليس حاضرًا الآن"),
             Capability("accessibility_actions", true, accessibilityReady, if (accessibilityReady) "خدمة الوصول متاحة الآن" else "خدمة الوصول غير مفعلة/غير متصلة الآن"),
@@ -61,7 +61,7 @@ object HakimCapabilityRegistry {
         discover(context).forEach { c ->
             appendLine("• ${c.id}: ${if (c.readyNow) "جاهزة الآن" else if (c.available) "موجودة لكن غير جاهزة الآن" else "غير متاحة"} — ${c.reason}")
         }
-        appendLine("لا تدّع قدرة أو وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
+        appendLine("لا تدّع قدرة غير جاهزة، ولا تدّع وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
     }.take(4600)
 
     fun status(context: Context): JSONObject = JSONObject()

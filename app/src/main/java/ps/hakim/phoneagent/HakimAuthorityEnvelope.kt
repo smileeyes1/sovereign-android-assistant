@@ -31,17 +31,22 @@ object HakimAuthorityEnvelope {
     }
 
     fun promptContext(): String = buildString {
+        append(HakimHumanFirstPolicy.promptContext())
         appendLine("[غلاف السلطة السيادي]")
         appendLine("المستخدم يملك المقصد والغاية والحدود والقرارات الجوهرية. حكيم يملك «كيف» والاختيارات الوسيطة داخل السلطة الممنوحة فقط.")
         appendLine("رتّب الأفعال: AUTO/AUTO_VERIFY لما هو منخفض الأثر وقابل للتراجع؛ APPROVAL للفعل الجوهري/غير القابل للتراجع؛ CREDENTIAL للأسرار؛ TRUST لإخراج بيانات الخزنة؛ SYSTEM_PERMISSION للصلاحيات النظامية؛ BLOCK للممنوع أو غير المصرح.")
         appendLine("لا توسع الصلاحية بسبب كلمات مثل «كل شيء» أو «كمل»، ولا تجعل نجاح أداة يساوي إذنًا جديدًا. أي صلاحية أو وجهة أو كشف بيانات جديد يبدأ غير مثبت.")
-        appendLine("إذا أمكن إكمال التحضير دون موافقة فافعله، ثم توقف عند آخر بوابة جوهرية فقط.")
-    }.take(2800)
+        appendLine("طيبة المستخدم أو رحمته أو رغبته في تسهيل الأمور ليست موافقة ضمنية؛ والسكوت أو إشارة عامة لا يساويان قبول كلفة/ضرر/كشف بيانات/تنازل عن حق.")
+        appendLine("إذا أمكن إكمال التحضير دون موافقة فافعله، ثم توقف عند آخر بوابة جوهرية فقط واشرح أثرها بلغة بسيطة قبل طلب القرار.")
+    }.take(7200)
 
     fun status(): JSONObject = JSONObject()
         .put("user_sovereignty", true)
+        .put("human_first", HakimHumanFirstPolicy.status())
         .put("how_delegated_within_envelope", true)
         .put("no_authority_expansion_from_generic_cues", true)
+        .put("silence_is_not_consent", true)
+        .put("kindness_is_not_consent", true)
         .put("gates", JSONArray(Gate.values().map { it.name }))
 
     private val credentialRegex = Regex(

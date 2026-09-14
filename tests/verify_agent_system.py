@@ -24,6 +24,7 @@ secure_store = text("app/src/main/java/ps/hakim/phoneagent/HakimSecureStore.kt")
 personal = text("app/src/main/java/ps/hakim/phoneagent/HakimPersonalVault.kt")
 governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
 policy = text("app/src/main/java/ps/hakim/phoneagent/HakimActionPolicy.kt")
+authority = text("app/src/main/java/ps/hakim/phoneagent/HakimAuthorityEnvelope.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 site_trust = text("app/src/main/java/ps/hakim/phoneagent/HakimSiteTrust.kt")
@@ -113,14 +114,15 @@ require("HakimReasoningProtocol.wrap" in reasoning_bridge and "HakimReasoningPro
 require("setFirstEditableForPackage" in reasoning_bridge and "visibleTextForPackage" in reasoning_bridge, "P0: الجسر لا يستخدم وصولًا مقيدًا بالحزمة")
 require("MAX_POLL_ATTEMPTS" in reasoning_bridge and "MAX_LAUNCH_ATTEMPTS" in reasoning_bridge, "P0: جسر الاستدلال بلا حدود توقف")
 
-require("HakimActionPolicy.classify" in reasoning_executor, "P0: منفذ خطة الاستدلال يتجاوز حاكم الأفعال")
+require("HakimAuthorityEnvelope.classifyUiAction" in reasoning_executor, "P0: منفذ خطة الاستدلال يتجاوز غلاف السلطة")
+require("HakimActionPolicy.classify" in authority, "P0: غلاف السلطة لا يرث حاكم الأفعال المثبت")
 require("HakimSiteTrust.canUseProfile" in reasoning_executor, "P0: منفذ الخطة قد يكشف بيانات الخزنة لموقع غير موثوق")
 require('uri.scheme !in setOf("http", "https")' in reasoning_executor, "P0: فتح الروابط من الاستدلال غير محصور في HTTP/HTTPS")
 require("containsStoredProfileValue" in reasoning_executor, "P0: منفذ الخطة لا يكتشف إعادة استخدام بيانات الخزنة")
 
 runtime = "\n".join([
     manifest, home, agents, chat, natural, intent_context, accessibility, secure_store,
-    personal, governance, policy, autonomous, settings, site_trust,
+    personal, governance, policy, authority, autonomous, settings, site_trust,
     reasoning_protocol, reasoning_bridge, reasoning_executor,
 ])
 require("org.hakim.omega.companion" not in runtime, "P0: منظومة الوكلاء أدخلت اعتمادًا على تطبيق موازٍ")

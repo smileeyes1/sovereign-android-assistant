@@ -6,9 +6,10 @@ import org.json.JSONObject
  * جذر الثقة القرآني لحكيم.
  * «من النواة إلى الحافة/ذريًا» هنا استعارة معمارية: كل طبقة حرجة ترث نفس الثوابت القيمية والشرعية.
  * لا يعني ذلك أن قوانين الذرة أو النواة أو الطب أو الهندسة تُستخرج من القرآن؛ الوسائل الدنيوية تُحسم بالدليل العلمي والتجريبي.
+ * الحراسة ليست نصًا إرشاديًا فقط: الطبقات الحاكمة تستدعي requireInherited وقت التشغيل، واختبار CI يمنع فقد الوراثة.
  */
 object HakimQuranicInvariantKernel {
-    const val VERSION = "QURANIC-KERNEL-TO-EDGE-2026-09-14-v1"
+    const val VERSION = "QURANIC-KERNEL-TO-EDGE-2026-09-14-v2"
 
     data class Attestation(
         val scope: String,
@@ -62,6 +63,7 @@ object HakimQuranicInvariantKernel {
     fun status(): JSONObject = JSONObject()
         .put("version", VERSION)
         .put("kernel_to_edge_inheritance", true)
+        .put("runtime_fail_closed_attestation", true)
         .put("atomic_inheritance_is_architectural_metaphor", true)
         .put("quranic_normative_default", true)
         .put("authentic_sunnah_guidance", true)

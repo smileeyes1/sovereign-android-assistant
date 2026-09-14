@@ -81,6 +81,13 @@ object HakimSelfCheck {
         check("التكيف يعيد ترتيب مرشحات آمنة فقط", adaptive.optBoolean("safe_candidates_only"))
         check("الرجوع إلى خط الأساس متاح", adaptive.optBoolean("baseline_fallback"))
 
+        val proactive = HakimProactiveEngine.status(context)
+        check("محرك المبادرة الذاتية موجود", proactive.optBoolean("proactive_engine"))
+        check("الأعمال المفيدة الآمنة تلقائية", proactive.optBoolean("beneficial_safe_actions_auto"))
+        check("المبادرة لا تفوض الأثر العالي بصمت", proactive.optBoolean("high_impact_never_silently_authorized"))
+        check("السكوت لا يصبح موافقة عبر المبادرة", proactive.optBoolean("silence_not_consent"))
+        check("المبادرة لا توسع سرًا أو صلاحية", proactive.optBoolean("no_secret_or_permission_escalation"))
+
         val integration = HakimIntegrationFabric.status(context)
         val structural = integration.optJSONObject("structural") ?: JSONObject()
         val runtime = integration.optJSONObject("runtime") ?: JSONObject()
@@ -89,6 +96,7 @@ object HakimSelfCheck {
         check("الجذر القرآني موروث داخل نسيج التكامل", structural.optBoolean("quranic_root_inherited"), "fail")
         check("الإنسان أولًا مدمج في نسيج التكامل", structural.optBoolean("human_first_integrated"), "fail")
         check("التعلم التكيفي مدمج في نسيج التكامل", structural.optBoolean("adaptive_learning_integrated"), "fail")
+        check("المبادرة الذاتية مدمجة في نسيج التكامل", structural.optBoolean("proactive_engine_integrated"), "fail")
         check(
             "الجاهزية الخارجية مفصولة عن سلامة القلب",
             runtime.optBoolean("runtime_readiness_is_not_structural_integrity"),
@@ -129,7 +137,7 @@ object HakimSelfCheck {
         val scheduler = context.getSystemService(JobScheduler::class.java)
         val jobs = try { scheduler.allPendingJobs.map { it.id }.toSet() } catch (_: Exception) { emptySet() }
         check("التحديث الذاتي مجدول", jobs.contains(771204), "warn")
-        check("الفحص/التطور الدوري مجدول", jobs.contains(JOB_ID), "warn")
+        check("الفحص/التطور/المبادرة الدورية مجدولة", jobs.contains(JOB_ID), "warn")
         check("حارس استعادة الاتصال مجدول", jobs.contains(HakimConnectionResilience.JOB_ID), "warn")
 
         val lastSocketError = mainPrefs.getString("last_socket_error", "").orEmpty()
@@ -163,13 +171,14 @@ object HakimSelfCheck {
             .put("governance", governance)
             .put("human_first", human)
             .put("adaptive_learning", adaptive)
+            .put("proactive", proactive)
             .put("integration", integration)
             .put("intent", intent)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(38000))
+            .putString("last_self_check", report.toString().take(40000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

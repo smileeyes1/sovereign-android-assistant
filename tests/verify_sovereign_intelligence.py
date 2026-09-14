@@ -33,7 +33,9 @@ for mode in ["AUTO", "AUTO_VERIFY", "RESEARCH_FIRST", "APPROVAL_GATE", "BLOCK"]:
 for dim in ["benefit", "evidence", "reversibility", "authority", "privacy", "safety", "clarity", "costFit", "burdenReduction", "freshness"]:
     require(dim in decision, f"P0: بُعد القرار {dim} مفقود")
 require("القيود الحاكمة بوابات لا أوزان تعويضية" in decision, "P0: المصفوفة قد تعوض خطرًا حاكمًا بنقاط منفعة")
-require("HakimDecisionMatrix.evaluate" in sovereign and "HakimDecisionMatrix.promptContext" in agents, "P0: المصفوفة ليست في مسار القرار الفعلي")
+require("HakimDecisionMatrix.evaluate" in sovereign, "P0: المحرك السيادي لا يقيّم مصفوفة القرار")
+require("HakimDecisionMatrix.promptContext" in sovereign, "P0: المحرك السيادي لا يمرر تفسير المصفوفة")
+require("HakimSovereignEngine.promptContext" in agents, "P0: الوكيل القائد لا يرث قرار المحرك السيادي")
 
 require("القرآن الكريم والسنة الصحيحة" in religious, "P0: مرجعية النزاهة الشرعية غير مثبتة")
 require("ميّز صراحة بين" in religious and "التفسير" in religious and "الاجتهاد" in religious, "P0: فصل النص الشرعي عن التفسير/الاجتهاد مفقود")
@@ -56,6 +58,7 @@ require("RELIGIOUS" in agents and "RESILIENCE" in agents, "P0: وكلاء الن
 require("HakimSovereignEngine.assess" in agents and "HakimSovereignEngine.promptContext" in agents, "P0: المحرك السيادي غير داخل خطة/موجه القائد")
 
 require("MAX_STEPS" in autonomous and "fingerprint" in autonomous, "P0: التنفيذ الذاتي بلا حد أو منع دوران")
+require("HakimMissionLedger" in autonomous and "HakimSovereignEngine" in autonomous, "P0: الحلقة المحلية لا تسجل التقدم في المهمة السيادية")
 require("cycle < 2" in chat, "P0: دورات الاستدلال بلا حد مانع للدوران")
 require("arr.length() > 8" in protocol, "P0: خطة الاستدلال بلا حد أفعال")
 for forbidden in ["shell", "exec", "javascript", "tap_xy", "adb"]:

@@ -15,13 +15,15 @@ object HakimPersonalVault {
     private const val SHARE_WITH_REASONING = "share_profile_with_reasoning"
 
     val fields = listOf(
-        Field("full_name", "الاسم الكامل", listOf("الاسم", "الاسم الكامل", "الاسم الثلاثي", "name", "full name")),
-        Field("email", "البريد الإلكتروني", listOf("البريد", "البريد الإلكتروني", "الايميل", "الإيميل", "email", "e-mail")),
-        Field("phone", "رقم الهاتف", listOf("الهاتف", "رقم الهاتف", "الجوال", "الموبايل", "phone", "mobile", "tel")),
+        Field("full_name", "الاسم الكامل", listOf("الاسم الكامل", "الاسم الثلاثي", "full name")),
+        Field("first_name", "الاسم الأول", listOf("الاسم الأول", "الاسم الاول", "first name", "given name")),
+        Field("last_name", "اسم العائلة", listOf("اسم العائلة", "اسم العائله", "اللقب", "last name", "surname", "family name")),
+        Field("email", "البريد الإلكتروني", listOf("البريد", "البريد الإلكتروني", "الايميل", "الإيميل", "email", "e mail")),
+        Field("phone", "رقم الهاتف", listOf("الهاتف", "رقم الهاتف", "الجوال", "الموبايل", "phone", "mobile")),
         Field("address", "العنوان", listOf("العنوان", "عنوان السكن", "address", "street address")),
-        Field("city", "المدينة/البلدة", listOf("المدينة", "البلدة", "المحافظة", "city", "town")),
+        Field("city", "المدينة/البلدة", listOf("المدينة", "البلدة", "city", "town")),
         Field("country", "الدولة", listOf("الدولة", "البلد", "country")),
-        Field("job_title", "المسمى الوظيفي", listOf("المسمى الوظيفي", "الوظيفة", "المهنة", "job title", "occupation", "role")),
+        Field("job_title", "المسمى الوظيفي", listOf("المسمى الوظيفي", "الوظيفة", "المهنة", "job title", "occupation")),
         Field("organization", "جهة العمل", listOf("جهة العمل", "المؤسسة", "المدرسة", "الشركة", "organization", "company", "school", "employer"))
     )
 
@@ -69,10 +71,8 @@ object HakimPersonalVault {
         val label = normalize(rawLabel)
         if (label.isBlank() || forbidden(label)) return null
         for (field in fields) {
-            val match = field.aliases.any { alias ->
-                val a = normalize(alias)
-                label.contains(a) || a.contains(label)
-            } || label.contains(field.id.replace('_', ' '))
+            val fieldId = normalize(field.id)
+            val match = phraseMatch(label, fieldId) || field.aliases.any { phraseMatch(label, normalize(it)) }
             if (!match) continue
             val value = get(context, field.id)?.trim().orEmpty()
             if (value.isNotBlank()) return field to value
@@ -103,12 +103,19 @@ object HakimPersonalVault {
         }.take(3500)
     }
 
+    private fun phraseMatch(label: String, phrase: String): Boolean {
+        if (phrase.isBlank()) return false
+        if (label == phrase) return true
+        return " $label ".contains(" $phrase ")
+    }
+
     private fun normalize(v: String): String = v.lowercase()
+        .replace(Regex("([a-z])([A-Z])"), "$1 $2")
         .replace(Regex("[_\\-.:/]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()
 
     private fun forbidden(v: String): Boolean = Regex(
-        "(?i)(password|passcode|otp|pin|cvv|cvc|card.?number|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|رقم.?البطاقة|مفتاح.?سري)"
+        "(?i)(password|passcode|\\botp\\b|\\bpin\\b|cvv|cvc|card.?number|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|رقم.?البطاقة|مفتاح.?سري)"
     ).containsMatchIn(v)
 }

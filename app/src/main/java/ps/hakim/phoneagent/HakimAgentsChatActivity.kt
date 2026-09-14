@@ -23,6 +23,7 @@ class HakimAgentsChatActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var agentSpinner: Spinner
     private lateinit var scroll: ScrollView
+    private var busy = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,6 +81,7 @@ class HakimAgentsChatActivity : Activity() {
         row.addView(button("افهم فقط") { submit(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(row)
 
+        root.addView(button("النظام والبيانات") { startActivity(Intent(this, HakimSystemSettingsActivity::class.java)) })
         root.addView(button("فتح متصفح حكيم") { startActivity(Intent(this, MainActivity::class.java)) })
         setContentView(root)
     }
@@ -90,6 +92,10 @@ class HakimAgentsChatActivity : Activity() {
     }
 
     private fun submit(execute: Boolean) {
+        if (busy) {
+            appendAssistant("أنا ما زلت أنفذ الدورة الحالية؛ لن أبدأ دورة موازية قد تتعارض معها.")
+            return
+        }
         val typed = input.text.toString().trim()
         val cue = typed.ifBlank { "أكمل" }
         appendUser(if (typed.isBlank()) "…" else typed)
@@ -113,7 +119,24 @@ class HakimAgentsChatActivity : Activity() {
             return
         }
 
-        sendToReasoningEngine(HakimAgentSystem.agentPrompt(this, cue, preferred))
+        busy = true
+        HakimAutonomousExecutor.run(
+            activity = this,
+            goal = inference.resolvedRequest,
+            onProgress = { message -> appendAssistant(message) },
+            onComplete = { outcome ->
+                busy = false
+                when {
+                    outcome.completed -> appendAssistant("اكتملت الدورة المحلية بعد ${outcome.steps} خطوة، وظهرت علامة نجاح مرئية.")
+                    outcome.needsCredential -> appendAssistant("وصلت إلى خطوة اعتماد حساسة. لم ألمس السر؛ استخدم مدير اعتماد أندرويد أو أدخل السر في الحقل الآمن، ثم قل فقط «كمل».")
+                    outcome.needsApproval -> appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
+                    else -> {
+                        if (outcome.progressed) appendAssistant("أنجزت ${outcome.steps} خطوة محلية. ${outcome.reason}")
+                        sendToReasoningEngine(HakimAgentSystem.agentPrompt(this, cue, preferred))
+                    }
+                }
+            }
+        )
     }
 
     private fun sendToReasoningEngine(governedPrompt: String) {
@@ -124,7 +147,7 @@ class HakimAgentsChatActivity : Activity() {
         }
         try {
             startActivity(send)
-            appendAssistant("حوّلت المقصد والسياق الضروري إلى محرك الذكاء مع نظام الوكلاء ودستور حكيم، دون تمرير الحقول الحساسة.")
+            appendAssistant("حوّلت فقط ما بقي من المهمة والسياق الضروري إلى محرك الذكاء مع نظام الوكلاء، دون تمرير الحقول الحساسة افتراضيًا.")
         } catch (_: Exception) {
             copy(governedPrompt)
             try {

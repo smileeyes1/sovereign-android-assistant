@@ -20,13 +20,15 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/$BT/apksigner"
           test -x "$ANDROID_HOME/build-tools/$BT/zipalign"
           test -f "$ANDROID_HOME/build-tools/$BT/lib/apksigner.jar"
+          test -f "$ANDROID_HOME/build-tools/$BT/lib64/libc++.so"
       - name: تجهيز الحزمة
         run: |
           BT="${{ steps.bt.outputs.version }}"
-          mkdir -p export/lib
+          mkdir -p export/lib export/lib64
           cp "$ANDROID_HOME/build-tools/$BT/apksigner" export/apksigner
           cp "$ANDROID_HOME/build-tools/$BT/zipalign" export/zipalign
           cp "$ANDROID_HOME/build-tools/$BT/lib/apksigner.jar" export/lib/apksigner.jar
+          cp "$ANDROID_HOME/build-tools/$BT/lib64/libc++.so" export/lib64/libc++.so
           chmod +x export/apksigner export/zipalign
           printf '%s\n' "$BT" > export/BUILD_TOOLS_VERSION.txt
       - name: رفع الأدوات فقط بلا أي مفاتيح

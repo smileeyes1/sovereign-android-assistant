@@ -1,6 +1,8 @@
 package ps.hakim.phoneagent
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -29,6 +31,48 @@ class HakimSystemSettingsActivity : Activity() {
         load()
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        when (requestCode) {
+            REQ_EXPORT -> runCatching {
+                val bytes = HakimSovereignPortability.exportJson(this).toByteArray(Charsets.UTF_8)
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                    ?: error("تعذر فتح وجهة الحفظ")
+            }.onSuccess {
+                Toast.makeText(this, "تم حفظ النسخة السيادية في المكان الذي اخترته — بلا كلمات مرور أو مفاتيح خاصة", Toast.LENGTH_LONG).show()
+            }.onFailure {
+                Toast.makeText(this, "تعذر حفظ النسخة السيادية: ${it.message.orEmpty().take(160)}", Toast.LENGTH_LONG).show()
+            }
+
+            REQ_IMPORT -> runCatching {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val dataBytes = input.readBytes()
+                    if (dataBytes.size > 512 * 1024) error("الملف أكبر من الحد الآمن")
+                    String(dataBytes, Charsets.UTF_8)
+                } ?: error("تعذر قراءة الملف")
+            }.onSuccess { raw ->
+                AlertDialog.Builder(this)
+                    .setTitle("استعادة نسخة حكيم السيادية")
+                    .setMessage("سيتم استبدال النظام الحاكم وتعليمات المواقع وبيانات التعبئة غير الحساسة والثقة والمبادرة بما في هذه النسخة. لا تُستورد كلمات مرور أو OTP أو مفاتيح توقيع. هل تريد المتابعة؟")
+                    .setPositiveButton("استعادة") { _, _ ->
+                        val result = HakimSovereignPortability.importJson(this, raw, confirmed = true)
+                        if (result.success) {
+                            load()
+                            Toast.makeText(this, "${result.message} (${result.changed} عنصرًا/إعدادًا)", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            }.onFailure {
+                Toast.makeText(this, "تعذر قراءة النسخة: ${it.message.orEmpty().take(160)}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -40,13 +84,31 @@ class HakimSystemSettingsActivity : Activity() {
         root.addView(title("النظام الحاكم والبيانات — حكيم"))
         root.addView(note("حكيم يبدأ الآن بنواة حاكمة مكتملة تلقائيًا، لا بخانة فارغة. يمكنك تخصيصها، والفراغ يعني الرجوع إلى النواة الافتراضية لا إزالة الحاكمية. لا تضع كلمات مرور أو رموز تحقق أو بطاقات هنا."))
 
-        root.addView(section("الاستقلال والمبادرة"))
+        root.addView(section("الاستقلال السيادي والمبادرة"))
+        root.addView(note("الحالة: ${if (HakimSovereignIndependence.isCoreSovereign(this)) "القلب السيادي مستقل عن مزود خارجي منفرد" else "توجد فجوة استقلال بنيوية تحتاج إصلاحًا"}. الخدمات الخارجية قدرات قابلة للاستبدال وليست حاكمًا."))
         proactiveEnabled = CheckBox(this).apply {
             text = "المبادرة الذاتية المفيدة — ينفذ حكيم تلقائيًا كل عمل آمن ومفيد لا يحتاج موافقة جديدة"
             textSize = 16f
         }
         root.addView(proactiveEnabled)
         root.addView(note("مفعلة افتراضيًا. تشمل الفحص والتعلم والتحسين والتعافي واستعادة الاتصال وفحص التحديثات واستئناف المهمة الآمنة. المال والحذف النهائي والإرسال الحساس والأسرار والصلاحيات الكبيرة تبقى عند بوابة موافقتك."))
+
+        val portabilityRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        portabilityRow.addView(Button(this).apply {
+            text = "تصدير نسخة سيادية"
+            textSize = 15f
+            setOnClickListener { exportSovereignBackup() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        portabilityRow.addView(Button(this).apply {
+            text = "استعادة نسخة سيادية"
+            textSize = 15f
+            setOnClickListener { importSovereignBackup() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(portabilityRow)
+        root.addView(note("النسخة السيادية تنقل النواة المخصصة وتعليمات المواقع وبيانات التعبئة غير الحساسة والثقة والتفضيلات. كلمات المرور ورموز التحقق والبطاقات ومفتاح توقيع التطبيق مستبعدة عمدًا."))
 
         root.addView(section("النظام الحاكم العام — مفعّل افتراضيًا"))
         globalInstructions = EditText(this).apply {
@@ -65,7 +127,7 @@ class HakimSystemSettingsActivity : Activity() {
                 Toast.makeText(this@HakimSystemSettingsActivity, "تمت استعادة نواة حكيم الافتراضية في الحقل — اضغط حفظ واعتماد لتثبيت تخصيصك إن أردت", Toast.LENGTH_LONG).show()
             }
         })
-        root.addView(note("المسار الحاكم المدمج: و؟ → و؟ → و؟ → لِمَ؟ → و؟ → و؟ → اعتمد → أصلح → أكمل → هَيّا. وهو يعمل مع المقصد والدليل والإنسان أولًا والتعلم والتعافي ومنع التخمين والانحدار."))
+        root.addView(note("المسار الحاكم المدمج: و؟ → و؟ → و؟ → لِمَ؟ → و؟ → و؟ → اعتمد → أصلح → أكمل → هَيّا. وهو يعمل مع المقصد والدليل والإنسان أولًا والاستقلال والتعلم والتعافي ومنع التخمين والانحدار."))
 
         root.addView(section("تعليمات خاصة بالموقع"))
         siteHost = EditText(this).apply {
@@ -126,6 +188,23 @@ class HakimSystemSettingsActivity : Activity() {
         setContentView(scroll)
     }
 
+    private fun exportSovereignBackup() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "Hakim-Sovereign-Backup.json")
+        }
+        startActivityForResult(intent, REQ_EXPORT)
+    }
+
+    private fun importSovereignBackup() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(intent, REQ_IMPORT)
+    }
+
     private fun load() {
         proactiveEnabled.isChecked = HakimProactiveEngine.isEnabled(this)
         globalInstructions.setText(HakimGovernanceStore.global(this))
@@ -144,7 +223,6 @@ class HakimSystemSettingsActivity : Activity() {
     private fun save() {
         HakimProactiveEngine.setEnabled(this, proactiveEnabled.isChecked)
         val globalOk = HakimGovernanceStore.setGlobal(this, globalInstructions.text.toString())
-        // بعد الحفظ الفارغ أعد إظهار خط الأساس الافتراضي فورًا حتى لا تبدو الحاكمية مفقودة.
         if (globalInstructions.text.toString().isBlank()) globalInstructions.setText(HakimGovernanceStore.global(this))
 
         val host = siteHost.text.toString().trim()
@@ -185,5 +263,10 @@ class HakimSystemSettingsActivity : Activity() {
         textSize = 14f
         gravity = Gravity.RIGHT
         setPadding(4, 4, 4, 10)
+    }
+
+    companion object {
+        private const val REQ_EXPORT = 7301
+        private const val REQ_IMPORT = 7302
     }
 }

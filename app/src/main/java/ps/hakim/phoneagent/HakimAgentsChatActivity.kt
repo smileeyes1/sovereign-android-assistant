@@ -4,33 +4,44 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.Button
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.Spinner
+import android.widget.ListView
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import java.util.Locale
 
-/** واجهة واحدة ذكية للمستخدم؛ نص/صوت، اختيار الوكيل اختياري، والوضع الافتراضي تلقائي. */
+/**
+ * واجهة حكيم الرئيسية: محادثة عربية حديثة خفيفة، قريبة من بساطة واجهات GPT دون نسخ هوية بصرية خاصة.
+ * تستخدم ListView المعاد تدويره بدل transcript متضخم، وتؤخر TTS حتى الحاجة حفاظًا على الهاتف.
+ */
 class HakimAgentsChatActivity : Activity() {
-    private lateinit var transcript: TextView
     private lateinit var input: EditText
-    private lateinit var agentSpinner: Spinner
-    private lateinit var scroll: ScrollView
+    private lateinit var messageList: ListView
+    private lateinit var messageAdapter: HakimChatMessageAdapter
     private lateinit var statusView: TextView
-    private lateinit var voiceReplyButton: Button
+    private lateinit var agentButton: TextView
+    private lateinit var stopButton: TextView
+    private lateinit var sendButton: TextView
+    private var preferredAgent: HakimAgentSystem.Agent? = null
     private var busy = false
+        set(value) {
+            field = value
+            if (::stopButton.isInitialized) stopButton.visibility = if (value) View.VISIBLE else View.GONE
+            if (::sendButton.isInitialized) sendButton.alpha = if (value) 0.72f else 1f
+        }
     private val uiHandler = Handler(Looper.getMainLooper())
     private var tts: TextToSpeech? = null
     private var ttsReady = false
@@ -43,19 +54,19 @@ class HakimAgentsChatActivity : Activity() {
         HakimLearning.initialize(this)
         HakimProactiveEngine.initialize(this)
         voiceRepliesEnabled = getSharedPreferences("hakim_ui", MODE_PRIVATE).getBoolean("voice_replies", false)
-        tts = TextToSpeech(this) { status ->
-            ttsReady = status == TextToSpeech.SUCCESS &&
-                (tts?.setLanguage(Locale("ar")) ?: TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE
-            updateVoiceReplyLabel()
-        }
         buildUi()
+        if (voiceRepliesEnabled) initializeTtsIfNeeded()
         setStatus("جاهز • يفهم من أقل إشارة • يتعلم ويبادر محليًا")
-        appendAssistant("أنا حكيم. تحدث معي أو اكتب أقل تلميح: حرف، رمز، كلمة، «كمل»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أقود كيف تلقائيًا داخل حدودك، وأتعلم من النجاح والفشل محليًا، وأبادر بالأعمال المفيدة الآمنة دون انتظار طلب جديد. يمكنك قول «توقف» في أي وقت لإلغاء المهمة فورًا.")
+        appendAssistant(
+            "أنا حكيم. اكتب أو تحدث بطريقتك الطبيعية، حتى لو كانت الإشارة قصيرة. " +
+                "أقود كيف داخل حدودك، وأتعلم من النجاح والفشل، وأبادر بالأعمال المفيدة الآمنة. " +
+                "يمكنك قول «توقف» في أي وقت."
+        )
     }
 
     override fun onResume() {
         super.onResume()
-        uiHandler.postDelayed({ maybeResumeProactively() }, 700L)
+        uiHandler.postDelayed({ maybeResumeProactively() }, 650L)
     }
 
     override fun onDestroy() {
@@ -79,82 +90,199 @@ class HakimAgentsChatActivity : Activity() {
             return
         }
         input.setText(heard)
+        input.setSelection(input.text.length)
         setStatus("فهمت الصوت • أحلل المقصد")
         submit(true)
     }
 
     private fun buildUi() {
+        val palette = HakimChatUi.palette(this)
+        window.statusBarColor = palette.background
+        window.navigationBarColor = palette.background
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(18, 20, 18, 18)
+            setBackgroundColor(palette.background)
         }
 
-        root.addView(TextView(this).apply {
-            text = "حكيم — الواجهة الذكية"
-            textSize = 25f
-            gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 6)
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 12f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 8f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 12f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 6f)
+            )
+        }
+
+        val titleBlock = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.START
+        }
+        titleBlock.addView(TextView(this).apply {
+            text = "حكيم"
+            textSize = 22f
+            setTextColor(palette.text)
+            setTypeface(typeface, Typeface.BOLD)
+            includeFontPadding = false
+            textDirection = View.TEXT_DIRECTION_RTL
         })
-
         statusView = TextView(this).apply {
-            textSize = 14f
-            gravity = Gravity.CENTER
+            textSize = 12.5f
+            setTextColor(palette.muted)
+            includeFontPadding = false
             textDirection = View.TEXT_DIRECTION_RTL
-            setPadding(8, 2, 8, 10)
+            setPadding(0, HakimChatUi.dp(this@HakimAgentsChatActivity, 3f), 0, 0)
         }
-        root.addView(statusView)
+        titleBlock.addView(statusView)
+        header.addView(titleBlock, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        val labels = mutableListOf("تلقائي — حكيم يختار")
-        labels.addAll(HakimAgentSystem.Agent.values().map { it.title })
-        agentSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@HakimAgentsChatActivity, android.R.layout.simple_spinner_dropdown_item, labels)
-        }
-        root.addView(agentSpinner)
+        agentButton = pill("تلقائي — حكيم يختار", palette.surface, palette.text) { showAgentMenu(agentButton) }
+        header.addView(agentButton)
 
-        scroll = ScrollView(this)
-        transcript = TextView(this).apply {
-            textSize = 16f
-            gravity = Gravity.RIGHT
-            setPadding(12, 14, 12, 14)
-            textDirection = View.TEXT_DIRECTION_RTL
+        stopButton = pill("■", palette.danger, palette.onAccent) {
+            cancelCurrentMission("أوقف المستخدم المهمة من زر الإيقاف")
+        }.apply {
+            contentDescription = "إيقاف المهمة فورًا"
+            visibility = View.GONE
         }
-        scroll.addView(transcript)
-        root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        header.addView(stopButton)
+
+        val menuButton = pill("⋮", palette.surface, palette.text) { showToolsMenu(it) }.apply {
+            contentDescription = "أدوات حكيم"
+            textSize = 24f
+        }
+        header.addView(menuButton)
+        root.addView(header)
+
+        messageAdapter = HakimChatMessageAdapter(this)
+        messageList = ListView(this).apply {
+            adapter = messageAdapter
+            divider = null
+            dividerHeight = 0
+            setBackgroundColor(palette.background)
+            isVerticalScrollBarEnabled = false
+            isSmoothScrollbarEnabled = false
+            transcriptMode = ListView.TRANSCRIPT_MODE_ALWAYS_SCROLL
+            setPadding(0, HakimChatUi.dp(this@HakimAgentsChatActivity, 8f), 0, HakimChatUi.dp(this@HakimAgentsChatActivity, 8f))
+            clipToPadding = false
+        }
+        root.addView(messageList, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        val composerOuter = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 10f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 6f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 10f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 10f)
+            )
+            setBackgroundColor(palette.background)
+        }
+
+        val composer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 6f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 5f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 6f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 5f)
+            )
+            background = HakimChatUi.rounded(palette.surface, 22f, this@HakimAgentsChatActivity, palette.border)
+        }
+
+        val mic = iconAction("🎙", palette.surfaceStrong, palette.text, "تحدث مع حكيم") { startVoiceInput() }
+        composer.addView(mic)
 
         input = EditText(this).apply {
-            hint = "تحدث أو اكتب أقل ما يخطر ببالك… أو اتركها فارغة واضغط نفّذ/أكمل"
-            minLines = 2
-            maxLines = 7
-            gravity = Gravity.TOP or Gravity.RIGHT
-            textSize = 18f
+            hint = "اكتب ما تريد… أو اتركه فارغًا ثم أرسل لأكمل"
+            setHintTextColor(palette.muted)
+            setTextColor(palette.text)
+            textSize = 17f
+            minLines = 1
+            maxLines = 5
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
+            textDirection = View.TEXT_DIRECTION_RTL
+            background = null
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            imeOptions = EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            setPadding(
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 8f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 7f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 8f),
+                HakimChatUi.dp(this@HakimAgentsChatActivity, 7f)
+            )
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    submit(true)
+                    true
+                } else false
+            }
         }
-        root.addView(input)
+        composer.addView(input, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        val voiceRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        sendButton = iconAction("↑", palette.accent, palette.onAccent, "نفّذ/أكمل") { submit(true) }.apply {
+            textSize = 24f
+        }
+        composer.addView(sendButton)
+        composerOuter.addView(composer)
+
+        composerOuter.addView(TextView(this).apply {
+            text = "حكيم قد يتوقف فقط عند قرار جوهري أو سر أو صلاحية لا يمكن تجاوزها بأمان."
+            textSize = 11f
+            setTextColor(palette.muted)
             gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        voiceRow.addView(button("🎙 تحدث") { startVoiceInput() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        voiceReplyButton = button("") { toggleVoiceReplies() }
-        voiceRow.addView(voiceReplyButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(voiceRow)
-        updateVoiceReplyLabel()
+            textDirection = View.TEXT_DIRECTION_RTL
+            setPadding(8, HakimChatUi.dp(this@HakimAgentsChatActivity, 5f), 8, 0)
+        })
+        root.addView(composerOuter)
 
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        row.addView(button("نفّذ/أكمل") { submit(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(button("افهم فقط") { submit(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(row)
-
-        root.addView(button("إيقاف المهمة فورًا") { cancelCurrentMission("أوقف المستخدم المهمة من زر الإيقاف") })
-        root.addView(button("النظام والبيانات") { startActivity(Intent(this, HakimSystemSettingsActivity::class.java)) })
-        root.addView(button("فتح متصفح حكيم") { startActivity(Intent(this, MainActivity::class.java)) })
         setContentView(root)
+    }
+
+    private fun showAgentMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 100, 0, "تلقائي — حكيم يختار")
+        HakimAgentSystem.Agent.values().forEachIndexed { index, agent ->
+            popup.menu.add(0, 1000 + index, index + 1, agent.title)
+        }
+        popup.setOnMenuItemClickListener { item ->
+            preferredAgent = if (item.itemId == 100) null else HakimAgentSystem.Agent.values().getOrNull(item.itemId - 1000)
+            updateAgentLabel()
+            true
+        }
+        popup.show()
+    }
+
+    private fun showToolsMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, if (voiceRepliesEnabled) "إيقاف الرد الصوتي" else "تفعيل الرد الصوتي")
+        popup.menu.add(0, 2, 1, "افهم فقط")
+        popup.menu.add(0, 3, 2, "إيقاف المهمة فورًا")
+        popup.menu.add(0, 4, 3, "النظام والبيانات")
+        popup.menu.add(0, 5, 4, "مركز حكيم والاتصال المحلي")
+        popup.menu.add(0, 6, 5, "فتح متصفح حكيم")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> toggleVoiceReplies()
+                2 -> submit(false)
+                3 -> cancelCurrentMission("أوقف المستخدم المهمة من قائمة الأدوات")
+                4 -> startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
+                5 -> startActivity(Intent(this, UnifiedHomeActivity::class.java).putExtra("hakim_control_center", true))
+                6 -> startActivity(Intent(this, MainActivity::class.java))
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun updateAgentLabel() {
+        if (::agentButton.isInitialized) agentButton.text = preferredAgent?.title ?: "تلقائي — حكيم يختار"
     }
 
     private fun maybeResumeProactively() {
@@ -184,6 +312,17 @@ class HakimAgentsChatActivity : Activity() {
         }
     }
 
+    private fun initializeTtsIfNeeded() {
+        if (tts != null) return
+        tts = TextToSpeech(this) { status ->
+            ttsReady = status == TextToSpeech.SUCCESS &&
+                (tts?.setLanguage(Locale("ar")) ?: TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE
+            if (voiceRepliesEnabled && !ttsReady) {
+                Toast.makeText(this, "محرك النطق العربي غير جاهز على الجهاز", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun startVoiceInput() {
         if (busy) {
             appendAssistant("أنا أنفذ الآن. يمكنك قول «توقف» بعد انتهاء الاستماع أو استخدام زر الإيقاف.")
@@ -209,25 +348,20 @@ class HakimAgentsChatActivity : Activity() {
     private fun toggleVoiceReplies() {
         voiceRepliesEnabled = !voiceRepliesEnabled
         getSharedPreferences("hakim_ui", MODE_PRIVATE).edit().putBoolean("voice_replies", voiceRepliesEnabled).apply()
-        updateVoiceReplyLabel()
-        if (voiceRepliesEnabled && !ttsReady) {
-            Toast.makeText(this, "سيعمل الرد الصوتي عند جاهزية محرك النطق العربي في الجهاز", Toast.LENGTH_LONG).show()
+        if (voiceRepliesEnabled) {
+            initializeTtsIfNeeded()
+            Toast.makeText(this, "الرد الصوتي مفعّل", Toast.LENGTH_SHORT).show()
+        } else {
+            tts?.stop()
+            Toast.makeText(this, "الرد الصوتي متوقف", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun updateVoiceReplyLabel() {
-        if (!::voiceReplyButton.isInitialized) return
-        voiceReplyButton.text = if (voiceRepliesEnabled) "🔊 الرد الصوتي: يعمل" else "🔇 الرد الصوتي: متوقف"
     }
 
     private fun setStatus(text: String) {
         if (::statusView.isInitialized) statusView.text = text
     }
 
-    private fun selectedAgent(): HakimAgentSystem.Agent? {
-        val p = agentSpinner.selectedItemPosition
-        return if (p <= 0) null else HakimAgentSystem.Agent.values().getOrNull(p - 1)
-    }
+    private fun selectedAgent(): HakimAgentSystem.Agent? = preferredAgent
 
     private fun submit(execute: Boolean) {
         val typed = input.text.toString().trim()
@@ -523,19 +657,22 @@ class HakimAgentsChatActivity : Activity() {
         startActivity(Intent(this, HakimAgentsChatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
     }
 
-    private fun appendUser(text: String) = append("أنت", text)
+    private fun appendUser(text: String) = append(HakimChatMessageAdapter.Role.USER, text)
 
     private fun appendAssistant(text: String) {
-        append("حكيم", text)
+        append(HakimChatMessageAdapter.Role.ASSISTANT, text)
         if (voiceRepliesEnabled && ttsReady && text.isNotBlank()) {
             tts?.speak(text.take(1200), TextToSpeech.QUEUE_ADD, null, "hakim_${System.currentTimeMillis()}")
         }
     }
 
-    private fun append(who: String, text: String) {
-        transcript.append(if (transcript.text.isEmpty()) "" else "\n\n")
-        transcript.append("$who:\n$text")
-        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    private fun append(role: HakimChatMessageAdapter.Role, text: String) {
+        if (!::messageAdapter.isInitialized) return
+        messageAdapter.append(role, text)
+        messageList.post {
+            val last = messageAdapter.count - 1
+            if (last >= 0) messageList.setSelection(last)
+        }
     }
 
     private fun copy(text: String) {
@@ -543,9 +680,34 @@ class HakimAgentsChatActivity : Activity() {
         Toast.makeText(this, "تم نسخ المهمة المحكومة", Toast.LENGTH_SHORT).show()
     }
 
-    private fun button(label: String, action: () -> Unit): Button = Button(this).apply {
+    private fun pill(label: String, fill: Int, textColor: Int, action: (View) -> Unit): TextView = TextView(this).apply {
         text = label
-        textSize = 17f
+        textSize = 13f
+        setTextColor(textColor)
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        isClickable = true
+        isFocusable = true
+        setPadding(
+            HakimChatUi.dp(this@HakimAgentsChatActivity, 10f),
+            HakimChatUi.dp(this@HakimAgentsChatActivity, 8f),
+            HakimChatUi.dp(this@HakimAgentsChatActivity, 10f),
+            HakimChatUi.dp(this@HakimAgentsChatActivity, 8f)
+        )
+        background = HakimChatUi.rounded(fill, 18f, this@HakimAgentsChatActivity)
+        setOnClickListener { action(it) }
+    }
+
+    private fun iconAction(label: String, fill: Int, textColor: Int, description: String, action: () -> Unit): TextView = TextView(this).apply {
+        text = label
+        textSize = 20f
+        setTextColor(textColor)
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        contentDescription = description
+        minWidth = HakimChatUi.dp(this@HakimAgentsChatActivity, 44f)
+        minHeight = HakimChatUi.dp(this@HakimAgentsChatActivity, 44f)
+        background = HakimChatUi.rounded(fill, 22f, this@HakimAgentsChatActivity)
         setOnClickListener { action() }
     }
 }

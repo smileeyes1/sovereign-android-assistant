@@ -146,7 +146,8 @@ object HakimReasoningPlanExecutor {
         val v = value.trim()
         if (v.isBlank()) return false
         return HakimPersonalVault.all(activity).values.any { saved ->
-            saved.isNotBlank() && (v == saved || v.contains(saved))
+            val s = saved.trim()
+            s.length >= 3 && (v == s || v.contains(s))
         }
     }
 }

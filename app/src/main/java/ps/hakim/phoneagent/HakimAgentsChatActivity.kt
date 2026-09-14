@@ -129,6 +129,10 @@ class HakimAgentsChatActivity : Activity() {
                 when {
                     outcome.completed -> appendAssistant("اكتملت الدورة المحلية بعد ${outcome.steps} خطوة، وظهرت علامة نجاح مرئية.")
                     outcome.needsCredential -> appendAssistant("وصلت إلى خطوة اعتماد حساسة. لم ألمس السر؛ استخدم مدير اعتماد أندرويد أو أدخل السر في الحقل الآمن، ثم قل فقط «كمل».")
+                    outcome.needsDataTrust -> {
+                        appendAssistant("الموقع الحالي يحتاج استخدام بيانات خزنة حكيم لكنه غير معتمد لذلك. افتح «النظام والبيانات»، راجع اسم الموقع وفعّل الثقة به؛ بعدها يكفي أن تقول «كمل».")
+                        startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
+                    }
                     outcome.needsApproval -> appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
                     else -> {
                         if (outcome.progressed) appendAssistant("أنجزت ${outcome.steps} خطوة محلية. ${outcome.reason}")

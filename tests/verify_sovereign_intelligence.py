@@ -1,0 +1,66 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def text(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise SystemExit(message)
+
+
+build = text("app/build.gradle")
+manifest = text("app/src/main/AndroidManifest.xml")
+agents = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentSystem.kt")
+decision = text("app/src/main/java/ps/hakim/phoneagent/HakimDecisionMatrix.kt")
+religious = text("app/src/main/java/ps/hakim/phoneagent/HakimReligiousIntegrity.kt")
+mission = text("app/src/main/java/ps/hakim/phoneagent/HakimMissionLedger.kt")
+sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
+protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
+chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
+app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
+secure = text("app/src/main/java/ps/hakim/phoneagent/HakimSecureStore.kt")
+
+require("applicationId 'ps.hakim.stable'" in build, "P0: الذكاء السيادي خرج من تطبيق حكيم الواحد")
+require("org.hakim.omega.companion" not in "\n".join([manifest, agents, sovereign, app]), "P0: عاد اعتماد التطبيق الموازي")
+
+for mode in ["AUTO", "AUTO_VERIFY", "RESEARCH_FIRST", "APPROVAL_GATE", "BLOCK"]:
+    require(mode in decision, f"P0: نمط مصفوفة القرار {mode} مفقود")
+for dim in ["benefit", "evidence", "reversibility", "authority", "privacy", "safety", "clarity", "costFit", "burdenReduction", "freshness"]:
+    require(dim in decision, f"P0: بُعد القرار {dim} مفقود")
+require("القيود الحاكمة بوابات لا أوزان تعويضية" in decision, "P0: المصفوفة قد تعوض خطرًا حاكمًا بنقاط منفعة")
+require("HakimDecisionMatrix.evaluate" in sovereign and "HakimDecisionMatrix.promptContext" in agents, "P0: المصفوفة ليست في مسار القرار الفعلي")
+
+require("القرآن الكريم والسنة الصحيحة" in religious, "P0: مرجعية النزاهة الشرعية غير مثبتة")
+require("ميّز صراحة بين" in religious and "التفسير" in religious and "الاجتهاد" in religious, "P0: فصل النص الشرعي عن التفسير/الاجتهاد مفقود")
+require("الخلاف المعتبر" in religious, "P0: احترام الخلاف الفقهي المعتبر مفقود")
+require("لا تنقل آية أو حديثًا" in religious, "P0: بوابة التثبت من النص الشرعي مفقودة")
+require("الحروف المقطعة" in religious and "قوى تقنية" in religious, "P0: حاجز عدم تحويل القرآن إلى خوارزميات/قوى تقنية مفقود")
+require("RELIGIOUS" in agents and "HakimReligiousIntegrity" in agents, "P0: وكيل النزاهة الشرعية غير موصول بالقائد")
+
+for phase in ["UNDERSTAND", "PLAN", "EXECUTE", "VERIFY", "RECOVER", "WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "COMPLETE", "BLOCKED"]:
+    require(phase in mission, f"P0: مرحلة المهمة {phase} مفقودة")
+require("wip_limit" in mission and "1" in mission, "P0: WIP=1 غير مثبت")
+require("HakimSecureStore" in mission, "P0: غاية المهمة ليست محفوظة في المخزن المشفر")
+require("sanitizeGoal" in mission and "سري محذوف" in mission, "P0: سجل المهمة قد يخزن أسرارًا")
+require("restoreActiveMissionState" in app and "Phase.RECOVER" in app, "P0: المهمة لا تستعاد بعد إعادة تشغيل التطبيق")
+
+require("MAX_CONSECUTIVE_FAILURES = 3" in sovereign, "P0: لا توجد عتبة لإعادة التخطيط بعد الفشل")
+require("HARD_FAILURE_LIMIT = 5" in sovereign, "P0: لا يوجد حد يمنع الدوران بعد الفشل المتكرر")
+require("WIP=1" in sovereign and "HakimMissionLedger" in sovereign, "P0: المحرك السيادي غير مربوط بسجل المهمة")
+require("RELIGIOUS" in agents and "RESILIENCE" in agents, "P0: وكلاء النزاهة/الاستمرارية غير موجودين")
+require("HakimSovereignEngine.assess" in agents and "HakimSovereignEngine.promptContext" in agents, "P0: المحرك السيادي غير داخل خطة/موجه القائد")
+
+require("MAX_STEPS" in autonomous and "fingerprint" in autonomous, "P0: التنفيذ الذاتي بلا حد أو منع دوران")
+require("cycle < 2" in chat, "P0: دورات الاستدلال بلا حد مانع للدوران")
+require("arr.length() > 8" in protocol, "P0: خطة الاستدلال بلا حد أفعال")
+for forbidden in ["shell", "exec", "javascript", "tap_xy", "adb"]:
+    require(forbidden not in protocol.lower(), f"P0: بروتوكول الاستدلال يسمح بتنفيذ واسع: {forbidden}")
+require("containsSecret" in protocol, "P0: بروتوكول الاستدلال لا يحجب الأسرار")
+require("AndroidKeyStore" in secure and "AES/GCM/NoPadding" in secure, "P0: التخزين المحلي المحمي مفقود")
+
+print("HAKIM_SOVEREIGN_INTELLIGENCE=PASS")

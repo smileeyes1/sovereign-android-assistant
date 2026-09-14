@@ -19,13 +19,12 @@ resource = text("app/src/main/java/ps/hakim/phoneagent/HakimResourceGovernor.kt"
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
-require("versionCode 20020" in build, "P0: واجهة المحادثة الحديثة ليست إصدارًا أعلى مستقلًا")
-require("2.0.20-chat-first-lightweight" in build, "P0: اسم إصدار واجهة حكيم الحديثة مفقود")
+require("versionCode 20021" in build, "P0: واجهة حكيم والاستدلال الداخلي ليست إصدارًا أعلى مستقلًا")
+require("2.0.21-chat-first-inapp-reasoning" in build, "P0: اسم إصدار واجهة حكيم الحديثة مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: التطبيق لا يفتح مباشرة على المحادثة")
 
-# سجل الرسائل يجب أن يكون معاد التدوير ومحدود الذاكرة، لا transcript متضخم.
 require("class HakimChatMessageAdapter" in ui and "BaseAdapter" in ui, "P0: سجل الرسائل غير معاد التدوير")
 require("hasStableIds" in ui, "P0: محول الرسائل لا يعلن IDs ثابتة")
 require("maxMessages" in ui and "trimToBudget" in ui, "P0: سجل الرسائل قد ينمو بلا حد")
@@ -37,7 +36,6 @@ require("transcript.append" not in chat, "P0: عاد تراكم النص الك�
 require("ListView" in chat and "HakimChatMessageAdapter" in chat, "P0: واجهة المحادثة لا تستخدم السجل الخفيف")
 require("TRANSCRIPT_MODE_ALWAYS_SCROLL" in chat, "P0: قائمة الرسائل لا تتبع آخر الرسائل بكفاءة")
 
-# واجهة حديثة: محادثة أولًا، Composer ثابت، صوت، إرسال، أدوات مخفية بدل ازدحام الشاشة.
 require('text = "حكيم"' in chat, "P0: رأس واجهة حكيم مفقود")
 require('"نفّذ/أكمل"' in chat and "contentDescription = description" in chat,
         "P0: زر الإرسال/الاستمرار غير واضح أو غير موسوم لسهولة الوصول")
@@ -49,14 +47,12 @@ require("startVoiceInput" in chat and "RecognizerIntent" in chat, "P0: الإد�
 require("إيقاف المهمة فورًا" in chat and "cancelCurrentMission" in chat, "P0: إيقاف المهمة ليس متاحًا فورًا")
 require("مركز حكيم والاتصال المحلي" in chat, "P0: مركز الاتصال المحلي غير قابل للوصول من الواجهة")
 
-# TTS لا يبدأ بلا حاجة، لتخفيف الذاكرة/زمن البدء.
 pos_build = chat.find("buildUi()")
 pos_init = chat.find("initializeTtsIfNeeded()")
 require(pos_build >= 0 and pos_init > pos_build, "P0: TTS قد يبدأ قبل بناء واجهة المحادثة")
 require("if (voiceRepliesEnabled) initializeTtsIfNeeded()" in chat, "P0: TTS يبدأ حتى عندما يكون الرد الصوتي مغلقًا")
 require("if (tts != null) return" in chat, "P0: يمكن إنشاء أكثر من محرك TTS")
 
-# لا مكتبة UI ثقيلة جديدة؛ حاكم الموارد يبقى المرجع للأداء.
 require("HakimResourceGovernor.snapshot" in ui, "P0: الواجهة لا تتكيف مع ضغط موارد الهاتف")
 require("RecyclerView" not in build and "compose" not in build.lower(), "P0: أضيف إطار UI أثقل دون حاجة مادية")
 require("quality_and_governance_never_downgraded" in resource, "P0: تحسين الواجهة قد يخفض جودة الحكم")

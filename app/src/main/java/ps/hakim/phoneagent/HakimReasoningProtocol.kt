@@ -29,6 +29,7 @@ object HakimReasoningProtocol {
             appendLine("أنواع actions المسموحة فقط: open_url{url}، click_text{text}، set_text{target,value}، fill_profile{target,field_id}، back{}، wait{ms}.")
             appendLine("عند الحاجة لبيانات المستخدم استخدم fill_profile ولا تخمّن القيمة ولا تطلب كشفها. field_id المسموحة: ${allowedProfileFields.joinToString(",")}.")
             appendLine("لا تضع كلمة مرور/OTP/PIN/CVV/بطاقة/مفتاح سري في الخطة، ولا تقترح دفعًا أو حذفًا نهائيًا أو إرسالًا حساسًا كفعل تلقائي؛ حكيم يحكم ذلك محليًا.")
+            appendLine("إذا كانت actions غير فارغة فلا تعتبر الجولة مكتملة؛ نفّذ الأفعال أولًا ثم تحقق في جولة لاحقة. done=true صالح فقط عندما actions=[] ولا يلزم فعل إضافي.")
             appendLine("إذا لم يلزم أي فعل، اجعل done=true وactions=[]، ويمكنك وضع خلاصة قصيرة في message.")
         }
         return Request((basePrompt + protocol).take(24000), begin, end)
@@ -58,8 +59,10 @@ object HakimReasoningProtocol {
             if (type == "fill_profile" && args.optString("field_id") !in allowedProfileFields) return null
             actions += Action(type, args)
         }
+        val requestedDone = obj.optBoolean("done", actions.isEmpty())
+        val verifiedDone = requestedDone && actions.isEmpty()
         return Plan(
-            done = obj.optBoolean("done", actions.isEmpty()),
+            done = verifiedDone,
             message = obj.optString("message").take(1200),
             actions = actions
         )

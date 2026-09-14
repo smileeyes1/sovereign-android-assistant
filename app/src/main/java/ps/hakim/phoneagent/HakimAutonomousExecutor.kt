@@ -77,45 +77,45 @@ object HakimAutonomousExecutor {
                                 needsDataTrust = true,
                                 reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم"
                             )
+                        } else if (profileCandidate != null) {
+                            val (node, match) = profileCandidate
+                            val field = match.first
+                            val value = match.second
+                            val id = node.optString("id")
+                            val textHint = visibleLabel(node)
+                            val ok = service.action(
+                                JSONObject()
+                                    .put("action", "set_text")
+                                    .put("id", id)
+                                    .put("text", textHint)
+                                    .put("value", value)
+                            )
+                            if (ok) {
+                                progressed = true
+                                steps += 1
+                                onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
+                                handler.postDelayed(iterate, 500L)
+                            } else {
+                                finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
+                            }
+                        } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
+                            finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
                         } else {
-                            val fill = if (profileCandidate != null) profileCandidate else null
-                            if (fill != null) {
-                                val (node, match) = fill
-                                val field = match.first
-                                val value = match.second
-                                val id = node.optString("id")
-                                val textHint = visibleLabel(node)
-                                val ok = service.action(
-                                    JSONObject()
-                                        .put("action", "set_text")
-                                        .put("id", id)
-                                        .put("text", textHint)
-                                        .put("value", value)
-                                )
+                            val next = nextSafeContinuation(snapshot)
+                            if (next != null) {
+                                val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
                                 if (ok) {
                                     progressed = true
                                     steps += 1
-                                    onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
-                                    handler.postDelayed(iterate, 500L)
+                                    onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
+                                    handler.postDelayed(iterate, 650L)
                                 } else {
-                                    finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
+                                    finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
                                 }
-                            } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
-                                finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
-                            } else if (HakimActionPolicy.screenHasHighImpactContext(snapshot)) {
-                                finish(false, needsApproval = true, reason = "السياق الحالي قد يقود إلى أثر عالٍ؛ يلزم حسم الفعل النهائي")
                             } else {
-                                val next = nextSafeContinuation(snapshot)
-                                if (next != null) {
-                                    val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
-                                    if (ok) {
-                                        progressed = true
-                                        steps += 1
-                                        onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
-                                        handler.postDelayed(iterate, 650L)
-                                    } else {
-                                        finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
-                                    }
+                                val gated = nextApprovalAction(snapshot)
+                                if (gated != null) {
+                                    finish(false, needsApproval = true, reason = "وصلت إلى الفعل النهائي «$gated» بعد إكمال التحضير الآمن")
                                 } else {
                                     finish(false, reason = if (progressed) "أغلقت كل الخطوات المحلية الواضحة وتحتاج المهمة استدلالًا إضافيًا" else "لا يوجد فعل محلي واضح وآمن يمكن استنتاجه من الشاشة")
                                 }
@@ -164,6 +164,17 @@ object HakimAutonomousExecutor {
                 if (!HakimActionPolicy.isSafeContinuation(label, snapshot)) continue
                 return label
             }
+        }
+        return null
+    }
+
+    private fun nextApprovalAction(snapshot: JSONArray): String? {
+        for (i in 0 until snapshot.length()) {
+            val node = snapshot.optJSONObject(i) ?: continue
+            if (!node.optBoolean("clickable", false) || node.optBoolean("sensitive", false)) continue
+            val label = visibleLabel(node)
+            if (label.isBlank()) continue
+            if (HakimActionPolicy.classify(label, snapshot).level == HakimActionPolicy.Level.APPROVAL) return label
         }
         return null
     }

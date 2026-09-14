@@ -25,7 +25,8 @@ home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20018" in build, "P0: رقم إصدار التوحيد غير مثبت")
+require("versionCode 20019" in build, "P0: رقم إصدار نظام الأنظمة/الأداء التكيفي غير مثبت")
+require("2.0.19-system-of-systems-resource-adaptive" in build, "P0: اسم الإصدار الجديد غير مثبت")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
 require('android:name=".UnifiedHomeActivity"' in manifest, "P0: الواجهة الموحدة ليست نقطة الدخول")
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
@@ -41,7 +42,7 @@ require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: م
 require('android:name=".HakimNotificationListener"' not in manifest, "P0: ملف التثبيت الآمن يعيد إعلان NotificationListener")
 require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ملف التثبيت الآمن يعيد طلب الوصول للإشعارات")
 
-require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم")
+require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم عند تهيئتها")
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")

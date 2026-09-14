@@ -23,6 +23,7 @@ req("repeat_count" in ledger and ">= 3" in ledger, "P0: لا يوجد كشف ل�
 req("HakimFaultLedger.record(applicationContext, \"evolution_job\"" in evolution, "P0: دورة التطور لا تسجل فشلها")
 req("FAILED_RECORDED" in evolution, "P0: فشل دورة التطور قد يختفي بلا حالة صريحة")
 req("HakimFaultLedger.status(app)" in field, "P0: الاختبار الميداني لا يقرأ سجل الأعطال")
-req("منع الفشل الصامت" in settings, "P0: المستخدم لا يملك بوابة ظاهرة لاختبار منع الفشل الصامت")
+req("الاختبار الميداني" in settings and "HakimFieldValidation.run" in settings,
+    "P0: المستخدم لا يملك بوابة فعلية لاختبار الفشل/الجاهزية على الهاتف")
 req("verify_fault_prevention.py" in workflow, "P0: بوابة منع الفشل الصامت غير موصولة بـCI")
 print("HAKIM_FAULT_PREVENTION=PASS")

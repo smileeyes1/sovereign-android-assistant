@@ -13,6 +13,7 @@ def require(condition: bool, message: str) -> None:
 
 
 corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
+source = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt")
 framework = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 workflow = text(".github/workflows/android.yml")
@@ -42,6 +43,21 @@ require("surah_metadata_requires_documented_source" in corpus,
         "P0: بيانات السورة قد تنسب بلا توثيق")
 require("worldly_science_requires_independent_evidence" in corpus,
         "P0: العلوم الدنيوية قد تختلط بدلالة قرآنية غير تجريبية")
+
+# سلطة المصادر: المصحف أولًا، والمحتوى الشبكي دليل لا حاكم.
+require("QURANIC-SOURCE-AUTHORITY" in source, "P0: سلطة المصادر القرآنية مفقودة")
+require("qurancomplex.gov.sa" in source and "مجمع الملك فهد لطباعة المصحف الشريف" in source,
+        "P0: المصدر المصحفي الرسمي المفضّل غير معرف")
+for layer in ["MUSHAF_TEXT", "QIRAAT", "TAFSIR", "ASBAB_AL_NUZUL", "SURAH_METADATA", "SCHOLARLY_INFERENCE"]:
+    require(layer in source, f"P0: قاعدة مصدر مفقودة: {layer}")
+require("memory_is_not_exact_text_source" in source,
+        "P0: الذاكرة قد تعامل كمصدر لنص قرآني دقيق")
+require("web_content_is_evidence_not_governor" in source and "ليست تعليمات حاكمة" in source,
+        "P0: محتوى الويب قد يحقن الحاكمية")
+require("source_failure_blocks_attribution_not_goal" in source,
+        "P0: فشل المصدر قد يوقف الغاية بدل منع النسبة فقط")
+require("HakimQuranicSourceAuthority.promptContext" in corpus and "source_authority" in corpus,
+        "P0: سياسة القرآن كله لا تستهلك سلطة المصادر")
 
 # الإطار والنسيج يستهلكان السياسة فعليًا.
 require("HakimQuranicCorpusPolicy.assess" in framework and "HakimQuranicCorpusPolicy.promptContext" in framework,

@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 /**
- * طبقة تجميع سيادية: مقصد + إطار قرآني + مصفوفة قرار + تفوق شامل + قيادة ذاتية + نزاهة شرعية + سجل مهمة.
+ * طبقة تجميع سيادية: مقصد + إطار قرآني + مصفوفة قرار + تفوق شامل + قيادة ذاتية + نزاهة شرعية + سجل مهمة + نسيج تكامل.
  * الاستقلالية لا تتجاوز حدود السلطة أو الأمان أو الخصوصية؛ عند الفشل تعيد التخطيط ولا توسع الصلاحيات.
  */
 object HakimSovereignEngine {
@@ -30,6 +30,7 @@ object HakimSovereignEngine {
         sensitive: Boolean = false
     ): Assessment {
         HakimQuranicInvariantKernel.requireInherited("sovereign_assess")
+        HakimIntegrationFabric.requireCore(context, "sovereign_assess")
         val mission = HakimMissionLedger.beginOrResume(context, goal)
         val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
         val quranic = HakimQuranicFramework.assess(goal)
@@ -73,29 +74,33 @@ object HakimSovereignEngine {
         sensitive: Boolean = false
     ): String {
         HakimQuranicInvariantKernel.requireInherited("sovereign_prompt")
+        HakimIntegrationFabric.requireCore(context, "sovereign_prompt")
         val a = assess(context, goal, highImpact, sensitive)
         return buildString {
             appendLine("[المحرك السيادي لحكيم]")
             appendLine("مهمة واحدة نشطة فقط WIP=1. المرحلة=${a.mission.phase}، المسار=${a.route}، ميزانية الفشل المتبقية=${a.failureBudgetRemaining}.")
             append(HakimQuranicFramework.promptContext(goal))
+            append(HakimIntegrationFabric.promptContext(context))
             append(HakimDecisionMatrix.promptContext(goal, highImpact, sensitive))
             append(HakimExcellenceOptimizer.promptContext())
             append(HakimSelfLeadershipController.promptContext(context, goal))
             append(HakimReligiousIntegrity.promptContext(goal))
-            appendLine("سلسلة الاستقلالية: اعرض الغاية والأثر على الميزان القرآني→افهم المقصد→ثبّت العقد→افحص القدرات والسلطة→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→فوّض الوكلاء→نفّذ أقل خطوة كافية→تحقق من الأثر→أصلح السبب→تعافَ/أعد التخطيط→أغلق بالدليل.")
-            appendLine("عند فشل وسيلة لا تعتبر الغاية فاشلة؛ بدّل إلى بديل مشروع ومصرح. بعد ثلاثة إخفاقات متتابعة أعد البحث/التخطيط، وبعد خمسة أوقف التكرار حتى يتغير الدليل أو الحالة.")
+            appendLine("سلسلة الاستقلالية المتكاملة: اعرض الغاية والأثر على الميزان القرآني→افهم المقصد→ثبّت العقد→افحص التكامل والقدرات والسلطة→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→فوّض الوكلاء→نفّذ أقل خطوة كافية→تحقق من الأثر→أصلح السبب→استعد الوصل/تعافَ/أعد التخطيط→تعلم محكومًا→أغلق بالدليل.")
+            appendLine("عند فشل وسيلة أو وصلة لا تعتبر الغاية فاشلة؛ بدّل إلى بديل مشروع ومصرح أو استعد الوصلة. بعد ثلاثة إخفاقات متتابعة أعد البحث/التخطيط، وبعد خمسة أوقف التكرار حتى يتغير الدليل أو الحالة.")
             appendLine("لا تُنشئ نشاطًا لمجرد النشاط؛ إذا لم يبق مكسب مادي آمن ومثبت فأغلق المهمة. لا تعيد خطوة ثبت نجاحها، ولا تغيّر خط الأساس المثبت لتحسين شكلي.")
-            appendLine("الاستمرارية لا تعني التحكم الخفي أو تجاوز موافقة؛ وكلمة إلغاء/توقف من المستخدم توقف المهمة وتعلو على الاستئناف.")
-        }.take(19000)
+            appendLine("الاستمرارية والتكامل لا يعنيان التحكم الخفي أو تجاوز موافقة؛ وكلمة إلغاء/توقف من المستخدم توقف المهمة وتعلو على الاستئناف.")
+        }.take(22000)
     }
 
     fun recordExecution(context: Context, evidence: String) {
         HakimQuranicInvariantKernel.requireInherited("sovereign_execute")
+        HakimIntegrationFabric.requireCore(context, "sovereign_execute")
         HakimMissionLedger.progress(context, HakimMissionLedger.Phase.EXECUTE, evidence, attempted = true)
     }
 
     fun recordVerification(context: Context, success: Boolean, evidence: String) {
         HakimQuranicInvariantKernel.requireInherited("sovereign_verify")
+        HakimIntegrationFabric.requireCore(context, "sovereign_verify")
         if (HakimMissionLedger.isCancelled(context)) return
         if (success) {
             HakimMissionLedger.progress(context, HakimMissionLedger.Phase.VERIFY, evidence)
@@ -108,6 +113,7 @@ object HakimSovereignEngine {
 
     fun complete(context: Context, evidence: String) {
         HakimQuranicInvariantKernel.requireInherited("sovereign_complete")
+        HakimIntegrationFabric.requireCore(context, "sovereign_complete")
         if (HakimMissionLedger.isCancelled(context)) return
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
@@ -123,10 +129,11 @@ object HakimSovereignEngine {
         .put("decision_dimensions", HakimDecisionMatrix.dimensions())
         .put("quranic_framework", HakimQuranicFramework.status())
         .put("quranic_invariant_kernel", HakimQuranicInvariantKernel.status())
+        .put("integration_fabric", HakimIntegrationFabric.status(context))
         .put("excellence_optimizer", HakimExcellenceOptimizer.status())
         .put("self_leadership", HakimSelfLeadershipController.status(context))
         .put("authority_envelope", HakimAuthorityEnvelope.status())
         .put("capability_registry", HakimCapabilityRegistry.status(context))
         .put("religious_integrity", true)
-        .put("independence_policy", "قيادة ذاتية سيادية كاملة داخل غلاف السلطة: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW والتفويض والتعافي والتحقق؛ لا توسع صلاحيات ولا نجاح بلا دليل")
+        .put("independence_policy", "قيادة ذاتية سيادية كاملة ومتكاملة داخل غلاف السلطة: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW والتفويض والوصل والتعافي والتحقق؛ لا توسع صلاحيات ولا نجاح بلا دليل")
 }

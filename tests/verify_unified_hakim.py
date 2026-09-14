@@ -31,17 +31,21 @@ require('android:name=".UnifiedHomeActivity"' in manifest, "P0: الواجهة �
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
 require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
 require('android:name=".HakimPairingReceiver"' in manifest, "P0: مستقبل الاقتران المحلي غير معلن")
-require('android:name=".HakimAccessibilityService"' in manifest, "P0: خدمة الواجهة غير معلنة")
-require('android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest, "P0: ربط خدمة الوصول مفقود")
-require('android:name=".HakimNotificationListener"' in manifest, "P0: مستمع الإشعارات غير معلن")
-require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' in manifest, "P0: ربط مستمع الإشعارات مفقود")
+
+# يبقى كود الوصول/الإشعارات موجودًا كمرجع محمي، لكنه لا يُعلن في ملف التثبيت
+# الافتراضي حتى لا يحفز Play Protect Enhanced Fraud Protection عند sideload.
+require('"[مخفي]"' in accessibility and 'isPassword' in accessibility, "P0: تنقيح الحقول الحساسة مفقود من محرك الوصول المرجعي")
+require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التحقق مفقود من مستمع الإشعارات المرجعي")
+require('android:name=".HakimAccessibilityService"' not in manifest, "P0: ملف التثبيت الآمن يعيد إعلان AccessibilityService")
+require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: ملف التثبيت الآمن يعيد طلب ربط Accessibility")
+require('android:name=".HakimNotificationListener"' not in manifest, "P0: ملف التثبيت الآمن يعيد إعلان NotificationListener")
+require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ملف التثبيت الآمن يعيد طلب الوصول للإشعارات")
+
 require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم")
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
 require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة الموافقة للأفعال المتغيرة مفقودة")
-require('"[مخفي]"' in accessibility and 'isPassword' in accessibility, "P0: تنقيح الحقول الحساسة مفقود")
-require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التحقق في الإشعارات مفقود")
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")

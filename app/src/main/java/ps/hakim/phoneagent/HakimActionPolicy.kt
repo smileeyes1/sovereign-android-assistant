@@ -17,7 +17,9 @@ object HakimActionPolicy {
         if (sensitiveRegex.containsMatchIn(screenText) && text.isBlank()) {
             return Decision(Level.BLOCK, "الشاشة تتطلب اعتمادًا حساسًا")
         }
-        if (highImpactRegex.containsMatchIn(text) || highImpactRegex.containsMatchIn(screenText) && finalActionRegex.containsMatchIn(text)) {
+        // وجود سياق دفع/حذف/إرسال لا يوقف التحضير وحده؛ التوقف عند الفعل النهائي نفسه.
+        if (highImpactRegex.containsMatchIn(text) ||
+            (highImpactRegex.containsMatchIn(screenText) && finalActionRegex.containsMatchIn(text))) {
             return Decision(Level.APPROVAL, "فعل جوهري أو غير قابل للتراجع")
         }
         return Decision(Level.AUTO, "منخفض الأثر وقابل للتراجع")
@@ -45,10 +47,11 @@ object HakimActionPolicy {
         return classify(label, snapshot).level == Level.AUTO
     }
 
+    /** لا نعلن النجاح بكلمة عامة؛ نطلب عبارة حالة صريحة. */
     fun isSuccessState(snapshot: JSONArray): Boolean {
         val s = summarize(snapshot)
         return Regex(
-            "(?i)(تم بنجاح|اكتمل بنجاح|تم الحفظ|تم التسجيل|تمت العملية|نجاح|successfully|completed|saved successfully|thank you)"
+            "(?i)(تم بنجاح|اكتمل بنجاح|تم الحفظ بنجاح|تم التسجيل بنجاح|تمت العملية بنجاح|successfully completed|completed successfully|saved successfully|submitted successfully|submission received|thank you for your submission|your request has been received)"
         ).containsMatchIn(s)
     }
 

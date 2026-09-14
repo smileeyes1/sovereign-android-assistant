@@ -19,26 +19,55 @@ object HakimNaturalActionEngine {
         }
 
         if (s == "ارجع" || s.contains("ارجع للخلف") || s.contains("الصفحة السابقة")) {
-            val ok = HakimAccessibilityService.instance?.action(JSONObject().put("action", "back")) ?: false
-            return Result(true, ok, if (ok) "تم الرجوع." else "تعذر الرجوع من الواجهة الحالية.")
+            val web = HakimRuntime.visibleWebView()
+            if (web != null && web.canGoBack()) {
+                web.goBack()
+                return Result(true, true, "تم الرجوع داخل متصفح حكيم.")
+            }
+            val service = HakimAccessibilityService.instance
+                ?: return Result(false, false, "لا توجد واجهة محلية مناسبة؛ أسلّم الرجوع لمسار حكيم الذاتي.")
+            val ok = service.action(JSONObject().put("action", "back"))
+            return if (ok) {
+                Result(true, true, "تم الرجوع.")
+            } else {
+                Result(false, false, "تعذر الرجوع محليًا؛ أسلّم المهمة لمسار حكيم الذاتي.")
+            }
         }
 
         parseClick(text)?.let { target ->
             if (isHighImpactLabel(target)) return Result(false, false, "الفعل يحتاج بوابة الأثر العالي.")
-            val ok = HakimAccessibilityService.instance?.action(
-                JSONObject().put("action", "click_text").put("text", target)
-            ) ?: false
-            return Result(true, ok, if (ok) "تم الضغط على «$target»." else "لم أجد زرًا آمنًا مطابقًا لـ «$target».")
+            // داخل متصفح حكيم، المسار الذاتي WebView-first أقل صلاحية ويملك تحققًا بعد الفعل.
+            if (HakimRuntime.visibleWebView() != null) {
+                return Result(false, false, "أسلّم الضغط لمسار WebView الأقل صلاحية مع التحقق.")
+            }
+            val service = HakimAccessibilityService.instance
+                ?: return Result(false, false, "خدمة الوصول غير متاحة؛ أسلّم الضغط لمسار حكيم الذاتي.")
+            val ok = service.action(JSONObject().put("action", "click_text").put("text", target))
+            return if (ok) {
+                Result(true, true, "تم الضغط على «$target».")
+            } else {
+                Result(false, false, "لم يثبت الضغط محليًا؛ أسلّم المهمة للمسار الذاتي بدل التوقف.")
+            }
         }
 
         parseSetText(text)?.let { (field, value) ->
             if (looksSensitive(field) || looksSensitive(value)) {
                 return Result(true, false, "هذا الحقل يبدو حساسًا؛ لن أمرر السر كنص. استخدم مدير اعتماد أندرويد أو أدخل السر مباشرة في الحقل الآمن.")
             }
-            val ok = HakimAccessibilityService.instance?.action(
+            // تعبئة صفحات الويب تمر عبر HakimAutonomousExecutor: WebView أولًا ثم Accessibility احتياط فقط.
+            if (HakimRuntime.visibleWebView() != null) {
+                return Result(false, false, "أسلّم الكتابة لمسار WebView الأقل صلاحية مع التحقق.")
+            }
+            val service = HakimAccessibilityService.instance
+                ?: return Result(false, false, "خدمة الوصول غير متاحة؛ أسلّم الكتابة لمسار حكيم الذاتي.")
+            val ok = service.action(
                 JSONObject().put("action", "set_text").put("text", field).put("value", value)
-            ) ?: false
-            return Result(true, ok, if (ok) "تمت الكتابة في «$field»." else "لم أجد حقلًا آمنًا مطابقًا لـ «$field».")
+            )
+            return if (ok) {
+                Result(true, true, "تمت الكتابة في «$field».")
+            } else {
+                Result(false, false, "لم تثبت الكتابة محليًا؛ أسلّم المهمة للمسار الذاتي بدل التوقف.")
+            }
         }
 
         parseOpen(text)?.let { query ->

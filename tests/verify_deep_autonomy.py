@@ -17,6 +17,7 @@ intent = text("app/src/main/java/ps/hakim/phoneagent/HakimIntentContext.kt")
 agents = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentSystem.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 policy = text("app/src/main/java/ps/hakim/phoneagent/HakimActionPolicy.kt")
+authority = text("app/src/main/java/ps/hakim/phoneagent/HakimAuthorityEnvelope.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
 plan_exec = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
@@ -68,14 +69,15 @@ require("siteCandidates" not in governance and "takeLast(2)" not in governance,
 require("val key = SITE_PREFIX + normalized.replace('.', '_')" in governance,
         "P0: قراءة تعليمات الموقع ليست مرتبطة بالمضيف الدقيق")
 
-# خطة الاستدلال يجب أن تُفحص بعد العودة لشاشة الموقع.
+# خطة الاستدلال يجب أن تُفحص بعد العودة لشاشة الموقع، وغلاف السلطة يرث حاكم الأفعال المثبت.
+require("HakimActionPolicy.classify" in authority, "P0: غلاف السلطة لا يرث حاكم الأفعال")
 click_pos = plan_exec.find('"click_text"')
 ensure_pos = plan_exec.find("ensureHakimBrowser", click_pos)
-classify_pos = plan_exec.find("HakimActionPolicy.classify", click_pos)
+classify_pos = plan_exec.find("HakimAuthorityEnvelope.classifyUiAction", click_pos)
 require(click_pos >= 0 and ensure_pos >= 0 and classify_pos > ensure_pos, "P0: النقرة تُصنَّف قبل استعادة شاشة الموقع")
 set_pos = plan_exec.find('"set_text"')
 ensure_set = plan_exec.find("ensureHakimBrowser", set_pos)
-classify_set = plan_exec.find("HakimActionPolicy.classify", set_pos)
+classify_set = plan_exec.find("gateAction", ensure_set)
 require(set_pos >= 0 and ensure_set >= 0 and classify_set > ensure_set, "P0: الكتابة تُصنَّف قبل استعادة شاشة الموقع")
 
 # جسر ChatGPT اختياري ومقيد بالحزمة الرسمية وبروتوكول مغلق.

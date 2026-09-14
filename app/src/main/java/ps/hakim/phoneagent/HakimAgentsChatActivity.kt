@@ -32,7 +32,7 @@ class HakimAgentsChatActivity : Activity() {
         super.onCreate(savedInstanceState)
         HakimConstitution.install(this)
         buildUi()
-        appendAssistant("أنا حكيم. يكفي أقل تلميح: كلمة، «كمل»، «هاي»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أستعيد المقصد والسياق وأكمل الآمن تلقائيًا.")
+        appendAssistant("أنا حكيم. يكفي أقل تلميح: كلمة، «كمل»، «هاي»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أقود كيف تلقائيًا داخل حدودك، ويمكنك قول «توقف» في أي وقت لإلغاء المهمة فورًا.")
     }
 
     override fun onDestroy() {
@@ -89,6 +89,7 @@ class HakimAgentsChatActivity : Activity() {
         row.addView(button("افهم فقط") { submit(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(row)
 
+        root.addView(button("إيقاف المهمة فورًا") { cancelCurrentMission("أوقف المستخدم المهمة من زر الإيقاف") })
         root.addView(button("النظام والبيانات") { startActivity(Intent(this, HakimSystemSettingsActivity::class.java)) })
         root.addView(button("فتح متصفح حكيم") { startActivity(Intent(this, MainActivity::class.java)) })
         setContentView(root)
@@ -100,11 +101,17 @@ class HakimAgentsChatActivity : Activity() {
     }
 
     private fun submit(execute: Boolean) {
-        if (busy) {
-            appendAssistant("أنا ما زلت أنفذ الدورة الحالية؛ لن أبدأ دورة موازية قد تتعارض معها.")
+        val typed = input.text.toString().trim()
+        if (isCancelCue(typed)) {
+            appendUser(typed)
+            input.setText("")
+            cancelCurrentMission("ألغى المستخدم المهمة بكلمة: ${typed.take(40)}")
             return
         }
-        val typed = input.text.toString().trim()
+        if (busy) {
+            appendAssistant("أنا ما زلت أنفذ الدورة الحالية؛ لن أبدأ دورة موازية قد تتعارض معها. يمكنك قول «توقف» لإلغائها فورًا.")
+            return
+        }
         val cue = typed.ifBlank { "أكمل" }
         appendUser(if (typed.isBlank()) "…" else typed)
         input.setText("")
@@ -124,6 +131,10 @@ class HakimAgentsChatActivity : Activity() {
         if (plan.route == "browser" && hasLastWebUrl()) {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
             waitForHakimBrowser(0) { ready ->
+                if (HakimMissionLedger.isCancelled(this)) {
+                    busy = false
+                    return@waitForHakimBrowser
+                }
                 if (!ready) {
                     appendAssistant("تعذر استعادة صفحة المتصفح الفعلية بثقة؛ لن أنفذ على شاشة خاطئة.")
                     runReasoningCycle(HakimAgentSystem.agentPrompt(this, cue, preferred), 0)
@@ -136,17 +147,37 @@ class HakimAgentsChatActivity : Activity() {
         }
     }
 
+    private fun cancelCurrentMission(reason: String) {
+        val active = HakimMissionLedger.active(this)
+        uiHandler.removeCallbacksAndMessages(null)
+        busy = false
+        if (active == null) {
+            appendAssistant("لا توجد مهمة نشطة لإيقافها.")
+            return
+        }
+        HakimMissionLedger.cancel(this, reason)
+        appendAssistant("أوقفت المهمة فورًا. لن أستأنف نفس الغاية تلقائيًا. يمكنك بدء غاية جديدة متى شئت.")
+    }
+
+    private fun isCancelCue(text: String): Boolean = Regex(
+        "(?i)^(توقف|توقّف|قف|الغ|ألغ|ألغي|الغِ|إلغاء|إلغاء المهمة|اوقف|أوقف|stop|cancel)$"
+    ).matches(text.trim())
+
     private fun executeLocalThenAutonomous(
         cue: String,
         preferred: HakimAgentSystem.Agent?,
         resolvedGoal: String,
         route: String
     ) {
+        if (HakimMissionLedger.isCancelled(this)) {
+            busy = false
+            return
+        }
         val local = HakimNaturalActionEngine.execute(this, resolvedGoal, cue)
         if (local.handled) {
             appendAssistant(local.message)
             if (local.success && route == "browser" && HakimIntentContext.isMinimalCue(cue)) {
-                uiHandler.postDelayed({ runAutonomousCycle(cue, preferred, resolvedGoal) }, 500L)
+                uiHandler.postDelayed({ if (!HakimMissionLedger.isCancelled(this)) runAutonomousCycle(cue, preferred, resolvedGoal) }, 500L)
             } else {
                 busy = false
             }
@@ -163,8 +194,13 @@ class HakimAgentsChatActivity : Activity() {
         HakimAutonomousExecutor.run(
             activity = this,
             goal = resolvedGoal,
-            onProgress = { message -> appendAssistant(message) },
+            onProgress = { message -> if (!HakimMissionLedger.isCancelled(this)) appendAssistant(message) },
             onComplete = { outcome ->
+                if (HakimMissionLedger.isCancelled(this)) {
+                    busy = false
+                    bringChatToFront()
+                    return@run
+                }
                 when {
                     outcome.completed -> {
                         busy = false
@@ -184,7 +220,7 @@ class HakimAgentsChatActivity : Activity() {
                     outcome.needsApproval -> {
                         busy = false
                         bringChatToFront()
-                        appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
+                        appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر/الصلاحية. عند موافقتك الصريحة أتابع الفعل النهائي.")
                     }
                     else -> {
                         if (outcome.progressed) appendAssistant("أنجزت ${outcome.steps} خطوة محلية. ${outcome.reason}")
@@ -196,7 +232,7 @@ class HakimAgentsChatActivity : Activity() {
     }
 
     private fun waitForHakimBrowser(attempt: Int, onReady: (Boolean) -> Unit) {
-        if (isFinishing || isDestroyed) {
+        if (HakimMissionLedger.isCancelled(this) || isFinishing || isDestroyed) {
             onReady(false)
             return
         }
@@ -219,12 +255,20 @@ class HakimAgentsChatActivity : Activity() {
 
     /** استدلال -> خطة مقيدة -> تنفيذ -> إعادة استدلال، بحد يمنع الدوران. */
     private fun runReasoningCycle(governedPrompt: String, cycle: Int) {
+        if (HakimMissionLedger.isCancelled(this)) {
+            busy = false
+            return
+        }
         busy = true
         HakimReasoningBridge.ask(
             activity = this,
             basePrompt = governedPrompt,
-            onProgress = { message -> appendAssistant(message) },
+            onProgress = { message -> if (!HakimMissionLedger.isCancelled(this)) appendAssistant(message) },
             onComplete = reasoningDone@ { result ->
+                if (HakimMissionLedger.isCancelled(this)) {
+                    busy = false
+                    return@reasoningDone
+                }
                 if (!result.available) {
                     busy = false
                     fallbackShare(governedPrompt, result.reason)
@@ -241,13 +285,18 @@ class HakimAgentsChatActivity : Activity() {
                 HakimReasoningPlanExecutor.run(
                     activity = this,
                     plan = plan,
-                    onProgress = { message -> appendAssistant(message) },
+                    onProgress = { message -> if (!HakimMissionLedger.isCancelled(this)) appendAssistant(message) },
                     onComplete = { outcome ->
+                        if (HakimMissionLedger.isCancelled(this)) {
+                            busy = false
+                            bringChatToFront()
+                            return@run
+                        }
                         when {
                             outcome.needsApproval -> {
                                 busy = false
                                 bringChatToFront()
-                                appendAssistant("توقفت قبل خطوة عالية الأثر اقترحها الاستدلال. لا تُنفذ إلا بموافقتك الصريحة.")
+                                appendAssistant("توقفت قبل خطوة عالية الأثر/الصلاحية اقترحها الاستدلال. لا تُنفذ إلا بموافقتك الصريحة.")
                             }
                             outcome.needsDataTrust -> {
                                 busy = false
@@ -258,7 +307,7 @@ class HakimAgentsChatActivity : Activity() {
                             outcome.blocked -> {
                                 busy = false
                                 bringChatToFront()
-                                appendAssistant("رفضت خطوة من خطة الاستدلال لأنها خالفت حاكم الأمان المحلي: ${outcome.reason}")
+                                appendAssistant("رفضت خطوة من خطة الاستدلال لأنها خرجت عن غلاف السلطة/الأمان المحلي: ${outcome.reason}")
                             }
                             plan.done || outcome.completed -> {
                                 busy = false
@@ -283,6 +332,7 @@ class HakimAgentsChatActivity : Activity() {
     }
 
     private fun fallbackShare(governedPrompt: String, reason: String) {
+        if (HakimMissionLedger.isCancelled(this)) return
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, governedPrompt)

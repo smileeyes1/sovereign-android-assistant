@@ -31,6 +31,7 @@ object HakimSovereignEngine {
     ): Assessment {
         HakimQuranicInvariantKernel.requireInherited("sovereign_assess")
         HakimIntegrationFabric.requireCore(context, "sovereign_assess")
+        HakimLearning.initialize(context)
         val mission = HakimMissionLedger.beginOrResume(context, goal)
         val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
         val quranic = HakimQuranicFramework.assess(goal)
@@ -53,6 +54,7 @@ object HakimSovereignEngine {
             decision.mode == HakimDecisionMatrix.Mode.AUTO -> "local_first"
             else -> "local_verify_then_reason"
         }
+        HakimAdaptiveLearning.noteMissionRoute(context, mission.id, route)
         HakimMissionLedger.progress(context, HakimMissionLedger.Phase.PLAN, "المسار=$route؛ القرار=${decision.mode}")
         return Assessment(
             mission = HakimMissionLedger.active(context) ?: mission,
@@ -87,7 +89,8 @@ object HakimSovereignEngine {
             append(HakimSelfLeadershipController.promptContext(context, goal))
             append(HakimAuthorityEnvelope.promptContext())
             append(HakimReligiousIntegrity.promptContext(goal))
-            appendLine("سلسلة الاستقلالية المتكاملة: اعرض الغاية والأثر على الميزان القرآني→احفظ كرامة الإنسان وحقوقه→افهم المقصد→ثبّت العقد→افحص التكامل والقدرات والسلطة→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→فوّض الوكلاء→نفّذ أقل خطوة كافية→تحقق من الأثر→أصلح السبب→استعد الوصل/تعافَ/أعد التخطيط→تعلم محكومًا→أغلق بالدليل.")
+            appendLine("التعلم التكيفي المحلي: ${HakimAdaptiveLearning.status(context).optString("last_adaptation_decision", "COLLECTING_EVIDENCE")}؛ يغيّر ترتيب البدائل الآمنة فقط، ولا يوسع السلطة أو يبدل الدستور.")
+            appendLine("سلسلة الاستقلالية المتكاملة: اعرض الغاية والأثر على الميزان القرآني→احفظ كرامة الإنسان وحقوقه→افهم المقصد→ثبّت العقد→افحص التكامل والقدرات والسلطة→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→استفد من الخبرة المحلية المثبتة دون كسر خط الأساس→فوّض الوكلاء→نفّذ أقل خطوة كافية→تحقق من الأثر→أصلح السبب→استعد الوصل/تعافَ/أعد التخطيط→تعلم محكومًا→أغلق بالدليل.")
             appendLine("صمم للإنسان الحقيقي: لا تفترض خبرة تقنية، لا تستغل الطيبة أو الرحمة، لا تفسر السكوت أو الإشارة العامة كموافقة عالية الأثر، وخفف العبء المعرفي والإجرائي ما دام ذلك لا يسلب القرار الجوهري.")
             appendLine("عند فشل وسيلة أو وصلة لا تعتبر الغاية فاشلة؛ بدّل إلى بديل مشروع ومصرح أو استعد الوصلة. بعد ثلاثة إخفاقات متتابعة أعد البحث/التخطيط، وبعد خمسة أوقف التكرار حتى يتغير الدليل أو الحالة.")
             appendLine("لا تُنشئ نشاطًا لمجرد النشاط؛ إذا لم يبق مكسب مادي آمن ومثبت فأغلق المهمة. لا تعيد خطوة ثبت نجاحها، ولا تغيّر خط الأساس المثبت لتحسين شكلي.")
@@ -111,6 +114,10 @@ object HakimSovereignEngine {
         } else {
             HakimMissionLedger.failure(context, evidence)
             HakimLearning.recordResult(context, "sovereign_mission", false)
+            val failed = HakimMissionLedger.active(context)
+            if (failed != null && failed.failures >= HARD_FAILURE_LIMIT) {
+                HakimAdaptiveLearning.recordMissionOutcome(context, failed.id, false)
+            }
         }
     }
 
@@ -118,8 +125,10 @@ object HakimSovereignEngine {
         HakimQuranicInvariantKernel.requireInherited("sovereign_complete")
         HakimIntegrationFabric.requireCore(context, "sovereign_complete")
         if (HakimMissionLedger.isCancelled(context)) return
+        val missionId = HakimMissionLedger.active(context)?.id.orEmpty()
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
+        HakimAdaptiveLearning.recordMissionOutcome(context, missionId, true)
     }
 
     fun status(context: Context): JSONObject = JSONObject()
@@ -138,6 +147,7 @@ object HakimSovereignEngine {
         .put("self_leadership", HakimSelfLeadershipController.status(context))
         .put("authority_envelope", HakimAuthorityEnvelope.status())
         .put("capability_registry", HakimCapabilityRegistry.status(context))
+        .put("adaptive_learning", HakimAdaptiveLearning.status(context))
         .put("religious_integrity", true)
-        .put("independence_policy", "قيادة ذاتية سيادية كاملة ومتكاملة وإنسانية داخل غلاف السلطة: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW والتفويض والوصل والتعافي والتحقق؛ لا توسع صلاحيات ولا نجاح بلا دليل ولا استغلال للطيبة أو الجهل التقني")
+        .put("independence_policy", "قيادة ذاتية سيادية كاملة ومتكاملة وإنسانية ومتعلّمة محليًا داخل غلاف السلطة: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW والتفويض والوصل والتعافي والتحقق؛ لا توسع صلاحيات ولا نجاح بلا دليل ولا استغلال للطيبة أو الجهل التقني")
 }

@@ -26,8 +26,8 @@ chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20020" in build, "P0: رقم إصدار واجهة المحادثة الحديثة غير مثبت")
-require("2.0.20-chat-first-lightweight" in build, "P0: اسم إصدار حكيم ٢٠٠٢٠ غير مثبت")
+require("versionCode 20021" in build, "P0: رقم إصدار الاستدلال داخل حكيم غير مثبت")
+require("2.0.21-chat-first-inapp-reasoning" in build, "P0: اسم إصدار حكيم ٢٠٠٢١ غير مثبت")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: محادثة حكيم ليست واجهة التشغيل الرئيسية")
@@ -36,8 +36,6 @@ require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط 
 require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
 require('android:name=".HakimPairingReceiver"' in manifest, "P0: مستقبل الاقتران المحلي غير معلن")
 
-# يبقى كود الوصول/الإشعارات موجودًا كمرجع محمي، لكنه لا يُعلن في ملف التثبيت
-# الافتراضي حتى لا يحفز Play Protect Enhanced Fraud Protection عند sideload.
 require('"[مخفي]"' in accessibility and 'isPassword' in accessibility, "P0: تنقيح الحقول الحساسة مفقود من محرك الوصول المرجعي")
 require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التحقق مفقود من مستمع الإشعارات المرجعي")
 require('android:name=".HakimAccessibilityService"' not in manifest, "P0: ملف التثبيت الآمن يعيد إعلان AccessibilityService")

@@ -31,6 +31,8 @@ require("atomic_inheritance_is_architectural_metaphor" in kernel, "P0: معنى 
 require("no_claim_quran_encodes_nuclear_or_atomic_physics" in kernel, "P0: لا يوجد حاجز يمنع نسبة الفيزياء النووية/الذرية إلى القرآن بلا دليل")
 require("العلم والتجربة والمصادر الموثوقة" in kernel, "P0: الوسائل الدنيوية ليست مرتبطة بالدليل التجريبي")
 require("نص القرآن أو السنة الدقيق يحتاج تحققًا" in kernel, "P0: التثبت من النص الشرعي الدقيق غير حاكم")
+require("fun requireInherited" in kernel and "check(a.inherited)" in kernel,
+        "P0: جذر القرآن لا يملك حراسة fail-closed وقت التشغيل")
 
 # الإطار القرآني يجب أن يرث النواة مباشرة.
 require('HakimQuranicInvariantKernel.requireInherited("quranic_framework")' in quranic,
@@ -56,6 +58,15 @@ require("HakimQuranicFramework.assess" in sovereign and "HakimQuranicFramework.p
 require("اعرض الغاية والأثر على الميزان القرآني" in sovereign,
         "P0: دورة التنفيذ السيادي لا تمر صراحة على الميزان القرآني")
 
+# حراسة وقت التشغيل: بدء التطبيق + كل أطوار القلب السيادي.
+require('HakimQuranicInvariantKernel.requireInherited("app_start")' in app,
+        "P0: التطبيق قد يبدأ دون إقرار جذر القرآن")
+for scope in ["sovereign_assess", "sovereign_prompt", "sovereign_execute", "sovereign_verify", "sovereign_complete"]:
+    require(f'HakimQuranicInvariantKernel.requireInherited("{scope}")' in sovereign,
+            f"P0: المحرك السيادي لا يفرض الجذر وقت التشغيل في {scope}")
+require("quranic_invariant_kernel" in sovereign and "HakimQuranicInvariantKernel.status()" in sovereign,
+        "P0: حالة المحرك لا تكشف جذر القرآن")
+
 # القيادة والوكلاء والتنفيذ الفعلي يرثون النواة عبر المحرك/المصفوفة، لا بمجرد نص واجهة.
 require("HakimDecisionMatrix.evaluate" in lead, "P0: القيادة الذاتية منفصلة عن مصفوفة القرار الموروثة")
 require("HakimSovereignEngine.assess" in agents and "HakimSovereignEngine.promptContext" in agents,
@@ -65,11 +76,22 @@ require("HakimSovereignEngine.assess" in auto and "HakimDecisionMatrix.evaluate"
 require("HakimSovereignEngine.recordVerification" in reason and "HakimAuthorityEnvelope" in reason,
         "P0: منفذ الاستدلال لا يعيد النتيجة إلى القلب السيادي")
 
-# التعلم لا يغيّر القلب مباشرة؛ النتائج تمر عبر المحرك السيادي، والتطبيق يثبت الدستور عند البدء.
+# التعلم نفسه لا يعمل خارج الجذر ولا يغيّر القلب مباشرة.
+for scope in ["learning_initialize", "learning_attempt", "learning_result", "learning_health", "learning_snapshot", "learning_maintenance"]:
+    require(f'HakimQuranicInvariantKernel.requireInherited("{scope}")' in learning,
+            f"P0: التعلم التشغيلي لا يفرض جذر القرآن في {scope}")
 require("HakimLearning.recordResult" in sovereign, "P0: التعلم التشغيلي منفصل عن التحقق السيادي")
 require("لا تدريب نموذج ولا تعديل كود تلقائي عشوائي" in learning,
         "P0: التعلم قد يتحول إلى تعديل ذاتي غير محكوم")
+require("quranic_kernel_inherited" in learning,
+        "P0: حالة التعلم لا تكشف وراثة جذر القرآن")
 require("HakimConstitution.install(this)" in app,
         "P0: التطبيق لا يثبت الدستور الحاكم عند التشغيل")
+
+# اختبار مضاد: كلمات «ذرة/نواة/نووي» لا تسمح بخلط العلم التجريبي بالوحي.
+require("worldlyMeansEvidenceBased = true" in kernel,
+        "P0: العلم الدنيوي قد يصبح تابعًا لادعاء غير تجريبي")
+require("noTechnicalMystification = true" in kernel,
+        "P0: الغلو التقني في الوحي غير مغلق من الجذر")
 
 print("HAKIM_QURANIC_KERNEL_INHERITANCE=PASS")

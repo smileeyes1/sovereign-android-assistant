@@ -94,13 +94,18 @@ jobs:
         run: gradle assembleDebug assembleRelease --stacktrace
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
         run: |
-          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
+          APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
           set +e
-          APKSIGNER="$APKSIGNER" bash scripts/verify-field-signer.sh app/build/outputs/apk/debug/app-debug.apk
+          GUARD_OUTPUT="$(APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh app/build/outputs/apk/debug/app-debug.apk 2>&1)"
           GUARD_RC=$?
           set -e
-          if [[ "$GUARD_RC" -ne 5 ]]; then
-            echo "Debug APK rejection was not a proven signer mismatch; guard exit=$GUARD_RC" >&2
+          printf '%s\n' "$GUARD_OUTPUT"
+          if [[ $GUARD_RC -eq 0 ]]; then
+            echo "Debug APK unexpectedly passed the field signer guard" >&2
+            exit 1
+          fi
+          if ! grep -Eq 'SIGNER_GUARD=FAIL reason=(field_signer_mismatch|known_companion_signer_rejected)' <<<"$GUARD_OUTPUT"; then
+            echo "Signer guard failed before completing the certificate comparison" >&2
             exit 1
           fi
       - name: توقيع مرشح الإصدار بهوية حكيم الميدانية عند توفرها
@@ -127,14 +132,15 @@ jobs:
           fi
           FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"
           printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/hakim-field.jks"
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" sign \
+          APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
+          "$APKSIGNER_BIN" sign \
             --ks "$RUNNER_TEMP/hakim-field.jks" \
             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
             --out "$FIELD_APK" \
             app/build/outputs/apk/release/app-release-unsigned.apk
-          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" \
+          APKSIGNER="$APKSIGNER_BIN" \
             bash scripts/verify-field-signer.sh "$FIELD_APK"
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"

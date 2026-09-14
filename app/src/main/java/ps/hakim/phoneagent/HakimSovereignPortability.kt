@@ -20,7 +20,7 @@ object HakimSovereignPortability {
         HakimQuranicInvariantKernel.requireInherited("sovereign_export")
         val sites = JSONObject()
         HakimGovernanceStore.allSites(context).forEach { (host, instructions) ->
-            sites.put(host, instructions.take(12000))
+            sites.put(host, HakimGovernanceStore.exportSafeText(instructions).take(12000))
         }
         val profile = JSONObject()
         HakimPersonalVault.all(context).forEach { (id, value) ->
@@ -28,6 +28,7 @@ object HakimSovereignPortability {
         }
         val trusted = JSONArray()
         HakimSiteTrust.trustedHosts(context).sorted().forEach { trusted.put(it) }
+        val safeGlobal = HakimGovernanceStore.exportSafeText(HakimGovernanceStore.global(context))
 
         return JSONObject()
             .put("schema_version", SCHEMA_VERSION)
@@ -35,7 +36,7 @@ object HakimSovereignPortability {
             .put("exported_at", System.currentTimeMillis())
             .put("contains_secrets", false)
             .put("contains_signing_private_key", false)
-            .put("governance_global", HakimGovernanceStore.global(context).take(24000))
+            .put("governance_global", safeGlobal.take(24000))
             .put("site_instructions", sites)
             .put("profile_non_sensitive", profile)
             .put("trusted_profile_hosts", trusted)

@@ -41,6 +41,8 @@ jobs:
         run: python3 tests/verify_sovereign_intelligence.py
       - name: بوابة التفوق الشامل ومنع الانحدار
         run: python3 tests/verify_excellence_optimizer.py
+      - name: بوابة الاستقلال السيادي والقيادة الذاتية
+        run: python3 tests/verify_sovereign_autonomy.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py

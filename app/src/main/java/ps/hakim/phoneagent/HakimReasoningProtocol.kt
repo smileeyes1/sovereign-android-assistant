@@ -10,7 +10,10 @@ object HakimReasoningProtocol {
     data class Action(val type: String, val args: JSONObject)
     data class Plan(val done: Boolean, val message: String, val actions: List<Action>)
 
-    private val allowedTypes = setOf("open_url", "click_text", "set_text", "back", "wait")
+    private val allowedTypes = setOf("open_url", "click_text", "set_text", "fill_profile", "back", "wait")
+    private val allowedProfileFields = setOf(
+        "full_name", "first_name", "last_name", "email", "phone", "address", "city", "country", "job_title", "organization"
+    )
 
     fun wrap(basePrompt: String): Request {
         val token = UUID.randomUUID().toString().replace("-", "").take(10)
@@ -23,7 +26,8 @@ object HakimReasoningProtocol {
             appendLine("ابدأ الخطة حرفيًا بالسلسلة: $begin")
             appendLine("وانهِها حرفيًا بالسلسلة: $end")
             appendLine("بين السلسلتين ضع كائن JSON واحدًا فقط بالمفاتيح: done(boolean), message(string), actions(array).")
-            appendLine("أنواع actions المسموحة فقط: open_url{url}، click_text{text}، set_text{target,value}، back{}، wait{ms}.")
+            appendLine("أنواع actions المسموحة فقط: open_url{url}، click_text{text}، set_text{target,value}، fill_profile{target,field_id}، back{}، wait{ms}.")
+            appendLine("عند الحاجة لبيانات المستخدم استخدم fill_profile ولا تخمّن القيمة ولا تطلب كشفها. field_id المسموحة: ${allowedProfileFields.joinToString(",")}.")
             appendLine("لا تضع كلمة مرور/OTP/PIN/CVV/بطاقة/مفتاح سري في الخطة، ولا تقترح دفعًا أو حذفًا نهائيًا أو إرسالًا حساسًا كفعل تلقائي؛ حكيم يحكم ذلك محليًا.")
             appendLine("إذا لم يلزم أي فعل، اجعل done=true وactions=[]، ويمكنك وضع خلاصة قصيرة في message.")
         }
@@ -46,11 +50,12 @@ object HakimReasoningProtocol {
             val type = a.optString("type").trim()
             if (type !in allowedTypes) return null
             val args = a.optJSONObject("args") ?: JSONObject().apply {
-                for (key in listOf("url", "text", "target", "value", "ms")) {
+                for (key in listOf("url", "text", "target", "value", "field_id", "ms")) {
                     if (a.has(key)) put(key, a.get(key))
                 }
             }
             if (containsSecret(args.toString())) return null
+            if (type == "fill_profile" && args.optString("field_id") !in allowedProfileFields) return null
             actions += Action(type, args)
         }
         return Plan(

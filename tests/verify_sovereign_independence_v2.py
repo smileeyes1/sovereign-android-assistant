@@ -68,8 +68,8 @@ require('sites.put(host, instructions.take' not in portability,
         "P0: بقي مسار خام لتصدير تعليمات المواقع")
 require('.put("governance_global", HakimGovernanceStore.global(context)' not in portability,
         "P0: بقي مسار خام لتصدير النظام الحاكم العام")
-require('root.optString("governance_global", "")\n        ).take' not in portability,
-        "P0: بقي مسار خام لاستيراد النظام الحاكم العام دون تنقيح")
+require('val global = HakimGovernanceStore.exportSafeText(\n            root.optString("governance_global", "")\n        ).take(24000)' in portability,
+        "P0: استيراد النظام الحاكم العام لا يمر صراحة عبر التنقيح")
 require('sites[host] = sitesObj.optString(host, "").take' not in portability,
         "P0: بقي مسار خام لاستيراد تعليمات المواقع دون تنقيح")
 require(portability.count("HakimGovernanceStore.exportSafeText(") >= 4,

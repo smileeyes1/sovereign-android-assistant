@@ -42,7 +42,9 @@ require("ميّز صراحة بين" in religious and "التفسير" in religi
 require("الخلاف المعتبر" in religious, "P0: احترام الخلاف الفقهي المعتبر مفقود")
 require("لا تنقل آية أو حديثًا" in religious, "P0: بوابة التثبت من النص الشرعي مفقودة")
 require("الحروف المقطعة" in religious and "قوى تقنية" in religious, "P0: حاجز عدم تحويل القرآن إلى خوارزميات/قوى تقنية مفقود")
-require("RELIGIOUS" in agents and "HakimReligiousIntegrity" in agents, "P0: وكيل النزاهة الشرعية غير موصول بالقائد")
+require("RELIGIOUS" in agents, "P0: وكيل النزاهة الشرعية غير موجود في منظومة القائد")
+require("HakimReligiousIntegrity.assess" in sovereign and "HakimReligiousIntegrity.promptContext" in sovereign, "P0: المحرك السيادي لا يستدعي النزاهة الشرعية")
+require("HakimSovereignEngine.assess" in agents, "P0: القائد لا يرث تقييم النزاهة الشرعية من المحرك السيادي")
 
 for phase in ["UNDERSTAND", "PLAN", "EXECUTE", "VERIFY", "RECOVER", "WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "COMPLETE", "BLOCKED"]:
     require(phase in mission, f"P0: مرحلة المهمة {phase} مفقودة")

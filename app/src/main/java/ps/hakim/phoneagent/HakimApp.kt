@@ -21,6 +21,7 @@ class HakimApp : Application() {
         HakimHealthBeacon.sendAsync(this, "app_start")
         AutoUpdater.schedule(this)
         AutoUpdater.startRealtimeListener(this)
+        AutoUpdater.checkAsync(this)
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
         Thread {

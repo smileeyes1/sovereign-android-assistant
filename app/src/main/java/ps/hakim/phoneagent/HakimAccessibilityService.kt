@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Bitmap
 import android.graphics.ColorSpace
 import android.graphics.Path
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.Display
@@ -98,14 +99,7 @@ class HakimAccessibilityService : AccessibilityService() {
         if (!safeAutomationPackages.contains(packageName) || value.isBlank()) return false
         val root = rootInActiveWindow ?: return false
         if (root.packageName?.toString() != packageName) return false
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-        val editable = mutableListOf<AccessibilityNodeInfo>()
-        while (queue.isNotEmpty() && editable.size < 12) {
-            val n = queue.removeFirst()
-            if (n.isEditable && n.isVisibleToUser && !isSensitive(n)) editable += n
-            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
-        }
+        val editable = editableNodes(root)
         val preferred = editable.firstOrNull { n ->
             val probe = listOf(n.viewIdResourceName.orEmpty(), n.contentDescription?.toString().orEmpty())
                 .joinToString(" ").lowercase()
@@ -119,15 +113,45 @@ class HakimAccessibilityService : AccessibilityService() {
         if (!safeAutomationPackages.contains(packageName) || text.isBlank()) return false
         val root = rootInActiveWindow ?: return false
         if (root.packageName?.toString() != packageName) return false
-        for (n in root.findAccessibilityNodeInfosByText(text)) {
-            if (isSensitive(n)) continue
-            var cur: AccessibilityNodeInfo? = n
-            repeat(5) {
-                if (cur?.isClickable == true) return cur!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                cur = cur?.parent
+        val target = text.trim().lowercase()
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val n = queue.removeFirst()
+            if (!isSensitive(n)) {
+                val label = listOf(n.text?.toString().orEmpty(), n.contentDescription?.toString().orEmpty())
+                    .joinToString(" ").trim().lowercase()
+                if (label == target || label.contains(target)) {
+                    var cur: AccessibilityNodeInfo? = n
+                    repeat(5) {
+                        if (cur?.isClickable == true) return cur!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        cur = cur?.parent
+                    }
+                }
             }
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
         }
         return false
+    }
+
+    fun performImeEnterForPackage(packageName: String): Boolean {
+        if (!safeAutomationPackages.contains(packageName) || Build.VERSION.SDK_INT < 30) return false
+        val root = rootInActiveWindow ?: return false
+        if (root.packageName?.toString() != packageName) return false
+        val editable = editableNodes(root).lastOrNull() ?: return false
+        return editable.performAction(AccessibilityNodeInfo.ACTION_IME_ENTER)
+    }
+
+    private fun editableNodes(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        val editable = mutableListOf<AccessibilityNodeInfo>()
+        while (queue.isNotEmpty() && editable.size < 12) {
+            val n = queue.removeFirst()
+            if (n.isEditable && n.isVisibleToUser && !isSensitive(n)) editable += n
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
+        }
+        return editable
     }
 
     private fun isSensitive(n: AccessibilityNodeInfo): Boolean {
@@ -187,7 +211,7 @@ class HakimAccessibilityService : AccessibilityService() {
     }
 
     fun screenshotBase64(): String? {
-        if (android.os.Build.VERSION.SDK_INT < 30) return null
+        if (Build.VERSION.SDK_INT < 30) return null
         val latch = CountDownLatch(1)
         var result: String? = null
         takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {

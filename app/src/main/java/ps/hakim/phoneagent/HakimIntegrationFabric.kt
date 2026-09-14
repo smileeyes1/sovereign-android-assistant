@@ -6,14 +6,15 @@ import org.json.JSONObject
 
 /**
  * نسيج التكامل والوصل لحكيم.
- * يوحد القلب الحاكم والقدرات والاتصال والتنفيذ والتحقق والتعلم والتعافي دون خلط
+ * يوحد القلب الحاكم والقرآن كله والقدرات والاتصال والتنفيذ والتحقق والتعلم والتعافي دون خلط
  * سلامة البنية بجاهزية الشبكة/الهاتف اللحظية.
  */
 object HakimIntegrationFabric {
-    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v1"
+    const val VERSION = "SOVEREIGN-INTEGRATION-FABRIC-2026-09-14-v2"
 
     private val structuralNodes = listOf(
         "quranic_kernel",
+        "quranic_corpus_114",
         "constitution",
         "intent_context",
         "decision_matrix",
@@ -33,6 +34,8 @@ object HakimIntegrationFabric {
     )
 
     private val structuralEdges = listOf(
+        "quranic_kernel→quranic_corpus_114",
+        "quranic_corpus_114→constitution",
         "quranic_kernel→constitution",
         "constitution→intent_context",
         "intent_context→decision_matrix",
@@ -67,7 +70,10 @@ object HakimIntegrationFabric {
         HakimQuranicInvariantKernel.requireInherited("integration:$scope")
         check(context.packageName == "ps.hakim.stable") { "نسيج التكامل يعمل فقط داخل هوية حكيم الأصلية" }
         val governance = HakimConstitution.status(context)
+        val corpus = HakimQuranicCorpusPolicy.status()
         check(governance.optBoolean("quranic_normative_default")) { "الدستور القرآني الحاكم غير مثبت" }
+        check(corpus.optBoolean("all_114_surahs_covered")) { "تغطية القرآن كله/السور الـ١١٤ غير مثبتة" }
+        check(corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")) { "الفصل بين الوحي والتفسير/الاستنباط غير مثبت" }
         check(governance.optBoolean("fail_closed_core_changes")) { "حماية تغييرات القلب غير مفعلة" }
         return structuralStatus(context, scope)
     }
@@ -75,16 +81,21 @@ object HakimIntegrationFabric {
     fun structuralStatus(context: Context, scope: String = "status"): JSONObject {
         HakimQuranicInvariantKernel.requireInherited("integration_status:$scope")
         val governance = HakimConstitution.status(context)
+        val corpus = HakimQuranicCorpusPolicy.status()
         val packageOk = context.packageName == "ps.hakim.stable"
         val quranicOk = governance.optBoolean("quranic_normative_default")
+        val corpusOk = corpus.optBoolean("all_114_surahs_covered") &&
+            corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
             .put("structural_integrity", ok)
             .put("single_app_identity", packageOk)
             .put("quranic_root_inherited", quranicOk)
+            .put("quranic_corpus_114_integrated", corpusOk)
+            .put("quranic_corpus", corpus)
             .put("fail_closed_core_changes", failClosed)
             .put("nodes", JSONArray(structuralNodes))
             .put("edges", JSONArray(structuralEdges))
@@ -119,10 +130,11 @@ object HakimIntegrationFabric {
         return buildString {
             appendLine("[نسيج التكامل والوصل السيادي]")
             appendLine("القلب البنيوي=${if (s.optJSONObject("structural")?.optBoolean("structural_integrity") == true) "سليم" else "غير سليم"}؛ اتصال الشبكة/المتصفح/الهاتف جاهزية لحظية وليست بديلًا عن سلامة القلب.")
+            appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، مع فصل النص عن التفسير والقراءات وأسباب النزول والاستنباط، ومنع الانتقائية والتكلف.")
             appendLine("لا توجد طبقة حرجة معزولة: المقصد والقرار والوكلاء والتنفيذ والتحقق والتعلم والتعافي والاتصال والتحديث تعود إلى القلب الحاكم وسجل المهمة.")
             appendLine("عند فقد وصلة خارجية: غيّر المسار أو استعد الاتصال إذا كان ذلك آمنًا ومسموحًا؛ لا توسع السلطة ولا تدّع أن الوصلة جاهزة.")
             appendLine("المتصفح=${s.optBoolean("browser_ready_now")}، الوصول=${s.optBoolean("accessibility_ready_now")}، ChatGPT=${s.optBoolean("chatgpt_official_installed")}، القناة الآمنة=${s.optBoolean("secure_relay_configured")}.")
-        }.take(3000)
+        }.take(3600)
     }
 
     fun status(context: Context): JSONObject = JSONObject()

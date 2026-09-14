@@ -10,6 +10,7 @@ class HakimApp : Application() {
         HakimQuranicInvariantKernel.requireInherited("app_start")
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        HakimIntegrationFabric.install(this)
         restoreActiveMissionState()
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)

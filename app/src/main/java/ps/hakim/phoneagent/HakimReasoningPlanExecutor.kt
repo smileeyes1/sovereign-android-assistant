@@ -96,6 +96,43 @@ object HakimReasoningPlanExecutor {
                             }
                         }
                     }
+                    "fill_profile" -> {
+                        val target = action.args.optString("target").trim()
+                        val fieldId = action.args.optString("field_id").trim()
+                        val value = HakimPersonalVault.get(activity, fieldId).orEmpty().trim()
+                        if (value.isBlank()) {
+                            finish(false, needsDataTrust = true, reason = "بيان «$fieldId» غير محفوظ في خزنة حكيم")
+                        } else {
+                            ensureHakimBrowser(activity, handler, 0) { ready ->
+                                if (!ready) {
+                                    finish(false, reason = "تعذر استعادة شاشة الموقع قبل تعبئة بيانات الخزنة")
+                                } else {
+                                    val targetSnapshot = service.uiSnapshot(160)
+                                    val decision = HakimActionPolicy.classify(target, targetSnapshot)
+                                    when {
+                                        decision.level == HakimActionPolicy.Level.BLOCK ->
+                                            finish(false, blocked = true, reason = decision.reason)
+                                        decision.level == HakimActionPolicy.Level.APPROVAL ->
+                                            finish(false, needsApproval = true, reason = decision.reason)
+                                        !HakimSiteTrust.canUseProfile(activity, targetSnapshot) ->
+                                            finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
+                                        else -> {
+                                            val ok = service.action(
+                                                JSONObject().put("action", "set_text").put("text", target).put("value", value)
+                                            )
+                                            if (!ok) finish(false, reason = "تعذر العثور على حقل «$target» لتعبئته من الخزنة")
+                                            else {
+                                                progressed = true
+                                                steps += 1
+                                                onProgress("عبأت «$fieldId» محليًا في موقع معتمد دون كشف قيمته لمحرك الاستدلال.")
+                                                handler.postDelayed(next, 500L)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     "set_text" -> {
                         val target = action.args.optString("target").trim()
                         val value = action.args.optString("value")

@@ -22,8 +22,8 @@ manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
-require("versionCode 20021" in build and "2.0.21-chat-first-inapp-reasoning" in build,
-        "P0: الاستدلال الداخلي ليس إصدارًا مستقلًا ٢٠٠٢١")
+require("versionCode 20022" in build and "2.0.22-capability-mesh" in build,
+        "P0: الاستدلال الداخلي ليس ضمن إصدار شبكة التفوق ٢٠٠٢٢")
 require("object HakimWebReasoningBridge" in web, "P0: جسر الاستدلال داخل حكيم مفقود")
 require('CHAT_URL = "https://chatgpt.com/"' in web, "P0: محرك الويب ليس مثبتًا على أصل ChatGPT الآمن")
 require("WebView" in web and "evaluateJavascript" in web, "P0: الاستدلال لا يعمل داخل WebView حكيم")
@@ -49,7 +49,6 @@ pos_access = bridge.find("HakimAccessibilityService.instance")
 require(pos_web >= 0 and pos_access > pos_web,
         "P0: Accessibility ما زال شرط الاستدلال الأول بدل مسار داخلي احتياطي")
 
-# التنفيذ الفعلي بعد الاستدلال يجب أن يرث نفس قاعدة أقل صلاحية.
 require("object HakimWebAutomation" in web_actions and "evaluateJavascript" in web_actions,
         "P0: طبقة تنفيذ WebView المحلية مفقودة")
 require("clickable:clickable" in web_actions and "editable:editable" in web_actions,
@@ -67,7 +66,6 @@ require("جولة تحقق مستقلة" in executor and "يلزم تحقق جد
 require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in protocol,
         "P0: خطة تحتوي أفعالًا ما زالت قادرة على إعلان done=true قبل التنفيذ والتحقق")
 
-# الحلقة الذاتية التي تسبق الاستدلال يجب ألا تناقض ملف التثبيت منخفض الصلاحية.
 require("HakimWebAutomation.snapshot" in autonomous and "HakimWebAutomation.clickText" in autonomous and "HakimWebAutomation.setText" in autonomous,
         "P0: الحلقة الذاتية لا تستخدم WebView حكيم كمسار أول")
 require('recordVerification(activity, false, "خدمة الوصول غير مفعلة")' not in autonomous,
@@ -81,7 +79,7 @@ require("allowedTypes" in protocol and "arr.length() > 8" in protocol and "conta
         "P0: خطة الاستدلال الداخلي غير مقيدة بما يكفي")
 require("verify_in_app_reasoning.py" in workflow,
         "P0: لا توجد بوابة CI للاستدلال داخل واجهة حكيم")
-require("hakim-field-20021.apk" in workflow,
-        "P0: مسار إصدار CI لم يرتفع إلى ٢٠٠٢١")
+require("hakim-field-20022.apk" in workflow,
+        "P0: مسار إصدار CI لم يرتفع إلى ٢٠٠٢٢")
 
 print("HAKIM_IN_APP_REASONING=PASS")

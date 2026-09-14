@@ -57,6 +57,10 @@ jobs:
         run: python3 tests/verify_quranic_corpus_coverage.py
       - name: بوابة الإنسان أولًا والكرامة والرحمة
         run: python3 tests/verify_human_first_policy.py
+      - name: بوابة نظام الأنظمة والأنظمة المنبثقة
+        run: python3 tests/verify_system_of_systems.py
+      - name: بوابة أداء الهاتف وحاكم الموارد
+        run: python3 tests/verify_resource_governor.py
       - name: بوابة التكامل والوصل السيادي
         run: python3 tests/verify_integration_fabric.py
       - name: بوابة التفوق الشامل ومنع الانحدار

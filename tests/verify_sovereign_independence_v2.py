@@ -30,6 +30,16 @@ require("offline_graceful_degradation" in independence, "P0: لا توجد سي�
 require("android_platform_dependency_acknowledged" in independence, "P0: الاستقلال يدعي ضمنيًا التخلص من اعتماد Android")
 require("advanced_model_equivalence_offline_not_claimed" in independence, "P0: قد يدعي حكيم تكافؤ نموذج متقدم بلا مزود")
 require("HakimReasoningProviderRegistry.promptContext" in independence, "P0: استقلال المزود غير داخل عقد الاستقلال")
+require('readyNow = provider.optBoolean("advanced_reasoning_ready_now")' in independence,
+        "P0: جاهزية الاستدلال المتقدم لا تتبع حالته الفعلية")
+require('advanced_reasoning_ready_now") || true' not in independence,
+        "P0: الاستدلال المتقدم يُعلن جاهزًا دائمًا دون دليل")
+require("توقيع ميداني مثبت" not in independence,
+        "P0: طبقة الاستقلال تدعي إثباتًا ميدانيًا لا يثبته الكود")
+require('readyNow = resource.optBoolean("resource_governor")' in independence,
+        "P0: جاهزية حاكم الموارد لا تتبع حالته الفعلية")
+require('readyNow = portability.optBoolean("sovereign_portability")' in independence,
+        "P0: جاهزية قابلية النقل لا تتبع حالتها الفعلية")
 
 require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")
 require("LOCAL_DETERMINISTIC" in providers and "EXTERNAL_ADVANCED" in providers, "P0: لا يوجد فصل بين المحلي والاستدلال المتقدم")

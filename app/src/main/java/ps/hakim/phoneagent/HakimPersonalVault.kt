@@ -1,0 +1,114 @@
+package ps.hakim.phoneagent
+
+import android.content.Context
+
+/**
+ * خزنة محلية للبيانات الشخصية المتكررة غير الحساسة.
+ * كلمات المرور ورموز التحقق والبطاقات والمفاتيح السرية ممنوعة هنا عمدًا.
+ */
+object HakimPersonalVault {
+    data class Field(val id: String, val title: String, val aliases: List<String>)
+
+    private const val PREFS = "hakim_personal_vault_secure"
+    private const val META = "hakim_personal_vault_meta"
+    private const val KEY_INDEX = "field_index"
+    private const val SHARE_WITH_REASONING = "share_profile_with_reasoning"
+
+    val fields = listOf(
+        Field("full_name", "الاسم الكامل", listOf("الاسم", "الاسم الكامل", "الاسم الثلاثي", "name", "full name")),
+        Field("email", "البريد الإلكتروني", listOf("البريد", "البريد الإلكتروني", "الايميل", "الإيميل", "email", "e-mail")),
+        Field("phone", "رقم الهاتف", listOf("الهاتف", "رقم الهاتف", "الجوال", "الموبايل", "phone", "mobile", "tel")),
+        Field("address", "العنوان", listOf("العنوان", "عنوان السكن", "address", "street address")),
+        Field("city", "المدينة/البلدة", listOf("المدينة", "البلدة", "المحافظة", "city", "town")),
+        Field("country", "الدولة", listOf("الدولة", "البلد", "country")),
+        Field("job_title", "المسمى الوظيفي", listOf("المسمى الوظيفي", "الوظيفة", "المهنة", "job title", "occupation", "role")),
+        Field("organization", "جهة العمل", listOf("جهة العمل", "المؤسسة", "المدرسة", "الشركة", "organization", "company", "school", "employer"))
+    )
+
+    fun save(context: Context, id: String, value: String): Boolean {
+        val key = id.trim().lowercase()
+        val clean = value.trim()
+        if (key.isBlank() || forbidden(key) || forbidden(clean)) return false
+        if (clean.isBlank()) {
+            remove(context, key)
+            return true
+        }
+        val ok = HakimSecureStore.put(context, PREFS, key, clean.take(4000))
+        if (ok) {
+            val meta = context.getSharedPreferences(META, Context.MODE_PRIVATE)
+            val index = LinkedHashSet(meta.getStringSet(KEY_INDEX, emptySet()) ?: emptySet())
+            index += key
+            meta.edit().putStringSet(KEY_INDEX, index).apply()
+        }
+        return ok
+    }
+
+    fun get(context: Context, id: String): String? =
+        HakimSecureStore.get(context, PREFS, id.trim().lowercase())
+
+    fun remove(context: Context, id: String) {
+        val key = id.trim().lowercase()
+        HakimSecureStore.remove(context, PREFS, key)
+        val meta = context.getSharedPreferences(META, Context.MODE_PRIVATE)
+        val index = LinkedHashSet(meta.getStringSet(KEY_INDEX, emptySet()) ?: emptySet())
+        if (index.remove(key)) meta.edit().putStringSet(KEY_INDEX, index).apply()
+    }
+
+    fun all(context: Context): Map<String, String> {
+        val meta = context.getSharedPreferences(META, Context.MODE_PRIVATE)
+        val index = meta.getStringSet(KEY_INDEX, emptySet()) ?: emptySet()
+        val out = linkedMapOf<String, String>()
+        index.sorted().forEach { id ->
+            get(context, id)?.takeIf { it.isNotBlank() }?.let { out[id] = it }
+        }
+        return out
+    }
+
+    /** يحاول مطابقة تسمية الحقل الظاهر مع قيمة مخزنة محليًا دون تمريرها للنموذج. */
+    fun valueForLabel(context: Context, rawLabel: String): Pair<Field, String>? {
+        val label = normalize(rawLabel)
+        if (label.isBlank() || forbidden(label)) return null
+        for (field in fields) {
+            val match = field.aliases.any { alias ->
+                val a = normalize(alias)
+                label.contains(a) || a.contains(label)
+            } || label.contains(field.id.replace('_', ' '))
+            if (!match) continue
+            val value = get(context, field.id)?.trim().orEmpty()
+            if (value.isNotBlank()) return field to value
+        }
+        return null
+    }
+
+    fun setReasoningSharing(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(META, Context.MODE_PRIVATE).edit()
+            .putBoolean(SHARE_WITH_REASONING, enabled)
+            .apply()
+    }
+
+    fun reasoningSharingEnabled(context: Context): Boolean =
+        context.getSharedPreferences(META, Context.MODE_PRIVATE)
+            .getBoolean(SHARE_WITH_REASONING, false)
+
+    fun promptContext(context: Context): String {
+        if (!reasoningSharingEnabled(context)) {
+            val available = fields.filter { !get(context, it.id).isNullOrBlank() }.map { it.title }
+            return if (available.isEmpty()) "" else "[بيانات محلية متاحة للتعبئة دون كشف القيم للنموذج]\n${available.joinToString("، ")}\n"
+        }
+        val pairs = fields.mapNotNull { f -> get(context, f.id)?.takeIf { it.isNotBlank() }?.let { f.title to it } }
+        if (pairs.isEmpty()) return ""
+        return buildString {
+            appendLine("[بيانات غير حساسة سمح المستخدم بمشاركتها مع محرك الاستدلال عند الحاجة فقط]")
+            pairs.forEach { (name, value) -> appendLine("• $name: ${value.take(500)}") }
+        }.take(3500)
+    }
+
+    private fun normalize(v: String): String = v.lowercase()
+        .replace(Regex("[_\\-.:/]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    private fun forbidden(v: String): Boolean = Regex(
+        "(?i)(password|passcode|otp|pin|cvv|cvc|card.?number|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|رقم.?البطاقة|مفتاح.?سري)"
+    ).containsMatchIn(v)
+}

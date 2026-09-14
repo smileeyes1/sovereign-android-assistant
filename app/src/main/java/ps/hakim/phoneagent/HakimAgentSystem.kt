@@ -53,7 +53,12 @@ object HakimAgentSystem {
         val selected = linkedSetOf(Agent.LEADER)
         preferred?.let { if (it != Agent.LEADER) selected += it }
 
-        if (looksLikeWebTask(s)) selected += Agent.BROWSER
+        val lastUrl = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+            .getString("last_url", "").orEmpty().trim()
+        val webContext = lastUrl.startsWith("http://") || lastUrl.startsWith("https://")
+        val minimalContinuation = HakimIntentContext.isMinimalCue(raw)
+
+        if (looksLikeWebTask(s) || (minimalContinuation && webContext)) selected += Agent.BROWSER
         if (containsAny(s, "ابحث", "قارن", "تحقق من", "ما الأفضل", "مصدر", "معلومة")) selected += Agent.RESEARCH
         if (containsAny(s, "نموذج", "عبئ", "املأ", "ادخل بيانات", "سجل", "تسجيل")) selected += Agent.FORMS
         if (containsAny(s, "ملف", "pdf", "وورد", "صورة", "ارفع", "نزّل", "حفظ")) selected += Agent.FILES
@@ -69,14 +74,14 @@ object HakimAgentSystem {
         selected += Agent.SAFETY
 
         val route = when {
-            looksLikeWebTask(s) || selected.contains(Agent.BROWSER) || selected.contains(Agent.FORMS) -> "browser"
+            looksLikeWebTask(s) || selected.contains(Agent.BROWSER) || selected.contains(Agent.FORMS) || (minimalContinuation && webContext) -> "browser"
             else -> "reasoning"
         }
         val needsApproval = highImpact || sensitive
         val next = when {
             sensitive -> "لا تمرر السر إلى نموذج الذكاء؛ استخدم مدير اعتماد أندرويد/جلسة الموقع واطلب إدخال السر في الحقل الآمن عند الحاجة"
             highImpact -> "نفذ التحضير الآمن كاملًا ثم توقف قبل الفعل النهائي عالي الأثر لطلب الموافقة"
-            route == "browser" -> "استأنف من الشاشة الحالية ونفذ الخطوات القابلة للعكس تلقائيًا، ثم تحقق من النتيجة الفعلية"
+            route == "browser" -> "أعد متصفح حكيم إلى الواجهة، اقرأ الصفحة الحالية، ونفذ الخطوات القابلة للعكس تلقائيًا ثم تحقق"
             else -> "مرر المقصد المستنتج مع السياق الضروري إلى محرك الذكاء، ثم تحقق من الناتج وأكمل تلقائيًا"
         }
 

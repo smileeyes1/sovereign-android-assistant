@@ -41,6 +41,10 @@ jobs:
         run: python3 tests/verify_sovereign_intelligence.py
       - name: بوابة وراثة القرآن من النواة إلى الحافة
         run: python3 tests/verify_quranic_kernel_inheritance.py
+      - name: بوابة شمول سور القرآن ١١٤ وفصل طبقات المعرفة
+        run: python3 tests/verify_quranic_corpus_coverage.py
+      - name: بوابة التكامل والوصل السيادي
+        run: python3 tests/verify_integration_fabric.py
       - name: بوابة التفوق الشامل ومنع الانحدار
         run: python3 tests/verify_excellence_optimizer.py
       - name: بوابة الاستقلال السيادي والقيادة الذاتية

@@ -10,6 +10,7 @@ class HakimApp : Application() {
         HakimQuranicInvariantKernel.requireInherited("app_start")
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        HakimProactiveEngine.initialize(this)
         HakimIntegrationFabric.install(this)
         restoreActiveMissionState()
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
@@ -21,9 +22,10 @@ class HakimApp : Application() {
         AutoUpdater.schedule(this)
         AutoUpdater.startRealtimeListener(this)
         HakimSelfCheck.schedule(this)
-        AutoUpdater.checkAsync(this)
         HakimSelfCheck.runAsync(this)
-        HakimConstraintDoctor.runAsync(this, "app_start")
+        Thread {
+            runCatching { HakimProactiveEngine.runSafeBackground(this, "app_start") }
+        }.start()
     }
 
     private fun restoreActiveMissionState() {

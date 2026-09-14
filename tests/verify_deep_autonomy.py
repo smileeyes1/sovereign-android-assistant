@@ -50,6 +50,10 @@ require('"fill_profile"' in plan_exec and "HakimPersonalVault.get" in plan_exec,
 require("HakimSiteTrust.canUseProfile" in plan_exec, "P0: fill_profile قد يخرج البيانات لموقع غير موثوق")
 require("fill_profile{target,field_id}" in personal, "P0: سياق الخزنة لا يوجه النموذج للتعبئة المحلية")
 require("explicitlyRelevant" in personal, "P0: مشاركة قيم البيانات مع الاستدلال ليست انتقائية")
+require("allowedFieldIds" in personal and "key !in allowedFieldIds" in personal,
+        "P0: خزنة البيانات تقبل مفاتيح خارج قائمة الحقول المعلنة")
+require("index.filter { it in allowedFieldIds }" in personal,
+        "P0: الخزنة قد تعيد حقولًا قديمة/غير مسموحة من الفهرس")
 require("trusted_profile_hosts" in trust, "P0: قائمة ثقة المواقع مفقودة")
 require("HakimRuntime.visibleWebView()?.url" in trust, "P0: ثقة الخزنة تعتمد عنوانًا مخزنًا بدل عنوان WebView الفعلي")
 require("return host in set" in trust, "P0: ثقة الموقع ليست مطابقة دقيقة للمضيف")

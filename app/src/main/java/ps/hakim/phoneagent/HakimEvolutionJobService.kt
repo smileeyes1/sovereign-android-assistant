@@ -12,6 +12,7 @@ class HakimEvolutionJobService : JobService() {
                 HakimLearning.maintenance(applicationContext)
                 val report = HakimSelfCheck.run(applicationContext)
                 HakimLearning.recordHealth(applicationContext, report)
+                HakimLearning.consolidateAdaptation(applicationContext, report.optString("status", "UNKNOWN"))
                 AutoUpdater.checkNow(applicationContext)
             } catch (_: Exception) {
             } finally {

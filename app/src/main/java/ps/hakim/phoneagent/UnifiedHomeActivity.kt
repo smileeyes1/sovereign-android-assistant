@@ -47,13 +47,24 @@ class UnifiedHomeActivity : Activity() {
             text = "حكيم — التطبيق الموحّد"
             textSize = 27f
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 18)
+            setPadding(8, 8, 8, 12)
+        })
+
+        root.addView(TextView(this).apply {
+            text = "تحدّث مع حكيم بطريقتك الطبيعية؛ هو يختار الوكلاء والأدوات ويكمل المسار المناسب."
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setPadding(8, 0, 8, 14)
+        })
+
+        root.addView(button("محادثة الوكلاء — ابدأ من هنا") {
+            startActivity(Intent(this, HakimAgentsChatActivity::class.java))
         })
 
         adbStatus = TextView(this).apply {
             textSize = 17f
             gravity = Gravity.CENTER
-            setPadding(8, 10, 8, 16)
+            setPadding(8, 12, 8, 14)
         }
         root.addView(adbStatus)
 
@@ -75,7 +86,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم مفتاح ADB داخل AndroidKeyStore، ويعيد الاتصال تلقائيًا بعد التشغيل أو استبدال الحزمة. لا يُخزن رمز الاقتران."
+            text = "يحفظ حكيم مفتاح ADB داخل AndroidKeyStore، ويعيد الاتصال تلقائيًا بعد التشغيل أو استبدال الحزمة. لا يُخزن رمز الاقتران ولا كلمات المرور أو رموز التحقق كنصوص."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)

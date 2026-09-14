@@ -32,6 +32,8 @@ assert EXPECTED.replace(":", "").lower() in UPDATER
 assert LEGACY.replace(":", "").lower() not in UPDATER
 assert "MAX_APK_BYTES = 32L * 1024L * 1024L" in UPDATER
 assert "verify-field-signer.sh" in WORKFLOW
-assert "hakim-field-20022.apk" in WORKFLOW
+assert 'VERSION_CODE="$(sed -nE' in WORKFLOW
+assert 'FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"' in WORKFLOW
+assert 'name: hakim-field-${{ steps.field_sign.outputs.version_code }}' in WORKFLOW
 assert "NOT-INSTALLABLE" in WORKFLOW
 print("SIGNING_CONTINUITY_POLICY=PASS")

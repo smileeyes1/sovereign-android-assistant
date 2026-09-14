@@ -5,9 +5,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.webkit.WebView
+import org.json.JSONArray
 import org.json.JSONObject
 
-/** ينفذ فقط بروتوكول حكيم المحدود، ويعيد فحص كل خطوة محليًا على شاشة الموقع الفعلية قبل التنفيذ. */
+/**
+ * ينفذ فقط بروتوكول حكيم المحدود، ويعيد فحص كل خطوة محليًا على الصفحة الفعلية قبل التنفيذ.
+ * المسار الأول هو WebView حكيم نفسه بأقل صلاحية؛ Accessibility يبقى احتياطًا فقط إن كان متاحًا.
+ */
 object HakimReasoningPlanExecutor {
     data class Outcome(
         val progressed: Boolean,
@@ -38,11 +43,6 @@ object HakimReasoningPlanExecutor {
 
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
-        if (service == null) {
-            HakimSovereignEngine.recordVerification(activity, false, "خدمة الوصول غير مفعلة أثناء خطة الاستدلال")
-            onComplete(Outcome(false, false, 0, false, false, true, "خدمة الوصول غير مفعلة"))
-            return
-        }
         HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة", attempted = true)
         var index = 0
         var steps = 0
@@ -77,8 +77,43 @@ object HakimReasoningPlanExecutor {
             HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
-        fun gateAction(label: String, snapshot: org.json.JSONArray): HakimAuthorityEnvelope.Decision =
+        fun gateAction(label: String, snapshot: JSONArray): HakimAuthorityEnvelope.Decision =
             HakimAuthorityEnvelope.classifyUiAction(label, snapshot)
+
+        fun snapshotFor(web: WebView?, callback: (JSONArray) -> Unit) {
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.snapshot(web!!, callback)
+            } else {
+                callback(service?.uiSnapshot(160) ?: JSONArray())
+            }
+        }
+
+        fun clickLeastPrivilege(web: WebView?, target: String, callback: (Boolean) -> Unit) {
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.clickText(web!!, target) { nativeOk ->
+                    if (nativeOk) callback(true)
+                    else callback(service?.action(JSONObject().put("action", "click_text").put("text", target)) == true)
+                }
+            } else {
+                callback(service?.action(JSONObject().put("action", "click_text").put("text", target)) == true)
+            }
+        }
+
+        fun setTextLeastPrivilege(web: WebView?, target: String, value: String, callback: (Boolean) -> Unit) {
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.setText(web!!, target, value) { nativeOk ->
+                    if (nativeOk) callback(true)
+                    else callback(service?.action(JSONObject().put("action", "set_text").put("text", target).put("value", value)) == true)
+                }
+            } else {
+                callback(service?.action(JSONObject().put("action", "set_text").put("text", target).put("value", value)) == true)
+            }
+        }
+
+        fun backLeastPrivilege(web: WebView?): Boolean {
+            if (HakimWebAutomation.isUsable(web) && HakimWebAutomation.goBack(web!!)) return true
+            return service?.action(JSONObject().put("action", "back")) == true
+        }
 
         lateinit var next: () -> Unit
         next = {
@@ -87,7 +122,12 @@ object HakimReasoningPlanExecutor {
             } else if (finished || activity.isFinishing || activity.isDestroyed) {
                 if (!finished) finish(false, reason = "انتهت واجهة التنفيذ")
             } else if (index >= plan.actions.size) {
-                finish(plan.done, reason = if (plan.done) "محرك الاستدلال أعلن اكتمال الجولة" else "انتهت أفعال الجولة وتحتاج إعادة استدلال")
+                val verifiedDone = plan.done && plan.actions.isEmpty()
+                finish(
+                    verifiedDone,
+                    reason = if (verifiedDone) "جولة تحقق مستقلة أكدت عدم الحاجة إلى فعل إضافي"
+                    else "انتهت أفعال الجولة؛ يلزم تحقق جديد من الحالة الفعلية قبل إعلان الاكتمال"
+                )
             } else {
                 val action = plan.actions[index++]
                 when (action.type) {
@@ -106,32 +146,34 @@ object HakimReasoningPlanExecutor {
                             handler.postDelayed(next, 900L)
                         }
                     }
+
                     "click_text" -> {
                         val target = action.args.optString("text").trim()
-                        ensureHakimBrowser(activity, handler, 0) { ready ->
-                            if (!ready) {
-                                finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم النقرة")
+                        ensureHakimBrowser(activity, handler, 0) { web ->
+                            if (web == null && service == null) {
+                                finish(false, reason = "تعذر استعادة صفحة حكيم ولا يوجد مسار وصول احتياطي")
                             } else {
-                                val targetSnapshot = service.uiSnapshot(160)
-                                val authority = gateAction(target, targetSnapshot)
-                                when (authority.gate) {
-                                    HakimAuthorityEnvelope.Gate.BLOCK, HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
-                                    HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                    else -> {
-                                        val ok = service.action(JSONObject().put("action", "click_text").put("text", target))
-                                        if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال على شاشة الموقع")
-                                        else {
-                                            progressed = true
-                                            steps += 1
-                                            recordStep("نقرة منخفضة الأثر: ${target.take(120)}")
-                                            onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}» بعد فحص شاشة الموقع وغلاف السلطة.")
-                                            handler.postDelayed(next, 600L)
+                                snapshotFor(web) { targetSnapshot ->
+                                    val authority = gateAction(target, targetSnapshot)
+                                    when (authority.gate) {
+                                        HakimAuthorityEnvelope.Gate.BLOCK, HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
+                                        HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                        else -> clickLeastPrivilege(web, target) { ok ->
+                                            if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال على صفحة الموقع")
+                                            else {
+                                                progressed = true
+                                                steps += 1
+                                                recordStep("نقرة منخفضة الأثر: ${target.take(120)}")
+                                                onProgress("نفذت نقرة منخفضة الأثر داخل متصفح حكيم بعد فحص الصفحة وغلاف السلطة.")
+                                                handler.postDelayed(next, 600L)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+
                     "fill_profile" -> {
                         val target = action.args.optString("target").trim()
                         val fieldId = action.args.optString("field_id").trim()
@@ -139,24 +181,53 @@ object HakimReasoningPlanExecutor {
                         if (value.isBlank()) {
                             finish(false, needsDataTrust = true, reason = "بيان «$fieldId» غير محفوظ في خزنة حكيم")
                         } else {
-                            ensureHakimBrowser(activity, handler, 0) { ready ->
-                                if (!ready) {
-                                    finish(false, reason = "تعذر استعادة شاشة الموقع قبل تعبئة بيانات الخزنة")
+                            ensureHakimBrowser(activity, handler, 0) { web ->
+                                if (web == null && service == null) {
+                                    finish(false, reason = "تعذر استعادة صفحة حكيم قبل تعبئة بيانات الخزنة")
                                 } else {
-                                    val targetSnapshot = service.uiSnapshot(160)
-                                    val authority = gateAction(target, targetSnapshot)
+                                    snapshotFor(web) { targetSnapshot ->
+                                        val authority = gateAction(target, targetSnapshot)
+                                        when {
+                                            authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
+                                            authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                            !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
+                                            else -> setTextLeastPrivilege(web, target, value) { ok ->
+                                                if (!ok) finish(false, reason = "تعذر العثور على حقل «$target» لتعبئته من الخزنة")
+                                                else {
+                                                    progressed = true
+                                                    steps += 1
+                                                    recordStep("تعبئة محلية من الخزنة: $fieldId")
+                                                    onProgress("عبأت «$fieldId» محليًا في موقع معتمد دون كشف قيمته لمحرك الاستدلال.")
+                                                    handler.postDelayed(next, 500L)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    "set_text" -> {
+                        val target = action.args.optString("target").trim()
+                        val value = action.args.optString("value")
+                        ensureHakimBrowser(activity, handler, 0) { web ->
+                            if (web == null && service == null) {
+                                finish(false, reason = "تعذر استعادة صفحة حكيم قبل تقييم الكتابة")
+                            } else {
+                                snapshotFor(web) { targetSnapshot ->
+                                    val authority = gateAction("$target $value", targetSnapshot)
                                     when {
                                         authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
                                         authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                        !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
-                                        else -> {
-                                            val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value))
-                                            if (!ok) finish(false, reason = "تعذر العثور على حقل «$target» لتعبئته من الخزنة")
+                                        containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
+                                        else -> setTextLeastPrivilege(web, target, value.take(6000)) { ok ->
+                                            if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة على صفحة الموقع")
                                             else {
                                                 progressed = true
                                                 steps += 1
-                                                recordStep("تعبئة محلية من الخزنة: $fieldId")
-                                                onProgress("عبأت «$fieldId» محليًا في موقع معتمد دون كشف قيمته لمحرك الاستدلال.")
+                                                recordStep("كتابة محتوى غير حساس في ${target.take(120)}")
+                                                onProgress("كتبت محتوى غير حساس داخل متصفح حكيم بعد فحص الصفحة والسياسة وغلاف السلطة.")
                                                 handler.postDelayed(next, 500L)
                                             }
                                         }
@@ -165,51 +236,26 @@ object HakimReasoningPlanExecutor {
                             }
                         }
                     }
-                    "set_text" -> {
-                        val target = action.args.optString("target").trim()
-                        val value = action.args.optString("value")
-                        ensureHakimBrowser(activity, handler, 0) { ready ->
-                            if (!ready) {
-                                finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم الكتابة")
-                            } else {
-                                val targetSnapshot = service.uiSnapshot(160)
-                                val authority = gateAction("$target $value", targetSnapshot)
-                                when {
-                                    authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
-                                    authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                    containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
-                                    else -> {
-                                        val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000)))
-                                        if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة على شاشة الموقع")
-                                        else {
-                                            progressed = true
-                                            steps += 1
-                                            recordStep("كتابة محتوى غير حساس في ${target.take(120)}")
-                                            onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص الشاشة والسياسة وغلاف السلطة.")
-                                            handler.postDelayed(next, 500L)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "back" -> ensureHakimBrowser(activity, handler, 0) { ready ->
-                        if (!ready) finish(false, reason = "تعذر استعادة المتصفح للرجوع")
+
+                    "back" -> ensureHakimBrowser(activity, handler, 0) { web ->
+                        if (web == null && service == null) finish(false, reason = "تعذر استعادة المتصفح للرجوع")
                         else {
-                            val ok = service.action(JSONObject().put("action", "back"))
+                            val ok = backLeastPrivilege(web)
                             if (!ok) finish(false, reason = "تعذر الرجوع")
                             else {
                                 progressed = true
                                 steps += 1
-                                recordStep("رجوع آمن")
+                                recordStep("رجوع آمن داخل المسار الأقل صلاحية")
                                 handler.postDelayed(next, 500L)
                             }
                         }
                     }
+
                     "wait" -> {
                         val ms = action.args.optLong("ms", 700L).coerceIn(150L, 2500L)
                         handler.postDelayed(next, ms)
                     }
+
                     else -> finish(false, blocked = true, reason = "نوع فعل غير مسموح")
                 }
             }
@@ -220,21 +266,22 @@ object HakimReasoningPlanExecutor {
     private fun isActualFailure(reason: String): Boolean =
         reason.startsWith("تعذر") || reason.startsWith("لم أجد") || reason.contains("غير صالح")
 
-    private fun ensureHakimBrowser(activity: Activity, handler: Handler, attempt: Int, onReady: (Boolean) -> Unit) {
+    private fun ensureHakimBrowser(activity: Activity, handler: Handler, attempt: Int, onReady: (WebView?) -> Unit) {
         if (HakimMissionLedger.isCancelled(activity)) {
-            onReady(false)
+            onReady(null)
             return
         }
-        val service = HakimAccessibilityService.instance
-        val pkg = service?.foregroundPackage().orEmpty()
         val web = HakimRuntime.visibleWebView()
-        if (pkg.startsWith("ps.hakim.stable") && web != null && web.progress >= 60) {
-            onReady(true)
+        if (HakimWebAutomation.isUsable(web) && (web?.progress ?: 0) >= 60) {
+            onReady(web)
             return
         }
-        if (attempt == 0) activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        if (attempt == 0) {
+            activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        }
         if (attempt >= 14) {
-            onReady(service?.foregroundPackage().orEmpty().startsWith("ps.hakim.stable") && HakimRuntime.visibleWebView() != null)
+            val last = HakimRuntime.visibleWebView()
+            onReady(if (HakimWebAutomation.isUsable(last)) last else null)
             return
         }
         handler.postDelayed({ ensureHakimBrowser(activity, handler, attempt + 1, onReady) }, 300L)

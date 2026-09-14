@@ -51,7 +51,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "تحدّث مع حكيم بطريقتك الطبيعية؛ هو يختار الوكلاء والأدوات ويكمل المسار المناسب."
+            text = "أقل إشارة تكفي: حكيم يستعيد المقصد، يختار الوكلاء، يستخدم بياناتك المحلية المصرح بها، وينفذ الآمن حتى نهاية المسار أو بوابة القرار الجوهري."
             textSize = 16f
             gravity = Gravity.CENTER
             setPadding(8, 0, 8, 14)
@@ -59,6 +59,10 @@ class UnifiedHomeActivity : Activity() {
 
         root.addView(button("محادثة الوكلاء — ابدأ من هنا") {
             startActivity(Intent(this, HakimAgentsChatActivity::class.java))
+        })
+
+        root.addView(button("النظام الحاكم والبيانات") {
+            startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
         })
 
         adbStatus = TextView(this).apply {
@@ -86,7 +90,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم مفتاح ADB داخل AndroidKeyStore، ويعيد الاتصال تلقائيًا بعد التشغيل أو استبدال الحزمة. لا يُخزن رمز الاقتران ولا كلمات المرور أو رموز التحقق كنصوص."
+            text = "يحفظ حكيم مفاتيح الربط وبياناته المحلية داخل AndroidKeyStore، ويعيد الاتصال تلقائيًا. كلمات المرور ورموز التحقق والبطاقات لا تُخزن في خزنة حكيم ولا تُرسل كنص إلى نموذج الذكاء."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)

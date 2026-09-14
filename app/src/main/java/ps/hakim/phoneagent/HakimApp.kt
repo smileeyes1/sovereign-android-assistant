@@ -9,6 +9,7 @@ class HakimApp : Application() {
         super.onCreate()
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        restoreActiveMissionState()
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         HakimUnifiedRelay.start(this)
@@ -21,6 +22,20 @@ class HakimApp : Application() {
         AutoUpdater.checkAsync(this)
         HakimSelfCheck.runAsync(this)
         HakimConstraintDoctor.runAsync(this, "app_start")
+    }
+
+    private fun restoreActiveMissionState() {
+        val mission = HakimMissionLedger.active(this) ?: return
+        if (mission.phase in setOf(
+                HakimMissionLedger.Phase.WAITING_APPROVAL,
+                HakimMissionLedger.Phase.WAITING_CREDENTIAL,
+                HakimMissionLedger.Phase.WAITING_TRUST
+            )) return
+        HakimMissionLedger.progress(
+            this,
+            HakimMissionLedger.Phase.RECOVER,
+            "استعيدت المهمة بعد تشغيل التطبيق؛ يلزم قراءة الحالة الحالية قبل أي استكمال"
+        )
     }
 
     private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {

@@ -28,7 +28,7 @@ class HakimAgentsChatActivity : Activity() {
         super.onCreate(savedInstanceState)
         HakimConstitution.install(this)
         buildUi()
-        appendAssistant("أنا حكيم. اكتب طلبك بطريقتك الطبيعية، وأنا أختار الوكلاء والمسار المناسب تلقائيًا. لا تحتاج لكتابة أوامر تقنية.")
+        appendAssistant("أنا حكيم. يكفي أقل تلميح: كلمة، «كمل»، «هاي»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أستعيد المقصد والسياق وأكمل الآمن تلقائيًا.")
     }
 
     private fun buildUi() {
@@ -63,8 +63,8 @@ class HakimAgentsChatActivity : Activity() {
         root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         input = EditText(this).apply {
-            hint = "مثال: افتح الموقع وسجّل البيانات المطلوبة، أو ابحث لي عن الأفضل ثم نفّذ المناسب"
-            minLines = 3
+            hint = "قل أقل ما يخطر ببالك… أو اتركها فارغة واضغط نفّذ/أكمل"
+            minLines = 2
             maxLines = 7
             gravity = Gravity.TOP or Gravity.RIGHT
             textSize = 18f
@@ -76,8 +76,8 @@ class HakimAgentsChatActivity : Activity() {
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        row.addView(button("نفّذ") { submit(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(button("خطّط") { submit(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(button("نفّذ/أكمل") { submit(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(button("افهم فقط") { submit(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(row)
 
         root.addView(button("فتح متصفح حكيم") { startActivity(Intent(this, MainActivity::class.java)) })
@@ -90,28 +90,30 @@ class HakimAgentsChatActivity : Activity() {
     }
 
     private fun submit(execute: Boolean) {
-        val raw = input.text.toString().trim()
-        if (raw.isBlank()) return
-        appendUser(raw)
+        val typed = input.text.toString().trim()
+        val cue = typed.ifBlank { "أكمل" }
+        appendUser(if (typed.isBlank()) "…" else typed)
         input.setText("")
 
         val preferred = selectedAgent()
-        val plan = HakimAgentSystem.plan(this, raw, preferred)
-        appendAssistant(HakimAgentSystem.summary(this, raw, preferred))
+        val inference = HakimIntentContext.infer(this, cue)
+        val plan = HakimAgentSystem.plan(this, cue, preferred)
+        appendAssistant(HakimAgentSystem.summary(this, cue, preferred))
 
         if (!execute) return
-        val local = HakimNaturalActionEngine.execute(this, raw)
+
+        val local = HakimNaturalActionEngine.execute(this, inference.resolvedRequest, cue)
         if (local.handled) {
             appendAssistant(local.message)
             return
         }
 
         if (plan.sensitiveInputDetected) {
-            appendAssistant("وجدت في النص ما يبدو سرًا أو اعتمادًا حساسًا. لم أرسله لأي نموذج. احذف السر من الرسالة، وسيستخدم حكيم جلسة الموقع أو مدير اعتماد أندرويد عند الحاجة.")
+            appendAssistant("وجدت في النص ما يبدو سرًا أو اعتمادًا حساسًا. لم أرسله لأي نموذج. سيستخدم حكيم جلسة الموقع أو مدير اعتماد أندرويد/الحقل الآمن عند الحاجة.")
             return
         }
 
-        sendToReasoningEngine(HakimAgentSystem.agentPrompt(this, raw, preferred))
+        sendToReasoningEngine(HakimAgentSystem.agentPrompt(this, cue, preferred))
     }
 
     private fun sendToReasoningEngine(governedPrompt: String) {
@@ -122,7 +124,7 @@ class HakimAgentsChatActivity : Activity() {
         }
         try {
             startActivity(send)
-            appendAssistant("حوّلت المهمة المركبة إلى محرك الذكاء مع نظام الوكلاء ودستور حكيم. ارجع إلى هذه المحادثة في أي وقت لمواصلة التنفيذ.")
+            appendAssistant("حوّلت المقصد والسياق الضروري إلى محرك الذكاء مع نظام الوكلاء ودستور حكيم، دون تمرير الحقول الحساسة.")
         } catch (_: Exception) {
             copy(governedPrompt)
             try {

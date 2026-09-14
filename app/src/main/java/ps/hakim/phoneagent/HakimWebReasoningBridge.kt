@@ -9,6 +9,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -17,36 +18,43 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * جسر استدلال داخل حكيم بلا API مدفوع وبلا Accessibility.
- * يستخدم جلسة chatgpt.com داخل WebView من نفس تطبيق حكيم. بعد تسجيل الدخول مرة واحدة في متصفح حكيم،
- * تعمل الطلبات التالية عبر WebView مؤقت صغير ثم يُدمّر فور انتهاء الجولة لتقليل الذاكرة.
- * المحتوى المسترجع يبقى بيانات فقط، والخطة تمر دائمًا عبر HakimReasoningProtocol ثم المنفذ المحلي.
+ * جسر استدلال ويب متعدد المزودات داخل حكيم، بلا API مدفوع وبلا Accessibility.
+ * يدعم مزودات معروفة عبر جلسة WebView مشتركة، ويعيد فقط خطة HakimReasoningProtocol لتُفحص وتُنفذ محليًا.
+ * لا يظهر واجهة المزود فوق حكيم إلا عند تسجيل دخول لازم ومسموح.
  */
 object HakimWebReasoningBridge {
-    private const val CHAT_URL = "https://chatgpt.com/"
-    private const val MAX_READY_ATTEMPTS = 18
+    private const val MAX_READY_ATTEMPTS = 15
     private const val MAX_LOGIN_WAIT_ATTEMPTS = 150
-    private const val MAX_SEND_ATTEMPTS = 10
-    private const val MAX_RESPONSE_ATTEMPTS = 90
+    private const val MAX_SEND_ATTEMPTS = 12
+    private const val MAX_RESPONSE_ATTEMPTS = 95
 
     data class Result(
         val available: Boolean,
         val plan: HakimReasoningProtocol.Plan?,
         val responseText: String,
-        val reason: String
+        val reason: String,
+        val providerId: String
     )
 
     fun ask(
         activity: Activity,
         basePrompt: String,
+        providerId: String,
+        interactiveLogin: Boolean,
         onProgress: (String) -> Unit = {},
         onComplete: (Result) -> Unit
     ) {
+        val spec = HakimReasoningProviderRegistry.webProvider(providerId)
+        if (spec == null) {
+            onComplete(Result(false, null, "", "مزود الاستدلال غير معروف", providerId))
+            return
+        }
         if (activity.isFinishing || activity.isDestroyed) {
-            onComplete(Result(false, null, "", "انتهت واجهة حكيم"))
+            onComplete(Result(false, null, "", "انتهت واجهة حكيم", providerId))
             return
         }
 
+        val startedAt = System.currentTimeMillis()
         val request = HakimReasoningProtocol.wrap(basePrompt)
         val handler = Handler(Looper.getMainLooper())
         val hidden = WebView(activity)
@@ -69,18 +77,25 @@ object HakimWebReasoningBridge {
             if (finished) return
             finished = true
             cleanup()
+            val success = result.plan != null
+            HakimReasoningProviderRegistry.recordWebResult(
+                activity,
+                providerId,
+                success,
+                System.currentTimeMillis() - startedAt
+            )
             if (!activity.isFinishing && !activity.isDestroyed) {
                 activity.startActivity(
                     Intent(activity, HakimAgentsChatActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 )
             }
-            Handler(Looper.getMainLooper()).postDelayed({ onComplete(result) }, 120L)
+            Handler(Looper.getMainLooper()).postDelayed({ onComplete(result) }, 100L)
         }
 
-        fun isTrustedChatOrigin(web: WebView): Boolean {
+        fun trustedOrigin(web: WebView): Boolean {
             val uri = runCatching { Uri.parse(web.url.orEmpty()) }.getOrNull() ?: return false
-            return uri.scheme == "https" && uri.host.orEmpty().lowercase() == "chatgpt.com"
+            return uri.scheme == "https" && spec.trustedHosts.contains(uri.host.orEmpty().lowercase())
         }
 
         fun decodeJsString(raw: String?): String {
@@ -90,12 +105,12 @@ object HakimWebReasoningBridge {
         }
 
         fun evaluateText(web: WebView, callback: (String) -> Unit) {
-            if (!isTrustedChatOrigin(web)) {
+            if (!trustedOrigin(web)) {
                 callback("")
                 return
             }
             web.evaluateJavascript(
-                "(() => (document.body && document.body.innerText ? document.body.innerText.slice(-50000) : ''))()"
+                "(() => (document.body && document.body.innerText ? document.body.innerText.slice(-60000) : ''))()"
             ) { raw -> callback(decodeJsString(raw)) }
         }
 
@@ -104,65 +119,73 @@ object HakimWebReasoningBridge {
 
         fun launchLoginOnce() {
             if (finished || loginLaunched) return
+            if (!interactiveLogin) {
+                finish(Result(false, null, "", "NEEDS_LOGIN:${spec.id}", providerId))
+                return
+            }
             loginLaunched = true
-            onProgress("يحتاج محرك الذكاء داخل حكيم تسجيل الدخول مرة واحدة. فتحت لك ChatGPT داخل متصفح حكيم؛ بعد تسجيل الدخول سأكمل تلقائيًا.")
+            onProgress("يحتاج ${spec.title} تسجيل دخول مرة واحدة. أفتح صفحة الدخول داخل متصفح حكيم ثم أعود تلقائيًا.")
             activity.getSharedPreferences("hakim", Activity.MODE_PRIVATE).edit()
-                .putString("last_url", CHAT_URL)
+                .putString("last_url", spec.startUrl)
                 .apply()
             activity.startActivity(
                 Intent(activity, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             )
-            handler.postDelayed({ waitForLogin() }, 900L)
+            handler.postDelayed({ waitForLogin() }, 850L)
         }
 
         var loginAttempt = 0
         waitForLogin = loginLoop@ {
             if (finished) return@loginLoop
             if (activity.isFinishing || activity.isDestroyed) {
-                finish(Result(false, null, "", "انتهت واجهة حكيم أثناء تسجيل الدخول"))
+                finish(Result(false, null, "", "انتهت واجهة حكيم أثناء تسجيل الدخول", providerId))
                 return@loginLoop
             }
             loginAttempt += 1
             val visible = HakimRuntime.visibleWebView()
-            if (visible != null && isTrustedChatOrigin(visible)) {
+            if (visible != null && trustedOrigin(visible)) {
                 visible.evaluateJavascript(composerProbeScript()) { raw ->
                     when (decodeJsString(raw)) {
                         "READY" -> {
-                            onProgress("اكتمل تسجيل الدخول داخل حكيم؛ أرسل المهمة المحكومة الآن وأعيد النتيجة إلى واجهتك.")
+                            onProgress("اكتمل تسجيل الدخول إلى ${spec.title}. أعود للاستدلال داخل حكيم.")
                             injectAndSend(visible)
                         }
                         else -> {
                             if (loginAttempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
-                                finish(Result(true, null, "", "انتهت مهلة تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة ولم تُرسل خارجيًا"))
-                            } else handler.postDelayed({ waitForLogin() }, 900L)
+                                finish(Result(true, null, "", "انتهت مهلة تسجيل الدخول إلى ${spec.title}؛ المهمة محفوظة", providerId))
+                            } else handler.postDelayed({ waitForLogin() }, 850L)
                         }
                     }
                 }
             } else if (loginAttempt >= MAX_LOGIN_WAIT_ATTEMPTS) {
-                finish(Result(true, null, "", "لم يكتمل تسجيل الدخول داخل متصفح حكيم؛ المهمة محفوظة"))
+                finish(Result(true, null, "", "لم يكتمل تسجيل الدخول إلى ${spec.title}؛ المهمة محفوظة", providerId))
             } else {
-                handler.postDelayed({ waitForLogin() }, 900L)
+                handler.postDelayed({ waitForLogin() }, 850L)
             }
         }
 
         injectAndSend = inject@ { web ->
             if (finished) return@inject
-            if (!isTrustedChatOrigin(web)) {
-                finish(Result(false, null, "", "رفض حكيم تمرير الاستدلال لأن الأصل ليس chatgpt.com"))
+            if (!trustedOrigin(web)) {
+                finish(Result(false, null, "", "رفض حكيم تمرير الاستدلال لأن الأصل لا يطابق ${spec.vendor}", providerId))
                 return@inject
             }
 
-            val baselineHolder = arrayOf("")
             evaluateText(web) { baseline ->
-                baselineHolder[0] = baseline
                 val promptLiteral = JSONObject.quote(request.prompt)
                 val insertScript = """
                     (() => {
-                      const el = document.querySelector('#prompt-textarea') ||
-                                 document.querySelector('textarea') ||
-                                 document.querySelector('[contenteditable="true"][data-testid*="composer"]') ||
-                                 document.querySelector('[contenteditable="true"]');
+                      const candidates = [
+                        document.querySelector('#prompt-textarea'),
+                        document.querySelector('rich-textarea [contenteditable="true"]'),
+                        document.querySelector('[contenteditable="true"][role="textbox"]'),
+                        document.querySelector('[contenteditable="true"][data-testid*="composer"]'),
+                        document.querySelector('textarea'),
+                        document.querySelector('input[type="text"]'),
+                        document.querySelector('[contenteditable="true"]')
+                      ].filter(Boolean);
+                      const el = candidates.find(x => !x.disabled && x.offsetParent !== null) || candidates[0];
                       if (!el) return 'NO_COMPOSER';
                       const prompt = $promptLiteral;
                       el.focus();
@@ -173,14 +196,18 @@ object HakimWebReasoningBridge {
                         el.dispatchEvent(new Event('input', {bubbles:true}));
                         el.dispatchEvent(new Event('change', {bubbles:true}));
                       } else {
-                        el.innerHTML = '';
-                        const sel = window.getSelection();
-                        const range = document.createRange();
-                        range.selectNodeContents(el);
-                        range.collapse(true);
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                        document.execCommand('insertText', false, prompt);
+                        try {
+                          el.innerHTML = '';
+                          const sel = window.getSelection();
+                          const range = document.createRange();
+                          range.selectNodeContents(el);
+                          range.collapse(true);
+                          sel.removeAllRanges();
+                          sel.addRange(range);
+                          document.execCommand('insertText', false, prompt);
+                        } catch (_) {
+                          el.textContent = prompt;
+                        }
                         el.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText', data:prompt}));
                       }
                       return 'INSERTED';
@@ -190,7 +217,7 @@ object HakimWebReasoningBridge {
                 web.evaluateJavascript(insertScript) { insertRaw ->
                     when (decodeJsString(insertRaw)) {
                         "INSERTED" -> {
-                            onProgress("أدخلت المهمة داخل محرك الويب الموثوق في حكيم؛ أرسلها الآن دون كشف أسرار محلية.")
+                            onProgress("أرسلت المهمة المحكومة إلى ${spec.title} داخل حكيم دون كشف أسرار محلية.")
                             var sendAttempt = 0
                             lateinit var sendTry: () -> Unit
                             sendTry = sendLoop@ {
@@ -199,7 +226,6 @@ object HakimWebReasoningBridge {
                                 web.evaluateJavascript(sendButtonScript()) { sendRaw ->
                                     when (decodeJsString(sendRaw)) {
                                         "SENT" -> {
-                                            onProgress("أرسلت المهمة المحكومة وأراقب الخطة المقيدة داخل حكيم.")
                                             var responseAttempt = 0
                                             var lastText = ""
                                             var stable = 0
@@ -210,30 +236,30 @@ object HakimWebReasoningBridge {
                                                 evaluateText(web) { visible ->
                                                     val plan = HakimReasoningProtocol.parse(visible, request)
                                                     if (plan != null) {
-                                                        finish(Result(true, plan, visible.takeLast(9000), "وصلت خطة حكيم المقيدة عبر محرك الويب الداخلي"))
+                                                        finish(Result(true, plan, visible.takeLast(10000), "وصلت خطة حكيم المقيدة عبر ${spec.title}", providerId))
                                                     } else {
                                                         if (visible.isNotBlank() && visible == lastText) stable += 1 else stable = 0
                                                         lastText = visible
-                                                        val changed = visible.isNotBlank() && visible != baselineHolder[0]
+                                                        val changed = visible.isNotBlank() && visible != baseline
                                                         if (changed && responseAttempt >= 14 && stable >= 7) {
-                                                            finish(Result(true, null, visible.takeLast(9000), "عاد الرد داخل حكيم لكن لم تظهر خطة بروتوكول موثوقة"))
+                                                            finish(Result(true, null, visible.takeLast(10000), "عاد الرد من ${spec.title} لكن لم تظهر خطة بروتوكول موثوقة", providerId))
                                                         } else if (responseAttempt >= MAX_RESPONSE_ATTEMPTS) {
-                                                            finish(Result(true, null, visible.takeLast(9000), "انتهت مهلة الاستدلال الداخلي دون خطة قابلة للتنفيذ"))
-                                                        } else handler.postDelayed({ poll() }, 900L)
+                                                            finish(Result(true, null, visible.takeLast(10000), "انتهت مهلة ${spec.title} دون خطة قابلة للتنفيذ", providerId))
+                                                        } else handler.postDelayed({ poll() }, 850L)
                                                     }
                                                 }
                                             }
-                                            handler.postDelayed({ poll() }, 900L)
+                                            handler.postDelayed({ poll() }, 850L)
                                         }
                                         else -> {
                                             if (sendAttempt >= MAX_SEND_ATTEMPTS) {
-                                                finish(Result(false, null, "", "تعذر العثور على زر إرسال موثوق داخل محرك الويب"))
-                                            } else handler.postDelayed({ sendTry() }, 450L)
+                                                finish(Result(false, null, "", "تعذر العثور على زر إرسال موثوق في ${spec.title}", providerId))
+                                            } else handler.postDelayed({ sendTry() }, 420L)
                                         }
                                     }
                                 }
                             }
-                            handler.postDelayed({ sendTry() }, 450L)
+                            handler.postDelayed({ sendTry() }, 420L)
                         }
                         else -> launchLoginOnce()
                     }
@@ -261,9 +287,9 @@ object HakimWebReasoningBridge {
             setAcceptThirdPartyCookies(hidden, true)
         }
         hidden.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, requestUrl: android.webkit.WebResourceRequest?): Boolean {
-                val host = requestUrl?.url?.host.orEmpty().lowercase()
-                return host != "chatgpt.com"
+            override fun shouldOverrideUrlLoading(view: WebView?, requestUrl: WebResourceRequest?): Boolean {
+                val uri = requestUrl?.url ?: return true
+                return uri.scheme != "https" || !spec.trustedHosts.contains(uri.host.orEmpty().lowercase())
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -271,59 +297,61 @@ object HakimWebReasoningBridge {
             }
         }
 
-        activity.addContentView(
-            hidden,
-            FrameLayout.LayoutParams(2, 2, Gravity.BOTTOM or Gravity.START)
-        )
-        onProgress("أفتح محرك الاستدلال داخل حكيم بصورة مؤقتة وخفيفة.")
-        hidden.loadUrl(CHAT_URL)
+        activity.addContentView(hidden, FrameLayout.LayoutParams(2, 2, Gravity.BOTTOM or Gravity.START))
+        onProgress("حكيم يفكر عبر ${spec.title} في الخلفية…")
+        hidden.loadUrl(spec.startUrl)
 
         var readyAttempt = 0
         lateinit var probe: () -> Unit
         probe = probeLoop@ {
             if (finished) return@probeLoop
             readyAttempt += 1
-            if (!isTrustedChatOrigin(hidden)) {
-                if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce() else handler.postDelayed({ probe() }, 600L)
+            if (!trustedOrigin(hidden)) {
+                if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce() else handler.postDelayed({ probe() }, 550L)
             } else {
                 hidden.evaluateJavascript(composerProbeScript()) { raw ->
                     when (decodeJsString(raw)) {
                         "READY" -> injectAndSend(hidden)
-                        "LOGIN" -> launchLoginOnce()
                         else -> {
                             if (readyAttempt >= MAX_READY_ATTEMPTS) launchLoginOnce()
-                            else handler.postDelayed({ probe() }, 600L)
+                            else handler.postDelayed({ probe() }, 550L)
                         }
                     }
                 }
             }
         }
-        handler.postDelayed({ probe() }, 800L)
+        handler.postDelayed({ probe() }, 700L)
     }
 
     private fun composerProbeScript(): String = """
         (() => {
-          const composer = document.querySelector('#prompt-textarea') ||
-                           document.querySelector('textarea') ||
-                           document.querySelector('[contenteditable="true"][data-testid*="composer"]') ||
-                           document.querySelector('[contenteditable="true"]');
-          if (composer) return 'READY';
-          const body = (document.body?.innerText || '').toLowerCase();
-          if (body.includes('log in') || body.includes('sign up') || body.includes('تسجيل الدخول') || body.includes('إنشاء حساب')) return 'LOGIN';
-          return 'WAIT';
+          const candidates = [
+            document.querySelector('#prompt-textarea'),
+            document.querySelector('rich-textarea [contenteditable="true"]'),
+            document.querySelector('[contenteditable="true"][role="textbox"]'),
+            document.querySelector('[contenteditable="true"][data-testid*="composer"]'),
+            document.querySelector('textarea'),
+            document.querySelector('input[type="text"]'),
+            document.querySelector('[contenteditable="true"]')
+          ].filter(Boolean);
+          return candidates.some(x => !x.disabled) ? 'READY' : 'WAIT';
         })()
     """.trimIndent()
 
     private fun sendButtonScript(): String = """
         (() => {
           const buttons = Array.from(document.querySelectorAll('button'));
-          const btn = document.querySelector('button[data-testid="send-button"]') ||
-                      document.querySelector('button[data-testid*="send"]') ||
-                      buttons.find(b => {
-                        const a = (b.getAttribute('aria-label') || '').toLowerCase();
-                        const t = (b.innerText || '').trim().toLowerCase();
-                        return a.includes('send') || a.includes('إرسال') || t === 'send' || t === 'إرسال';
-                      });
+          const direct = document.querySelector('button[data-testid="send-button"]') ||
+                         document.querySelector('button[data-testid*="send"]') ||
+                         document.querySelector('button.send-button') ||
+                         document.querySelector('[role="button"][aria-label*="Send"]') ||
+                         document.querySelector('[role="button"][aria-label*="إرسال"]');
+          const btn = direct || buttons.find(b => {
+            const a = (b.getAttribute('aria-label') || '').trim().toLowerCase();
+            const t = (b.innerText || '').trim().toLowerCase();
+            return a.includes('send') || a.includes('submit') || a.includes('إرسال') ||
+                   t === 'send' || t === 'submit' || t === 'إرسال';
+          });
           if (btn && !btn.disabled) { btn.click(); return 'SENT'; }
           return 'WAIT';
         })()

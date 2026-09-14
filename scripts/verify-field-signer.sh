@@ -39,9 +39,9 @@ mapfile -t ACTUAL_CERTS < <(
     python3 -c 'import sys,re,base64,hashlib
 text=sys.stdin.read()
 seen=set()
-for body in re.findall(r"-----BEGIN CERTIFICATE-----\\s*(.*?)\\s*-----END CERTIFICATE-----", text, re.S):
+for body in re.findall(r"-----BEGIN CERTIFICATE-----\s*(.*?)\s*-----END CERTIFICATE-----", text, re.S):
     try:
-        der=base64.b64decode(re.sub(r"\\s+", "", body), validate=True)
+        der=base64.b64decode(re.sub(r"\s+", "", body), validate=True)
     except Exception:
         continue
     digest=hashlib.sha256(der).hexdigest().upper()

@@ -3,7 +3,6 @@ package ps.hakim.phoneagent
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
@@ -13,8 +12,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * طبقة عرض خفيفة للمحادثة: لا مكتبات UI إضافية، ولا قائمة نصية تكبر بلا حد.
- * تستخدم إعادة تدوير Views من Android، وتقلل عدد الرسائل المحتفظ بها حسب ضغط الموارد.
+ * طبقة عرض خفيفة للمحادثة: لا مكتبات UI إضافية ولا transcript يتضخم بلا حد.
+ * رد حكيم نص نظيف، ورسالة المستخدم فقاعة خفيفة، مع ميزانية ذاكرة تكيفية حسب ضغط الهاتف.
  */
 object HakimChatUi {
     data class Palette(
@@ -35,43 +34,42 @@ object HakimChatUi {
         val dark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
         return if (dark) {
             Palette(
-                background = Color.rgb(32, 33, 35),
-                surface = Color.rgb(45, 46, 49),
-                surfaceStrong = Color.rgb(55, 56, 60),
-                text = Color.rgb(244, 244, 245),
-                muted = Color.rgb(181, 181, 187),
-                accent = Color.rgb(27, 140, 101),
+                background = Color.rgb(24, 24, 27),
+                surface = Color.rgb(38, 38, 42),
+                surfaceStrong = Color.rgb(49, 49, 54),
+                text = Color.rgb(247, 247, 248),
+                muted = Color.rgb(164, 164, 174),
+                accent = Color.rgb(20, 148, 111),
                 onAccent = Color.WHITE,
-                userBubble = Color.rgb(47, 75, 65),
-                assistantBubble = Color.rgb(45, 46, 49),
-                border = Color.rgb(72, 73, 77),
-                danger = Color.rgb(196, 76, 76)
+                userBubble = Color.rgb(45, 64, 58),
+                assistantBubble = Color.TRANSPARENT,
+                border = Color.rgb(61, 61, 67),
+                danger = Color.rgb(203, 72, 72)
             )
         } else {
             Palette(
                 background = Color.rgb(255, 255, 255),
-                surface = Color.rgb(247, 247, 248),
-                surfaceStrong = Color.rgb(239, 239, 241),
-                text = Color.rgb(32, 33, 35),
-                muted = Color.rgb(104, 104, 116),
-                accent = Color.rgb(18, 138, 102),
+                surface = Color.rgb(246, 246, 247),
+                surfaceStrong = Color.rgb(235, 235, 237),
+                text = Color.rgb(25, 25, 28),
+                muted = Color.rgb(112, 112, 122),
+                accent = Color.rgb(16, 143, 103),
                 onAccent = Color.WHITE,
-                userBubble = Color.rgb(232, 247, 241),
-                assistantBubble = Color.rgb(247, 247, 248),
+                userBubble = Color.rgb(238, 246, 243),
+                assistantBubble = Color.TRANSPARENT,
                 border = Color.rgb(224, 224, 227),
-                danger = Color.rgb(184, 62, 62)
+                danger = Color.rgb(190, 58, 58)
             )
         }
     }
 
-    fun rounded(fill: Int, radiusDp: Float, context: Context, stroke: Int? = null): GradientDrawable {
-        return GradientDrawable().apply {
+    fun rounded(fill: Int, radiusDp: Float, context: Context, stroke: Int? = null): GradientDrawable =
+        GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(fill)
             cornerRadius = dp(context, radiusDp).toFloat()
             if (stroke != null) setStroke(dp(context, 1f), stroke)
         }
-    }
 
     fun dp(context: Context, value: Float): Int = (value * context.resources.displayMetrics.density + 0.5f).toInt()
 }
@@ -81,15 +79,15 @@ class HakimChatMessageAdapter(private val context: Context) : BaseAdapter() {
     data class Message(val id: Long, val role: Role, val text: String)
 
     private val palette = HakimChatUi.palette(context)
-    private val items = ArrayList<Message>(64)
+    private val items = ArrayList<Message>(48)
     private var nextId = 1L
-    private var maxMessages = 120
+    private var maxMessages = 90
 
     fun append(role: Role, text: String) {
         val clean = text.trim()
         if (clean.isBlank()) return
         updateResourceBudget()
-        items.add(Message(nextId++, role, clean.take(12000)))
+        items.add(Message(nextId++, role, clean.take(16000)))
         trimToBudget()
         notifyDataSetChanged()
     }
@@ -99,12 +97,14 @@ class HakimChatMessageAdapter(private val context: Context) : BaseAdapter() {
         notifyDataSetChanged()
     }
 
+    fun lastAssistantText(): String = items.lastOrNull { it.role == Role.ASSISTANT }?.text.orEmpty()
+
     private fun updateResourceBudget() {
         maxMessages = when (HakimResourceGovernor.snapshot(context).mode) {
-            HakimResourceGovernor.Mode.PRESSURE -> 40
-            HakimResourceGovernor.Mode.CONSERVE -> 70
-            HakimResourceGovernor.Mode.BALANCED -> 110
-            HakimResourceGovernor.Mode.PERFORMANCE -> 160
+            HakimResourceGovernor.Mode.PRESSURE -> 30
+            HakimResourceGovernor.Mode.CONSERVE -> 55
+            HakimResourceGovernor.Mode.BALANCED -> 90
+            HakimResourceGovernor.Mode.PERFORMANCE -> 130
         }
     }
 
@@ -130,38 +130,39 @@ class HakimChatMessageAdapter(private val context: Context) : BaseAdapter() {
     }
 
     private fun createRow(role: Role): LinearLayout {
+        val user = role == Role.USER
         val screenWidth = context.resources.displayMetrics.widthPixels
         val bubble = TextView(context).apply {
-            textSize = 16.5f
+            textSize = if (user) 16.5f else 17f
             setTextColor(palette.text)
             textDirection = View.TEXT_DIRECTION_RTL
             gravity = Gravity.START
             includeFontPadding = false
-            setLineSpacing(0f, 1.12f)
-            maxWidth = (screenWidth * if (role == Role.USER) 0.84f else 0.94f).toInt()
+            setLineSpacing(HakimChatUi.dp(context, 1.5f).toFloat(), 1.13f)
+            maxWidth = (screenWidth * if (user) 0.82f else 0.94f).toInt()
             setPadding(
-                HakimChatUi.dp(context, 14f),
-                HakimChatUi.dp(context, 10f),
-                HakimChatUi.dp(context, 14f),
-                HakimChatUi.dp(context, 10f)
+                HakimChatUi.dp(context, if (user) 14f else 5f),
+                HakimChatUi.dp(context, if (user) 10f else 7f),
+                HakimChatUi.dp(context, if (user) 14f else 5f),
+                HakimChatUi.dp(context, if (user) 10f else 7f)
             )
-            background = HakimChatUi.rounded(
-                if (role == Role.USER) palette.userBubble else palette.assistantBubble,
-                if (role == Role.USER) 18f else 14f,
-                context,
-                if (role == Role.USER) null else palette.border
-            )
-            if (role == Role.ASSISTANT) setTypeface(typeface, Typeface.NORMAL)
+            if (user) {
+                background = HakimChatUi.rounded(palette.userBubble, 20f, context)
+            } else {
+                background = null
+                setTextIsSelectable(true)
+            }
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = if (role == Role.USER) Gravity.END else Gravity.START
+            gravity = if (user) Gravity.END else Gravity.START
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(
-                HakimChatUi.dp(context, 12f),
-                HakimChatUi.dp(context, 5f),
-                HakimChatUi.dp(context, 12f),
-                HakimChatUi.dp(context, 5f)
+                HakimChatUi.dp(context, 14f),
+                HakimChatUi.dp(context, if (user) 4f else 7f),
+                HakimChatUi.dp(context, 14f),
+                HakimChatUi.dp(context, if (user) 4f else 7f)
             )
             addView(bubble, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }

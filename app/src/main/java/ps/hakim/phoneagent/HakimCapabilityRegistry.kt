@@ -36,9 +36,13 @@ object HakimCapabilityRegistry {
         val relayConfigured = HakimUnifiedRelay.isConfigured(context)
         val recovery = HakimConnectionResilience.status(context)
         val connectionReady = recovery.optBoolean("service_connected") || relayConfigured
+        val resource = HakimResourceGovernor.status(context)
 
         return listOf(
             Capability("quranic_kernel", true, true, "جذر الثقة القرآني من النواة إلى الحافة مدمج ومحروس"),
+            Capability("quran_sunnah_method", true, true, "منهج القرآن والهدي النبوي الصحيح مدمج في القرار والتنفيذ"),
+            Capability("system_of_systems", true, true, "توليد أنظمة منبثقة مؤقتة من الأنظمة الموثوقة مدمج دون تعديل كود أو توسيع سلطة"),
+            Capability("resource_governor", true, true, "حاكم الموارد مدمج؛ الوضع الحالي=${resource.optString("mode", "UNKNOWN")}"),
             Capability("integration_fabric", true, integrationReady, if (integrationReady) "نسيج التكامل البنيوي سليم" else "فشل تكامل بنيوي؛ لا يجوز ادعاء الجاهزية"),
             Capability("secure_store", true, true, "AndroidKeyStore/AES-GCM مدمج"),
             Capability("mission_ledger", true, true, "WIP=1 وحالة مشفرة مدمجان"),
@@ -62,10 +66,13 @@ object HakimCapabilityRegistry {
             appendLine("• ${c.id}: ${if (c.readyNow) "جاهزة الآن" else if (c.available) "موجودة لكن غير جاهزة الآن" else "غير متاحة"} — ${c.reason}")
         }
         appendLine("لا تدّع قدرة غير جاهزة، ولا تدّع وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
-    }.take(4600)
+        appendLine("نظام الأنظمة لا يعني تفعيل كل شيء دائمًا: فعّل أقل تركيب يحقق الغاية، وحاكم الموارد يحدد توقيت وكثافة الخلفية دون خفض جودة القرار.")
+    }.take(5600)
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("self_capability_awareness", true)
         .put("integration_aware", true)
+        .put("system_of_systems_aware", true)
+        .put("resource_aware", true)
         .put("capabilities", JSONArray(discover(context).map { it.toJson() }))
 }

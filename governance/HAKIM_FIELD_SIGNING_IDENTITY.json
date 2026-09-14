@@ -8,6 +8,7 @@
   "signature_algorithm": "SHA384withRSA",
   "valid_from_utc": "2026-09-14T19:05:28Z",
   "known_matching_versions": [20018, 20019, 20020, 20021, 20022],
+  "current_candidate_version": 20023,
   "legacy_certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
   "migration": {
@@ -23,6 +24,7 @@
     "Do not use the legacy or Companion signer for future updates of the new lineage.",
     "Do not store private signing material in this public repository.",
     "Maintain exactly one user-facing Hakim Android app: ps.hakim.stable.",
-    "Build or CI success alone does not establish physical-phone field installation."
+    "Build or CI success alone does not establish physical-phone field installation.",
+    "current_candidate_version is not added to known_matching_versions until its signed APK is independently verified against certificate_sha256."
   ]
 }

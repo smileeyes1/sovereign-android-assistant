@@ -24,6 +24,8 @@ object HakimConnectionResilience {
 
     fun install(context: Context) {
         val app = context.applicationContext
+        HakimQuranicInvariantKernel.requireInherited("connection_resilience_install")
+        HakimIntegrationFabric.requireCore(app, "connection_resilience_install")
         schedule(app)
         installNetworkCallback(app)
         recover(app, "install")
@@ -78,6 +80,8 @@ object HakimConnectionResilience {
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
+        HakimQuranicInvariantKernel.requireInherited("connection_resilience_recover")
+        HakimIntegrationFabric.requireCore(app, "connection_resilience_recover")
         val p = prefs(app)
         PairingDefaults.ensure(p)
 
@@ -131,6 +135,7 @@ object HakimConnectionResilience {
     fun status(context: Context): JSONObject {
         val p = prefs(context)
         return JSONObject()
+            .put("integration_aware", true)
             .put("state", p.getString("connection_recovery_state", "unknown"))
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)

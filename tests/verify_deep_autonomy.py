@@ -42,7 +42,7 @@ require("ambiguousHighImpactContinuationRegex" in policy, "P0: المتابعة 
 require("highImpactContext &&" in policy and "ambiguousHighImpactContinuationRegex.containsMatchIn(text)" in policy,
         "P0: بوابة المتابعة المبهمة غير مرتبطة فعليًا بالسياق عالي الأثر")
 
-# البيانات الشخصية: النموذج يطلب الحقل، الجهاز يملك القيمة.
+# البيانات الشخصية: النموذج يطلب الحقل، الجهاز يملك القيمة، والثقة مرتبطة بالمضيف الفعلي الدقيق.
 require('"fill_profile"' in protocol, "P0: بروتوكول الاستدلال لا يدعم تعبئة الخزنة محليًا")
 require("allowedProfileFields" in protocol, "P0: حقول الخزنة في الخطة غير مقيدة")
 require('type == "fill_profile"' in protocol, "P0: محلل الخطة لا يتحقق من field_id")
@@ -51,6 +51,10 @@ require("HakimSiteTrust.canUseProfile" in plan_exec, "P0: fill_profile قد يخ
 require("fill_profile{target,field_id}" in personal, "P0: سياق الخزنة لا يوجه النموذج للتعبئة المحلية")
 require("explicitlyRelevant" in personal, "P0: مشاركة قيم البيانات مع الاستدلال ليست انتقائية")
 require("trusted_profile_hosts" in trust, "P0: قائمة ثقة المواقع مفقودة")
+require("HakimRuntime.visibleWebView()?.url" in trust, "P0: ثقة الخزنة تعتمد عنوانًا مخزنًا بدل عنوان WebView الفعلي")
+require("return host in set" in trust, "P0: ثقة الموقع ليست مطابقة دقيقة للمضيف")
+require("candidates(host)" not in trust and "takeLast(2)" not in trust,
+        "P0: ثقة نطاق أب قد تمتد ضمنيًا إلى نطاقات فرعية غير مقصودة")
 
 # خطة الاستدلال يجب أن تُفحص بعد العودة لشاشة الموقع.
 click_pos = plan_exec.find('"click_text"')

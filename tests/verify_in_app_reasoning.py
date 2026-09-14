@@ -13,8 +13,10 @@ def require(cond: bool, msg: str) -> None:
 
 
 web = text("app/src/main/java/ps/hakim/phoneagent/HakimWebReasoningBridge.kt")
+web_actions = text("app/src/main/java/ps/hakim/phoneagent/HakimWebAutomation.kt")
 bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
+executor = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
@@ -45,6 +47,23 @@ pos_web = bridge.find("HakimWebReasoningBridge.ask")
 pos_access = bridge.find("HakimAccessibilityService.instance")
 require(pos_web >= 0 and pos_access > pos_web,
         "P0: Accessibility ما زال شرط الاستدلال الأول بدل مسار داخلي احتياطي")
+
+# التنفيذ الفعلي بعد الاستدلال يجب أن يرث نفس قاعدة أقل صلاحية.
+require("object HakimWebAutomation" in web_actions and "evaluateJavascript" in web_actions,
+        "P0: طبقة تنفيذ WebView المحلية مفقودة")
+require("sensitive" in web_actions and "type === 'password'" in web_actions,
+        "P0: لقطة DOM لا تحجب حقول الاعتماد الحساسة")
+require("HakimWebAutomation.snapshot" in executor and "HakimWebAutomation.clickText" in executor and "HakimWebAutomation.setText" in executor,
+        "P0: منفذ الخطة لا يستخدم WebView حكيم كمسار التنفيذ الأول")
+require("خدمة الوصول غير مفعلة أثناء خطة الاستدلال" not in executor,
+        "P0: منفذ الخطة ما زال يفشل مبكرًا لمجرد غياب Accessibility")
+require("web == null && service == null" in executor,
+        "P0: لا توجد بوابة تثبت فشل جميع المسارات قبل التوقف")
+require("جولة تحقق مستقلة" in executor and "يلزم تحقق جديد" in executor,
+        "P0: المنفذ قد يعلن الاكتمال بعد أفعال دون جولة تحقق")
+require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in protocol,
+        "P0: خطة تحتوي أفعالًا ما زالت قادرة على إعلان done=true قبل التنفيذ والتحقق")
+
 require('android:name=".HakimAccessibilityService"' not in manifest,
         "P0: النسخة الميدانية تعيد إعلان Accessibility وتكسر ملف Play Protect الآمن")
 require("allowedTypes" in protocol and "arr.length() > 8" in protocol and "containsSecret" in protocol,

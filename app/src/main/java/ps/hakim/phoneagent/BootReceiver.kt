@@ -12,7 +12,9 @@ class BootReceiver : BroadcastReceiver() {
 
         HakimConstitution.install(context)
         HakimLearning.initialize(context)
+        HakimProactiveEngine.initialize(context)
         AutoUpdater.schedule(context)
+        AutoUpdater.startRealtimeListener(context)
         HakimSelfCheck.schedule(context)
         HakimConnectionResilience.install(context)
         AutoUpdater.checkAsync(context)

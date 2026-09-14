@@ -29,11 +29,13 @@ require("missing_external_link_changes_route_not_governance" in fabric,
         "P0: فقد الوصلة الخارجية قد يهدم الحاكمية بدل تغيير المسار")
 require("HakimQuranicInvariantKernel.requireInherited" in fabric,
         "P0: نسيج التكامل لا يرث جذر القرآن")
+require("HakimQuranicCorpusPolicy.status()" in fabric and "quranic_corpus_114_integrated" in fabric,
+        "P0: نسيج التكامل لا يحرس شمول سور القرآن الـ١١٤")
 require("ps.hakim.stable" in fabric and "fail_closed_core_changes" in fabric,
         "P0: نسيج التكامل لا يحرس هوية التطبيق/القلب")
 
 for node in [
-    "quranic_kernel", "constitution", "intent_context", "decision_matrix", "sovereign_engine",
+    "quranic_kernel", "quranic_corpus_114", "constitution", "intent_context", "decision_matrix", "sovereign_engine",
     "self_leadership", "agent_system", "mission_ledger", "authority_envelope", "capability_registry",
     "autonomous_executor", "reasoning_executor", "verification", "learning",
     "connection_resilience", "unified_relay", "self_check"
@@ -41,7 +43,8 @@ for node in [
     require(f'"{node}"' in fabric, f"P0: طبقة حرجة غير ممثلة في نسيج التكامل: {node}")
 
 for edge in [
-    "quranic_kernel→constitution", "decision_matrix→sovereign_engine", "sovereign_engine→agent_system",
+    "quranic_kernel→quranic_corpus_114", "quranic_corpus_114→constitution", "quranic_kernel→constitution",
+    "decision_matrix→sovereign_engine", "sovereign_engine→agent_system",
     "mission_ledger↔sovereign_engine", "execution→verification→learning",
     "connection_resilience↔unified_relay", "recovery→mission_ledger→replan"
 ]:

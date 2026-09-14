@@ -44,7 +44,7 @@ object HakimSovereignIndependence {
                 sovereign = app.packageName == "ps.hakim.stable",
                 readyNow = app.packageName == "ps.hakim.stable",
                 externalDependency = true,
-                reason = "هوية تطبيق واحدة وتوقيع ميداني مثبت؛ المفتاح الخاص يبقى خارج APK ويتطلب حفظًا خارجيًا آمنًا"
+                reason = "هوية تطبيق واحدة وسلسلة توقيع الإصدار محكومة؛ إثبات التثبيت الميداني حالة مستقلة ولا يُفترض من الكود"
             ),
             DomainState(
                 Domain.GOVERNANCE,
@@ -63,7 +63,7 @@ object HakimSovereignIndependence {
             DomainState(
                 Domain.REASONING,
                 sovereign = provider.optBoolean("core_runtime_vendor_independent"),
-                readyNow = provider.optBoolean("advanced_reasoning_ready_now") || true,
+                readyNow = provider.optBoolean("advanced_reasoning_ready_now"),
                 externalDependency = true,
                 reason = if (provider.optBoolean("advanced_reasoning_ready_now"))
                     "القلب والتنفيذ المحليان مستقلان؛ الاستدلال المتقدم متاح كخدمة خارجية قابلة للفقد"
@@ -93,35 +93,28 @@ object HakimSovereignIndependence {
             DomainState(
                 Domain.RECOVERY,
                 sovereign = true,
-                readyNow = recovery.optBoolean("resilience_engine", true),
+                readyNow = recovery.optBoolean("integration_aware", false),
                 externalDependency = false,
                 reason = "سجل المهمة والتعافي وإعادة التخطيط محلية، وفشل أداة لا يوسع السلطة"
             ),
             DomainState(
                 Domain.RESOURCES,
                 sovereign = resource.optBoolean("resource_governor"),
-                readyNow = true,
+                readyNow = resource.optBoolean("resource_governor"),
                 externalDependency = false,
                 reason = "حاكم الموارد يحمي المهمة الحالية ويخفض الخلفية غير الضرورية فقط"
             ),
             DomainState(
                 Domain.PORTABILITY,
                 sovereign = portability.optBoolean("sovereign_portability"),
-                readyNow = true,
+                readyNow = portability.optBoolean("sovereign_portability"),
                 externalDependency = false,
                 reason = "النظام الحاكم والبيانات غير الحساسة والثقة قابلة للتصدير والاستعادة بإجراء صريح"
             )
         )
     }
 
-    fun isCoreSovereign(context: Context): Boolean = assess(context).all { state ->
-        when (state.domain) {
-            Domain.NETWORK -> state.sovereign
-            Domain.REASONING -> state.sovereign
-            Domain.UPDATE -> state.sovereign
-            else -> state.sovereign
-        }
-    }
+    fun isCoreSovereign(context: Context): Boolean = assess(context).all { it.sovereign }
 
     fun promptContext(context: Context): String = buildString {
         appendLine("[الاستقلال السيادي الشامل]")
@@ -139,7 +132,7 @@ object HakimSovereignIndependence {
         return JSONObject()
             .put("version", VERSION)
             .put("sovereign_independence", true)
-            .put("core_sovereign", isCoreSovereign(context))
+            .put("core_sovereign", states.all { it.sovereign })
             .put("single_external_point_of_failure_forbidden", true)
             .put("local_first", true)
             .put("portable_user_state", true)

@@ -39,8 +39,12 @@ require("HakimQuranicInvariantKernel.promptContext" in quranic,
         "P0: سياق الإطار القرآني لا يحمل جذر الثقة")
 require("invariant_kernel" in quranic,
         "P0: حالة الإطار لا تكشف جذر الثقة")
-require("الفيزياء الذرية والنووية" in quranic and "لا تنسب قانونًا أو نتيجة تقنية أو تجريبية إلى القرآن بلا دليل" in quranic,
-        "P0: الفصل بين الميزان القرآني والفيزياء التجريبية غير صريح")
+require("الفيزياء الذرية والنووية" in quranic,
+        "P0: الفيزياء الذرية/النووية غير مصنفة كوسيلة دنيوية تجريبية")
+require("لا تنسب نتيجة تقنية أو تجريبية إلى القرآن بلا دليل" in quranic,
+        "P0: حاجز عدم اختلاق أثر تقني للقرآن مفقود")
+require("لا تنسب قانونًا ذريًا أو نوويًا إلى القرآن بلا دليل مستقل صالح" in quranic,
+        "P0: حاجز عدم نسبة قانون ذري/نووي إلى القرآن بلا دليل مفقود")
 
 # السلسلة الحاكمة: دستور -> إطار -> قرار -> محرك سيادي.
 require("HakimQuranicFramework.status()" in constitution and "QURAN-FIRST" in constitution,

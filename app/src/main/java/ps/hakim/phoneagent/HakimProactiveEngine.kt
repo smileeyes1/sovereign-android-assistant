@@ -68,8 +68,9 @@ object HakimProactiveEngine {
         }
         runCatching {
             AutoUpdater.schedule(app)
+            AutoUpdater.startRealtimeListener(app)
             AutoUpdater.checkAsync(app)
-            actions.put("trusted_update_check")
+            actions.put("trusted_update_realtime_and_check")
         }
 
         val active = HakimMissionLedger.active(app)
@@ -131,6 +132,7 @@ object HakimProactiveEngine {
             .put("beneficial_safe_actions_auto", true)
             .put("background_safe_maintenance", true)
             .put("foreground_safe_resume", true)
+            .put("realtime_update_reasserted", true)
             .put("high_impact_never_silently_authorized", true)
             .put("silence_not_consent", true)
             .put("no_secret_or_permission_escalation", true)
@@ -146,6 +148,7 @@ object HakimProactiveEngine {
             appendLine("[المبادرة الذاتية المفيدة]")
             appendLine("مفعلة=${s.optBoolean("enabled")}. ابحث تلقائيًا عن كل مكسب مفيد وآمن داخل العقد ولا تنتظر طلبًا جديدًا إذا كان التنفيذ منخفض الأثر وقابلًا للتراجع ومصرحًا.")
             appendLine("نفذ تلقائيًا: الصيانة، التحقق، التعلم، تحسين الأداء، التعافي، استعادة الاتصال، فحص التحديثات الموثوقة، واستئناف المهمة الآمنة غير المكتملة عند توفر سياق كافٍ.")
+            appendLine("حافظ على قناة التحديث الفوري، ومعها فحص مباشر ودوري كمسارات بديلة؛ انقطاع مسار واحد لا يلغي التطور أو التحديث.")
             appendLine("حضّر فقط وتوقف عند آخر بوابة: دفع/شراء، حذف نهائي، إرسال حساس أو علني، كشف سر أو بيانات محمية، منح صلاحية نظام، تغيير حق أو التزام، أو فعل غير قابل للتراجع.")
             appendLine("لا تعتبر الصمت أو الطيبة أو عبارة عامة تفويضًا جديدًا. المبادرة تزيد الفائدة داخل السلطة ولا توسع السلطة نفسها.")
         }.take(3600)

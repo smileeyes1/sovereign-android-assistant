@@ -23,6 +23,8 @@ object HakimGovernanceStore {
 
         اعمل بنظام الأنظمة افتراضيًا: كوّن لكل مهمة نظامًا منبثقًا مؤقتًا من أقل الأنظمة اللازمة فقط، مثل الفهم/البحث/المتصفح/الملفات/التعليم/التحقق/التعافي/التعلم، واربطها بالعقد نفسه. يجوز توليد أنظمة فرعية منطقية عند الحاجة، لكنها لا تنشئ كودًا ذاتيًا ولا خدمة دائمة ولا صلاحية جديدة، وترث دائمًا منهج القرآن والهدي النبوي والإنسان أولًا وغلاف السلطة والتحقق وحاكم الموارد.
 
+        حقق الاستقلال السيادي بأعلى قدر واقعي: لا تجعل مزود ذكاء أو شبكة أو أداة أو حسابًا خارجيًا حاكمًا أو نقطة فشل وحيدة. اجعل القلب والبيانات غير الحساسة والتعلم والحالة والتخطيط الآمن محلية وقابلة للنقل، واستخدم الخدمات الخارجية كقدرات قابلة للاستبدال. عند فقد الإنترنت أو مزود الاستدلال استمر محليًا فيما يمكن إثباته، احفظ المهمة، واستأنف عند عودة القدرة. لا تدّع تكافؤ ذكاء متقدم بلا مزود إذا لم يكن مثبتًا.
+
         المستخدم يملك المقصد والغاية والحدود والقرار الجوهري، وحكيم يملك «كيف» داخلها: الفهم، التفكيك، توليد البدائل، تكوين النظام المنبثق، اختيار الوكلاء والأدوات، الترتيب، التنفيذ منخفض الأثر، التحقق، الإصلاح، التعافي، التعلم والاستئناف. لا توسع سلطة أو كلفة أو مخاطرة من عبارة عامة، والسكوت ليس موافقة.
 
         افترض صفر خبرة تقنية مطلوبة من المستخدم، واحمِ إنسانيته وطيبته ورحمته ووقته وخصوصيته؛ لا تستغل الثقة، ولا تحمّله خطوة يستطيع حكيم تحملها. اشرح القرار العالي الأثر بنتيجته لا بمصطلحاته، واسأل فقط عند مجهول جوهري أو بوابة موافقة/سر/ثقة/صلاحية نظامية لا يمكن تجاوزها مشروعًا.
@@ -44,7 +46,6 @@ object HakimGovernanceStore {
 
     fun setGlobal(context: Context, text: String): Boolean {
         val clean = text.trim()
-        // الفراغ يعني الرجوع إلى نواة حكيم الافتراضية، لا تشغيل حكيم بلا نظام.
         return if (clean.isBlank()) {
             HakimSecureStore.remove(context, PREFS, GLOBAL)
             true
@@ -81,8 +82,29 @@ object HakimGovernanceStore {
         return HakimSecureStore.get(context, PREFS, key).orEmpty().trim()
     }
 
+    fun allSites(context: Context): Map<String, String> {
+        val index = context.getSharedPreferences(META, Context.MODE_PRIVATE)
+            .getStringSet(SITE_INDEX, emptySet()) ?: emptySet()
+        val out = linkedMapOf<String, String>()
+        index.sorted().forEach { host ->
+            val value = site(context, host)
+            if (value.isNotBlank()) out[host] = value
+        }
+        return out
+    }
+
+    fun replaceSites(context: Context, sites: Map<String, String>): Boolean {
+        val current = context.getSharedPreferences(META, Context.MODE_PRIVATE)
+            .getStringSet(SITE_INDEX, emptySet()) ?: emptySet()
+        current.toList().forEach { setSite(context, it, "") }
+        for ((host, instructions) in sites) {
+            if (instructions.isBlank()) continue
+            if (!setSite(context, host, instructions)) return false
+        }
+        return true
+    }
+
     fun currentHost(context: Context): String {
-        // تعليمات الموقع تتبع الصفحة الظاهرة فعليًا، لا last_url القديم بعد إعادة توجيه.
         val live = HakimRuntime.visibleWebView()?.url.orEmpty()
         normalizeHost(live)?.let { return it }
         val stored = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)

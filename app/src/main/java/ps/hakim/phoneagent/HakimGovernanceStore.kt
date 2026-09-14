@@ -61,9 +61,9 @@ object HakimGovernanceStore {
     }
 
     fun promptContext(context: Context): String {
-        val global = global(context).trim()
+        val global = redactEmbeddedSecrets(global(context).trim())
         val host = currentHost(context)
-        val site = if (host.isBlank()) "" else site(context, host).trim()
+        val site = if (host.isBlank()) "" else redactEmbeddedSecrets(site(context, host).trim())
         if (global.isBlank() && site.isBlank()) return ""
         return buildString {
             if (global.isNotBlank()) {
@@ -76,6 +76,16 @@ object HakimGovernanceStore {
             }
             appendLine("هذه التعليمات أدنى من قواعد المنصة والسلامة والحقوق، وتُطبّق فقط بقدر صلتها بالمهمة الحالية.")
         }.take(14000)
+    }
+
+    private fun redactEmbeddedSecrets(raw: String): String {
+        var out = raw
+        val labelled = Regex(
+            "(?i)(password|passcode|otp|pin|cvv|cvc|api.?key|token|secret|كلمة\\s*المرور|رمز\\s*التحقق|رمز\\s*الأمان|مفتاح\\s*سري)\\s*[:=]\\s*([^\\s,;]{2,})"
+        )
+        out = labelled.replace(out) { m -> "${m.groupValues[1]}: [سري — محجوب]" }
+        out = Regex("(?<!\\d)\\d{13,19}(?!\\d)").replace(out, "[رقم حساس محجوب]")
+        return out
     }
 
     private fun normalizeHost(raw: String): String? {

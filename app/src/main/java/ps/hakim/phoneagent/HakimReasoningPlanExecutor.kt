@@ -7,7 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
 
-/** ينفذ فقط بروتوكول حكيم المحدود، ويعيد فحص كل خطوة محليًا قبل التنفيذ. */
+/** ينفذ فقط بروتوكول حكيم المحدود، ويعيد فحص كل خطوة محليًا على شاشة الموقع الفعلية قبل التنفيذ. */
 object HakimReasoningPlanExecutor {
     data class Outcome(
         val progressed: Boolean,
@@ -56,7 +56,6 @@ object HakimReasoningPlanExecutor {
                 finish(plan.done, reason = if (plan.done) "محرك الاستدلال أعلن اكتمال الجولة" else "انتهت أفعال الجولة وتحتاج إعادة استدلال")
             } else {
                 val action = plan.actions[index++]
-                val snapshot = service.uiSnapshot(140)
                 when (action.type) {
                     "open_url" -> {
                         val raw = action.args.optString("url").trim()
@@ -74,17 +73,25 @@ object HakimReasoningPlanExecutor {
                     }
                     "click_text" -> {
                         val target = action.args.optString("text").trim()
-                        val decision = HakimActionPolicy.classify(target, snapshot)
-                        when (decision.level) {
-                            HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
-                            HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
-                            HakimActionPolicy.Level.AUTO -> runOnHakimBrowser(activity, handler) {
-                                val ok = service.action(JSONObject().put("action", "click_text").put("text", target))
-                                if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال")
-                                else {
-                                    progressed = true; steps += 1
-                                    onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}».")
-                                    handler.postDelayed(next, 600L)
+                        ensureHakimBrowser(activity, handler, 0) { ready ->
+                            if (!ready) {
+                                finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم النقرة")
+                            } else {
+                                val targetSnapshot = service.uiSnapshot(160)
+                                val decision = HakimActionPolicy.classify(target, targetSnapshot)
+                                when (decision.level) {
+                                    HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
+                                    HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
+                                    HakimActionPolicy.Level.AUTO -> {
+                                        val ok = service.action(JSONObject().put("action", "click_text").put("text", target))
+                                        if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال على شاشة الموقع")
+                                        else {
+                                            progressed = true
+                                            steps += 1
+                                            onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}» بعد فحص شاشة الموقع.")
+                                            handler.postDelayed(next, 600L)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -92,33 +99,45 @@ object HakimReasoningPlanExecutor {
                     "set_text" -> {
                         val target = action.args.optString("target").trim()
                         val value = action.args.optString("value")
-                        val decision = HakimActionPolicy.classify("$target $value", snapshot)
-                        if (decision.level == HakimActionPolicy.Level.BLOCK) {
-                            finish(false, blocked = true, reason = decision.reason)
-                        } else if (decision.level == HakimActionPolicy.Level.APPROVAL) {
-                            finish(false, needsApproval = true, reason = decision.reason)
-                        } else if (containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, snapshot)) {
-                            finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
-                        } else {
-                            runOnHakimBrowser(activity, handler) {
-                                val ok = service.action(
-                                    JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000))
-                                )
-                                if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة")
-                                else {
-                                    progressed = true; steps += 1
-                                    onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص السياسة.")
-                                    handler.postDelayed(next, 500L)
+                        ensureHakimBrowser(activity, handler, 0) { ready ->
+                            if (!ready) {
+                                finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم الكتابة")
+                            } else {
+                                val targetSnapshot = service.uiSnapshot(160)
+                                val decision = HakimActionPolicy.classify("$target $value", targetSnapshot)
+                                when {
+                                    decision.level == HakimActionPolicy.Level.BLOCK ->
+                                        finish(false, blocked = true, reason = decision.reason)
+                                    decision.level == HakimActionPolicy.Level.APPROVAL ->
+                                        finish(false, needsApproval = true, reason = decision.reason)
+                                    containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) ->
+                                        finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
+                                    else -> {
+                                        val ok = service.action(
+                                            JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000))
+                                        )
+                                        if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة على شاشة الموقع")
+                                        else {
+                                            progressed = true
+                                            steps += 1
+                                            onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص الشاشة والسياسة.")
+                                            handler.postDelayed(next, 500L)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                    "back" -> runOnHakimBrowser(activity, handler) {
-                        val ok = service.action(JSONObject().put("action", "back"))
-                        if (!ok) finish(false, reason = "تعذر الرجوع")
+                    "back" -> ensureHakimBrowser(activity, handler, 0) { ready ->
+                        if (!ready) finish(false, reason = "تعذر استعادة المتصفح للرجوع")
                         else {
-                            progressed = true; steps += 1
-                            handler.postDelayed(next, 500L)
+                            val ok = service.action(JSONObject().put("action", "back"))
+                            if (!ok) finish(false, reason = "تعذر الرجوع")
+                            else {
+                                progressed = true
+                                steps += 1
+                                handler.postDelayed(next, 500L)
+                            }
                         }
                     }
                     "wait" -> {
@@ -132,14 +151,27 @@ object HakimReasoningPlanExecutor {
         handler.post(next)
     }
 
-    private fun runOnHakimBrowser(activity: Activity, handler: Handler, block: () -> Unit) {
-        val pkg = HakimAccessibilityService.instance?.foregroundPackage().orEmpty()
-        if (pkg.startsWith("ps.hakim.stable")) {
-            block()
-        } else {
-            activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-            handler.postDelayed(block, 750L)
+    private fun ensureHakimBrowser(
+        activity: Activity,
+        handler: Handler,
+        attempt: Int,
+        onReady: (Boolean) -> Unit
+    ) {
+        val service = HakimAccessibilityService.instance
+        val pkg = service?.foregroundPackage().orEmpty()
+        val web = HakimRuntime.visibleWebView()
+        if (pkg.startsWith("ps.hakim.stable") && web != null && web.progress >= 60) {
+            onReady(true)
+            return
         }
+        if (attempt == 0) {
+            activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        }
+        if (attempt >= 14) {
+            onReady(service?.foregroundPackage().orEmpty().startsWith("ps.hakim.stable") && HakimRuntime.visibleWebView() != null)
+            return
+        }
+        handler.postDelayed({ ensureHakimBrowser(activity, handler, attempt + 1, onReady) }, 300L)
     }
 
     private fun containsStoredProfileValue(activity: Activity, value: String): Boolean {

@@ -40,11 +40,13 @@ object HakimCapabilityRegistry {
         val recovery = HakimConnectionResilience.status(context)
         val connectionReady = recovery.optBoolean("service_connected") || relayConfigured
         val resource = HakimResourceGovernor.status(context)
+        val mesh = HakimCapabilityMesh.status(context)
 
         return listOf(
             Capability("quranic_kernel", true, true, "جذر الثقة القرآني من النواة إلى الحافة مدمج ومحروس"),
             Capability("quran_sunnah_method", true, true, "منهج القرآن والهدي النبوي الصحيح مدمج في القرار والتنفيذ"),
             Capability("system_of_systems", true, true, "توليد أنظمة منبثقة مؤقتة من الأنظمة الموثوقة مدمج دون تعديل كود أو توسيع سلطة"),
+            Capability("capability_mesh", true, mesh.optBoolean("capability_mesh"), "شبكة ديناميكية ترتب الأدوات والخدمات حسب الجاهزية والدليل والخصوصية والسرعة والموارد والكلفة"),
             Capability("resource_governor", true, true, "حاكم الموارد مدمج؛ الوضع الحالي=${resource.optString("mode", "UNKNOWN")}"),
             Capability("integration_fabric", true, integrationReady, if (integrationReady) "نسيج التكامل البنيوي سليم" else "فشل تكامل بنيوي؛ لا يجوز ادعاء الجاهزية"),
             Capability("secure_store", true, true, "AndroidKeyStore/AES-GCM مدمج"),
@@ -71,15 +73,18 @@ object HakimCapabilityRegistry {
         }
         appendLine("لا تدّع قدرة غير جاهزة، ولا تدّع وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
         appendLine("الاستدلال داخل حكيم هو المسار الافتراضي عندما تتوفر الشبكة؛ Accessibility وتطبيق ChatGPT الرسمي مسارات اختيارية وليسا شرطًا لواجهة حكيم المستقلة.")
+        appendLine("شبكة التفوق ترتب الأدوات بدل تشغيلها كلها؛ المحلي/المجاني/المهيأ أولًا، والخدمات المدفوعة أو الصلاحيات الجديدة لا تُفعل تلقائيًا.")
         appendLine("نظام الأنظمة لا يعني تفعيل كل شيء دائمًا: فعّل أقل تركيب يحقق الغاية، وحاكم الموارد يحدد توقيت وكثافة الخلفية دون خفض جودة القرار.")
-    }.take(6200)
+    }.take(6800)
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("self_capability_awareness", true)
         .put("integration_aware", true)
         .put("system_of_systems_aware", true)
+        .put("capability_mesh_aware", true)
         .put("resource_aware", true)
         .put("in_app_reasoning_aware", true)
+        .put("capability_mesh", HakimCapabilityMesh.status(context))
         .put("capabilities", JSONArray(discover(context).map { it.toJson() }))
 
     private fun hasInternetCapability(context: Context): Boolean = runCatching {

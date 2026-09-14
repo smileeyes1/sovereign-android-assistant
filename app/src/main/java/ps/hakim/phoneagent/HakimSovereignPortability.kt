@@ -6,7 +6,7 @@ import org.json.JSONObject
 
 /**
  * قابلية نقل محلية صريحة. لا تصدّر كلمات المرور/OTP/PIN/CVV/المفاتيح أو هوية التوقيع الخاصة.
- * التصدير لا يحدث إلا بفعل المستخدم إلى وجهة يختارها نظام Android.
+ * قد تتضمن النسخة بيانات شخصية غير سرية خزّنها المستخدم (مثل الاسم/الهاتف/العنوان)، والتصدير لا يحدث إلا بفعل المستخدم إلى وجهة يختارها نظام Android.
  */
 object HakimSovereignPortability {
     const val SCHEMA_VERSION = 1
@@ -36,13 +36,14 @@ object HakimSovereignPortability {
             .put("exported_at", System.currentTimeMillis())
             .put("contains_secrets", false)
             .put("contains_signing_private_key", false)
+            .put("contains_personal_data", profile.length() > 0)
             .put("governance_global", safeGlobal.take(24000))
             .put("site_instructions", sites)
             .put("profile_non_sensitive", profile)
             .put("trusted_profile_hosts", trusted)
             .put("proactive_enabled", HakimProactiveEngine.isEnabled(context))
             .put("share_profile_with_reasoning", HakimPersonalVault.reasoningSharingEnabled(context))
-            .put("note", "نسخة سيادية غير سرية؛ كلمات المرور ورموز التحقق والبطاقات والمفاتيح الخاصة مستبعدة عمدًا")
+            .put("note", "النسخة تستبعد كلمات المرور ورموز التحقق والبطاقات والمفاتيح الخاصة، لكنها قد تحتوي بيانات شخصية خزّنها المستخدم؛ احفظها في وجهة موثوقة يختارها بنفسه")
             .toString(2)
     }
 
@@ -116,6 +117,7 @@ object HakimSovereignPortability {
         .put("portable_site_trust", true)
         .put("secrets_excluded", true)
         .put("signing_private_key_excluded", true)
+        .put("export_may_contain_personal_data", HakimPersonalVault.all(context).isNotEmpty())
         .put("current_sites", HakimGovernanceStore.allSites(context).size)
         .put("current_trusted_hosts", HakimSiteTrust.trustedHosts(context).size)
 }

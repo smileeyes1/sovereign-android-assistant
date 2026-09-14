@@ -27,6 +27,9 @@ policy = text("app/src/main/java/ps/hakim/phoneagent/HakimActionPolicy.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 site_trust = text("app/src/main/java/ps/hakim/phoneagent/HakimSiteTrust.kt")
+reasoning_protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
+reasoning_bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
+reasoning_executor = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: الوكلاء يجب أن يبقوا داخل تطبيق حكيم الواحد")
 require('android:name=".HakimAgentsChatActivity"' in manifest, "P0: واجهة محادثة الوكلاء غير مسجلة")
@@ -50,7 +53,11 @@ require("HakimIntentContext.promptContext" in agents, "P0: منسق الوكلا
 require("تلقائي — حكيم يختار" in chat, "P0: الاختيار التلقائي للوكلاء ليس افتراضيًا")
 require("HakimNaturalActionEngine.execute" in chat, "P0: المحادثة غير موصولة بالتنفيذ المحلي")
 require("HakimAutonomousExecutor.run" in chat, "P0: المحادثة لا تملك حلقة تنفيذ ذاتي متعددة الخطوات")
-require("sendToReasoningEngine" in chat, "P0: المهام المركبة لا تملك مسار استدلال")
+require("runReasoningCycle" in chat, "P0: المحادثة لا تملك حلقة استدلال مغلقة")
+require("HakimReasoningBridge.ask" in chat, "P0: الاستدلال غير موصول بمحرك ChatGPT الرسمي")
+require("HakimReasoningPlanExecutor.run" in chat, "P0: خطة الاستدلال غير موصولة بالمنفذ المحلي")
+require("fallbackShare" in chat, "P0: فشل الجسر لا يملك مسارًا احتياطيًا يحفظ الغاية")
+require("cycle < 2" in chat, "P0: حلقة الاستدلال بلا حد دورات يمنع الدوران")
 require("plan.sensitiveInputDetected" in chat, "P0: واجهة المحادثة قد تمرر سرًا إلى محرك الذكاء")
 require('typed.ifBlank { "أكمل" }' in chat, "P0: الضغط دون كتابة لا يتحول إلى استمرار سياقي")
 require("نفّذ/أكمل" in chat, "P0: واجهة أقل إشارة لا تعرض استمرارًا مباشرًا")
@@ -71,6 +78,9 @@ require("safeContinueFromScreen" in natural, "P0: الاستمرار السيا�
 require("isHighImpactLabel" in natural, "P0: الاستمرار التلقائي لا يحجب الأفعال عالية الأثر")
 require("knownDestination" in natural, "P0: الكلمات المختصرة للوجهات المعروفة غير مدعومة")
 require("isSensitive" in accessibility and "n.isPassword" in accessibility, "P0: خدمة الوصول لا تحمي الحقول الحساسة")
+require('safeAutomationPackages = setOf("com.openai.chatgpt")' in accessibility, "P0: جسر الاستدلال غير مقيد بحزمة ChatGPT الرسمية")
+require("visibleTextForPackage" in accessibility and "setFirstEditableForPackage" in accessibility, "P0: جسر الوصول المقيد غير مكتمل")
+require("performImeEnterForPackage" in accessibility, "P0: لا يوجد إرسال آمن احتياطي داخل ChatGPT الرسمي")
 
 require("AndroidKeyStore" in secure_store and "AES/GCM/NoPadding" in secure_store, "P0: المخزن المحلي ليس مشفرًا عبر AndroidKeyStore/GCM")
 require("HakimSecureStore.put" in personal and "forbidden" in personal, "P0: خزنة البيانات لا تستخدم التخزين المشفر/حاجز الأسرار")
@@ -90,7 +100,29 @@ require("كلمات المرور" in settings and "HakimGovernanceStore" in sett
 require("trustSiteForProfile" in settings and "HakimSiteTrust.setTrusted" in settings, "P0: واجهة الإعدادات لا تسمح باعتماد الموقع للبيانات")
 require("ps.hakim.stable" in site_trust and "trusted_profile_hosts" in site_trust, "P0: ثقة الموقع لا تقيد التعبئة بمتصفح حكيم والمضيف المعتمد")
 
-runtime = "\n".join([manifest, home, agents, chat, natural, intent_context, secure_store, personal, governance, policy, autonomous, settings, site_trust])
+for action_type in ["open_url", "click_text", "set_text", "back", "wait"]:
+    require(action_type in reasoning_protocol, f"P0: بروتوكول الاستدلال يفتقد الفعل المحدود {action_type}")
+for forbidden_type in ["shell", "exec", "javascript", "tap_xy", "adb"]:
+    require(forbidden_type not in reasoning_protocol.lower(), f"P0: بروتوكول الاستدلال يحتوي نوع تنفيذ واسع غير مسموح: {forbidden_type}")
+require("UUID.randomUUID" in reasoning_protocol and "HAKIM_" in reasoning_protocol, "P0: خطط الاستدلال لا تستخدم محدد جلسة فريد")
+require("arr.length() > 8" in reasoning_protocol, "P0: خطة الاستدلال بلا حد صارم لعدد الأفعال")
+require("containsSecret" in reasoning_protocol, "P0: بروتوكول الاستدلال لا يرفض الأسرار")
+
+require('private const val PACKAGE = "com.openai.chatgpt"' in reasoning_bridge, "P0: الجسر غير مثبت على تطبيق ChatGPT الرسمي")
+require("HakimReasoningProtocol.wrap" in reasoning_bridge and "HakimReasoningProtocol.parse" in reasoning_bridge, "P0: الجسر لا يستخدم بروتوكول حكيم المقيد")
+require("setFirstEditableForPackage" in reasoning_bridge and "visibleTextForPackage" in reasoning_bridge, "P0: الجسر لا يستخدم وصولًا مقيدًا بالحزمة")
+require("MAX_POLL_ATTEMPTS" in reasoning_bridge and "MAX_LAUNCH_ATTEMPTS" in reasoning_bridge, "P0: جسر الاستدلال بلا حدود توقف")
+
+require("HakimActionPolicy.classify" in reasoning_executor, "P0: منفذ خطة الاستدلال يتجاوز حاكم الأفعال")
+require("HakimSiteTrust.canUseProfile" in reasoning_executor, "P0: منفذ الخطة قد يكشف بيانات الخزنة لموقع غير موثوق")
+require('uri.scheme !in setOf("http", "https")' in reasoning_executor, "P0: فتح الروابط من الاستدلال غير محصور في HTTP/HTTPS")
+require("containsStoredProfileValue" in reasoning_executor, "P0: منفذ الخطة لا يكتشف إعادة استخدام بيانات الخزنة")
+
+runtime = "\n".join([
+    manifest, home, agents, chat, natural, intent_context, accessibility, secure_store,
+    personal, governance, policy, autonomous, settings, site_trust,
+    reasoning_protocol, reasoning_bridge, reasoning_executor,
+])
 require("org.hakim.omega.companion" not in runtime, "P0: منظومة الوكلاء أدخلت اعتمادًا على تطبيق موازٍ")
 
 print("HAKIM_AGENT_SYSTEM_CONTRACT=PASS")

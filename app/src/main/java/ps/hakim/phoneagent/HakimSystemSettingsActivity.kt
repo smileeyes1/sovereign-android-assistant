@@ -38,7 +38,7 @@ class HakimSystemSettingsActivity : Activity() {
         when (requestCode) {
             REQ_EXPORT -> runCatching {
                 val bytes = HakimSovereignPortability.exportJson(this).toByteArray(Charsets.UTF_8)
-                contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                contentResolver.openOutputStream(uri, "w")?.use { it.write(bytes) }
                     ?: error("تعذر فتح وجهة الحفظ")
             }.onSuccess {
                 Toast.makeText(this, "تم حفظ النسخة السيادية في المكان الذي اخترته — بلا كلمات مرور أو مفاتيح خاصة", Toast.LENGTH_LONG).show()

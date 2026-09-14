@@ -127,8 +127,8 @@ object HakimGovernanceStore {
         }.take(20000)
     }
 
-    /** نسخة نصية آمنة للخروج من المخزن المحلي؛ تمنع تسريب الأسرار المضمّنة عرضًا. */
-    fun exportSafeText(raw: String): String {
+    /** الاسم المرجعي التاريخي لتنقيح الأسرار؛ محفوظ لمنع انحدار العقود والاختبارات القديمة. */
+    fun redactEmbeddedSecrets(raw: String): String {
         var out = raw
         val labelled = Regex(
             "(?i)(password|passcode|otp|pin|cvv|cvc|api.?key|token|secret|كلمة\\s*المرور|رمز\\s*التحقق|رمز\\s*الأمان|مفتاح\\s*سري)\\s*[:=]\\s*([^\\s,;]{2,})"
@@ -137,6 +137,9 @@ object HakimGovernanceStore {
         out = Regex("(?<!\\d)\\d{13,19}(?!\\d)").replace(out, "[رقم حساس محجوب]")
         return out
     }
+
+    /** نسخة نصية آمنة للخروج من المخزن المحلي؛ تمر عبر منقح الأسرار المرجعي. */
+    fun exportSafeText(raw: String): String = redactEmbeddedSecrets(raw)
 
     private fun normalizeHost(raw: String): String? {
         var s = raw.trim().lowercase()

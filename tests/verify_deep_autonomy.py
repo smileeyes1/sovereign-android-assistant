@@ -38,6 +38,9 @@ require("nextApprovalAction" in autonomous, "P0: لا يوجد كشف للفعل
 require("screenHasHighImpactContext(snapshot)" not in autonomous, "P0: التنفيذ يتوقف مبكرًا لمجرد سياق عالي الأثر")
 require("بعد إكمال التحضير الآمن" in autonomous, "P0: بوابة الأثر العالي ليست بعد التحضير")
 require("successfully completed" in policy and "|نجاح|" not in policy, "P0: إثبات النجاح واسع وقد يعطي COMPLETE كاذبًا")
+require("ambiguousHighImpactContinuationRegex" in policy, "P0: المتابعة المبهمة داخل سياق عالي الأثر قد تُنفذ تلقائيًا")
+require("highImpactContext &&" in policy and "ambiguousHighImpactContinuationRegex.containsMatchIn(text)" in policy,
+        "P0: بوابة المتابعة المبهمة غير مرتبطة فعليًا بالسياق عالي الأثر")
 
 # البيانات الشخصية: النموذج يطلب الحقل، الجهاز يملك القيمة.
 require('"fill_profile"' in protocol, "P0: بروتوكول الاستدلال لا يدعم تعبئة الخزنة محليًا")

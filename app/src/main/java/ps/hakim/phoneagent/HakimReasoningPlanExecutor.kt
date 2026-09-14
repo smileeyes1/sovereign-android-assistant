@@ -25,6 +25,10 @@ object HakimReasoningPlanExecutor {
         onProgress: (String) -> Unit = {},
         onComplete: (Outcome) -> Unit
     ) {
+        if (HakimMissionLedger.isCancelled(activity)) {
+            onComplete(Outcome(false, false, 0, false, false, false, "المهمة ملغاة بأمر المستخدم"))
+            return
+        }
         val mission = HakimMissionLedger.active(activity)
         if ((mission?.failures ?: 0) >= 5) {
             HakimMissionLedger.block(activity, "تجاوزت المهمة حد الإخفاقات؛ يلزم تغير دليل/حالة قبل التنفيذ")
@@ -54,6 +58,10 @@ object HakimReasoningPlanExecutor {
         ) {
             if (finished) return
             finished = true
+            if (HakimMissionLedger.isCancelled(activity)) {
+                onComplete(Outcome(progressed, false, steps, false, false, false, "المهمة ملغاة بأمر المستخدم"))
+                return
+            }
             when {
                 completed -> HakimSovereignEngine.complete(activity, reason)
                 needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
@@ -69,9 +77,14 @@ object HakimReasoningPlanExecutor {
             HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
+        fun gateAction(label: String, snapshot: org.json.JSONArray): HakimAuthorityEnvelope.Decision =
+            HakimAuthorityEnvelope.classifyUiAction(label, snapshot)
+
         lateinit var next: () -> Unit
         next = {
-            if (finished || activity.isFinishing || activity.isDestroyed) {
+            if (HakimMissionLedger.isCancelled(activity)) {
+                finish(false, reason = "المهمة ملغاة بأمر المستخدم")
+            } else if (finished || activity.isFinishing || activity.isDestroyed) {
                 if (!finished) finish(false, reason = "انتهت واجهة التنفيذ")
             } else if (index >= plan.actions.size) {
                 finish(plan.done, reason = if (plan.done) "محرك الاستدلال أعلن اكتمال الجولة" else "انتهت أفعال الجولة وتحتاج إعادة استدلال")
@@ -100,18 +113,18 @@ object HakimReasoningPlanExecutor {
                                 finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم النقرة")
                             } else {
                                 val targetSnapshot = service.uiSnapshot(160)
-                                val decision = HakimActionPolicy.classify(target, targetSnapshot)
-                                when (decision.level) {
-                                    HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
-                                    HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
-                                    HakimActionPolicy.Level.AUTO -> {
+                                val authority = gateAction(target, targetSnapshot)
+                                when (authority.gate) {
+                                    HakimAuthorityEnvelope.Gate.BLOCK, HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
+                                    HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                    else -> {
                                         val ok = service.action(JSONObject().put("action", "click_text").put("text", target))
                                         if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال على شاشة الموقع")
                                         else {
                                             progressed = true
                                             steps += 1
                                             recordStep("نقرة منخفضة الأثر: ${target.take(120)}")
-                                            onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}» بعد فحص شاشة الموقع.")
+                                            onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}» بعد فحص شاشة الموقع وغلاف السلطة.")
                                             handler.postDelayed(next, 600L)
                                         }
                                     }
@@ -131,10 +144,10 @@ object HakimReasoningPlanExecutor {
                                     finish(false, reason = "تعذر استعادة شاشة الموقع قبل تعبئة بيانات الخزنة")
                                 } else {
                                     val targetSnapshot = service.uiSnapshot(160)
-                                    val decision = HakimActionPolicy.classify(target, targetSnapshot)
+                                    val authority = gateAction(target, targetSnapshot)
                                     when {
-                                        decision.level == HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
-                                        decision.level == HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
+                                        authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
+                                        authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
                                         !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
                                         else -> {
                                             val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value))
@@ -160,10 +173,10 @@ object HakimReasoningPlanExecutor {
                                 finish(false, reason = "تعذر استعادة شاشة الموقع قبل تقييم الكتابة")
                             } else {
                                 val targetSnapshot = service.uiSnapshot(160)
-                                val decision = HakimActionPolicy.classify("$target $value", targetSnapshot)
+                                val authority = gateAction("$target $value", targetSnapshot)
                                 when {
-                                    decision.level == HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
-                                    decision.level == HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
+                                    authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
+                                    authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
                                     containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
                                     else -> {
                                         val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000)))
@@ -172,7 +185,7 @@ object HakimReasoningPlanExecutor {
                                             progressed = true
                                             steps += 1
                                             recordStep("كتابة محتوى غير حساس في ${target.take(120)}")
-                                            onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص الشاشة والسياسة.")
+                                            onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص الشاشة والسياسة وغلاف السلطة.")
                                             handler.postDelayed(next, 500L)
                                         }
                                     }
@@ -208,6 +221,10 @@ object HakimReasoningPlanExecutor {
         reason.startsWith("تعذر") || reason.startsWith("لم أجد") || reason.contains("غير صالح")
 
     private fun ensureHakimBrowser(activity: Activity, handler: Handler, attempt: Int, onReady: (Boolean) -> Unit) {
+        if (HakimMissionLedger.isCancelled(activity)) {
+            onReady(false)
+            return
+        }
         val service = HakimAccessibilityService.instance
         val pkg = service?.foregroundPackage().orEmpty()
         val web = HakimRuntime.visibleWebView()

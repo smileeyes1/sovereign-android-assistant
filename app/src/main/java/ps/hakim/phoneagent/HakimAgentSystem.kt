@@ -120,7 +120,7 @@ object HakimAgentSystem {
         return JSONObject()
             .put("multi_agent", true)
             .put("natural_language", true)
-            .put("agents", JSONArray(Agent.entries.map { it.name }))
+            .put("agents", JSONArray(Agent.values().map { it.name }))
             .put("last_plan", prefs.getString("last_plan", ""))
             .put("secret_redaction", true)
             .put("high_impact_gate", true)
@@ -141,8 +141,8 @@ object HakimAgentSystem {
 
     private fun redactSecrets(raw: String): String {
         var out = raw
-        out = Regex("(?i)(password|passcode|otp|pin|cvv|cvc|كلمة\\s*المرور|رمز\\s*التحقق|رمز\\s*الأمان)\\s*[:=]?\\s*\\S+")
-            .replace(out) { m -> m.value.substringBefore(Regex("[:=]")) + ": [سري — لا يُرسل]" }
+        val labelledSecret = Regex("(?i)(password|passcode|otp|pin|cvv|cvc|كلمة\\s*المرور|رمز\\s*التحقق|رمز\\s*الأمان)\\s*[:=]?\\s*\\S+")
+        out = labelledSecret.replace(out) { m -> "${m.groupValues[1]}: [سري — لا يُرسل]" }
         out = Regex("(?<!\\d)\\d{13,19}(?!\\d)").replace(out, "[رقم حساس مخفي]")
         return out
     }

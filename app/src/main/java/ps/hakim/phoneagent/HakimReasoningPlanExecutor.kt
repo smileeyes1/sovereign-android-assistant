@@ -25,12 +25,21 @@ object HakimReasoningPlanExecutor {
         onProgress: (String) -> Unit = {},
         onComplete: (Outcome) -> Unit
     ) {
+        val mission = HakimMissionLedger.active(activity)
+        if ((mission?.failures ?: 0) >= 5) {
+            HakimMissionLedger.block(activity, "تجاوزت المهمة حد الإخفاقات؛ يلزم تغير دليل/حالة قبل التنفيذ")
+            onComplete(Outcome(false, false, 0, false, false, true, "أوقف حاكم الاستمرارية التنفيذ بعد فشل متكرر"))
+            return
+        }
+
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
         if (service == null) {
+            HakimSovereignEngine.recordVerification(activity, false, "خدمة الوصول غير مفعلة أثناء خطة الاستدلال")
             onComplete(Outcome(false, false, 0, false, false, true, "خدمة الوصول غير مفعلة"))
             return
         }
+        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة", attempted = true)
         var index = 0
         var steps = 0
         var progressed = false
@@ -45,7 +54,19 @@ object HakimReasoningPlanExecutor {
         ) {
             if (finished) return
             finished = true
+            when {
+                completed -> HakimSovereignEngine.complete(activity, reason)
+                needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
+                needsDataTrust -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_TRUST, reason)
+                blocked -> HakimMissionLedger.block(activity, reason)
+                isActualFailure(reason) -> HakimSovereignEngine.recordVerification(activity, false, reason)
+                else -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, reason)
+            }
             onComplete(Outcome(progressed, completed, steps, needsApproval, needsDataTrust, blocked, reason))
+        }
+
+        fun recordStep(evidence: String) {
+            HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
         lateinit var next: () -> Unit
@@ -67,6 +88,7 @@ object HakimReasoningPlanExecutor {
                             activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                             progressed = true
                             steps += 1
+                            recordStep("فتح رابط ويب آمن بعد التحقق من البنية")
                             onProgress("فتحت المسار الذي اختاره الوكيل بعد التحقق من أنه رابط ويب آمن.")
                             handler.postDelayed(next, 900L)
                         }
@@ -88,6 +110,7 @@ object HakimReasoningPlanExecutor {
                                         else {
                                             progressed = true
                                             steps += 1
+                                            recordStep("نقرة منخفضة الأثر: ${target.take(120)}")
                                             onProgress("نفذت نقرة منخفضة الأثر على «${target.take(120)}» بعد فحص شاشة الموقع.")
                                             handler.postDelayed(next, 600L)
                                         }
@@ -110,20 +133,16 @@ object HakimReasoningPlanExecutor {
                                     val targetSnapshot = service.uiSnapshot(160)
                                     val decision = HakimActionPolicy.classify(target, targetSnapshot)
                                     when {
-                                        decision.level == HakimActionPolicy.Level.BLOCK ->
-                                            finish(false, blocked = true, reason = decision.reason)
-                                        decision.level == HakimActionPolicy.Level.APPROVAL ->
-                                            finish(false, needsApproval = true, reason = decision.reason)
-                                        !HakimSiteTrust.canUseProfile(activity, targetSnapshot) ->
-                                            finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
+                                        decision.level == HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
+                                        decision.level == HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
+                                        !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
                                         else -> {
-                                            val ok = service.action(
-                                                JSONObject().put("action", "set_text").put("text", target).put("value", value)
-                                            )
+                                            val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value))
                                             if (!ok) finish(false, reason = "تعذر العثور على حقل «$target» لتعبئته من الخزنة")
                                             else {
                                                 progressed = true
                                                 steps += 1
+                                                recordStep("تعبئة محلية من الخزنة: $fieldId")
                                                 onProgress("عبأت «$fieldId» محليًا في موقع معتمد دون كشف قيمته لمحرك الاستدلال.")
                                                 handler.postDelayed(next, 500L)
                                             }
@@ -143,20 +162,16 @@ object HakimReasoningPlanExecutor {
                                 val targetSnapshot = service.uiSnapshot(160)
                                 val decision = HakimActionPolicy.classify("$target $value", targetSnapshot)
                                 when {
-                                    decision.level == HakimActionPolicy.Level.BLOCK ->
-                                        finish(false, blocked = true, reason = decision.reason)
-                                    decision.level == HakimActionPolicy.Level.APPROVAL ->
-                                        finish(false, needsApproval = true, reason = decision.reason)
-                                    containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) ->
-                                        finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
+                                    decision.level == HakimActionPolicy.Level.BLOCK -> finish(false, blocked = true, reason = decision.reason)
+                                    decision.level == HakimActionPolicy.Level.APPROVAL -> finish(false, needsApproval = true, reason = decision.reason)
+                                    containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
                                     else -> {
-                                        val ok = service.action(
-                                            JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000))
-                                        )
+                                        val ok = service.action(JSONObject().put("action", "set_text").put("text", target).put("value", value.take(6000)))
                                         if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة على شاشة الموقع")
                                         else {
                                             progressed = true
                                             steps += 1
+                                            recordStep("كتابة محتوى غير حساس في ${target.take(120)}")
                                             onProgress("كتبت محتوى غير حساس في «${target.take(120)}» بعد فحص الشاشة والسياسة.")
                                             handler.postDelayed(next, 500L)
                                         }
@@ -173,6 +188,7 @@ object HakimReasoningPlanExecutor {
                             else {
                                 progressed = true
                                 steps += 1
+                                recordStep("رجوع آمن")
                                 handler.postDelayed(next, 500L)
                             }
                         }
@@ -188,12 +204,10 @@ object HakimReasoningPlanExecutor {
         handler.post(next)
     }
 
-    private fun ensureHakimBrowser(
-        activity: Activity,
-        handler: Handler,
-        attempt: Int,
-        onReady: (Boolean) -> Unit
-    ) {
+    private fun isActualFailure(reason: String): Boolean =
+        reason.startsWith("تعذر") || reason.startsWith("لم أجد") || reason.contains("غير صالح")
+
+    private fun ensureHakimBrowser(activity: Activity, handler: Handler, attempt: Int, onReady: (Boolean) -> Unit) {
         val service = HakimAccessibilityService.instance
         val pkg = service?.foregroundPackage().orEmpty()
         val web = HakimRuntime.visibleWebView()
@@ -201,9 +215,7 @@ object HakimReasoningPlanExecutor {
             onReady(true)
             return
         }
-        if (attempt == 0) {
-            activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-        }
+        if (attempt == 0) activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
         if (attempt >= 14) {
             onReady(service?.foregroundPackage().orEmpty().startsWith("ps.hakim.stable") && HakimRuntime.visibleWebView() != null)
             return

@@ -39,6 +39,8 @@ jobs:
         run: python3 tests/verify_deep_autonomy.py
       - name: بوابة الذكاء السيادي والنزاهة الشرعية
         run: python3 tests/verify_sovereign_intelligence.py
+      - name: بوابة وراثة القرآن من النواة إلى الحافة
+        run: python3 tests/verify_quranic_kernel_inheritance.py
       - name: بوابة التفوق الشامل ومنع الانحدار
         run: python3 tests/verify_excellence_optimizer.py
       - name: بوابة الاستقلال السيادي والقيادة الذاتية

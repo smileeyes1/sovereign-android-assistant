@@ -4,13 +4,14 @@ import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.webkit.WebView
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * حلقة تنفيذ محلية مغلقة: شاشة -> فعل آمن -> تحقق -> إعادة تقدير.
+ * حلقة تنفيذ محلية مغلقة: صفحة/شاشة -> فعل آمن -> تحقق -> إعادة تقدير.
+ * WebView حكيم هو المسار الأول بأقل صلاحية، وAccessibility احتياط فقط إن كان متاحًا.
  * لا تتخذ قرارًا عالي الأثر ولا تكتب في حقل حساس ولا تكشف بيانات الخزنة لموقع غير معتمد.
- * التعلم التكيفي لا يولد أفعالًا جديدة؛ يعيد ترتيب المرشحات الآمنة فقط وفق أثر سابق مثبت.
  */
 object HakimAutonomousExecutor {
     data class Outcome(
@@ -52,11 +53,6 @@ object HakimAutonomousExecutor {
 
         val service = HakimAccessibilityService.instance
         HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء حلقة التنفيذ المحلي", attempted = true)
-        if (service == null) {
-            HakimSovereignEngine.recordVerification(activity, false, "خدمة الوصول غير مفعلة")
-            onComplete(Outcome(false, false, 0, false, false, false, "خدمة الوصول غير مفعلة"))
-            return
-        }
 
         val seen = linkedSetOf<String>()
         var steps = 0
@@ -93,110 +89,160 @@ object HakimAutonomousExecutor {
             HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
+        fun snapshotFor(callback: (WebView?, JSONArray) -> Unit) {
+            val web = HakimRuntime.visibleWebView()
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.snapshot(web!!) { nativeSnapshot ->
+                    if (nativeSnapshot.length() > 0) callback(web, nativeSnapshot)
+                    else callback(web, service?.uiSnapshot(160) ?: nativeSnapshot)
+                }
+            } else {
+                callback(null, service?.uiSnapshot(160) ?: JSONArray())
+            }
+        }
+
+        fun setTextLeastPrivilege(web: WebView?, node: JSONObject, target: String, value: String, callback: (Boolean) -> Unit) {
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.setText(web!!, target, value) { nativeOk ->
+                    if (nativeOk) callback(true)
+                    else callback(
+                        service?.action(
+                            JSONObject().put("action", "set_text")
+                                .put("id", node.optString("id"))
+                                .put("text", target)
+                                .put("value", value)
+                        ) == true
+                    )
+                }
+            } else {
+                callback(
+                    service?.action(
+                        JSONObject().put("action", "set_text")
+                            .put("id", node.optString("id"))
+                            .put("text", target)
+                            .put("value", value)
+                    ) == true
+                )
+            }
+        }
+
+        fun clickLeastPrivilege(web: WebView?, target: String, callback: (Boolean) -> Unit) {
+            if (HakimWebAutomation.isUsable(web)) {
+                HakimWebAutomation.clickText(web!!, target) { nativeOk ->
+                    if (nativeOk) callback(true)
+                    else callback(service?.action(JSONObject().put("action", "click_text").put("text", target)) == true)
+                }
+            } else {
+                callback(service?.action(JSONObject().put("action", "click_text").put("text", target)) == true)
+            }
+        }
+
         lateinit var iterate: () -> Unit
-        iterate = {
+        iterate = iterateLoop@ {
             if (HakimMissionLedger.isCancelled(activity)) {
                 finish(false, reason = "المهمة ملغاة بأمر المستخدم")
-            } else if (finished || activity.isFinishing || activity.isDestroyed) {
+                return@iterateLoop
+            }
+            if (finished || activity.isFinishing || activity.isDestroyed) {
                 if (!finished) finish(false, reason = "انتهت واجهة التنفيذ")
-            } else {
-                val snapshot = service.uiSnapshot(160)
-                if (snapshot.length() == 0) {
-                    finish(false, reason = "لا توجد عناصر شاشة قابلة للفهم الآن")
-                } else {
-                    val currentFingerprint = fingerprint(snapshot)
-                    val pending = pendingAdaptiveAction
-                    val before = pendingAdaptiveFingerprint
-                    if (pending != null && before != null) {
-                        HakimAdaptiveLearning.recordActionOutcome(activity, pending, currentFingerprint != before)
-                        pendingAdaptiveAction = null
-                        pendingAdaptiveFingerprint = null
-                    }
+                return@iterateLoop
+            }
 
-                    if (HakimActionPolicy.isSuccessState(snapshot) && progressed) {
-                        HakimSovereignEngine.recordVerification(activity, true, "ظهرت حالة نجاح مرئية بعد التنفيذ")
-                        finish(true, reason = "ظهرت حالة نجاح مرئية بعد التنفيذ")
-                    } else if (steps >= MAX_STEPS) {
-                        finish(false, reason = "وصلت الحلقة إلى حد الخطوات الآمن وتحتاج إعادة تقدير")
-                    } else {
-                        val fingerprint = currentFingerprint
-                        if (!seen.add(fingerprint) && progressed) {
-                            finish(false, reason = "لم تتغير الشاشة بعد آخر خطوة؛ أوقفت التكرار")
-                        } else {
-                            val profileCandidate = firstProfileCandidate(activity, snapshot)
-                            if (profileCandidate != null && !HakimSiteTrust.canUseProfile(activity, snapshot)) {
-                                finish(false, needsDataTrust = true, reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم")
-                            } else if (profileCandidate != null) {
-                                val (node, match) = profileCandidate
-                                val field = match.first
-                                val value = match.second
-                                val id = node.optString("id")
-                                val textHint = visibleLabel(node)
-                                val authority = HakimAuthorityEnvelope.classifyUiAction(textHint, snapshot)
-                                when (authority.gate) {
-                                    HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
-                                    HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                    HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
-                                    else -> {
-                                        val adaptiveKey = "profile:${field.id}"
-                                        val ok = service.action(
-                                            JSONObject().put("action", "set_text").put("id", id).put("text", textHint).put("value", value)
-                                        )
-                                        if (ok) {
-                                            progressed = true
-                                            steps += 1
-                                            pendingAdaptiveAction = adaptiveKey
-                                            pendingAdaptiveFingerprint = fingerprint
-                                            recordStep("عبئت ${field.id} محليًا في موقع معتمد")
-                                            onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
-                                            handler.postDelayed(iterate, 500L)
-                                        } else {
-                                            HakimAdaptiveLearning.recordActionOutcome(activity, adaptiveKey, false)
-                                            finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
-                                        }
+            snapshotFor { web, snapshot ->
+                if (finished || HakimMissionLedger.isCancelled(activity)) return@snapshotFor
+                if (snapshot.length() == 0) {
+                    finish(false, reason = "لا يوجد فعل محلي واضح وآمن الآن؛ تحتاج المهمة استدلالًا إضافيًا")
+                    return@snapshotFor
+                }
+
+                val currentFingerprint = fingerprint(snapshot)
+                val pending = pendingAdaptiveAction
+                val before = pendingAdaptiveFingerprint
+                if (pending != null && before != null) {
+                    HakimAdaptiveLearning.recordActionOutcome(activity, pending, currentFingerprint != before)
+                    pendingAdaptiveAction = null
+                    pendingAdaptiveFingerprint = null
+                }
+
+                if (HakimActionPolicy.isSuccessState(snapshot) && progressed) {
+                    HakimSovereignEngine.recordVerification(activity, true, "ظهرت حالة نجاح مرئية بعد التنفيذ")
+                    finish(true, reason = "ظهرت حالة نجاح مرئية بعد التنفيذ")
+                } else if (steps >= MAX_STEPS) {
+                    finish(false, reason = "وصلت الحلقة إلى حد الخطوات الآمن وتحتاج إعادة تقدير")
+                } else if (!seen.add(currentFingerprint) && progressed) {
+                    finish(false, reason = "لم تتغير الصفحة بعد آخر خطوة؛ أوقفت التكرار")
+                } else {
+                    val profileCandidate = firstProfileCandidate(activity, snapshot)
+                    if (profileCandidate != null && !HakimSiteTrust.canUseProfile(activity, snapshot)) {
+                        finish(false, needsDataTrust = true, reason = "الموقع/التطبيق الحالي غير معتمد لإخراج بيانات خزنة حكيم")
+                    } else if (profileCandidate != null) {
+                        val (node, match) = profileCandidate
+                        val field = match.first
+                        val value = match.second
+                        val textHint = visibleLabel(node)
+                        val authority = HakimAuthorityEnvelope.classifyUiAction(textHint, snapshot)
+                        when (authority.gate) {
+                            HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
+                            HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                            HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
+                            else -> {
+                                val adaptiveKey = "profile:${field.id}"
+                                setTextLeastPrivilege(web, node, textHint, value) { ok ->
+                                    if (ok) {
+                                        progressed = true
+                                        steps += 1
+                                        pendingAdaptiveAction = adaptiveKey
+                                        pendingAdaptiveFingerprint = currentFingerprint
+                                        recordStep("عبئت ${field.id} محليًا في موقع معتمد")
+                                        onProgress("عبأت «${field.title}» محليًا في موقع معتمد دون إرسال القيمة إلى نموذج الذكاء.")
+                                        handler.postDelayed(iterate, 500L)
+                                    } else {
+                                        HakimAdaptiveLearning.recordActionOutcome(activity, adaptiveKey, false)
+                                        finish(false, reason = "تعذر تعبئة الحقل المطابق بأمان")
                                     }
                                 }
-                            } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
-                                finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
-                            } else {
-                                val next = nextSafeContinuation(activity, snapshot)
-                                if (next != null) {
-                                    val authority = HakimAuthorityEnvelope.classifyUiAction(next, snapshot)
-                                    when (authority.gate) {
-                                        HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
-                                        HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                        HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
-                                        else -> {
-                                            val matrix = HakimDecisionMatrix.evaluate(next)
-                                            if (matrix.mode == HakimDecisionMatrix.Mode.BLOCK) {
-                                                finish(false, reason = "منعت مصفوفة القرار الخطوة التالية")
-                                            } else if (matrix.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE) {
-                                                finish(false, needsApproval = true, reason = "مصفوفة القرار تطلب موافقة قبل «$next»")
+                            }
+                        }
+                    } else if (HakimActionPolicy.screenHasSensitiveInput(snapshot)) {
+                        finish(false, needsCredential = true, reason = "توجد خطوة اعتماد حساسة؛ تُترك لمدير اعتماد أندرويد/الحقل الآمن")
+                    } else {
+                        val next = nextSafeContinuation(activity, snapshot)
+                        if (next != null) {
+                            val authority = HakimAuthorityEnvelope.classifyUiAction(next, snapshot)
+                            when (authority.gate) {
+                                HakimAuthorityEnvelope.Gate.BLOCK -> finish(false, reason = authority.reason)
+                                HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
+                                HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, needsCredential = true, reason = authority.reason)
+                                else -> {
+                                    val matrix = HakimDecisionMatrix.evaluate(next)
+                                    if (matrix.mode == HakimDecisionMatrix.Mode.BLOCK) {
+                                        finish(false, reason = "منعت مصفوفة القرار الخطوة التالية")
+                                    } else if (matrix.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE) {
+                                        finish(false, needsApproval = true, reason = "مصفوفة القرار تطلب موافقة قبل «$next»")
+                                    } else {
+                                        clickLeastPrivilege(web, next) { ok ->
+                                            if (ok) {
+                                                progressed = true
+                                                steps += 1
+                                                pendingAdaptiveAction = next
+                                                pendingAdaptiveFingerprint = currentFingerprint
+                                                recordStep("نفذت متابعة آمنة: ${next.take(160)}")
+                                                onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
+                                                handler.postDelayed(iterate, 650L)
                                             } else {
-                                                val ok = service.action(JSONObject().put("action", "click_text").put("text", next))
-                                                if (ok) {
-                                                    progressed = true
-                                                    steps += 1
-                                                    pendingAdaptiveAction = next
-                                                    pendingAdaptiveFingerprint = fingerprint
-                                                    recordStep("نفذت متابعة آمنة: ${next.take(160)}")
-                                                    onProgress("نفذت الخطوة الآمنة التالية «$next» وتحققت من الانتقال قبل المتابعة.")
-                                                    handler.postDelayed(iterate, 650L)
-                                                } else {
-                                                    HakimAdaptiveLearning.recordActionOutcome(activity, next, false)
-                                                    finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
-                                                }
+                                                HakimAdaptiveLearning.recordActionOutcome(activity, next, false)
+                                                finish(false, reason = "تعذر تنفيذ عنصر المتابعة الظاهر")
                                             }
                                         }
                                     }
-                                } else {
-                                    val gated = nextApprovalAction(snapshot)
-                                    if (gated != null) {
-                                        finish(false, needsApproval = true, reason = "وصلت إلى الفعل النهائي «$gated» بعد إكمال التحضير الآمن")
-                                    } else {
-                                        finish(false, reason = if (progressed) "أغلقت كل الخطوات المحلية الواضحة وتحتاج المهمة استدلالًا إضافيًا" else "لا يوجد فعل محلي واضح وآمن يمكن استنتاجه من الشاشة")
-                                    }
                                 }
+                            }
+                        } else {
+                            val gated = nextApprovalAction(snapshot)
+                            if (gated != null) {
+                                finish(false, needsApproval = true, reason = "وصلت إلى الفعل النهائي «$gated» بعد إكمال التحضير الآمن")
+                            } else {
+                                finish(false, reason = if (progressed) "أغلقت كل الخطوات المحلية الواضحة وتحتاج المهمة استدلالًا إضافيًا" else "لا يوجد فعل محلي واضح وآمن يمكن استنتاجه من الصفحة")
                             }
                         }
                     }
@@ -267,7 +313,8 @@ object HakimAutonomousExecutor {
         return null
     }
 
-    private fun visibleLabel(node: JSONObject): String = node.optString("text").trim().ifBlank { node.optString("desc").trim() }.take(240)
+    private fun visibleLabel(node: JSONObject): String =
+        node.optString("text").trim().ifBlank { node.optString("desc").trim() }.take(240)
 
     private fun fingerprint(snapshot: JSONArray): String {
         val s = buildString {

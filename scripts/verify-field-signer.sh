@@ -35,9 +35,14 @@ if ! CERT_OUTPUT="$(LC_ALL=C "$APKSIGNER_BIN" verify --verbose --print-certs "$A
 fi
 
 mapfile -t ACTUAL_CERTS < <(
-  printf '%s\n' "$CERT_OUTPUT" |
-    sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' |
-    tr '[:lower:]' '[:upper:]'
+  printf '%s\n' "$CERT_OUTPUT" | python3 -c '
+import re, sys
+text = sys.stdin.read()
+for digest in re.findall(r"certificate\s+SHA-256\s+digest\s*:\s*([0-9A-Fa-f:]{64,95})", text, flags=re.I):
+    value = re.sub(r"[^0-9A-Fa-f]", "", digest).upper()
+    if len(value) == 64:
+        print(value)
+'
 )
 
 EXPECTED="${EXPECTED//:/}"

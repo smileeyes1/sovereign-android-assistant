@@ -35,6 +35,10 @@ for token in ["HakimLearning.maintenance", "HakimAdaptiveLearning.consolidate", 
 require("HakimAutonomousExecutor.run" not in proactive, "P0: محرك الخلفية ينفذ واجهة تفاعلية بلا Activity/سياق")
 require("service.action(" not in proactive, "P0: محرك المبادرة ينقر/يكتب مباشرة في الخلفية")
 require("startActivity(" not in proactive, "P0: محرك المبادرة يفتح واجهات من الخلفية بدل استخدام بوابة النظام")
+require("HakimResourceGovernor.Mode.PRESSURE" in proactive and "DEFERRED_RESOURCE_PRESSURE" in proactive,
+        "P0: المبادرة لا تؤجل الصيانة غير الجوهرية عند ضغط الهاتف")
+require("HakimResourceGovernor.Mode.CONSERVE" in proactive and "resource_adaptive_background" in proactive,
+        "P0: المبادرة لا تملك صيانة خفيفة متكيفة مع الموارد")
 
 # الاستئناف التلقائي في الواجهة يمر مجددًا بالمصفوفة ويستبعد الحالات المحمية.
 require("foregroundOpportunity" in proactive and "HakimDecisionMatrix.evaluate" in proactive, "P0: الاستئناف التلقائي لا يعاد تصنيفه")
@@ -43,13 +47,26 @@ for phase in ["WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "CANCEL
 require("maybeResumeProactively" in chat and "HakimProactiveEngine.foregroundOpportunity" in chat, "P0: الواجهة لا تستأنف المهمة الآمنة تلقائيًا")
 require("plan.needsApproval" in chat and "plan.sensitiveInputDetected" in chat, "P0: الاستئناف التلقائي لا يعيد تطبيق بوابات الأثر/الأسرار")
 
-# التحديث/التطور الآني متعدد المسارات: تشغيل فوري + فحص مباشر + استعادة بعد الإقلاع + دورة دورية.
+# بدء التطبيق: نحافظ على الفورية لكن بلا اندفاع يزاحم الواجهة على هاتف محدود الموارد.
 require("HakimProactiveEngine.initialize(this)" in app, "P0: المبادرة لا تبدأ مع التطبيق")
-require('runSafeBackground(this, "app_start")' in app, "P0: لا توجد دورة مبادرة عند بدء التطبيق")
-require("AutoUpdater.startRealtimeListener(this)" in app, "P0: مستمع التحديث الفوري لا يبدأ مع التطبيق")
-require("AutoUpdater.checkAsync(this)" in app, "P0: لا يوجد فحص تحديث مباشر عند بدء التطبيق")
-require("AutoUpdater.startRealtimeListener(context)" in boot, "P0: قناة التحديث الفوري لا تستعاد بعد الإقلاع/استبدال الحزمة")
-require("AutoUpdater.checkAsync(context)" in boot, "P0: فحص التحديث لا يستعاد بعد الإقلاع/استبدال الحزمة")
+require("scheduleDeferredMaintenance" in app and "HakimResourceGovernor.shouldRunStartupMaintenance" in app,
+        "P0: صيانة بدء التطبيق غير مؤجلة/غير محكومة بالموارد")
+require('runSafeBackground(app, "app_start_deferred")' in app,
+        "P0: لا توجد دورة مبادرة مؤجلة بعد بدء التطبيق")
+require("AutoUpdater.schedule(this)" in app,
+        "P0: مسار التحديث الدوري لا يثبت فور بدء التطبيق")
+require("HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)" in app and "AutoUpdater.startRealtimeListener(app)" in app,
+        "P0: التحديث الفوري لا يُستعاد عندما تسمح الموارد")
+require("THREAD_PRIORITY_BACKGROUND" in app,
+        "P0: صيانة البدء قد تنافس واجهة المستخدم بأولوية عادية")
+
+# بعد الإقلاع: الجداول تُثبت دائمًا، والعمل الفوري يمر بحاكم الموارد.
+require("AutoUpdater.schedule(context)" in boot and "HakimSelfCheck.schedule(context)" in boot,
+        "P0: الاستمرارية الدورية لا تُستعاد بعد الإقلاع")
+require("HakimResourceGovernor.snapshot(context)" in boot,
+        "P0: الإقلاع لا يفحص ضغط موارد الهاتف")
+require("AutoUpdater.startRealtimeListener(context)" in boot and "AutoUpdater.checkAsync(context)" in boot,
+        "P0: مسار التحديث الفوري مفقود عند توفر الموارد")
 require("HakimProactiveEngine.initialize(context)" in boot, "P0: المبادرة لا تستعاد بعد الإقلاع")
 require("HakimProactiveEngine.runSafeBackground" in evolution, "P0: المبادرة ليست جزءًا من الدورة الدورية")
 require('"realtime_update_reasserted", true' in proactive, "P0: لا توجد حالة مثبتة لإعادة ضمان التحديث الفوري")

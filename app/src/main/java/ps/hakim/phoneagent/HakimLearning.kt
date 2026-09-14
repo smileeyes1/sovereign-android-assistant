@@ -10,6 +10,7 @@ object HakimLearning {
 
     fun initialize(context: Context) {
         HakimQuranicInvariantKernel.requireInherited("learning_initialize")
+        HakimAdaptiveLearning.initialize(context)
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.contains("created_at")) {
             p.edit()
@@ -72,7 +73,7 @@ object HakimLearning {
         val successes = p.getLong("successes", 0L)
         val failures = p.getLong("failures", 0L)
         return JSONObject()
-            .put("mode", "تعلم تشغيلي محلي محكوم — لا تدريب نموذج ولا تعديل كود تلقائي عشوائي")
+            .put("mode", "تعلم تشغيلي محلي محكوم + تكيف قابل للتراجع؛ لا تدريب نموذج ولا تعديل كود تلقائي عشوائي")
             .put("quranic_kernel_inherited", true)
             .put("attempts", attempts)
             .put("successes", successes)
@@ -82,6 +83,7 @@ object HakimLearning {
             .put("improvement_needed", p.getBoolean("improvement_needed", false))
             .put("last_health_at", p.getLong("last_health_at", 0L))
             .put("events", safeEvents(p.getString("events", "[]").orEmpty()))
+            .put("adaptive", HakimAdaptiveLearning.status(context))
     }
 
     fun maintenance(context: Context) {
@@ -90,6 +92,11 @@ object HakimLearning {
         val events = safeEvents(p.getString("events", "[]").orEmpty())
         while (events.length() > MAX_EVENTS) events.remove(0)
         p.edit().putString("events", events.toString()).apply()
+    }
+
+    fun consolidateAdaptation(context: Context, healthStatus: String) {
+        HakimQuranicInvariantKernel.requireInherited("learning_consolidate_adaptation")
+        HakimAdaptiveLearning.consolidate(context, healthStatus)
     }
 
     private fun appendEvent(context: Context, kind: String, action: String, note: String?) {

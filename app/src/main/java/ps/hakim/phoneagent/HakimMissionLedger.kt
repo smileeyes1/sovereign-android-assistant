@@ -36,7 +36,8 @@ object HakimMissionLedger {
         val clean = sanitizeGoal(rawGoal).ifBlank { "استمرار المهمة الحالية" }.take(5000)
         val hash = sha256(clean)
         val current = active(context)
-        if (current != null && current.goalHash == hash && current.phase !in terminalPhases) return current
+        // BLOCKED يبقى حاجزًا لنفس الغاية؛ لا تعيد إنشاء المهمة لتصفير الفشل.
+        if (current != null && current.goalHash == hash && current.phase != Phase.COMPLETE) return current
 
         val now = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
@@ -119,6 +120,7 @@ object HakimMissionLedger {
             .put("updated_at", m?.updatedAt ?: 0L)
             .put("encrypted_goal", true)
             .put("secret_redaction", true)
+            .put("blocked_same_goal_persists", true)
     }
 
     private fun sanitizeGoal(v: String): String {
@@ -134,6 +136,4 @@ object HakimMissionLedger {
     private fun sha256(v: String): String = MessageDigest.getInstance("SHA-256")
         .digest(v.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
-
-    private val terminalPhases = setOf(Phase.COMPLETE, Phase.BLOCKED)
 }

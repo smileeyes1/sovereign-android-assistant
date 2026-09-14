@@ -33,7 +33,7 @@ object AutoUpdater {
     private const val CHANNEL_ID = "hakim_updates"
     private const val JOB_ID = 771204
     private const val MAX_APK_BYTES = 32L * 1024L * 1024L
-    private const val FIELD_CERT_SHA256 = "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3"
+    private const val FIELD_CERT_SHA256 = "f42d71b0308a543e253099c02301bfdbfefa45f8755b12ab22a3c903305e442e"
     private const val PERIOD_MS = 15L * 60L * 1000L
     private const val PREFS = "hakim"
 

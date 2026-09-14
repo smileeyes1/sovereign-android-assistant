@@ -17,10 +17,16 @@ object HakimActionPolicy {
         if (sensitiveRegex.containsMatchIn(screenText) && text.isBlank()) {
             return Decision(Level.BLOCK, "الشاشة تتطلب اعتمادًا حساسًا")
         }
-        // وجود سياق دفع/حذف/إرسال لا يوقف التحضير وحده؛ التوقف عند الفعل النهائي نفسه.
+
+        val highImpactContext = highImpactRegex.containsMatchIn(screenText)
+        // وجود سياق دفع/حذف/إرسال لا يوقف التحضير وحده، لكن زرًا عامًا مبهمًا
+        // مثل «متابعة/Proceed/Done/OK» داخل هذا السياق لا يجوز افتراض أنه قابل للتراجع.
         if (highImpactRegex.containsMatchIn(text) ||
-            (highImpactRegex.containsMatchIn(screenText) && finalActionRegex.containsMatchIn(text))) {
-            return Decision(Level.APPROVAL, "فعل جوهري أو غير قابل للتراجع")
+            (highImpactContext && (
+                finalActionRegex.containsMatchIn(text) ||
+                    ambiguousHighImpactContinuationRegex.containsMatchIn(text)
+                ))) {
+            return Decision(Level.APPROVAL, "فعل جوهري أو متابعة مبهمة داخل سياق عالي الأثر")
         }
         return Decision(Level.AUTO, "منخفض الأثر وقابل للتراجع")
     }
@@ -81,5 +87,13 @@ object HakimActionPolicy {
 
     private val finalActionRegex = Regex(
         "(?i)(confirm|submit|send|pay|buy|delete|publish|transfer|وافق|تأكيد|إرسال|ارسل|أرسل|ادفع|شراء|احذف|نشر|تحويل)"
+    )
+
+    /**
+     * أزرار عامة قد تكون بريئة في شاشة عادية، لكنها لا تحمل دلالة كافية داخل شاشة دفع/حذف/إرسال.
+     * لذلك تصبح بوابة موافقة فقط عندما يثبت السياق عالي الأثر، ولا تتأثر بها الشاشات العادية.
+     */
+    private val ambiguousHighImpactContinuationRegex = Regex(
+        "(?i)(^|\\s)(proceed|continue|done|finish|complete|ok|متابعة|استمرار|تابع|أكمل|اكمل|حسنًا|حسنا|تم)(\\s|$)"
     )
 }

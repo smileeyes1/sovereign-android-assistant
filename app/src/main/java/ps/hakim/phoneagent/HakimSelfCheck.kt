@@ -64,12 +64,22 @@ object HakimSelfCheck {
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
 
+        val human = HakimHumanFirstPolicy.status()
+        check("الإنسان أولًا مفعّل", human.optBoolean("human_first"))
+        check("كرامة المستخدم قيد حاكم", human.optBoolean("dignity_is_hard_constraint"))
+        check("صفر عبء تقني افتراضي", human.optBoolean("zero_technical_burden_default"))
+        check("الطيبة لا تُستغل", human.optBoolean("kindness_must_not_be_exploited"))
+        check("السكوت ليس موافقة", human.optBoolean("silence_is_not_consent"))
+        check("حفظ سيادة المستخدم", human.optBoolean("preserve_user_agency"))
+        check("التصميم يتحمل السهو والتعب", human.optBoolean("human_error_and_fatigue_tolerant"))
+
         val integration = HakimIntegrationFabric.status(context)
         val structural = integration.optJSONObject("structural") ?: JSONObject()
         val runtime = integration.optJSONObject("runtime") ?: JSONObject()
         check("نسيج التكامل البنيوي سليم", structural.optBoolean("structural_integrity"), "fail")
         check("لا توجد طبقة حرجة معزولة", structural.optBoolean("no_isolated_critical_layer"), "fail")
         check("الجذر القرآني موروث داخل نسيج التكامل", structural.optBoolean("quranic_root_inherited"), "fail")
+        check("الإنسان أولًا مدمج في نسيج التكامل", structural.optBoolean("human_first_integrated"), "fail")
         check(
             "الجاهزية الخارجية مفصولة عن سلامة القلب",
             runtime.optBoolean("runtime_readiness_is_not_structural_integrity"),
@@ -142,13 +152,14 @@ object HakimSelfCheck {
             .put("warnings", warned)
             .put("checks", checks)
             .put("governance", governance)
+            .put("human_first", human)
             .put("integration", integration)
             .put("intent", intent)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()
-            .putString("last_self_check", report.toString().take(30000))
+            .putString("last_self_check", report.toString().take(34000))
             .putLong("last_self_check_at", System.currentTimeMillis())
             .putString("last_self_check_status", status)
             .apply()

@@ -29,6 +29,7 @@ object HakimSovereignEngine {
         highImpact: Boolean = false,
         sensitive: Boolean = false
     ): Assessment {
+        HakimQuranicInvariantKernel.requireInherited("sovereign_assess")
         val mission = HakimMissionLedger.beginOrResume(context, goal)
         val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
         val quranic = HakimQuranicFramework.assess(goal)
@@ -71,6 +72,7 @@ object HakimSovereignEngine {
         highImpact: Boolean = false,
         sensitive: Boolean = false
     ): String {
+        HakimQuranicInvariantKernel.requireInherited("sovereign_prompt")
         val a = assess(context, goal, highImpact, sensitive)
         return buildString {
             appendLine("[المحرك السيادي لحكيم]")
@@ -88,10 +90,12 @@ object HakimSovereignEngine {
     }
 
     fun recordExecution(context: Context, evidence: String) {
+        HakimQuranicInvariantKernel.requireInherited("sovereign_execute")
         HakimMissionLedger.progress(context, HakimMissionLedger.Phase.EXECUTE, evidence, attempted = true)
     }
 
     fun recordVerification(context: Context, success: Boolean, evidence: String) {
+        HakimQuranicInvariantKernel.requireInherited("sovereign_verify")
         if (HakimMissionLedger.isCancelled(context)) return
         if (success) {
             HakimMissionLedger.progress(context, HakimMissionLedger.Phase.VERIFY, evidence)
@@ -103,6 +107,7 @@ object HakimSovereignEngine {
     }
 
     fun complete(context: Context, evidence: String) {
+        HakimQuranicInvariantKernel.requireInherited("sovereign_complete")
         if (HakimMissionLedger.isCancelled(context)) return
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
@@ -117,6 +122,7 @@ object HakimSovereignEngine {
         .put("mission", HakimMissionLedger.status(context))
         .put("decision_dimensions", HakimDecisionMatrix.dimensions())
         .put("quranic_framework", HakimQuranicFramework.status())
+        .put("quranic_invariant_kernel", HakimQuranicInvariantKernel.status())
         .put("excellence_optimizer", HakimExcellenceOptimizer.status())
         .put("self_leadership", HakimSelfLeadershipController.status(context))
         .put("authority_envelope", HakimAuthorityEnvelope.status())

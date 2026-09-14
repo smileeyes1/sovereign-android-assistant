@@ -6,12 +6,13 @@ import org.json.JSONObject
 
 /** نظام الأنظمة: تركيب مؤقت من الأنظمة والقدرات الموثوقة بحسب المقصد والموارد. */
 object HakimSystemOfSystems {
-    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-15-v2"
+    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-15-v3"
 
     enum class Unit(val title: String, val duty: String) {
         GOVERNANCE("الحاكمية", "يثبت العقد والحدود وترتيب الأولويات"),
         QURAN_SUNNAH("منهج القرآن والهدي النبوي", "يحكم الغاية والقيم والحدود الشرعية مع التثبت"),
         HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وأقل عبء وسيادة المستخدم"),
+        INDEPENDENCE("الاستقلال السيادي", "يمنع الارتهان لمزود/شبكة/أداة واحدة ويحفظ قابلية النقل والاستئناف"),
         INTENT("فهم المقصد", "يفهم أقل إشارة ويستعيد السياق الموثوق"),
         CAPABILITY_MESH("شبكة التفوق والقدرات", "تكتشف الأدوات والخدمات وتختار الأعلى وتجهز البدائل"),
         RESEARCH("البحث والدليل", "يجمع الأدلة ويقارن البدائل ويحدّث الواقع"),
@@ -46,6 +47,7 @@ object HakimSystemOfSystems {
             .put("reason", reason)
             .put("ephemeral_derived_system", true)
             .put("inherits_governance", true)
+            .put("inherits_sovereign_independence", true)
             .put("inherits_capability_mesh", true)
             .put("cannot_expand_authority", true)
             .put("cannot_mutate_code", true)
@@ -56,9 +58,9 @@ object HakimSystemOfSystems {
         "و؟ الواقع: ماذا يحدث فعلًا الآن؟",
         "و؟ المقصد: ماذا يريد المستخدم حقًا؟",
         "و؟ القيود: ما الثوابت والمجهولات وحدود السلطة؟",
-        "لِمَ؟ لماذا هذا المسار أعلى قيمة وأقل خطرًا وعبئًا؟",
+        "لِمَ؟ لماذا هذا المسار أعلى قيمة وأقل خطرًا وعبئًا وارتهانًا؟",
         "و؟ البدائل: ما أفضل البدائل والقدرات المشروعة والمتاحة؟",
-        "و؟ الدليل: ما الذي يثبت الاختيار والنتيجة؟",
+        "و؟ الدليل: ما الذي يثبت الاختيار والنتيجة والاستقلال عن نقطة فشل واحدة؟",
         "اعتمد: اختر الأعلى المثبت داخل العقد",
         "أصلح: عالج السبب الجذري لا العرض فقط",
         "أكمل: واصل تلقائيًا ما دام هناك مكسب مادي آمن",
@@ -73,6 +75,7 @@ object HakimSystemOfSystems {
             Unit.GOVERNANCE,
             Unit.QURAN_SUNNAH,
             Unit.HUMAN_FIRST,
+            Unit.INDEPENDENCE,
             Unit.INTENT,
             Unit.CAPABILITY_MESH,
             Unit.RESOURCE,
@@ -97,7 +100,7 @@ object HakimSystemOfSystems {
             HakimResourceGovernor.Mode.PERFORMANCE -> "SEQUENTIAL_PRIMARY_WITH_SAFE_IO_OVERLAP"
             HakimResourceGovernor.Mode.BALANCED -> "SEQUENTIAL_PRIMARY"
         }
-        val reason = "نظام منبثق من ${units.size} أنظمة، وأعلى القدرات=${ranked.joinToString(",") { it.node.id }}؛ الموارد=${resources.mode}. لا كود ذاتي ولا صلاحيات جديدة."
+        val reason = "نظام منبثق من ${units.size} أنظمة، وأعلى القدرات=${ranked.joinToString(",") { it.node.id }}؛ الموارد=${resources.mode}. لا كود ذاتي ولا صلاحيات جديدة ولا ارتهان لمزود خارجي منفرد."
         return DerivedSystem(
             goal = goal.take(1800),
             units = units.toList(),
@@ -121,10 +124,11 @@ object HakimSystemOfSystems {
             appendLine("القدرات المفضلة بالترتيب: ${d.preferredCapabilities.joinToString(" ← ")}")
             appendLine("بروتوكول التشغيل الحاكم:")
             d.protocol.forEach { appendLine("• $it") }
+            append(HakimSovereignIndependence.promptContext(context))
             append(HakimCapabilityMesh.promptContext(context, d.goal))
-            appendLine("يجوز إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث العقد والحاكمية والسلطة والموارد وشبكة القدرات، وتبقى WIP=1 تحت الضغط.")
+            appendLine("يجوز إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث العقد والحاكمية والسلطة والموارد وشبكة القدرات والاستقلال السيادي، وتبقى WIP=1 تحت الضغط.")
             appendLine("لا تعتبر كثرة الأنظمة أو الأدوات جودة بحد ذاتها؛ فعّل أقل مجموعة تحقق الغاية بأعلى أثر صافٍ، ثم أضف فقط عند فجوة مادية مثبتة.")
-        }.take(15000)
+        }.take(22000)
     }
 
     fun status(context: Context): JSONObject = JSONObject()
@@ -134,6 +138,7 @@ object HakimSystemOfSystems {
         .put("derived_systems_are_ephemeral_orchestration", true)
         .put("derived_systems_inherit_quran_sunnah", true)
         .put("derived_systems_inherit_human_first", true)
+        .put("derived_systems_inherit_sovereign_independence", true)
         .put("derived_systems_inherit_authority_envelope", true)
         .put("derived_systems_inherit_resource_governor", true)
         .put("derived_systems_inherit_capability_mesh", true)
@@ -142,6 +147,7 @@ object HakimSystemOfSystems {
         .put("wip_one_under_resource_pressure", true)
         .put("protocol", JSONArray(hakimProtocol))
         .put("resource_mode", HakimResourceGovernor.snapshot(context).mode.name)
+        .put("sovereign_independence", HakimSovereignIndependence.status(context))
         .put("capability_mesh", HakimCapabilityMesh.status(context))
 
     private fun containsAny(text: String, vararg needles: String): Boolean = needles.any { text.contains(it) }

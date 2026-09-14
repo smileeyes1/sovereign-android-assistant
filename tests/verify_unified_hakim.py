@@ -22,13 +22,16 @@ notifications = text("app/src/main/java/ps/hakim/phoneagent/HakimNotificationLis
 local_pairing = text("app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt")
 local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManager.kt")
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
+chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20019" in build, "P0: رقم إصدار نظام الأنظمة/الأداء التكيفي غير مثبت")
-require("2.0.19-system-of-systems-resource-adaptive" in build, "P0: اسم الإصدار الجديد غير مثبت")
+require("versionCode 20020" in build, "P0: رقم إصدار واجهة المحادثة الحديثة غير مثبت")
+require("2.0.20-chat-first-lightweight" in build, "P0: اسم إصدار حكيم ٢٠٠٢٠ غير مثبت")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
-require('android:name=".UnifiedHomeActivity"' in manifest, "P0: الواجهة الموحدة ليست نقطة الدخول")
+launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
+require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: محادثة حكيم ليست واجهة التشغيل الرئيسية")
+require('android:name=".UnifiedHomeActivity"' in manifest, "P0: مركز حكيم/الاتصال المحلي مفقود")
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
 require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
 require('android:name=".HakimPairingReceiver"' in manifest, "P0: مستقبل الاقتران المحلي غير معلن")
@@ -50,9 +53,10 @@ require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة ا
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
-require('تأسيس ADB المحلي' in home and 'مركز القيادة' in home, "P0: الواجهة الموحدة لا تعرض مسار التأسيس والقيادة")
+require('تأسيس ADB المحلي' in home and 'مركز القيادة' in home, "P0: مركز حكيم لا يعرض مسار التأسيس والقيادة")
+require('مركز حكيم والاتصال المحلي' in chat, "P0: واجهة المحادثة لا تصل إلى مركز الاتصال المحلي")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot])
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, boot])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

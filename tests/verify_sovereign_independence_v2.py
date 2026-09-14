@@ -55,6 +55,15 @@ require("HakimPersonalVault.all" in portability and "HakimGovernanceStore.allSit
 require("HakimSiteTrust.replaceTrustedHosts" in portability, "P0: ثقة المواقع غير قابلة للاستعادة")
 require("replaceSites" in governance and "allSites" in governance, "P0: تعليمات المواقع غير قابلة للنقل")
 require("trustedHosts" in site_trust and "replaceTrustedHosts" in site_trust, "P0: ثقة المواقع غير قابلة للنقل")
+require("fun exportSafeText" in governance, "P0: لا يوجد مسار تنقيح آمن للنص الخارج من النظام الحاكم")
+require("HakimGovernanceStore.exportSafeText(instructions)" in portability,
+        "P0: تعليمات المواقع تُصدّر دون تنقيح الأسرار المضمّنة")
+require("HakimGovernanceStore.exportSafeText(HakimGovernanceStore.global(context))" in portability,
+        "P0: النظام الحاكم العام يُصدّر دون تنقيح الأسرار المضمّنة")
+require('sites.put(host, instructions.take' not in portability,
+        "P0: بقي مسار خام لتصدير تعليمات المواقع")
+require('.put("governance_global", HakimGovernanceStore.global(context)' not in portability,
+        "P0: بقي مسار خام لتصدير النظام الحاكم العام")
 
 require("تصدير نسخة سيادية" in settings and "استعادة نسخة سيادية" in settings, "P0: المستخدم لا يملك واجهة نقل بياناته")
 require("ACTION_CREATE_DOCUMENT" in settings and "ACTION_OPEN_DOCUMENT" in settings, "P0: النقل لا يستخدم منتقي Android الذي يختاره المستخدم")

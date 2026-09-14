@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import org.json.JSONArray
 
-/** لا يسمح بإخراج بيانات الخزنة إلا داخل متصفح حكيم وعلى موقع اعتمده المستخدم. */
+/** لا يسمح بإخراج بيانات الخزنة إلا داخل متصفح حكيم وعلى المضيف الدقيق الذي اعتمده المستخدم. */
 object HakimSiteTrust {
     private const val PREFS = "hakim_site_trust"
     private const val TRUSTED_HOSTS = "trusted_profile_hosts"
@@ -22,13 +22,17 @@ object HakimSiteTrust {
         val host = normalizeHost(rawHost) ?: return false
         val set = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet(TRUSTED_HOSTS, emptySet()) ?: emptySet()
-        return candidates(host).any { it in set }
+        // الثقة دقيقة للمضيف فقط؛ لا توريث تلقائي للأب أو النطاقات الفرعية.
+        return host in set
     }
 
     fun currentHost(context: Context): String {
-        val raw = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+        // الحكم أولًا لعنوان WebView الظاهر فعليًا حتى لا يسمح last_url القديم بتسريب بعد إعادة توجيه.
+        val live = HakimRuntime.visibleWebView()?.url.orEmpty()
+        normalizeHost(live)?.let { return it }
+        val stored = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
             .getString("last_url", "").orEmpty()
-        return normalizeHost(raw).orEmpty()
+        return normalizeHost(stored).orEmpty()
     }
 
     fun canUseProfile(context: Context, snapshot: JSONArray): Boolean {
@@ -52,12 +56,5 @@ object HakimSiteTrust {
         s = s.removePrefix("www.").trim('.').trim()
         if (!Regex("^[a-z0-9.-]{3,253}$").matches(s) || !s.contains('.')) return null
         return s
-    }
-
-    private fun candidates(host: String): List<String> {
-        val parts = host.split('.').filter { it.isNotBlank() }
-        val out = mutableListOf(host)
-        if (parts.size >= 2) out += parts.takeLast(2).joinToString(".")
-        return out.distinct()
     }
 }

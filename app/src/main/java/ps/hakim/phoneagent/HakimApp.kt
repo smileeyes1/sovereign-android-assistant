@@ -7,6 +7,7 @@ import android.os.Build
 class HakimApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        HakimQuranicInvariantKernel.requireInherited("app_start")
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
         restoreActiveMissionState()

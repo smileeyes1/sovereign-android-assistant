@@ -3,7 +3,7 @@ package ps.hakim.phoneagent
 import android.content.Context
 import android.net.Uri
 
-/** تعليمات المستخدم الحاكمة: عامة + خاصة بالموقع، محفوظة محليًا ومشفرة. */
+/** تعليمات المستخدم الحاكمة: عامة + خاصة بالمضيف الدقيق، محفوظة محليًا ومشفرة. */
 object HakimGovernanceStore {
     private const val PREFS = "hakim_governance_secure"
     private const val META = "hakim_governance_meta"
@@ -45,19 +45,17 @@ object HakimGovernanceStore {
 
     fun site(context: Context, host: String): String {
         val normalized = normalizeHost(host) ?: return ""
-        val candidates = siteCandidates(normalized)
-        for (candidate in candidates) {
-            val key = SITE_PREFIX + candidate.replace('.', '_')
-            val value = HakimSecureStore.get(context, PREFS, key).orEmpty().trim()
-            if (value.isNotBlank()) return value
-        }
-        return ""
+        val key = SITE_PREFIX + normalized.replace('.', '_')
+        return HakimSecureStore.get(context, PREFS, key).orEmpty().trim()
     }
 
     fun currentHost(context: Context): String {
-        val url = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+        // تعليمات الموقع تتبع الصفحة الظاهرة فعليًا، لا last_url القديم بعد إعادة توجيه.
+        val live = HakimRuntime.visibleWebView()?.url.orEmpty()
+        normalizeHost(live)?.let { return it }
+        val stored = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
             .getString("last_url", "").orEmpty()
-        return runCatching { Uri.parse(url).host.orEmpty() }.getOrDefault("")
+        return normalizeHost(stored).orEmpty()
     }
 
     fun promptContext(context: Context): String {
@@ -97,13 +95,5 @@ object HakimGovernanceStore {
         s = s.removePrefix("www.").trim('.').trim()
         if (!Regex("^[a-z0-9.-]{3,253}$").matches(s) || !s.contains('.')) return null
         return s
-    }
-
-    private fun siteCandidates(host: String): List<String> {
-        val parts = host.removePrefix("www.").split('.').filter { it.isNotBlank() }
-        val out = mutableListOf<String>()
-        if (host.isNotBlank()) out += host.removePrefix("www.")
-        if (parts.size >= 2) out += parts.takeLast(2).joinToString(".")
-        return out.distinct()
     }
 }

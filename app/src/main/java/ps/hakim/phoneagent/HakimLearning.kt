@@ -9,6 +9,7 @@ object HakimLearning {
     private const val MAX_EVENTS = 40
 
     fun initialize(context: Context) {
+        HakimQuranicInvariantKernel.requireInherited("learning_initialize")
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.contains("created_at")) {
             p.edit()
@@ -24,6 +25,7 @@ object HakimLearning {
     }
 
     fun recordAttempt(context: Context, action: String) {
+        HakimQuranicInvariantKernel.requireInherited("learning_attempt")
         val safeAction = sanitizeAction(action)
         if (safeAction.isBlank()) return
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -32,6 +34,7 @@ object HakimLearning {
     }
 
     fun recordResult(context: Context, action: String, success: Boolean) {
+        HakimQuranicInvariantKernel.requireInherited("learning_result")
         val safeAction = sanitizeAction(action)
         if (safeAction.isBlank()) return
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -53,6 +56,7 @@ object HakimLearning {
     }
 
     fun recordHealth(context: Context, health: JSONObject) {
+        HakimQuranicInvariantKernel.requireInherited("learning_health")
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         p.edit()
             .putString("last_health", health.toString().take(8000))
@@ -62,12 +66,14 @@ object HakimLearning {
     }
 
     fun snapshot(context: Context): JSONObject {
+        HakimQuranicInvariantKernel.requireInherited("learning_snapshot")
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val attempts = p.getLong("attempts", 0L)
         val successes = p.getLong("successes", 0L)
         val failures = p.getLong("failures", 0L)
         return JSONObject()
             .put("mode", "تعلم تشغيلي محلي محكوم — لا تدريب نموذج ولا تعديل كود تلقائي عشوائي")
+            .put("quranic_kernel_inherited", true)
             .put("attempts", attempts)
             .put("successes", successes)
             .put("failures", failures)
@@ -79,6 +85,7 @@ object HakimLearning {
     }
 
     fun maintenance(context: Context) {
+        HakimQuranicInvariantKernel.requireInherited("learning_maintenance")
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = safeEvents(p.getString("events", "[]").orEmpty())
         while (events.length() > MAX_EVENTS) events.remove(0)

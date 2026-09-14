@@ -6,6 +6,8 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -24,12 +26,18 @@ class HakimAgentsChatActivity : Activity() {
     private lateinit var agentSpinner: Spinner
     private lateinit var scroll: ScrollView
     private var busy = false
+    private val uiHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         HakimConstitution.install(this)
         buildUi()
         appendAssistant("أنا حكيم. يكفي أقل تلميح: كلمة، «كمل»، «هاي»، اسم الموقع، أو اضغط «نفّذ/أكمل» دون كتابة. أستعيد المقصد والسياق وأكمل الآمن تلقائيًا.")
+    }
+
+    override fun onDestroy() {
+        uiHandler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 
     private fun buildUi() {
@@ -107,32 +115,66 @@ class HakimAgentsChatActivity : Activity() {
         appendAssistant(HakimAgentSystem.summary(this, cue, preferred))
 
         if (!execute) return
-
-        val local = HakimNaturalActionEngine.execute(this, inference.resolvedRequest, cue)
-        if (local.handled) {
-            appendAssistant(local.message)
-            return
-        }
-
         if (plan.sensitiveInputDetected) {
             appendAssistant("وجدت في النص ما يبدو سرًا أو اعتمادًا حساسًا. لم أرسله لأي نموذج. سيستخدم حكيم جلسة الموقع أو مدير اعتماد أندرويد/الحقل الآمن عند الحاجة.")
             return
         }
 
         busy = true
+        if (plan.route == "browser" && hasLastWebUrl()) {
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+            waitForHakimBrowser(0) { ready ->
+                if (!ready) {
+                    appendAssistant("تعذر استعادة صفحة المتصفح الفعلية بثقة؛ لن أنفذ على شاشة خاطئة.")
+                    runReasoningCycle(HakimAgentSystem.agentPrompt(this, cue, preferred), 0)
+                } else {
+                    executeLocalThenAutonomous(cue, preferred, inference.resolvedRequest, plan.route)
+                }
+            }
+        } else {
+            executeLocalThenAutonomous(cue, preferred, inference.resolvedRequest, plan.route)
+        }
+    }
+
+    private fun executeLocalThenAutonomous(
+        cue: String,
+        preferred: HakimAgentSystem.Agent?,
+        resolvedGoal: String,
+        route: String
+    ) {
+        val local = HakimNaturalActionEngine.execute(this, resolvedGoal, cue)
+        if (local.handled) {
+            appendAssistant(local.message)
+            if (local.success && route == "browser" && HakimIntentContext.isMinimalCue(cue)) {
+                uiHandler.postDelayed({ runAutonomousCycle(cue, preferred, resolvedGoal) }, 500L)
+            } else {
+                busy = false
+            }
+            return
+        }
+        runAutonomousCycle(cue, preferred, resolvedGoal)
+    }
+
+    private fun runAutonomousCycle(
+        cue: String,
+        preferred: HakimAgentSystem.Agent?,
+        resolvedGoal: String
+    ) {
         HakimAutonomousExecutor.run(
             activity = this,
-            goal = inference.resolvedRequest,
+            goal = resolvedGoal,
             onProgress = { message -> appendAssistant(message) },
             onComplete = { outcome ->
                 when {
                     outcome.completed -> {
                         busy = false
+                        bringChatToFront()
                         appendAssistant("اكتملت الدورة المحلية بعد ${outcome.steps} خطوة، وظهرت علامة نجاح مرئية.")
                     }
                     outcome.needsCredential -> {
                         busy = false
                         appendAssistant("وصلت إلى خطوة اعتماد حساسة. لم ألمس السر؛ استخدم مدير اعتماد أندرويد أو أدخل السر في الحقل الآمن، ثم قل فقط «كمل».")
+                        Toast.makeText(this, "أدخل الاعتماد في الحقل الآمن ثم ارجع لحكيم وقل: كمل", Toast.LENGTH_LONG).show()
                     }
                     outcome.needsDataTrust -> {
                         busy = false
@@ -141,6 +183,7 @@ class HakimAgentsChatActivity : Activity() {
                     }
                     outcome.needsApproval -> {
                         busy = false
+                        bringChatToFront()
                         appendAssistant("حضّرت ما يمكن بأمان وتوقفت قبل الفعل عالي الأثر. عند موافقتك الصريحة أتابع الفعل النهائي.")
                     }
                     else -> {
@@ -152,6 +195,28 @@ class HakimAgentsChatActivity : Activity() {
         )
     }
 
+    private fun waitForHakimBrowser(attempt: Int, onReady: (Boolean) -> Unit) {
+        if (isFinishing || isDestroyed) {
+            onReady(false)
+            return
+        }
+        val web = HakimRuntime.visibleWebView()
+        if (web != null && web.progress >= 70) {
+            onReady(true)
+            return
+        }
+        if (attempt >= 14) {
+            onReady(web != null)
+            return
+        }
+        uiHandler.postDelayed({ waitForHakimBrowser(attempt + 1, onReady) }, 300L)
+    }
+
+    private fun hasLastWebUrl(): Boolean {
+        val u = getSharedPreferences("hakim", MODE_PRIVATE).getString("last_url", "").orEmpty()
+        return u.startsWith("http://") || u.startsWith("https://")
+    }
+
     /** استدلال -> خطة مقيدة -> تنفيذ -> إعادة استدلال، بحد يمنع الدوران. */
     private fun runReasoningCycle(governedPrompt: String, cycle: Int) {
         busy = true
@@ -159,18 +224,18 @@ class HakimAgentsChatActivity : Activity() {
             activity = this,
             basePrompt = governedPrompt,
             onProgress = { message -> appendAssistant(message) },
-            onComplete = { result ->
+            onComplete = reasoningDone@ { result ->
                 if (!result.available) {
                     busy = false
                     fallbackShare(governedPrompt, result.reason)
-                    return@ask
+                    return@reasoningDone
                 }
                 val plan = result.plan
                 if (plan == null) {
                     busy = false
                     bringChatToFront()
                     appendAssistant("عاد محرك الاستدلال دون خطة تنفيذ موثوقة؛ لم أنفذ أي تخمين. ${result.reason}")
-                    return@ask
+                    return@reasoningDone
                 }
                 if (plan.message.isNotBlank()) appendAssistant(plan.message)
                 HakimReasoningPlanExecutor.run(

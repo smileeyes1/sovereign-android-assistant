@@ -50,6 +50,10 @@ require("user_selected_web" in providers, "P0: لا توجد فتحة مزود �
 
 require("object HakimSovereignPortability" in portability, "P0: قابلية النقل السيادي مفقودة")
 require("contains_secrets" in portability and "contains_signing_private_key" in portability, "P0: النسخة السيادية لا تثبت استبعاد الأسرار/مفتاح التوقيع")
+require('"contains_personal_data"' in portability and "export_may_contain_personal_data" in portability,
+        "P0: النسخة لا تصرّح بوجود البيانات الشخصية الممكنة منفصلًا عن الأسرار")
+require("قد تحتوي بيانات شخصية" in portability,
+        "P0: وصف النسخة يوحي بأنها خالية من البيانات الشخصية")
 require("confirmed: Boolean" in portability and "تأكيدًا صريحًا" in portability, "P0: الاستعادة لا تتطلب تأكيدًا صريحًا")
 require("HakimPersonalVault.all" in portability and "HakimGovernanceStore.allSites" in portability, "P0: النسخة لا تغطي الحالة المحلية المفيدة")
 require("HakimSiteTrust.replaceTrustedHosts" in portability, "P0: ثقة المواقع غير قابلة للاستعادة")

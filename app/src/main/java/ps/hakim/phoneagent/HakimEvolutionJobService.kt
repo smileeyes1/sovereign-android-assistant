@@ -8,6 +8,7 @@ class HakimEvolutionJobService : JobService() {
         Thread {
             try {
                 runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
+                    .onFailure { HakimFaultLedger.record(applicationContext, "evolution_thread_priority", it, severity = HakimFaultLedger.Severity.INFO) }
                 val app = applicationContext
                 val resources = HakimResourceGovernor.snapshot(app)
                 if (resources.mode == HakimResourceGovernor.Mode.PRESSURE) {
@@ -43,8 +44,14 @@ class HakimEvolutionJobService : JobService() {
                         .putString("last_evolution_state", "FULL_PASS")
                         .putLong("last_evolution_at", System.currentTimeMillis())
                         .apply()
+                    HakimFaultLedger.resolve(app, "evolution_job", report.optString("status", "UNKNOWN"))
                 }
-            } catch (_: Exception) {
+            } catch (t: Throwable) {
+                HakimFaultLedger.record(applicationContext, "evolution_job", t, severity = HakimFaultLedger.Severity.MATERIAL)
+                getSharedPreferences("hakim_governance", MODE_PRIVATE).edit()
+                    .putString("last_evolution_state", "FAILED_RECORDED")
+                    .putLong("last_evolution_at", System.currentTimeMillis())
+                    .apply()
             } finally {
                 jobFinished(params, false)
             }
@@ -52,5 +59,8 @@ class HakimEvolutionJobService : JobService() {
         return true
     }
 
-    override fun onStopJob(params: JobParameters?): Boolean = true
+    override fun onStopJob(params: JobParameters?): Boolean {
+        HakimFaultLedger.record(applicationContext, "evolution_job_stopped", message = "job_stopped_by_system", severity = HakimFaultLedger.Severity.WARNING)
+        return true
+    }
 }

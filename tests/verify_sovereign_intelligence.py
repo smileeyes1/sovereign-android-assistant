@@ -15,6 +15,8 @@ def require(condition: bool, message: str) -> None:
 build = text("app/build.gradle")
 manifest = text("app/src/main/AndroidManifest.xml")
 agents = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentSystem.kt")
+constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
+quranic = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 decision = text("app/src/main/java/ps/hakim/phoneagent/HakimDecisionMatrix.kt")
 religious = text("app/src/main/java/ps/hakim/phoneagent/HakimReligiousIntegrity.kt")
 mission = text("app/src/main/java/ps/hakim/phoneagent/HakimMissionLedger.kt")
@@ -28,6 +30,31 @@ secure = text("app/src/main/java/ps/hakim/phoneagent/HakimSecureStore.kt")
 require("applicationId 'ps.hakim.stable'" in build, "P0: الذكاء السيادي خرج من تطبيق حكيم الواحد")
 require("org.hakim.omega.companion" not in "\n".join([manifest, agents, sovereign, app]), "P0: عاد اعتماد التطبيق الموازي")
 
+# الإطار القرآني الحاكم: ميزان دائم للقيم والغاية، مع فصل الوحي عن الوسائل التجريبية.
+require("object HakimQuranicFramework" in quranic, "P0: الإطار القرآني الحاكم مفقود")
+require("quranicNormativeDefault = true" in quranic, "P0: القرآن ليس افتراضيًا كميزان قيمي")
+require("القرآن الكريم هو أصل الهداية والميزان الأعلى للقيم والمعنى والغاية والحدود الشرعية" in quranic,
+        "P0: أصل الحاكمية القرآنية غير مثبت")
+require("السنة الصحيحة بيانٌ وهديٌ متبع" in quranic, "P0: موقع السنة الصحيحة من الإطار القرآني غير مثبت")
+require("العقل والعلم والتجربة والخبرة" in quranic, "P0: الوسائل الدنيوية لا تستخدم أسبابها العلمية/التجريبية")
+require("لا تنسب نتيجة تقنية أو تجريبية إلى القرآن بلا دليل" in quranic,
+        "P0: حاجز عدم اختلاق أثر تقني للقرآن مفقود")
+require("افصل دائمًا بين: الوحي" in quranic and "الحقيقة التجريبية" in quranic,
+        "P0: فصل الوحي عن الفهم البشري/التجربة مفقود")
+require("تتطلب تحققًا نصيًا" in quranic and "exactQuranTextRequired" in quranic,
+        "P0: بوابة التثبت من نص القرآن مفقودة")
+require("داخل قواعد المنصة والسلامة والحقوق" in quranic,
+        "P0: الإطار القرآني يحاول تجاوز الحاكم الأعلى للمنصة/السلامة/الحقوق")
+
+require("QURAN-FIRST" in constitution, "P0: الدستور لم يرتقِ إلى نسخة القرآن أولًا")
+require("quranic_normative_default" in constitution and "worldly_means_evidence_based" in constitution,
+        "P0: أعلام الحاكمية القرآنية/الأسباب التجريبية غير مثبتة في الدستور")
+require("HakimQuranicFramework.status()" in constitution, "P0: حالة الإطار القرآني غير مدمجة في الدستور")
+require("القرآن الكريم أصل الهداية والقيم والمعنى والغاية والحدود الشرعية" in constitution,
+        "P0: مقدمة الدستور لا تحمل البوصلة القرآنية")
+require("لا تجعل القرآن بديلًا عن السبب العلمي" in constitution,
+        "P0: الدستور قد يحول القرآن إلى بديل عن الأسباب العلمية")
+
 for mode in ["AUTO", "AUTO_VERIFY", "RESEARCH_FIRST", "APPROVAL_GATE", "BLOCK"]:
     require(mode in decision, f"P0: نمط مصفوفة القرار {mode} مفقود")
 for dim in ["benefit", "evidence", "reversibility", "authority", "privacy", "safety", "clarity", "costFit", "burdenReduction", "freshness"]:
@@ -36,6 +63,15 @@ require("القيود الحاكمة بوابات لا أوزان تعويضية
 require("HakimDecisionMatrix.evaluate" in sovereign, "P0: المحرك السيادي لا يقيّم مصفوفة القرار")
 require("HakimDecisionMatrix.promptContext" in sovereign, "P0: المحرك السيادي لا يمرر تفسير المصفوفة")
 require("HakimSovereignEngine.promptContext" in agents, "P0: الوكيل القائد لا يرث قرار المحرك السيادي")
+
+require("HakimQuranicFramework.assess" in sovereign and "HakimQuranicFramework.promptContext" in sovereign,
+        "P0: المحرك السيادي لا يستدعي الإطار القرآني")
+require("quranic.exactQuranTextRequired" in sovereign,
+        "P0: طلب نص قرآني دقيق لا يفرض البحث/التحقق قبل الجزم")
+require("اعرض الغاية والأثر على الميزان القرآني" in sovereign,
+        "P0: دورة القرار السيادي لا تمر على الميزان القرآني")
+require("HakimQuranicFramework.status()" in sovereign,
+        "P0: حالة المحرك السيادي لا تكشف الإطار القرآني")
 
 require("القرآن الكريم والسنة الصحيحة" in religious, "P0: مرجعية النزاهة الشرعية غير مثبتة")
 require("ميّز صراحة بين" in religious and "التفسير" in religious and "الاجتهاد" in religious, "P0: فصل النص الشرعي عن التفسير/الاجتهاد مفقود")

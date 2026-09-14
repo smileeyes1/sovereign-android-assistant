@@ -20,6 +20,7 @@ sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt"
 auto = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 reason = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
+natural = text("app/src/main/java/ps/hakim/phoneagent/HakimNaturalActionEngine.kt")
 
 # معرفة ذاتية بالقدرات وعدم اختلاق الجاهزية.
 for capability in ["secure_store", "mission_ledger", "browser", "accessibility_actions", "chatgpt_official", "profile_vault", "field_update"]:
@@ -53,6 +54,18 @@ require("إيقاف المهمة فورًا" in chat and "isCancelCue" in chat a
 require("HakimAuthorityEnvelope.classifyUiAction" in auto, "P0: الحلقة المحلية لا تمرر الأفعال عبر غلاف السلطة")
 require("HakimAuthorityEnvelope.classifyUiAction" in reason, "P0: خطة الاستدلال لا تمرر الأفعال عبر غلاف السلطة")
 require("SYSTEM_PERMISSION" in auto and "SYSTEM_PERMISSION" in reason, "P0: صلاحيات النظام قد تنفذ كفعل عادي")
+
+# الأوامر المباشرة لا تجعل Accessibility شرطًا إذا كان WebView/المسار الذاتي متاحًا.
+require("HakimRuntime.visibleWebView()" in natural, "P0: محرك الأوامر المباشرة لا يرى WebView حكيم كمسار أقل صلاحية")
+require("if (web != null && web.canGoBack())" in natural, "P0: الرجوع داخل متصفح حكيم لا يستخدم WebView أولًا")
+require(natural.count("if (HakimRuntime.visibleWebView() != null)") >= 2, "P0: الضغط/الكتابة لا يسلمان التنفيذ إلى WebView أولًا")
+require("خدمة الوصول غير متاحة؛ أسلّم الضغط لمسار حكيم الذاتي" in natural, "P0: غياب Accessibility يوقف أمر الضغط بدل التسليم")
+require("خدمة الوصول غير متاحة؛ أسلّم الكتابة لمسار حكيم الذاتي" in natural, "P0: غياب Accessibility يوقف أمر الكتابة بدل التسليم")
+require("لا توجد واجهة محلية مناسبة؛ أسلّم الرجوع لمسار حكيم الذاتي" in natural, "P0: غياب Accessibility يوقف أمر الرجوع بدل التسليم")
+require("لم يثبت الضغط محليًا؛ أسلّم المهمة للمسار الذاتي بدل التوقف" in natural, "P0: فشل الضغط المحلي لا يسلم إلى البديل")
+require("لم تثبت الكتابة محليًا؛ أسلّم المهمة للمسار الذاتي بدل التوقف" in natural, "P0: فشل الكتابة المحلية لا يسلم إلى البديل")
+require("if (local.handled)" in chat and "runAutonomousCycle(cue, preferred, resolvedGoal)" in chat, "P0: handled=false لا يصل إلى الحلقة الذاتية")
+require("WebView حكيم هو المسار الأول بأقل صلاحية" in auto and "HakimWebAutomation.clickText" in auto and "HakimWebAutomation.setText" in auto, "P0: الحلقة البديلة ليست WebView-first فعليًا")
 
 # القلب السيادي يرث كل الطبقات ويعامل الإلغاء كحاجز.
 require("HakimSelfLeadershipController.promptContext" in sovereign, "P0: المحرك السيادي لا يرث القيادة الذاتية")

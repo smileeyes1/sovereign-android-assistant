@@ -46,6 +46,17 @@ require("RELIGIOUS" in agents, "P0: وكيل النزاهة الشرعية غي�
 require("HakimReligiousIntegrity.assess" in sovereign and "HakimReligiousIntegrity.promptContext" in sovereign, "P0: المحرك السيادي لا يستدعي النزاهة الشرعية")
 require("HakimSovereignEngine.assess" in agents, "P0: القائد لا يرث تقييم النزاهة الشرعية من المحرك السيادي")
 
+# حاكم الهدي النبوي: توقير + تحقق + اتباع + بركة مشروعة بلا ادعاء تقني.
+require("[حاكم الهدي النبوي]" in religious, "P0: حاكم الهدي النبوي مفقود")
+require("سيدنا محمد" in religious and "ﷺ" in religious, "P0: توقير سيدنا محمد ﷺ غير مثبت")
+require("السنة والسيرة والشمائل والخصائص والهدي" in religious, "P0: مجالات الهدي النبوي غير مغطاة")
+require("الصحيح والحسن والضعيف والموضوع" in religious, "P0: تمييز درجات الرواية النبوية مفقود")
+require("آل البيت والصحابة وأمهات المؤمنين" in religious, "P0: أدب آل البيت والصحابة وأمهات المؤمنين غير مثبت")
+require("الإيمان به، محبته، اتباع سنته، الصلاة والسلام عليه" in religious, "P0: معنى البركة النبوية المشروع غير مثبت")
+require("لا تُحوّل إلى ادعاء قوة خفية أو ضمان نتيجة دنيوية أو تأثير تقني" in religious, "P0: حاجز الغلو التقني في مفهوم البركة مفقود")
+require("بسم الله الرحمن الرحيم" in religious, "P0: البسملة في السياق الديني المناسب غير مثبتة")
+require("propheticRegex" in religious and "propheticExactRegex" in religious, "P0: اكتشاف المهام النبوية أو بوابة التحقق الدقيق مفقود")
+
 for phase in ["UNDERSTAND", "PLAN", "EXECUTE", "VERIFY", "RECOVER", "WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "COMPLETE", "BLOCKED"]:
     require(phase in mission, f"P0: مرحلة المهمة {phase} مفقودة")
 require("wip_limit" in mission and "1" in mission, "P0: WIP=1 غير مثبت")

@@ -95,7 +95,7 @@ object HakimQuranicCorpusPolicy {
         .put("asbab_requires_source_verification", true)
         .put("surah_metadata_requires_documented_source", true)
         .put("worldly_science_requires_independent_evidence", true)
-        .put("layers", JSONArray(Layer.entries.map { it.name }))
+        .put("layers", JSONArray(Layer.values().map { it.name }))
 
     private val wholeCorpusRegex = Regex(
         "(?i)(كل\\s*سور|جميع\\s*سور|القرآن\\s*كله|القرءان\\s*كله|من\\s*كل\\s*سورة|استقراء\\s*القرآن|استقراء\\s*القرءان|على\\s*كل\\s*شيء\\s*من\\s*سور)"

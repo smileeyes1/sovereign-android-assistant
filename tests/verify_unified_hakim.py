@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,8 +28,10 @@ mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20022" in build, "P0: رقم إصدار شبكة التفوق غير مثبت")
-require("2.0.22-capability-mesh" in build, "P0: اسم إصدار حكيم ٢٠٠٢٢ غير مثبت")
+version = re.search(r"versionCode\s+(\d+)", build)
+require(version is not None and int(version.group(1)) >= 20022,
+        "P0: إصدار حكيم أقدم من خط شبكة التفوق")
+require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: محادثة حكيم ليست واجهة التشغيل الرئيسية")

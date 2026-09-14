@@ -88,8 +88,10 @@ require("candidates.any { it == target }" in access, "P0: زر الإرسال ي
 require("candidates.any { it == target ||" not in access, "P0: مطابقة زر ChatGPT ليست تامة")
 require("HakimReasoningProtocol.parse" in bridge and "MAX_POLL_ATTEMPTS" in bridge, "P0: الجسر قد ينفذ دون خطة مقيدة/حد توقف")
 
-# النظام الحاكم قد يحتوي نصوص أسرار؛ يجب تنقيحها قبل إرسال السياق.
-require("redactEmbeddedSecrets" in governance, "P0: أسرار محتملة داخل النظام الحاكم لا تُنقح")
+# النظام الحاكم قد يحتوي نصوص أسرار؛ يجب تنقيحها قبل إرسال السياق أو تصديره.
+require("fun exportSafeText" in governance, "P0: أسرار محتملة داخل النظام الحاكم لا تُنقح")
+require("val global = exportSafeText" in governance and "exportSafeText(site(context, host)" in governance,
+        "P0: سياق النظام الحاكم لا يمر فعليًا عبر قناة التنقيح")
 require("[سري — محجوب]" in governance and "[رقم حساس محجوب]" in governance, "P0: تنقيح النظام الحاكم غير مكتمل")
 
 print("HAKIM_DEEP_AUTONOMY_CONTRACT=PASS")

@@ -64,6 +64,12 @@ require('sites.put(host, instructions.take' not in portability,
         "P0: بقي مسار خام لتصدير تعليمات المواقع")
 require('.put("governance_global", HakimGovernanceStore.global(context)' not in portability,
         "P0: بقي مسار خام لتصدير النظام الحاكم العام")
+require('root.optString("governance_global", "")\n        ).take' not in portability,
+        "P0: بقي مسار خام لاستيراد النظام الحاكم العام دون تنقيح")
+require('sites[host] = sitesObj.optString(host, "").take' not in portability,
+        "P0: بقي مسار خام لاستيراد تعليمات المواقع دون تنقيح")
+require(portability.count("HakimGovernanceStore.exportSafeText(") >= 4,
+        "P0: التنقيح يجب أن يغطي التصدير والاستيراد للنظام العام وتعليمات المواقع")
 
 require("تصدير نسخة سيادية" in settings and "استعادة نسخة سيادية" in settings, "P0: المستخدم لا يملك واجهة نقل بياناته")
 require("ACTION_CREATE_DOCUMENT" in settings and "ACTION_OPEN_DOCUMENT" in settings, "P0: النقل لا يستخدم منتقي Android الذي يختاره المستخدم")

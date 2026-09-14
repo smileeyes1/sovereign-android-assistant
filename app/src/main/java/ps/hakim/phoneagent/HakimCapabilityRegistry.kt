@@ -1,6 +1,8 @@
 package ps.hakim.phoneagent
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,6 +28,7 @@ object HakimCapabilityRegistry {
         HakimQuranicInvariantKernel.requireInherited("capability_registry")
         val accessibilityReady = HakimAccessibilityService.instance != null
         val web = HakimRuntime.visibleWebView()
+        val internetReady = hasInternetCapability(context)
         val chatGptInstalled = runCatching {
             context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt") != null
         }.getOrDefault(false)
@@ -48,13 +51,14 @@ object HakimCapabilityRegistry {
             Capability("mission_ledger", true, true, "WIP=1 وحالة مشفرة مدمجان"),
             Capability("quranic_governance", true, true, "الإطار القرآني وسياسة القرآن كله/السور ١١٤ مدمجان"),
             Capability("excellence_optimizer", true, true, "محسن التفوق الشامل مدمج"),
-            Capability("browser", true, web != null, if (web != null) "WebView حكيم حاضر" else "المتصفح مدمج لكنه ليس حاضرًا الآن"),
-            Capability("accessibility_actions", true, accessibilityReady, if (accessibilityReady) "خدمة الوصول متاحة الآن" else "خدمة الوصول غير مفعلة/غير متصلة الآن"),
-            Capability("chatgpt_official", true, chatGptInstalled, if (chatGptInstalled) "تطبيق ChatGPT الرسمي مثبت" else "التطبيق الرسمي غير مثبت؛ يبقى مسار الويب الاحتياطي"),
+            Capability("in_app_reasoning", true, internetReady, if (internetReady) "الاستدلال عبر WebView حكيم الداخلي متاح؛ قد يلزم تسجيل دخول مرة واحدة داخل متصفح حكيم" else "الاستدلال الداخلي مدمج لكنه ينتظر اتصال إنترنت فعلي"),
+            Capability("browser", true, web != null, if (web != null) "WebView حكيم حاضر" else "المتصفح مدمج لكنه ليس حاضرًا الآن ويمكن فتحه عند الحاجة"),
+            Capability("accessibility_actions", true, accessibilityReady, if (accessibilityReady) "خدمة الوصول متاحة الآن" else "خدمة الوصول غير مفعلة/غير متصلة الآن وليست شرطًا للاستدلال الداخلي"),
+            Capability("chatgpt_official", true, chatGptInstalled, if (chatGptInstalled) "تطبيق ChatGPT الرسمي مثبت كمسار احتياطي اختياري" else "التطبيق الرسمي غير مثبت؛ الاستدلال الداخلي لا يعتمد عليه"),
             Capability("secure_relay", true, relayConfigured, if (relayConfigured) "قناة حكيم الآمنة مهيأة" else "القناة الآمنة غير مهيأة الآن"),
             Capability("connection_resilience", true, connectionReady, if (connectionReady) "وصلة خارجية متاحة أو مهيأة" else "نسيج التعافي موجود لكن الوصلة الخارجية غير جاهزة الآن"),
             Capability("profile_vault", true, true, "خزنة البيانات غير الحساسة مدمجة مع ثقة موقع دقيقة"),
-            Capability("field_update", true, false, "لا تُعد جاهزة إلا بعد توفر توقيع حكيم الميداني الأصلي والتحقق منه")
+            Capability("field_update", true, false, "جاهزية التحديث الميداني تُثبت من APK موقّع مطابق واختبار الهاتف، لا من وجود الكود وحده")
         )
     }
 
@@ -66,13 +70,22 @@ object HakimCapabilityRegistry {
             appendLine("• ${c.id}: ${if (c.readyNow) "جاهزة الآن" else if (c.available) "موجودة لكن غير جاهزة الآن" else "غير متاحة"} — ${c.reason}")
         }
         appendLine("لا تدّع قدرة غير جاهزة، ولا تدّع وصلة غير جاهزة، ولا تحوّل وجود مكوّن برمجي إلى ادعاء نجاح ميداني. غيّر المسار تلقائيًا عند غياب قدرة خارجية، ما دام البديل مشروعًا وآمنًا ومتاحًا.")
+        appendLine("الاستدلال داخل حكيم هو المسار الافتراضي عندما تتوفر الشبكة؛ Accessibility وتطبيق ChatGPT الرسمي مسارات اختيارية وليسا شرطًا لواجهة حكيم المستقلة.")
         appendLine("نظام الأنظمة لا يعني تفعيل كل شيء دائمًا: فعّل أقل تركيب يحقق الغاية، وحاكم الموارد يحدد توقيت وكثافة الخلفية دون خفض جودة القرار.")
-    }.take(5600)
+    }.take(6200)
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("self_capability_awareness", true)
         .put("integration_aware", true)
         .put("system_of_systems_aware", true)
         .put("resource_aware", true)
+        .put("in_app_reasoning_aware", true)
         .put("capabilities", JSONArray(discover(context).map { it.toJson() }))
+
+    private fun hasInternetCapability(context: Context): Boolean = runCatching {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return@runCatching false
+        val network = cm.activeNetwork ?: return@runCatching false
+        val caps = cm.getNetworkCapabilities(network) ?: return@runCatching false
+        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }.getOrDefault(false)
 }

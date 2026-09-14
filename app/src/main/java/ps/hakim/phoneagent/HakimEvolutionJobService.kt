@@ -9,11 +9,16 @@ class HakimEvolutionJobService : JobService() {
             try {
                 HakimConstitution.install(applicationContext)
                 HakimLearning.initialize(applicationContext)
+                HakimProactiveEngine.initialize(applicationContext)
                 HakimLearning.maintenance(applicationContext)
                 val report = HakimSelfCheck.run(applicationContext)
                 HakimLearning.recordHealth(applicationContext, report)
                 HakimLearning.consolidateAdaptation(applicationContext, report.optString("status", "UNKNOWN"))
-                AutoUpdater.checkNow(applicationContext)
+                HakimProactiveEngine.runSafeBackground(
+                    applicationContext,
+                    "evolution_job",
+                    report.optString("status", "UNKNOWN")
+                )
             } catch (_: Exception) {
             } finally {
                 jobFinished(params, false)

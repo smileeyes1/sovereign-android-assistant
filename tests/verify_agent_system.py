@@ -26,6 +26,7 @@ governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt
 policy = text("app/src/main/java/ps/hakim/phoneagent/HakimActionPolicy.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
+site_trust = text("app/src/main/java/ps/hakim/phoneagent/HakimSiteTrust.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: الوكلاء يجب أن يبقوا داخل تطبيق حكيم الواحد")
 require('android:name=".HakimAgentsChatActivity"' in manifest, "P0: واجهة محادثة الوكلاء غير مسجلة")
@@ -54,6 +55,7 @@ require("plan.sensitiveInputDetected" in chat, "P0: واجهة المحادثة 
 require('typed.ifBlank { "أكمل" }' in chat, "P0: الضغط دون كتابة لا يتحول إلى استمرار سياقي")
 require("نفّذ/أكمل" in chat, "P0: واجهة أقل إشارة لا تعرض استمرارًا مباشرًا")
 require("busy" in chat, "P0: لا يوجد منع لدورات تنفيذ متوازية متعارضة")
+require("needsDataTrust" in chat, "P0: واجهة المحادثة لا تعرض بوابة ثقة الموقع قبل البيانات")
 
 require("last_resolved_goal" in intent_context, "P0: لا توجد استعادة لآخر غاية")
 require("screenSummary" in intent_context and "uiSnapshot" in intent_context, "P0: استنتاج المقصد لا يستخدم الشاشة الحالية")
@@ -82,10 +84,13 @@ require("screenHasSensitiveInput" in policy and "screenHasHighImpactContext" in 
 require("MAX_STEPS" in autonomous and "fingerprint" in autonomous, "P0: حلقة التنفيذ بلا حد أو منع تكرار")
 require("HakimPersonalVault.valueForLabel" in autonomous, "P0: التنفيذ الذاتي لا يعبئ البيانات محليًا")
 require("HakimActionPolicy" in autonomous, "P0: التنفيذ الذاتي لا يمر عبر حاكم الأفعال")
-require("needsCredential" in autonomous and "needsApproval" in autonomous, "P0: حلقة التنفيذ لا تميز السر عن الأثر العالي")
+require("HakimSiteTrust.canUseProfile" in autonomous, "P0: التنفيذ الذاتي قد يخرج بيانات الخزنة لموقع غير معتمد")
+require("needsCredential" in autonomous and "needsApproval" in autonomous and "needsDataTrust" in autonomous, "P0: حلقة التنفيذ لا تميز السر/الثقة/الأثر العالي")
 require("كلمات المرور" in settings and "HakimGovernanceStore" in settings and "HakimPersonalVault" in settings, "P0: واجهة الإعدادات لا تشرح/تطبق حماية الأسرار")
+require("trustSiteForProfile" in settings and "HakimSiteTrust.setTrusted" in settings, "P0: واجهة الإعدادات لا تسمح باعتماد الموقع للبيانات")
+require("ps.hakim.stable" in site_trust and "trusted_profile_hosts" in site_trust, "P0: ثقة الموقع لا تقيد التعبئة بمتصفح حكيم والمضيف المعتمد")
 
-runtime = "\n".join([manifest, home, agents, chat, natural, intent_context, secure_store, personal, governance, policy, autonomous, settings])
+runtime = "\n".join([manifest, home, agents, chat, natural, intent_context, secure_store, personal, governance, policy, autonomous, settings, site_trust])
 require("org.hakim.omega.companion" not in runtime, "P0: منظومة الوكلاء أدخلت اعتمادًا على تطبيق موازٍ")
 
 print("HAKIM_AGENT_SYSTEM_CONTRACT=PASS")

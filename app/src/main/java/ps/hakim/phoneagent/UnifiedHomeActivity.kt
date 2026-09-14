@@ -2,6 +2,7 @@ package ps.hakim.phoneagent
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,6 +12,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 
 class UnifiedHomeActivity : Activity() {
     private lateinit var adbStatus: TextView
@@ -68,16 +70,24 @@ class UnifiedHomeActivity : Activity() {
         adbStatus = TextView(this).apply {
             textSize = 17f
             gravity = Gravity.CENTER
-            setPadding(8, 12, 8, 14)
+            setPadding(8, 12, 8, 8)
         }
         root.addView(adbStatus)
 
-        root.addView(button("تأسيس ADB المحلي") {
-            ensureNotificationPermissionThenSetup()
+        root.addView(TextView(this).apply {
+            text = "الاتصال المحلي يحتاج في أول مرة فقط رمز اقتران من أندرويد (٦ أرقام). هذا حاجز أمان للنظام نفسه؛ بعد نجاحه يحفظ حكيم هويته في AndroidKeyStore ويعيد الاتصال تلقائيًا دون إعادة الرمز عادةً."
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(12, 0, 12, 10)
         })
 
-        root.addView(button("إعادة الاتصال") {
+        root.addView(button("تأسيس الاتصال المحلي — مرة واحدة") {
+            startGuidedLocalAdbSetup()
+        })
+
+        root.addView(button("إعادة الاتصال تلقائيًا") {
             HakimLocalPairing.reconnectAsync(this)
+            Toast.makeText(this, "يحاول حكيم استعادة الاتصال المحلي تلقائيًا", Toast.LENGTH_SHORT).show()
             adbStatus.postDelayed({ refresh() }, 1200L)
         })
 
@@ -106,9 +116,35 @@ class UnifiedHomeActivity : Activity() {
             HakimLocalPairing.reconnectAsync(this)
             return
         }
+        // لا نقذف المستخدم إلى إعدادات المطورين تلقائيًا؛ نعرض الدليل مرة واحدة أولًا.
         if (prefs.getBoolean("local_adb_first_run_started", false)) return
         prefs.edit().putBoolean("local_adb_first_run_started", true).apply()
-        ensureNotificationPermissionThenSetup()
+        adbStatus.postDelayed({ showLocalAdbSetupGuide(firstRun = true) }, 500L)
+    }
+
+    private fun startGuidedLocalAdbSetup() {
+        val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
+        if (prefs.getBoolean("local_adb_paired", false)) {
+            HakimLocalPairing.reconnectAsync(this)
+            Toast.makeText(this, "حكيم مقترن أصلًا؛ أعيد الاتصال بدل طلب رمز جديد", Toast.LENGTH_LONG).show()
+            adbStatus.postDelayed({ refresh() }, 1200L)
+            return
+        }
+        showLocalAdbSetupGuide(firstRun = false)
+    }
+
+    private fun showLocalAdbSetupGuide(firstRun: Boolean) {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle(if (firstRun) "تأسيس حكيم المحلي — مرة واحدة" else "الاتصال المحلي — خطوة أندرويد الوحيدة")
+            .setMessage(
+                "أندرويد يفرض رمز اقتران من ٦ أرقام في أول مرة، ولا يسمح لأي تطبيق بقراءة هذا الرمز تلقائيًا.\n\n" +
+                    "سأفتح لك شاشة «التصحيح اللاسلكي». هناك اضغط «إقران الجهاز باستخدام رمز الاقتران»، واترك نافذة الرمز مفتوحة. سيظهر إشعار حكيم لإدخال الأرقام الستة فقط.\n\n" +
+                    "بعد النجاح يحفظ حكيم هويته محليًا ويعيد الاتصال تلقائيًا؛ لن أطلب منك إعدادًا تقنيًا إضافيًا ما لم يفرضه أندرويد."
+            )
+            .setPositiveButton("افتح شاشة الاقتران") { _, _ -> ensureNotificationPermissionThenSetup() }
+            .setNegativeButton("لاحقًا", null)
+            .show()
     }
 
     private fun ensureNotificationPermissionThenSetup() {
@@ -120,6 +156,12 @@ class UnifiedHomeActivity : Activity() {
     }
 
     private fun beginLocalAdbSetup() {
+        val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
+        if (prefs.getBoolean("local_adb_paired", false)) {
+            HakimLocalPairing.reconnectAsync(this)
+            refresh()
+            return
+        }
         HakimLocalPairing.openWirelessDebuggingSettings(this)
         refresh()
     }

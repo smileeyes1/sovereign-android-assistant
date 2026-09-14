@@ -97,6 +97,7 @@ object HakimIntentContext {
         val lastUrl = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
             .getString("last_url", "").orEmpty().take(500)
         return buildString {
+            append(HakimHumanFirstPolicy.promptContext())
             appendLine("[فهم المقصد بأقل إشارة]")
             appendLine("درجة الاستنتاج: ${inference.confidence} • المصدر: ${inference.source}")
             appendLine("المقصد المستعاد/المستنتج: ${inference.resolvedRequest}")
@@ -105,8 +106,10 @@ object HakimIntentContext {
                 appendLine("ملخص الشاشة الحالية المنقّح:")
                 appendLine(screen)
             }
-            appendLine("قاعدة: لا تطلب إعادة شرح ما يمكن استنتاجه بثقة من السياق. عند غموض منخفض الأثر اختر أفضل افتراض قابل للتراجع ونفّذ ثم تحقق. اسأل فقط إذا كان الغموض جوهريًا ويغيّر النتيجة أو يسبق فعلًا عالي الأثر.")
-        }.take(5000)
+            appendLine("افتراض إنساني: لا تتطلب من المستخدم معرفة تقنية أو مصطلحات يمكن لحكيم استنتاجها أو تنفيذها بنفسه؛ اشرح ببساطة عند الحاجة وارفع العمق فقط إذا طلبه المستخدم أو أثبت خبرة.")
+            appendLine("افترض حسن المقصد لا السذاجة المطلقة: لا تطلب إعادة شرح ما يمكن استنتاجه بثقة من السياق، ولا تفسر الطيبة أو السكوت أو «كمل» كموافقة على فعل عالي الأثر.")
+            appendLine("قاعدة: عند غموض منخفض الأثر اختر أفضل افتراض قابل للتراجع ونفّذ ثم تحقق. اسأل فقط إذا كان الغموض جوهريًا ويغيّر النتيجة أو يسبق فعلًا عالي الأثر.")
+        }.take(9800)
     }
 
     fun isMinimalCue(raw: String): Boolean {

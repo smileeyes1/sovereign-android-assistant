@@ -31,11 +31,13 @@ require("HakimQuranicInvariantKernel.requireInherited" in fabric,
         "P0: نسيج التكامل لا يرث جذر القرآن")
 require("HakimQuranicCorpusPolicy.status()" in fabric and "quranic_corpus_114_integrated" in fabric,
         "P0: نسيج التكامل لا يحرس شمول سور القرآن الـ١١٤")
+require("HakimHumanFirstPolicy.status()" in fabric and "human_first_integrated" in fabric,
+        "P0: نسيج التكامل لا يحرس الإنسان أولًا")
 require("ps.hakim.stable" in fabric and "fail_closed_core_changes" in fabric,
         "P0: نسيج التكامل لا يحرس هوية التطبيق/القلب")
 
 for node in [
-    "quranic_kernel", "quranic_corpus_114", "constitution", "intent_context", "decision_matrix", "sovereign_engine",
+    "quranic_kernel", "quranic_corpus_114", "human_first_policy", "constitution", "intent_context", "decision_matrix", "sovereign_engine",
     "self_leadership", "agent_system", "mission_ledger", "authority_envelope", "capability_registry",
     "autonomous_executor", "reasoning_executor", "verification", "learning",
     "connection_resilience", "unified_relay", "self_check"
@@ -44,6 +46,7 @@ for node in [
 
 for edge in [
     "quranic_kernel→quranic_corpus_114", "quranic_corpus_114→constitution", "quranic_kernel→constitution",
+    "human_first_policy→intent_context", "human_first_policy→authority_envelope", "human_first_policy→sovereign_engine",
     "decision_matrix→sovereign_engine", "sovereign_engine→agent_system",
     "mission_ledger↔sovereign_engine", "execution→verification→learning",
     "connection_resilience↔unified_relay", "recovery→mission_ledger→replan"
@@ -77,6 +80,8 @@ require('HakimIntegrationFabric.requireCore(app, "connection_resilience_recover"
         "P0: استعادة الاتصال قد تعمل خارج نسيج التكامل")
 require("HakimIntegrationFabric.status(context)" in selfcheck and "نسيج التكامل البنيوي سليم" in selfcheck,
         "P0: الفحص الذاتي لا يحرس التكامل")
+require("الإنسان أولًا مدمج في نسيج التكامل" in selfcheck,
+        "P0: الفحص الذاتي لا يحرس الإنسان أولًا داخل التكامل")
 require("الجاهزية الخارجية مفصولة عن سلامة القلب" in selfcheck,
         "P0: الفحص الذاتي يخلط الاتصال الخارجي بصحة القلب")
 

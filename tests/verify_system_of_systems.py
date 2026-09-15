@@ -25,6 +25,14 @@ for unit in ["GOVERNANCE", "QURAN_SUNNAH", "HUMAN_FIRST", "INDEPENDENCE", "INTEN
 require("ephemeral_derived_system" in sos, "P0: الأنظمة المنبثقة قد تتحول إلى خدمات دائمة")
 require("inherits_sovereign_independence" in sos, "P0: النظام المنبثق لا يثبت وراثة الاستقلال")
 require("derived_systems_inherit_sovereign_independence" in sos, "P0: حالة نظام الأنظمة لا تحرس وراثة الاستقلال")
+require("inherits_human_first_mercy_honor_good_habits" in sos,
+        "P0: النظام المنبثق لا يثبت وراثة الرحمة والإكرام والعادات النافعة")
+require("derived_systems_inherit_mercy_heart_reform_vulnerable_honor_good_habits" in sos,
+        "P0: حالة نظام الأنظمة لا تحرس الميثاق الإنساني الموسع")
+require("HakimHumanFirstPolicy.promptContext()" in sos,
+        "P0: نظام الأنظمة لا يحقن سياسة الإنسان أولًا مباشرة")
+require("إكرام الضعيف والمستضعف" in sos,
+        "P0: إكرام الضعيف والمستضعف غير موروث في الأنظمة الفرعية")
 require("cannot_expand_authority" in sos, "P0: النظام المنبثق قد يوسع السلطة")
 require("cannot_mutate_code" in sos, "P0: النظام المنبثق قد يعدل الكود ذاتيًا")
 require("HakimResourceGovernor.snapshot" in sos, "P0: نظام الأنظمة غير واعٍ بموارد الهاتف")

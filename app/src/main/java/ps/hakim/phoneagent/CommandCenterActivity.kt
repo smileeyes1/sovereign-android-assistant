@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -32,16 +31,11 @@ class CommandCenterActivity : Activity() {
         buildUi()
         handleIntent(intent)
         refreshUpdateStatus()
-        maybeOnboardAutoUpdate()
     }
 
     override fun onResume() {
         super.onResume()
         refreshUpdateStatus()
-        if (AutoUpdater.canInstallPackages(this)) {
-            AutoUpdater.checkAsync(this)
-            updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -79,14 +73,17 @@ class CommandCenterActivity : Activity() {
         }
         root.addView(updateStatus)
 
-        root.addView(actionButton("فحص/تهيئة التحديث التلقائي") {
-            if (!AutoUpdater.canInstallPackages(this)) {
-                AutoUpdater.openInstallPermissionSettings(this)
-            } else {
-                AutoUpdater.checkAsync(this)
-                toast("يجري فحص التحديث الآن")
-                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-            }
+        root.addView(actionButton("فحص التحديث الموثوق") {
+            AutoUpdater.checkAsync(this)
+            toast("يجري فحص التحديث والتحقق من الهوية الآن")
+            updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
+        })
+
+        root.addView(TextView(this).apply {
+            text = "لا يطلب حكيم صلاحية «تثبيت تطبيقات غير معروفة». أي تحديث يُحمّل ويُتحقق من بصمته وحزمته وإصداره وتوقيعه أولًا، ثم ينتظر مسار الصيانة المحلي الموثوق."
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(10, 4, 10, 10)
         })
 
         command = EditText(this).apply {
@@ -135,25 +132,9 @@ class CommandCenterActivity : Activity() {
         setContentView(root)
     }
 
-    private fun maybeOnboardAutoUpdate() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || AutoUpdater.canInstallPackages(this)) return
-        val p = getSharedPreferences("hakim", MODE_PRIVATE)
-        val version = currentVersionCode()
-        if (p.getLong("auto_update_onboarding_version", -1L) == version) return
-        p.edit().putLong("auto_update_onboarding_version", version).apply()
-        updateStatus.text = "التحديث التلقائي يحتاج تفعيل «السماح من هذا المصدر» مرة واحدة فقط. ستفتح إعدادات أندرويد الآن."
-        updateStatus.postDelayed({ AutoUpdater.openInstallPermissionSettings(this) }, 700L)
-    }
-
     private fun refreshUpdateStatus() {
         if (::updateStatus.isInitialized) updateStatus.text = AutoUpdater.statusSummary(this)
     }
-
-    @Suppress("DEPRECATION")
-    private fun currentVersionCode(): Long = try {
-        val info = packageManager.getPackageInfo(packageName, 0)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
-    } catch (_: Exception) { 0L }
 
     private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {
         text = label

@@ -30,40 +30,77 @@ object HakimHealthBeacon {
     }
 
     fun sendNow(context: Context, reason: String): Boolean {
-        val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
-        val topic = prefs.getString("result_topic", "").orEmpty().trim()
-        val key = prefs.getString("auth_key", "").orEmpty().trim()
-        if (topic.isBlank() || key.isBlank()) {
-            prefs.edit().putString("last_health_beacon_state", "missing_pairing_or_auth").apply()
-            return false
-        }
 
         val now = System.currentTimeMillis()
         var versionCode = 0L
         var versionName = ""
         try {
-            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            val info = app.packageManager.getPackageInfo(app.packageName, 0)
             versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode
             else @Suppress("DEPRECATION") info.versionCode.toLong()
             versionName = info.versionName.orEmpty()
         } catch (_: Exception) {}
-        val installedApkSha256 = apkSha256(context)
+        val installedApkSha256 = apkSha256(app)
 
         val payload = JSONObject()
             .put("request_id", "health-$now")
             .put("status", "health")
             .put("time", now)
-            .put("package", context.packageName)
+            .put("package", app.packageName)
             .put("version_code", versionCode)
             .put("version_name", versionName)
             .put("apk_sha256", installedApkSha256)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
-            .put("recovery", HakimConnectionResilience.status(context))
+            .put("secure_relay_configured", HakimUnifiedRelay.isConfigured(app))
+            .put("recovery", HakimConnectionResilience.status(app))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
             .toString()
+
+        // HC1 result webhook is the primary health path. It is independent from the legacy result topic.
+        val secureUrl = prefs.getString(HakimUnifiedRelay.KEY_RESULT_URL, "").orEmpty().trim()
+        val secureKey = prefs.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").orEmpty().trim()
+        if (secureUrl.startsWith("https://") && secureKey.isNotBlank()) {
+            val requestId = "health-$now"
+            val signature = hmacHex(secureKey, "$requestId\nhealth\n$payload")
+            val wrapper = JSONObject()
+                .put("request_id", requestId)
+                .put("status", "health")
+                .put("received_at_ms", now)
+                .put("result", JSONObject(payload))
+                .put("sig", signature)
+            if (postJson(secureUrl, wrapper.toString())) {
+                prefs.edit()
+                    .putString("last_health_beacon_state", "sent")
+                    .putString("last_health_beacon_transport", "secure_webhook")
+                    .putLong("last_health_beacon_at", now)
+                    .putString("installed_apk_sha256", installedApkSha256)
+                    .remove("last_health_beacon_error")
+                    .apply()
+                return true
+            }
+            prefs.edit()
+                .putString("last_health_beacon_state", "secure_failed_fallback")
+                .putString("last_health_beacon_transport", "secure_webhook")
+                .apply()
+        }
+
+        // Compatibility fallback only: older installations may still have the signed ntfy result channel.
+        val topic = prefs.getString("result_topic", "").orEmpty().trim()
+        val key = prefs.getString("auth_key", "").orEmpty().trim()
+        if (topic.isBlank() || key.isBlank()) {
+            prefs.edit()
+                .putString("last_health_beacon_state", if (secureUrl.isBlank()) "missing_pairing_or_auth" else "secure_failed_no_legacy")
+                .putString("last_health_beacon_transport", if (secureUrl.isBlank()) "none" else "secure_webhook")
+                .putLong("last_health_beacon_at", now)
+                .putString("installed_apk_sha256", installedApkSha256)
+                .apply()
+            return false
+        }
 
         val requestId = "health-$now"
         val wrapper = JSONObject()
@@ -75,7 +112,7 @@ object HakimHealthBeacon {
 
         val req = Request.Builder()
             .url("https://ntfy.sh/$topic")
-            .header("User-Agent", "HAKIM-Health-Beacon/2")
+            .header("User-Agent", "HAKIM-Health-Beacon/3")
             .post(wrapper.toString().toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .build()
 
@@ -84,6 +121,7 @@ object HakimHealthBeacon {
                 val ok = response.isSuccessful
                 prefs.edit()
                     .putString("last_health_beacon_state", if (ok) "sent" else "http_${response.code}")
+                    .putString("last_health_beacon_transport", "legacy_ntfy")
                     .putLong("last_health_beacon_at", now)
                     .putString("installed_apk_sha256", installedApkSha256)
                     .apply()
@@ -92,9 +130,23 @@ object HakimHealthBeacon {
         } catch (e: Exception) {
             prefs.edit()
                 .putString("last_health_beacon_state", "failed")
+                .putString("last_health_beacon_transport", "legacy_ntfy")
                 .putString("last_health_beacon_error", e.message.orEmpty().take(300))
                 .putLong("last_health_beacon_at", now)
                 .apply()
+            false
+        }
+    }
+
+    private fun postJson(url: String, body: String): Boolean {
+        val req = Request.Builder()
+            .url(url)
+            .header("User-Agent", "HAKIM-Health-Beacon/3")
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        return try {
+            client.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
             false
         }
     }

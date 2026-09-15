@@ -1,19 +1,60 @@
 {
-  "schema_version": 1,
-  "status": "FIELD_LINEAGE_IDENTITY_PINNED_PRIVATE_KEY_RECOVERY_PENDING",
+  "schema_version": 5,
+  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20025__F4_HISTORICAL_ONLY",
   "canonical_package": "ps.hakim.stable",
-  "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+  "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "public_key": "RSA-3072",
-  "signature_algorithm": "SHA384withRSA",
-  "valid_from_utc": "2026-09-11T16:44:32Z",
-  "known_matching_versions": [20013, 20016],
+  "known_matching_versions": [
+    20018,
+    20019,
+    20020,
+    20021,
+    20022,
+    20025
+  ],
+  "current_field_version": 20025,
+  "current_candidate_version": 20039,
+  "field_evidence": {
+    "observed_at_utc": "2026-09-15T03:50:00Z",
+    "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_PREFLIGHT",
+    "package": "ps.hakim.stable",
+    "version_code": 20025,
+    "version_name": "2.0.25-multi-provider-sovereign-chat",
+    "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "apk_sha256": "06284169af90e89662a64a38262f7783c49216540e01e22b88fb8dd054b2ee7b",
+    "supersedes_direct_field_version": 20022,
+    "claim_scope": "PACKAGE_VERSION_CURRENT_APK_DIGEST_AND_SIGNER_ONLY"
+  },
+  "historical_previous_lineage": {
+    "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+    "known_signed_versions": [
+      20013,
+      20016,
+      20017
+    ],
+    "status": "SUPERSEDED_BY_NEWER_DIRECT_FIELD_EVIDENCE_20025_D1"
+  },
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
+  "continuity": {
+    "one_app_only": true,
+    "preserve_app_data_required": true,
+    "uninstall_or_clear_data_forbidden": true,
+    "inplace_update_requires_exact_current_signer": true,
+    "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
+    "unknown_source_permission_not_required_by_policy": true,
+    "decision": "Treat the newest directly observed 20025/D1 ps.hakim.stable installation as the current field lineage. Future in-place updates must preserve package identity, use exactly D1, increase versionCode, pass artifact identity/integrity gates, and preserve app data. Do not uninstall or clear data."
+  },
   "rules": [
-    "Do not release an in-place ps.hakim.stable update unless its signer exactly matches certificate_sha256.",
-    "Do not use the known nonmatching Companion signer for ps.hakim.stable.",
-    "Do not store private signing material in this public repository.",
-    "Do not uninstall or clear the field app as a signing workaround without an explicit migration decision and state-preservation evidence.",
-    "Build or CI success alone does not establish physical-phone field installation."
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints, including the earlier 20022/D1 direct baseline.",
+    "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
+    "F4 is historical and must not be used to overwrite the current D1 installation.",
+    "The known 4C companion signer must never be accepted for ps.hakim.stable.",
+    "Do not uninstall the current app or clear its data as part of routine updating.",
+    "Do not require or encourage Android unknown-source installation permission as a standing capability.",
+    "Do not store private signing material or pairing secrets in this public repository.",
+    "Maintain exactly one user-facing Hakim Android app: ps.hakim.stable.",
+    "Build or CI success alone does not establish physical-phone field qualification.",
+    "current_candidate_version is not field-qualified until the exact delivered signed artifact is verified on the real phone.",
+    "If a future phone read contradicts this baseline, fail closed and update the baseline only from the newer direct evidence."
   ]
 }

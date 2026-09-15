@@ -30,24 +30,92 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: جلب المشروع
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: بوابة عقد حكيم الوحيد
         run: python3 tests/verify_unified_hakim.py
+      - name: بوابة واجهة المحادثة والسلاسة
+        run: python3 tests/verify_chat_first_ui.py
+      - name: بوابة ثبات الكتابة وبقاء مربع النص فوق لوحة المفاتيح
+        run: python3 tests/verify_safe_input_path.py
+      - name: بوابة مساحة العمل الحية والأدوات
+        run: python3 tests/verify_work_surface.py
+      - name: بوابة الاستدلال داخل واجهة حكيم
+        run: python3 tests/verify_in_app_reasoning.py
+      - name: بوابة توافق Play Protect للتثبيت
+        run: python3 tests/verify_play_protect_install_profile.py
+      - name: بوابة النواة الحاكمة والتأسيس منخفض العبء
+        run: python3 tests/verify_zero_burden_governance_bootstrap.py
+      - name: بوابة قبول منظومة الوكلاء
+        run: python3 tests/verify_agent_system.py
+      - name: بوابة عمق الأتمتة وأقل إشارة
+        run: python3 tests/verify_deep_autonomy.py
+      - name: بوابة الرمز والحرف والمسار السريع
+        run: python3 tests/verify_micro_cue_performance.py
+      - name: بوابة التعلم التكيفي والواجهة الصوتية
+        run: python3 tests/verify_adaptive_learning.py
+      - name: بوابة استمرارية القواعد والتعلم
+        run: python3 tests/verify_state_continuity.py
+      - name: بوابة المبادرة الذاتية المفيدة بلا طلب
+        run: python3 tests/verify_proactive_autonomy.py
+      - name: بوابة الذكاء السيادي والنزاهة الشرعية
+        run: python3 tests/verify_sovereign_intelligence.py
+      - name: بوابة وراثة القرآن من النواة إلى الحافة
+        run: python3 tests/verify_quranic_kernel_inheritance.py
+      - name: بوابة منهج القرآن والهدي النبوي
+        run: python3 tests/verify_quran_sunnah_method.py
+      - name: بوابة الاستخلاف والحكمة وهدي الأنبياء
+        run: python3 tests/verify_istikhlaaf_governance.py
+      - name: بوابة صمود قناة HC1 والناقل الاحتياطي
+        run: python3 tests/verify_hc1_transport_resilience.py
+      - name: بوابة شمول سور القرآن ١١٤ وفصل طبقات المعرفة
+        run: python3 tests/verify_quranic_corpus_coverage.py
+      - name: بوابة القرآن المحلي المتحقق من المصدر الرسمي
+        run: python3 tests/verify_verified_quran_corpus.py
+      - name: بوابة الإنسان أولًا والكرامة والرحمة
+        run: python3 tests/verify_human_first_policy.py
+      - name: بوابة حماية القلب الجسدي والاتصال الصحي اللاسلكي
+        run: python3 tests/verify_cardiac_safety_policy.py
+      - name: بوابة سيادة الطاقة والاتصال والخدمات والذكاء
+        run: python3 tests/verify_resource_sovereignty_policy.py
+      - name: بوابة الارتقاء المستمر للنية والمقصد والهدف والغاية
+        run: python3 tests/verify_intent_elevation_policy.py
+      - name: بوابة الابتكار المتسارع ومقاومة العوائق المحكومة
+        run: python3 tests/verify_innovation_resilience_policy.py
+      - name: بوابة نظام الأنظمة والأنظمة المنبثقة
+        run: python3 tests/verify_system_of_systems.py
+      - name: بوابة شبكة التفوق والأدوات والخدمات
+        run: python3 tests/verify_capability_mesh.py
+      - name: بوابة الاستقلال السيادي الشامل وقابلية النقل
+        run: python3 tests/verify_sovereign_independence_v2.py
+      - name: بوابة منع الفشل الصامت ومعالجة السبب الجذري
+        run: python3 tests/verify_fault_prevention.py
+      - name: بوابة الاختبار الميداني وحد القدرة الإنسانية
+        run: python3 tests/verify_field_validation_and_human_boundary.py
+      - name: بوابة أداء الهاتف وحاكم الموارد
+        run: python3 tests/verify_resource_governor.py
+      - name: بوابة التكامل والوصل السيادي
+        run: python3 tests/verify_integration_fabric.py
+      - name: بوابة التفوق الشامل ومنع الانحدار
+        run: python3 tests/verify_excellence_optimizer.py
+      - name: بوابة الاستقلال السيادي والقيادة الذاتية
+        run: python3 tests/verify_sovereign_autonomy.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
           bash -n scripts/verify-field-signer.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh
+          bash -n scripts/hakim-field-preflight.sh
       - name: إعداد جافا
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
       - name: إعداد Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+          cache-provider: basic
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
@@ -83,6 +151,12 @@ jobs:
             echo "بيانات اعتماد توقيع حكيم الميدانية غير مكتملة" >&2
             exit 1
           fi
+          VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' app/build.gradle | head -n1)"
+          if [[ -z "$VERSION_CODE" ]]; then
+            echo "تعذر استخراج versionCode من app/build.gradle" >&2
+            exit 1
+          fi
+          FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.apk"
           printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/hakim-field.jks"
           APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
           "$APKSIGNER_BIN" sign \
@@ -90,23 +164,31 @@ jobs:
             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
-            --out app/build/outputs/apk/release/hakim-field-20018.apk \
+            --out "$FIELD_APK" \
             app/build/outputs/apk/release/app-release-unsigned.apk
           APKSIGNER="$APKSIGNER_BIN" \
-            bash scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-20018.apk
+            bash scripts/verify-field-signer.sh "$FIELD_APK"
           echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$FIELD_APK" >> "$GITHUB_OUTPUT"
+      - name: حفظ أداة التوقيع الرسمية للتوقيع الخاص خارج CI
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          mkdir -p app/build/outputs/tooling
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/lib/apksigner.jar" app/build/outputs/tooling/apksigner.jar
       - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hakim-ci-NOT-INSTALLABLE
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/tooling/apksigner.jar
           if-no-files-found: error
       - name: حفظ تحديث حكيم الميداني
         if: steps.field_sign.outputs.signed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: hakim-field-20018
-          path: app/build/outputs/apk/release/hakim-field-20018.apk
+          name: hakim-field-${{ steps.field_sign.outputs.version_code }}
+          path: ${{ steps.field_sign.outputs.apk_path }}
           if-no-files-found: error

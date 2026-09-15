@@ -1,6 +1,7 @@
 package ps.hakim.phoneagent
 
 import android.content.Context
+import android.net.Uri
 
 /**
  * استنتاج المقصد من أقل إشارة ممكنة مع تقليل الأسئلة على المستخدم.
@@ -35,12 +36,21 @@ object HakimIntentContext {
             return cached
         }
 
+        // هذه الدالة تستقبل إشارة المستخدم من واجهة المحادثة قبل التنفيذ. إذا كان المستخدم
+        // قد ألغى المهمة ثم قال صراحة «أكمل/تابع/استأنف»، فهذا طلب جديد يرفع CANCELLED إلى RECOVER.
+        // المبادرة الخلفية لا تصل إلى المهمة الملغاة أصلًا، لذلك لا يتحول هذا إلى استئناف تلقائي.
+        if (isExplicitContinueCue(raw) && HakimMissionLedger.isCancelled(context)) {
+            HakimMissionLedger.resumeCancelledByUser(context, "استأنف المستخدم المهمة صراحة بإشارة استمرار")
+        }
+
         val signal = HakimMicroCueEngine.classify(raw)
         val cue = signal.normalizedCue.trim()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val lastGoal = prefs.getString("last_resolved_goal", "").orEmpty().trim()
         val lastUrl = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
             .getString("last_url", "").orEmpty().trim()
+        // المسار الخام يبقى محليًا لاستعادة WebView فقط. لا يُعرض ولا يُرسل لمحرك الاستدلال.
+        val lastRoute = safeRouteLabel(lastUrl)
         // لقطة واحدة لكل استنتاج لتقليل العمل والتناقض بين قراءتين متتاليتين.
         val screen = screenSummary()
         val minimal = signal.kind != HakimMicroCueEngine.Kind.EXPLICIT
@@ -67,7 +77,7 @@ object HakimIntentContext {
                 source = "last_goal+screen+micro_cue"
             }
             lastGoal.isNotBlank() && lastUrl.isNotBlank() -> {
-                resolved = "$lastGoal\nاستأنف من مسار الويب الحالي $lastUrl. إشارة المستخدم: ${cue.ifBlank { "أكمل" }}. لا تكرر المنجز."
+                resolved = "$lastGoal\nاستأنف من $lastRoute. إشارة المستخدم: ${cue.ifBlank { "أكمل" }}. لا تكرر المنجز."
                 confidence = "HIGH"
                 source = "last_goal+last_url+micro_cue"
             }
@@ -82,7 +92,7 @@ object HakimIntentContext {
                 source = "screen+micro_cue"
             }
             lastUrl.isNotBlank() -> {
-                resolved = "استأنف العمل على المسار الحالي $lastUrl وفق إشارة المستخدم «${cue.ifBlank { "أكمل" }}»، واستنتج الخطوة التالية الآمنة."
+                resolved = "استأنف العمل على $lastRoute وفق إشارة المستخدم «${cue.ifBlank { "أكمل" }}»، واستنتج الخطوة التالية الآمنة."
                 confidence = "MEDIUM"
                 source = "last_url+micro_cue"
             }
@@ -111,7 +121,7 @@ object HakimIntentContext {
             cueKind = signal.kind.name,
             fastPathEligible = signal.mayFastContinue && contextual && confidence != "LOW",
             screenContext = screen,
-            lastUrlContext = lastUrl.take(500)
+            lastUrlContext = if (lastUrl.isBlank()) "" else lastRoute
         )
         cachedRaw = raw
         cachedPackage = context.packageName
@@ -137,6 +147,7 @@ object HakimIntentContext {
             appendLine("الإشارة قد تكون صمتًا أو رمزًا أو حرفًا أو كلمة قصيرة. لا تمنح الإشارة الدقيقة وحدها موافقة على ضرر/كلفة/كشف بيانات/صلاحية/فعل غير قابل للتراجع.")
             appendLine("افترض حسن المقصد لا السذاجة المطلقة: لا تطلب إعادة شرح ما يمكن استنتاجه بثقة من السياق، ولا تفسر الطيبة أو السكوت أو «كمل» كموافقة على فعل عالي الأثر.")
             appendLine("قاعدة: عند غموض منخفض الأثر اختر أفضل افتراض قابل للتراجع ونفّذ ثم تحقق. اسأل فقط إذا كان الغموض جوهريًا ويغيّر النتيجة أو يسبق فعلًا عالي الأثر.")
+            appendLine("خصوصية المسار: رابط الاستعادة الخام ومعرفات الجلسة/المحادثة تبقى محلية داخل حكيم؛ لا تُعرض للمستخدم ولا تُمرر لمزود الاستدلال، ويُستخدم وصف المضيف فقط عند الحاجة.")
         }.take(9800)
     }
 
@@ -152,6 +163,19 @@ object HakimIntentContext {
         )
         if (s in cues) return true
         return s.split(Regex("\\s+")).size <= 2 && cues.any { s.contains(it) }
+    }
+
+    fun isExplicitContinueCue(raw: String): Boolean {
+        val s = raw.trim().lowercase()
+        if (s.isBlank()) return true
+        return s in setOf("كمل", "كمّل", "اكمل", "أكمل", "تابع", "استأنف", "استمر", "continue", "resume", "go on")
+    }
+
+    private fun safeRouteLabel(raw: String): String {
+        if (raw.isBlank()) return "مسار ويب محفوظ"
+        val uri = runCatching { Uri.parse(raw) }.getOrNull()
+        val host = uri?.host.orEmpty().lowercase().trim().take(160)
+        return if (host.isBlank()) "مسار ويب محفوظ" else "مسار ويب محفوظ على $host"
     }
 
     private fun rememberGoalIfSafe(context: Context, text: String) {

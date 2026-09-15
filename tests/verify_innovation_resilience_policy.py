@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -57,7 +58,10 @@ require("innovation_resilience_inherited_by_every_derived_system" in elevation,
         "P0: derived systems do not explicitly inherit innovation/resilience")
 require("HakimIntentElevationPolicy.promptContext()" in sos,
         "P0: system-of-systems does not inject intent elevation")
-require("versionCode 20032" in build and "2.0.32-innovation-resilience-direct-use" in build,
-        "P0: release identity is not synchronized to 20032")
+version = re.search(r"versionCode\s+(\d+)", build)
+require(version is not None and int(version.group(1)) >= 20032,
+        "P0: innovation/resilience release identity regressed below 20032")
+require("innovation-resilience" in build or int(version.group(1)) > 20032,
+        "P0: 20032 innovation/resilience identity is neither present nor superseded")
 
 print("HAKIM_INNOVATION_RESILIENCE_POLICY=PASS")

@@ -68,8 +68,8 @@ show_fresh_pairing_instructions() {
 }
 
 start_remote_maintenance() {
-  # مسار rescue ينعش النقل نفسه؛ وجود PID وحده ليس دليل اتصال.
-  # نجاح المحاولة يُستنتج من سجل جديد خاص بهذه المحاولة لا من نجاح تاريخي قديم.
+  # مسار rescue ينعش النقل نفسه؛ وجود PID أو اشتراك قناة جزئي ليس دليل اتصال.
+  # نجاح المحاولة يُستنتج من سجل جديد خاص بهذه المحاولة ومن الحالة النهائية Device ready فقط.
   # لا نحذف هوية الجهاز أو الرموز المحفوظة. إذا احتاج المزود تحققًا جديدًا نعرض الرمز الحديث محليًا.
   stop_stale_remote_maintenance
   fresh_remote_log
@@ -80,7 +80,7 @@ start_remote_maintenance() {
   chmod 600 "$OMEGA/remote-desktop-commander.pid" 2>/dev/null || true
 
   for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    if grep -Eq 'Device ready|Device marked as online|Channel subscribed' "$RDC_LOG" 2>/dev/null; then
+    if grep -Fq 'Device ready' "$RDC_LOG" 2>/dev/null; then
       say 'REMOTE_MAINTENANCE=ONLINE'
       return 0
     fi
@@ -99,7 +99,7 @@ start_remote_maintenance() {
   fi
 
   say 'REMOTE_MAINTENANCE=WAITING_UNPROVEN'
-  say 'حكيم: العملية تعمل لكن الاتصال البعيد لم يُثبت بعد؛ لن يُعلن نجاحًا وهميًا.'
+  say 'حكيم: العملية تعمل لكن الاتصال البعيد لم يصل إلى Device ready؛ لن يُعلن نجاحًا وهميًا.'
   return 3
 }
 

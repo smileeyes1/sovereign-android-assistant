@@ -46,11 +46,18 @@ require("revelation_and_interpretation_separated" in catalog,
 require("unknown_resource_requires_new_verification" in catalog,
         "P0: المورد غير المعروف قد يُقبل بلا تحقق جديد")
 
-for layer in [
+source_layers = [
     "MUSHAF_TEXT", "QIRAAT", "TAJWEED", "TAFSIR", "GHAREEB", "ASBAB_AL_NUZUL",
     "QURANIC_SCIENCES", "SURAH_METADATA", "TRANSLATION", "FIQH_DERIVATION", "SCHOLARLY_INFERENCE"
-]:
+]
+for layer in source_layers:
     require(layer in source, f"P0: طبقة مصدر قرآنية مفقودة: {layer}")
+
+corpus_layers = [
+    "REVELATION_TEXT", "QIRAAT", "TAJWEED", "TAFSIR", "GHAREEB", "ASBAB_AL_NUZUL",
+    "QURANIC_SCIENCES", "SURAH_METADATA", "TRANSLATION", "FIQH_DERIVATION", "SCHOLARLY_INFERENCE"
+]
+for layer in corpus_layers:
     require(layer in corpus, f"P0: طبقة corpus قرآنية مفقودة: {layer}")
 
 require("HakimQuranicResourceCatalog.promptContext()" in source and
@@ -78,7 +85,7 @@ require("quranic_barakah_is_lawful_benefit_not_technical_guarantee" in method,
         "P0: لا يوجد حاجز يفصل بركة القرآن عن الضمان التقني")
 require("specific_virtues_and_effects_require_evidence" in method,
         "P0: قد تُنسب فضائل أو آثار مخصوصة بلا دليل")
-require("قوة خفية" in method and "ضمان نتيجة مادية" in method,
+require("قوة تقنية خفية" in method and "ضمان نتيجة مادية" in method,
         "P0: منع الغلو التقني في مفهوم البركة غير مكتمل")
 
 require("verify_quranic_resource_catalog.py" in workflow,

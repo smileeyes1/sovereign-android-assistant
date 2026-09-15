@@ -14,7 +14,9 @@ require(script.index('fresh_remote_log') < script.index('nohup npx --yes'), 'P0:
 require("REMOTE_MAINTENANCE=ONLINE" in script, 'P0: حالة الاتصال المثبت مفقودة')
 require("REMOTE_MAINTENANCE=PAIRING_REQUIRED" in script, 'P0: حالة التحقق المحلي مفقودة')
 require("REMOTE_MAINTENANCE=WAITING_UNPROVEN" in script, 'P0: حالة عدم الإثبات مفقودة')
-require('Device ready|Device marked as online|Channel subscribed' in script, 'P0: دليل الاتصال الفعلي مفقود')
+require("grep -Fq 'Device ready'" in script, 'P0: دليل الاتصال النهائي Device ready مفقود')
+require('Device marked as online' not in script and 'Channel subscribed' not in script,
+        'P0: عاد قبول حالة RDC وسيطة كدليل نجاح نهائي')
 require('Code expires in [0-9]+ minutes' in script, 'P0: كشف رمز التحقق الحديث مفقود')
 require("pgrep -f '$RDC_PATTERN' >/dev/null 2>&1; then\n    return 0" not in script, 'P0: عاد نجاح PID الوهمي')
 for forbidden in ('rm -rf "$HOME/.desktop-commander', 'pm clear', 'uninstall', 'settings put', 'appops set'):

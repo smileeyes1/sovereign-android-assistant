@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20038
-        versionName '2.0.38-ime-docked-composer'
+        versionName '2.0.38-ime-docked-input'
     }
 
     compileOptions {

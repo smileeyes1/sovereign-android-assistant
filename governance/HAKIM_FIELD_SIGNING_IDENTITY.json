@@ -6,7 +6,7 @@
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
   "known_matching_versions": [20018, 20019, 20020, 20021, 20022, 20025],
   "current_field_version": 20025,
-  "current_candidate_version": 20027,
+  "current_candidate_version": 20028,
   "field_evidence": {
     "observed_at_utc": "2026-09-15T03:50:00Z",
     "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_PREFLIGHT",

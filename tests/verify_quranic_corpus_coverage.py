@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,26 @@ require("no_forced_relevance" in corpus and "لا تُجبر كل سورة عل�
         "P0: لا يوجد حاجز يمنع التكلف في ربط كل سورة بكل مسألة")
 require("whole_corpus_scan_on_comprehensive_request" in corpus,
         "P0: طلب الاستقراء الشامل لا يفرض مسح corpus السور الـ١١٤")
+require("natural_arabic_whole_corpus_phrasing" in corpus,
+        "P0: لا توجد شهادة لحساسية الصياغة العربية الطبيعية لطلب القرآن كله")
+
+# اقفل الصيغ الطبيعية التي يستخدمها صاحب حكيم، لا الصيغ الاصطناعية فقط.
+whole_match = re.search(r'private val wholeCorpusRegex = Regex\(\s*"([^"]+)"', corpus)
+require(whole_match is not None, "P0: تعذر العثور على كاشف طلب القرآن كله")
+whole_pattern = whole_match.group(1).replace("\\\\", "\\")
+whole_regex = re.compile(whole_pattern)
+for phrase in [
+    "طبّق كل السور",
+    "طبق كل السور",
+    "جميع السور",
+    "كل سورة",
+    "القرآن كله",
+    "القرءان كله",
+    "كل القرآن",
+    "استقراء القرآن",
+]:
+    require(whole_regex.search(phrase) is not None,
+            f"P0: الصياغة العربية الطبيعية لا تشغل استقراء السور الـ١١٤: {phrase}")
 
 # طبقات المعرفة لا تختلط.
 for layer in ["REVELATION_TEXT", "QIRAAT", "TAFSIR", "ASBAB_AL_NUZUL", "SURAH_METADATA", "SCHOLARLY_INFERENCE"]:

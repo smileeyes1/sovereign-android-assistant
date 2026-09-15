@@ -54,10 +54,11 @@ for line in adb_cmd_lines:
     req(any(fragment in line for fragment in allowed_adb_fragments),
         f"P0: أمر ADB خارج قائمة القراءة الصريحة: {line}")
 
-# الاستدعاء المباشر الوحيد لـ ADB_BIN هو `adb devices`؛ فحص وجود المتغير ليس استدعاءً.
+# الاستدعاء المباشر الوحيد لـ ADB_BIN هو `adb devices`؛ تعريف ADB_CMD وفحص المتغير ليسا تنفيذًا.
 direct_adb_lines = [
     line for line in active_lines
-    if re.search(r'"\$ADB_BIN"\s+[A-Za-z0-9_-]+', line)
+    if not line.startswith('ADB_CMD=')
+    and re.search(r'"\$ADB_BIN"\s+[A-Za-z0-9_-]+', line)
 ]
 req(len(direct_adb_lines) == 1 and re.search(r'"\$ADB_BIN"\s+devices\b', direct_adb_lines[0]),
     "P0: ظهر استدعاء ADB مباشر غير مصرح به خارج تعداد الأجهزة")

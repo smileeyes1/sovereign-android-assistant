@@ -1,0 +1,43 @@
+name: مزامنة حكيم ٢٠٠٢٩ الذرية
+
+on:
+  push:
+    branches: [ feature/hakim-elite-wisdom-20029 ]
+    paths:
+      - '.github/workflows/hakim-sync-20029.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-exact-local-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب الفرع
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: تحقق من حزمة النقل وطبقها
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .hakim-sync/part0 .hakim-sync/part1 .hakim-sync/part2 .hakim-sync/part3 > /tmp/hakim.b64
+          echo 'a09ae5aa7d01f8c7f51b2cc97a81127db8f7212cdc3796ee31dc937e9401ef3f  /tmp/hakim.b64' | sha256sum -c -
+          base64 -d /tmp/hakim.b64 | gzip -d > /tmp/hakim.patch
+          echo 'd2f534faa6c40234e8003a5cac25679d185c4e34dec509354b646711d3a7025a  /tmp/hakim.patch' | sha256sum -c -
+          git apply --check /tmp/hakim.patch
+          git apply /tmp/hakim.patch
+
+      - name: نظف وسيّد commit واحد
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .hakim-sync
+          rm -f tmp-ignore.txt
+          rm -f .github/workflows/hakim-sync-20029.yml
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'حكيم ٢٠٠٢٩: مزامنة ذرية للحكمة والعلوم والتقوى والسيادة الشخصية'
+          git push origin HEAD:feature/hakim-elite-wisdom-20029

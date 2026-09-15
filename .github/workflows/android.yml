@@ -49,6 +49,8 @@ jobs:
         run: python3 tests/verify_micro_cue_performance.py
       - name: بوابة التعلم التكيفي والواجهة الصوتية
         run: python3 tests/verify_adaptive_learning.py
+      - name: بوابة استمرارية القواعد والتعلم
+        run: python3 tests/verify_state_continuity.py
       - name: بوابة المبادرة الذاتية المفيدة بلا طلب
         run: python3 tests/verify_proactive_autonomy.py
       - name: بوابة الذكاء السيادي والنزاهة الشرعية

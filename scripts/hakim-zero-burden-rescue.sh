@@ -9,6 +9,7 @@ chmod 700 "$OMEGA" "$ADB_DIR" "$LOG_DIR" 2>/dev/null || true
 
 ADB_LOG="$LOG_DIR/hakim-adb-rescue.log"
 RDC_LOG="$LOG_DIR/remote-desktop-commander.log"
+RDC_PREV_LOG="$LOG_DIR/remote-desktop-commander.prev.log"
 CORE="$ADB_DIR/hakim-adb-core.sh"
 CORE_COMMIT="b7f87cc4a0a620e5ca7ff4c582c758295355db26"
 CORE_URL="https://raw.githubusercontent.com/smileeyes1/sovereign-android-assistant/$CORE_COMMIT/scripts/termux-hakim-adb-bootstrap.sh"
@@ -50,6 +51,16 @@ stop_stale_remote_maintenance() {
   sleep 1
 }
 
+fresh_remote_log() {
+  if [ -s "$RDC_LOG" ]; then
+    tail -n 200 "$RDC_LOG" >"$RDC_PREV_LOG.tmp" 2>/dev/null || true
+    mv -f "$RDC_PREV_LOG.tmp" "$RDC_PREV_LOG" 2>/dev/null || true
+    chmod 600 "$RDC_PREV_LOG" 2>/dev/null || true
+  fi
+  : >"$RDC_LOG"
+  chmod 600 "$RDC_LOG" 2>/dev/null || true
+}
+
 show_fresh_pairing_instructions() {
   say 'REMOTE_MAINTENANCE=PAIRING_REQUIRED'
   say 'حكيم: يلزم تحقق جهاز جديد. استخدم الرمز الظاهر أدناه فقط؛ الرمز القديم المنتهي لا يُستخدم.'
@@ -58,8 +69,10 @@ show_fresh_pairing_instructions() {
 
 start_remote_maintenance() {
   # مسار rescue ينعش النقل نفسه؛ وجود PID وحده ليس دليل اتصال.
+  # نجاح المحاولة يُستنتج من سجل جديد خاص بهذه المحاولة لا من نجاح تاريخي قديم.
   # لا نحذف هوية الجهاز أو الرموز المحفوظة. إذا احتاج المزود تحققًا جديدًا نعرض الرمز الحديث محليًا.
   stop_stale_remote_maintenance
+  fresh_remote_log
   printf '%s\n' "$(date -Iseconds) HAKIM_RDC_START version=$RDC_VERSION" >>"$RDC_LOG"
   nohup npx --yes "@wonderwhy-er/desktop-commander@$RDC_VERSION" remote >>"$RDC_LOG" 2>&1 </dev/null &
   local pid="$!" i

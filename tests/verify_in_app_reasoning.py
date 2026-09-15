@@ -90,8 +90,9 @@ require("HakimWebAutomation.snapshot" in executor and "HakimWebAutomation.clickT
         "P0: منفذ الخطة لا يستخدم WebView حكيم كمسار التنفيذ الأول")
 require("web == null && service == null" in executor,
         "P0: لا توجد بوابة تثبت فشل جميع مسارات التنفيذ قبل التوقف")
-require("جولة تحقق مستقلة" in executor and "يلزم تحقق جديد" in executor,
-        "P0: المنفذ قد يعلن الاكتمال بعد أفعال دون جولة تحقق")
+require("جولة تحقق مستقلة" in executor and "يلزم تحقق مستقل" in executor and
+        'plan.phase == "verify"' in executor and 'plan.actions.isEmpty()' in executor,
+        "P0: المنفذ قد يعلن الاكتمال بعد أفعال دون جولة تحقق/postcondition مستقلة")
 require("requestedDone" in protocol and "requestedDone && actions.isEmpty()" in protocol,
         "P0: خطة تحتوي أفعالًا ما زالت قادرة على إعلان done=true قبل التنفيذ والتحقق")
 

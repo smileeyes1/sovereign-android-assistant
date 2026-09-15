@@ -1,0 +1,101 @@
+name: بوابة حكيم ٢٠٠٣٤ الفئة العليا المتقاربة
+
+on:
+  push:
+    branches: [ feature/hakim-convergence-20034 ]
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'governance/**'
+      - '.github/workflows/elite-professional.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'governance/**'
+      - '.github/workflows/elite-professional.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  elite-converged-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب المصدر
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: إثبات بقاء بوابات ٢٠٠٢٩ و٢٠٠٣٣ معًا
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            tests/verify_elite_wisdom_professional.py
+            tests/verify_halal_shubuhat_guard.py
+            tests/verify_personal_sovereignty.py
+            tests/verify_question_science_nstar.py
+            tests/verify_taqwa_cultivation.py
+            tests/verify_cardiac_safety_policy.py
+            tests/verify_innovation_resilience_policy.py
+            tests/verify_intent_elevation_policy.py
+            tests/verify_quran_candidate_integrity.py
+            tests/verify_resource_sovereignty_policy.py
+          )
+          for f in "${required[@]}"; do test -f "$f" || { echo "MISSING $f"; exit 1; }; done
+
+      - name: كل بوابات حكيم تلقائيًا
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          for test_file in tests/verify_*.py; do
+            echo "==> $test_file"
+            python3 "$test_file"
+            count=$((count + 1))
+          done
+          test "$count" -ge 42
+          echo "ALL_VERIFY_GATES=$count"
+
+      - name: تدقيق فرق المصدر
+        run: git diff --check HEAD^
+
+      - name: إعداد Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: إعداد Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
+      - name: بناء Debug وRelease الحقيقي
+        run: gradle assembleDebug assembleRelease --stacktrace
+
+      - name: Android Lint كامل
+        run: gradle lintDebug lintRelease --stacktrace
+
+      - name: إثبات هوية ٢٠٠٣٤ وفصل المصدر عن الميدان
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "applicationId 'ps.hakim.stable'" app/build.gradle
+          grep -q "versionCode 20034" app/build.gradle
+          grep -q "2.0.34-converged-elite-wisdom-privacy" app/build.gradle
+          grep -q '"current_field_version": 20025' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+          grep -q '"current_candidate_version": 20034' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+
+      - name: حفظ أثر CI غير القابل للتثبيت الميداني
+        uses: actions/upload-artifact@v7
+        with:
+          name: hakim-converged-20034-ci-NOT-INSTALLABLE
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-release.html
+          if-no-files-found: error

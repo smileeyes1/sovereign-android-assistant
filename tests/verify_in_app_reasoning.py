@@ -20,6 +20,8 @@ bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
 executor = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
+natural = text("app/src/main/java/ps/hakim/phoneagent/HakimNaturalActionEngine.kt")
+chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
@@ -97,6 +99,22 @@ require("HakimWebAutomation.snapshot" in autonomous and "HakimWebAutomation.clic
         "P0: الحلقة الذاتية لا تستخدم WebView حكيم كمسار أول")
 require("service?.uiSnapshot" in autonomous and "HakimRuntime.visibleWebView" in autonomous,
         "P0: مسار Accessibility لم يتحول إلى احتياط بعد WebView")
+
+# منع عودة الفجوة القديمة: فشل المسار المباشر لا يساوي فشل الغاية.
+require("HakimRuntime.visibleWebView()" in natural,
+        "P0: محرك الأفعال المباشرة لا يراعي WebView حكيم")
+for phrase in [
+    "أسلّم الرجوع لمسار حكيم الذاتي",
+    "أسلّم الضغط لمسار WebView الأقل صلاحية مع التحقق",
+    "أسلّم الكتابة لمسار WebView الأقل صلاحية مع التحقق",
+    "خدمة الوصول غير متاحة؛ أسلّم الضغط لمسار حكيم الذاتي",
+    "خدمة الوصول غير متاحة؛ أسلّم الكتابة لمسار حكيم الذاتي",
+]:
+    require(phrase in natural, f"P0: تسليم الأوامر المباشرة انحدر أو اختفى: {phrase}")
+require(natural.count("return Result(false, false") >= 8,
+        "P0: محرك الأفعال المباشرة قد يحول تعذر الوسيلة إلى handled=true ويوقف الغاية")
+require("if (local.handled)" in chat and "runAutonomousCycle(cue, preferred, resolvedGoal)" in chat,
+        "P0: واجهة المحادثة لا تسلّم handled=false إلى الحلقة الذاتية")
 
 require('android:name=".HakimAccessibilityService"' not in manifest,
         "P0: النسخة الميدانية تعيد إعلان Accessibility وتكسر ملف Play Protect الآمن")

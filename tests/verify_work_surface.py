@@ -57,8 +57,8 @@ for token in [
     "CommandCenterActivity::class.java",
     "UnifiedHomeActivity::class.java",
     "HakimSystemSettingsActivity::class.java",
-    '"new_privilege_granted" to false',
-    '"high_impact_gate_preserved" to true',
+    '.put("new_privilege_granted", false)',
+    '.put("high_impact_gate_preserved", true)',
 ]:
     require(token in tools, f"P0: سجل الأدوات يفتقد {token}")
 

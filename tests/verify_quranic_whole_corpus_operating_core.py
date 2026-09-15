@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +20,7 @@ sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt"
 framework = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 religious = text("app/src/main/java/ps/hakim/phoneagent/HakimReligiousIntegrity.kt")
 providers = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProviderRegistry.kt")
+invariants = json.loads(text("governance/HAKIM_QURANIC_SOVEREIGN_INVARIANTS.json"))
 
 # القرآن كله: المجال ١١٤ سورة فعلًا، لا مجرد وصف نصي.
 require("allSurahNumbers: List<Int> = (1..114).toList()" in policy,
@@ -77,5 +79,19 @@ require("advanced_model_equivalence_offline_not_claimed" in providers,
         "P0: النظام قد يدعي تكافؤ نموذج متقدم محليًا بلا دليل")
 require("advanced_reasoning_optional_for_core" in providers,
         "P0: الاستدلال الخارجي ما زال شرطًا للقلب الحاكم")
+
+# العقد الحاكم نفسه يجب أن يطابق التنفيذ ولا يسمح بتوسيع السلطة باللغة العامة.
+require(invariants["quran"]["all_surahs_in_scope"] == 114 and invariants["quran"]["verified_ayah_count"] == 6236,
+        "P0: أعداد عقد القرآن الحاكم غير صحيحة")
+require(invariants["barakah"]["religious_spiritual_meaning"] is True and invariants["barakah"]["technical_metric"] is False,
+        "P0: عقد البركة غير منضبط")
+require(invariants["barakah"]["hidden_computational_power"] is False and invariants["barakah"]["guaranteed_worldly_outcome"] is False,
+        "P0: العقد يسمح بادعاء قوة خفية أو ضمان دنيوي")
+require(invariants["sovereignty"]["core_runtime_vendor_independent"] is True,
+        "P0: استقلال القلب عن المزودات غير مقفول")
+require(invariants["sovereignty"]["offline_advanced_model_equivalence_claimed"] is False,
+        "P0: العقد يدعي تكافؤ نموذج متقدم غير مثبت")
+require(invariants["sovereignty"]["authority_cannot_expand_from_general_language"] is True and invariants["sovereignty"]["irreversible_actions_require_specific_gate"] is True,
+        "P0: اللغة العامة قد توسع سلطة حكيم أو تتجاوز بوابة الأثر العالي")
 
 print("HAKIM_QURANIC_WHOLE_CORPUS_OPERATING_CORE=PASS")

@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.net.Uri
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -47,6 +48,27 @@ object HakimVerifiedQuranCorpus {
         val sourceId: String = "",
         val ayahCount: Int = 0
     )
+
+    data class WholeCorpusScan(
+        val ready: Boolean,
+        val inspectedSurahCount: Int,
+        val inspectedAyahCount: Int,
+        val completeCoverage: Boolean,
+        val queryTerms: List<String>,
+        val matches: List<Ayah>,
+        val truncated: Boolean,
+        val note: String
+    ) {
+        fun toJson(): JSONObject = JSONObject()
+            .put("ready", ready)
+            .put("inspected_surah_count", inspectedSurahCount)
+            .put("inspected_ayah_count", inspectedAyahCount)
+            .put("complete_114_coverage", completeCoverage)
+            .put("query_terms", JSONArray(queryTerms))
+            .put("match_count", matches.size)
+            .put("truncated", truncated)
+            .put("note", note)
+    }
 
     // بصمات منشورة في منصة المطورين الرسمية. لا تقبل بصمة جديدة تلقائيًا دون تحديث موثق.
     val acceptedSources = listOf(
@@ -129,6 +151,65 @@ object HakimVerifiedQuranCorpus {
         }
     }
 
+    /**
+     * مسح محلي حقيقي: يقرأ السجلات كلها حتى بعد بلوغ حد النتائج كي لا يتحول limit إلى انتقاء للسور الأولى.
+     * البحث هنا معجمي محلي فقط، لا يُدّعى أنه تفسير أو استدلال دلالي متقدم.
+     */
+    fun scanAllSurahs(context: Context, rawQuery: String, limit: Int = 120): WholeCorpusScan {
+        HakimQuranicInvariantKernel.requireInherited("verified_quran_scan_all_114")
+        if (!isReady(context)) {
+            return WholeCorpusScan(
+                ready = false,
+                inspectedSurahCount = 0,
+                inspectedAyahCount = 0,
+                completeCoverage = false,
+                queryTerms = emptyList(),
+                matches = emptyList(),
+                truncated = false,
+                note = "قاعدة القرآن المحلية غير متحققة؛ لا يجوز ادعاء استقراء السور الـ١١٤"
+            )
+        }
+        val terms = searchTerms(rawQuery)
+        val maxHits = limit.coerceIn(1, 300)
+        val covered = LinkedHashSet<Int>(114)
+        val hits = ArrayList<Ayah>(maxHits)
+        var inspected = 0
+        var truncated = false
+        Db(context.applicationContext).readableDatabase.rawQuery(
+            "SELECT sura_no, aya_no, sura_name_ar, aya_text, aya_text_emlaey FROM aya ORDER BY sura_no, aya_no",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val surah = c.getInt(0)
+                val ayahNo = c.getInt(1)
+                val name = c.getString(2)
+                val text = c.getString(3)
+                val imlaey = c.getString(4).orEmpty()
+                covered += surah
+                inspected++
+                if (terms.isEmpty()) continue
+                val haystack = normalizeSearch(if (imlaey.isNotBlank()) imlaey else text)
+                if (terms.all { haystack.contains(it) }) {
+                    if (hits.size < maxHits) hits += Ayah(surah, ayahNo, name, text, imlaey)
+                    else truncated = true
+                }
+            }
+        }
+        val complete = inspected == EXPECTED_AYA_COUNT && covered.size == 114 && (1..114).all { it in covered }
+        return WholeCorpusScan(
+            ready = true,
+            inspectedSurahCount = covered.size,
+            inspectedAyahCount = inspected,
+            completeCoverage = complete,
+            queryTerms = terms,
+            matches = hits,
+            truncated = truncated,
+            note = if (terms.isEmpty())
+                "تم التحقق من تغطية السور الـ١١٤ دون استخراج دلالة قسرية؛ أضف ألفاظ بحث عند الحاجة"
+            else "بحث معجمي محلي عبر القرآن كله؛ المطابقة لا تعني وحدها حكمًا أو تفسيرًا أو سبب نزول"
+        )
+    }
+
     fun isReady(context: Context): Boolean {
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.getBoolean("verified", false) || p.getInt("ayah_count", 0) != EXPECTED_AYA_COUNT || p.getInt("surah_count", 0) != 114) return false
@@ -146,6 +227,9 @@ object HakimVerifiedQuranCorpus {
             .put("verified_local_quran_corpus", true)
             .put("ready", ready)
             .put("all_114_surahs_text_locally_verified", ready)
+            .put("whole_corpus_local_scan", true)
+            .put("whole_corpus_scan_is_lexical_not_tafsir", true)
+            .put("scan_limit_does_not_stop_coverage", true)
             .put("policy_coverage_is_not_text_coverage", true)
             .put("exact_text_fails_closed_without_verified_source", true)
             .put("official_source_page", OFFICIAL_SOURCE_PAGE)
@@ -157,6 +241,31 @@ object HakimVerifiedQuranCorpus {
             .put("surah_count", p.getInt("surah_count", 0))
             .put("verified_at", p.getLong("verified_at", 0L))
     }
+
+    private fun searchTerms(raw: String): List<String> {
+        val stop = setOf("القران", "القرءان", "سوره", "سور", "كل", "جميع", "في", "من", "على", "عن", "الى", "ما", "هو", "هي", "و", "او")
+        return normalizeSearch(raw)
+            .split(Regex("\\s+"))
+            .map { it.trim() }
+            .filter { it.length >= 2 && it !in stop }
+            .distinct()
+            .take(12)
+    }
+
+    private fun normalizeSearch(raw: String): String = raw
+        .lowercase()
+        .replace("ـ", "")
+        .replace(Regex("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]"), "")
+        .replace('أ', 'ا')
+        .replace('إ', 'ا')
+        .replace('آ', 'ا')
+        .replace('ٱ', 'ا')
+        .replace('ى', 'ي')
+        .replace('ؤ', 'و')
+        .replace('ئ', 'ي')
+        .replace('ة', 'ه')
+        .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+        .trim()
 
     private fun readCsvFromOfficialArchive(file: File): List<Ayah> {
         val candidates = ArrayList<Ayah>(EXPECTED_AYA_COUNT)

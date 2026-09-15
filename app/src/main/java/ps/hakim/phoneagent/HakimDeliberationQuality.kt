@@ -33,9 +33,17 @@ object HakimDeliberationQuality {
         if (wisdom.gate == HakimEliteWisdomEngine.Gate.BLOCK) {
             return Audit(false, true, 0, wisdom.reason, listOf("فشل بوابة الحكمة الحاكمة"))
         }
-        if (plan.protocolVersion < 2) {
-            defects += "الخطة لا تستخدم بروتوكول القرار المهني v2"
+        if (plan.protocolVersion < 3) {
+            defects += "الخطة لا تستخدم بروتوكول القرار المهني v3"
+            points -= 40
+        }
+        if (plan.phase !in setOf("research", "execute", "verify")) {
+            defects += "مرحلة الخطة غير منضبطة"
             points -= 35
+        }
+        if (plan.protocolVersion >= 3 && plan.planId.isBlank()) {
+            defects += "معرف الخطة مفقود"
+            points -= 8
         }
         val minConfidence = if (plan.actions.isEmpty()) 50 else 60
         if (plan.confidence !in minConfidence..100) {
@@ -63,6 +71,22 @@ object HakimDeliberationQuality {
                 defects += "خطة التراجع/التعافي مفقودة"
                 points -= 12
             }
+            if (plan.phase == "execute" && plan.idempotencyKey.isBlank()) {
+                defects += "مفتاح منع تكرار التنفيذ مفقود"
+                points -= 18
+            }
+            if (plan.phase == "execute" && plan.expectedState.isEmpty()) {
+                defects += "الحالة المتوقعة بعد التنفيذ غير محددة"
+                points -= 16
+            }
+            if (plan.phase == "research" && plan.actions.any { it.type in setOf("set_text", "fill_profile") }) {
+                defects += "مرحلة البحث تحاول تغيير بيانات بدل جمع الدليل"
+                points -= 35
+            }
+            if (plan.phase == "verify" && plan.actions.any { it.type in setOf("set_text", "fill_profile") }) {
+                defects += "مرحلة التحقق ليست قراءة فقط"
+                points -= 35
+            }
         }
         if (plan.risk !in setOf("low", "moderate", "high")) {
             defects += "مستوى الخطر غير مصنف"
@@ -73,17 +97,25 @@ object HakimDeliberationQuality {
             points -= 8
         }
         if (wisdom.gate == HakimEliteWisdomEngine.Gate.VERIFY_FIRST &&
-            plan.evidenceNeeded.isEmpty() && plan.unknowns.isEmpty()) {
-            defects += "مهمة التثبت لا تسجل ما يلزم التحقق منه"
+            plan.evidenceNeeded.isEmpty() && plan.unknowns.isEmpty() && plan.evidenceRefs.isEmpty()) {
+            defects += "مهمة التثبت لا تسجل ما يلزم التحقق منه أو دليلًا متحققًا"
             points -= 24
+        }
+        if (wisdom.gate == HakimEliteWisdomEngine.Gate.VERIFY_FIRST && plan.phase == "execute" && plan.evidenceRefs.isEmpty()) {
+            defects += "التنفيذ بدأ قبل إغلاق بوابة التثبت بدليل مسجل"
+            points -= 32
         }
         if (plan.done && plan.actions.isNotEmpty()) {
             defects += "الخطة تدعي الاكتمال مع وجود أفعال معلقة"
             points -= 40
         }
+        if (plan.done && plan.phase != "verify") {
+            defects += "إعلان الاكتمال لم يأت من مرحلة تحقق مستقلة"
+            points -= 28
+        }
 
         val normalized = points.coerceIn(0, 100)
-        val acceptable = defects.none { it.contains("فشل بوابة") } && normalized >= 72
+        val acceptable = defects.none { it.contains("فشل بوابة") } && normalized >= 78
         return Audit(
             acceptable = acceptable,
             blocked = false,
@@ -101,7 +133,8 @@ object HakimDeliberationQuality {
             appendLine("[حلقة المداولة المهنية — $VERSION]")
             appendLine("لا تُخرج سلسلة تفكير داخلية. أنشئ سجل قرار موجزًا ومنضبطًا فقط.")
             appendLine("اعمل بهذا الترتيب: 1) الهدف ومعيار النجاح، 2) الحقائق والمجهولات، 3) بدائل متمايزة قليلة، 4) نقد كل بديل بالبوابات الحاكمة، 5) اختيار أقل تدخل يحقق الغاية، 6) خطة تحقق وتراجع.")
-            appendLine("للخطة التنفيذية يجب تسجيل: protocol_version=2، confidence، alternatives_considered، assumptions، unknowns، evidence_needed، success_criteria، verification، risk، rollback، ثم actions المحدودة.")
+            appendLine("للخطة المهنية يجب تسجيل: protocol_version=3، phase، plan_id، idempotency_key، confidence، alternatives_considered، assumptions، unknowns، evidence_needed، evidence_refs، success_criteria، expected_state، verification، risk، rollback، ثم actions المحدودة.")
+            appendLine("research يجمع الدليل ولا يكتب بيانات؛ execute يحتاج expected_state ومفتاح منع تكرار؛ verify قراءة مستقلة ولا يعلن done=true قبل تحقق postcondition.")
             appendLine("لا ترفع الثقة لتعويض نقص الدليل. بوابة المهمة الحالية=${wisdom.gate} وسقف الثقة قبل مزيد من التثبت=${wisdom.confidenceCeiling}/100.")
             appendLine("إذا لم يوجد مكسب مادي أو كان خط الأساس أفضل، اختر NO-OP/KEEP_BASELINE بدل التغيير لذاته.")
         }.take(5000)
@@ -109,12 +142,15 @@ object HakimDeliberationQuality {
 
     fun status(): JSONObject = JSONObject()
         .put("version", VERSION)
-        .put("protocol_v2_required_for_execution", true)
+        .put("protocol_v3_required_for_execution", true)
         .put("alternatives_required", true)
         .put("success_criteria_required", true)
         .put("verification_required", true)
         .put("rollback_required", true)
         .put("confidence_calibrated", true)
         .put("private_chain_of_thought_not_requested", true)
-        .put("accept_threshold", 72)
+        .put("phase_separation", true)
+        .put("idempotency_required", true)
+        .put("postcondition_required", true)
+        .put("accept_threshold", 78)
 }

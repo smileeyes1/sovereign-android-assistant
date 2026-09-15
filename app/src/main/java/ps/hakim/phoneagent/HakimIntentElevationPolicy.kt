@@ -8,7 +8,7 @@ import org.json.JSONObject
  * «كن فيكون» يبقى تعبيرًا قرآنيًا عن قدرة الله، ولا يُحوّل إلى آلية تقنية أو وعد سببي.
  */
 object HakimIntentElevationPolicy {
-    const val VERSION = "INTENT-ELEVATION-GOVERNED-2026-09-15-v1"
+    const val VERSION = "INTENT-ELEVATION-GOVERNED-2026-09-15-v2"
 
     private val stages = listOf(
         "النية", "المقصد", "الهدف", "الغاية", "الواقع", "القيود", "الدليل",
@@ -25,8 +25,10 @@ object HakimIntentElevationPolicy {
         appendLine("كبّر الأثر لا التعقيد: فعّل منظومات ومصفوفات وخوارزميات أعمق فقط عندما تثبت فجوة أو مكسبًا ماديًا؛ وإلا فالمسار الأبسط هو الأفضل.")
         appendLine("طبّق و؟→و؟→و؟→لِمَ؟→و؟→و؟ على كل مرحلة مؤثرة: ماذا؟ من/لمن؟ أين/متى؟ لماذا؟ ما البدائل؟ ما الدليل؟ ثم اعتمد→أصلح→أكمل→هَيّا.")
         appendLine("واجب التحقق: لا تسمِّ المقصد متحققًا حتى يوجد دليل من النتيجة نفسها؛ والمقاصد الباطنة كصلاح القلب تُدعَم ولا يُدّعى اكتمالها تقنيًا.")
+        appendLine("ممنوع التوقف عند نجاح شكلي أو كود أخضر فقط؛ استمر حتى أفضل نتيجة عملية مباشرة صالحة للاستخدام ومثبتة داخل السلطة والسلامة والموارد، أو حتى مانع حقيقي لا يمكن تجاوزه مشروعًا.")
+        append(HakimHeartAlignmentPolicy.promptContext())
         appendLine("«كُن فيكون» لا يُستعمل كاسم لمحرك سببي أو ضمان نتيجة؛ قدرة الله ليست خوارزمية. في العمل الدنيوي استخدم الأسباب المعتبرة والعلم والخبرة والاختبار، مع رجاء التوفيق والبركة على معناهما الشرعي.")
-    }.take(6200)
+    }.take(11000)
 
     fun status(): JSONObject = JSONObject()
         .put("version", VERSION)
@@ -37,6 +39,9 @@ object HakimIntentElevationPolicy {
         .put("proven_success_protected", true)
         .put("no_regression_for_new_improvement", true)
         .put("verification_required_for_success_claim", true)
+        .put("practical_direct_result_required_before_stop", true)
+        .put("heart_alignment", HakimHeartAlignmentPolicy.status())
+        .put("heart_alignment_inherited_by_every_derived_system", true)
         .put("wisdom_then_benefit_then_speed", true)
         .put("complexity_requires_material_gain", true)
         .put("kun_fayakun_not_a_technical_causal_mechanism", true)

@@ -35,6 +35,26 @@ object HakimReasoningPlanExecutor {
             return
         }
         val mission = HakimMissionLedger.active(activity)
+        val professionalAudit = HakimDeliberationQuality.audit(plan, mission?.goal.orEmpty())
+        if (!professionalAudit.acceptable) {
+            if (professionalAudit.blocked) {
+                HakimMissionLedger.block(activity, professionalAudit.reason)
+            } else {
+                HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, professionalAudit.reason)
+            }
+            onComplete(
+                Outcome(
+                    progressed = false,
+                    completed = false,
+                    steps = 0,
+                    needsApproval = false,
+                    needsDataTrust = false,
+                    blocked = professionalAudit.blocked,
+                    reason = professionalAudit.reason
+                )
+            )
+            return
+        }
         if ((mission?.failures ?: 0) >= 5) {
             HakimMissionLedger.block(activity, "تجاوزت المهمة حد الإخفاقات؛ يلزم تغير دليل/حالة قبل التنفيذ")
             onComplete(Outcome(false, false, 0, false, false, true, "أوقف حاكم الاستمرارية التنفيذ بعد فشل متكرر"))
@@ -43,7 +63,7 @@ object HakimReasoningPlanExecutor {
 
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
-        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة", attempted = true)
+        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة بعد اجتياز التدقيق المهني ${professionalAudit.score}/100", attempted = true)
         var index = 0
         var steps = 0
         var progressed = false

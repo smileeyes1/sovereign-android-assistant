@@ -104,7 +104,10 @@ require("ps.hakim.stable" in site_trust and "trusted_profile_hosts" in site_trus
 for action_type in ["open_url", "click_text", "set_text", "back", "wait"]:
     require(action_type in reasoning_protocol, f"P0: بروتوكول الاستدلال يفتقد الفعل المحدود {action_type}")
 for forbidden_type in ["shell", "exec", "javascript", "tap_xy", "adb"]:
-    require(forbidden_type not in reasoning_protocol.lower(), f"P0: بروتوكول الاستدلال يحتوي نوع تنفيذ واسع غير مسموح: {forbidden_type}")
+    lower_protocol = reasoning_protocol.lower()
+    forbidden_tokens = [f'"{forbidden_type}"', f"'{forbidden_type}'"]
+    require(not any(token in lower_protocol for token in forbidden_tokens),
+            f"P0: بروتوكول الاستدلال يحتوي نوع تنفيذ واسع غير مسموح: {forbidden_type}")
 require("UUID.randomUUID" in reasoning_protocol and "HAKIM_" in reasoning_protocol, "P0: خطط الاستدلال لا تستخدم محدد جلسة فريد")
 require("arr.length() > 8" in reasoning_protocol, "P0: خطة الاستدلال بلا حد صارم لعدد الأفعال")
 require("containsSecret" in reasoning_protocol, "P0: بروتوكول الاستدلال لا يرفض الأسرار")

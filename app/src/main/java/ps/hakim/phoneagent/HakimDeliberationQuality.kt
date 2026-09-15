@@ -27,11 +27,16 @@ object HakimDeliberationQuality {
 
     fun audit(plan: HakimReasoningProtocol.Plan, rawGoal: String): Audit {
         val wisdom = HakimEliteWisdomEngine.assess(rawGoal)
+        val shubuhat = HakimHalalShubuhatGuard.assessTask(rawGoal, plan.risk == "high")
         val defects = mutableListOf<String>()
         var points = 100
 
         if (wisdom.gate == HakimEliteWisdomEngine.Gate.BLOCK) {
             return Audit(false, true, 0, wisdom.reason, listOf("فشل بوابة الحكمة الحاكمة"))
+        }
+        val questionGate = HakimQuestionOperator.gate(plan)
+        if (!questionGate.proceed) {
+            return Audit(false, false, 0, questionGate.reason, listOf("فشل قاعدة ؟/و؟ قبل التنفيذ"))
         }
         if (plan.protocolVersion < 3) {
             defects += "الخطة لا تستخدم بروتوكول القرار المهني v3"
@@ -105,6 +110,11 @@ object HakimDeliberationQuality {
             defects += "التنفيذ بدأ قبل إغلاق بوابة التثبت بدليل مسجل"
             points -= 32
         }
+        if (shubuhat != null && shubuhat.gate in setOf(HakimHalalShubuhatGuard.Gate.VERIFY_FIRST, HakimHalalShubuhatGuard.Gate.ABSTAIN) &&
+            plan.phase == "execute" && plan.evidenceRefs.isEmpty()) {
+            defects += "مسألة حلال/حرام أو شبهة انتقلت إلى التنفيذ بلا دليل شرعي مسجل"
+            points -= 45
+        }
         if (plan.done && plan.actions.isNotEmpty()) {
             defects += "الخطة تدعي الاكتمال مع وجود أفعال معلقة"
             points -= 40
@@ -131,6 +141,8 @@ object HakimDeliberationQuality {
         val wisdom = HakimEliteWisdomEngine.assess(rawGoal)
         return buildString {
             appendLine("[حلقة المداولة المهنية — $VERSION]")
+            append(HakimQuestionOperator.promptContext())
+            append(HakimHalalShubuhatGuard.promptContext(rawGoal, false))
             appendLine("لا تُخرج سلسلة تفكير داخلية. أنشئ سجل قرار موجزًا ومنضبطًا فقط.")
             appendLine("اعمل بهذا الترتيب: 1) الهدف ومعيار النجاح، 2) الحقائق والمجهولات، 3) بدائل متمايزة قليلة، 4) نقد كل بديل بالبوابات الحاكمة، 5) اختيار أقل تدخل يحقق الغاية، 6) خطة تحقق وتراجع.")
             appendLine("للخطة المهنية يجب تسجيل: protocol_version=3، phase، plan_id، idempotency_key، confidence، alternatives_considered، assumptions، unknowns، evidence_needed، evidence_refs، success_criteria، expected_state، verification، risk، rollback، ثم actions المحدودة.")
@@ -152,5 +164,7 @@ object HakimDeliberationQuality {
         .put("phase_separation", true)
         .put("idempotency_required", true)
         .put("postcondition_required", true)
+        .put("question_operator", HakimQuestionOperator.status())
+        .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
         .put("accept_threshold", 78)
 }

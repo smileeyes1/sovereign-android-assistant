@@ -262,6 +262,7 @@ class CommandCenterActivity : Activity() {
     private fun capture(text: String, source: String) {
         if (text.isBlank()) return
         HakimRuleLedger.capture(this, text, source)
+        HakimPersonalSovereignty.captureExplicitDeclaration(this, text, source)
     }
 
     private fun recordRoute(route: String, success: Boolean?) {

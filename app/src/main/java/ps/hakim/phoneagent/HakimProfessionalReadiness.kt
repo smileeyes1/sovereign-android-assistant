@@ -19,7 +19,15 @@ object HakimProfessionalReadiness {
         val required = JSONArray(listOf(
             "wisdom_gate",
             "deliberation_audit",
-            "reasoning_protocol_v2",
+            "reasoning_protocol_v3",
+            "transactional_idempotency",
+            "question_operator",
+            "adaptive_nstar",
+            "scientific_engineering_kernel",
+            "personal_sovereignty_memory",
+            "halal_shubuhat_guard",
+            "taqwa_cultivation_cycle",
+            "intent_certainty_hierarchy",
             "least_privilege_execution",
             "post_action_verification",
             "rollback_contract",
@@ -35,6 +43,13 @@ object HakimProfessionalReadiness {
             .put("version_name", packageInfo?.versionName.orEmpty())
             .put("wisdom_engine", HakimEliteWisdomEngine.status())
             .put("deliberation_quality", HakimDeliberationQuality.status())
+            .put("execution_transaction", HakimExecutionTransaction.status(context))
+            .put("question_operator", HakimQuestionOperator.status())
+            .put("adaptive_nstar", HakimAdaptiveNStarLoop.status())
+            .put("scientific_engineering", HakimScientificEngineeringKernel.status())
+            .put("personal_sovereignty", HakimPersonalSovereignty.status(context))
+            .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
+            .put("taqwa_cultivation_cycle", HakimTaqwaCultivationCycle.status())
             .put("excellence_optimizer", HakimExcellenceOptimizer.status())
             .put("quranic_framework", HakimQuranicFramework.status())
             .put("required_gates", required)
@@ -43,5 +58,7 @@ object HakimProfessionalReadiness {
             .put("field_verified_current_build", fieldVerified)
             .put("claim", if (fieldVerified) "FIELD_VERIFIED" else "NOT_FIELD_VERIFIED")
             .put("no_marketing_superlative_without_evidence", true)
+            .put("benchmark_required_for_no_peer_claim", true)
+            .put("no_absolute_omnipotence_claim", true)
     }
 }

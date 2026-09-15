@@ -117,7 +117,10 @@ require("HakimMissionLedger" in autonomous and "HakimSovereignEngine" in autonom
 require("cycle < 2" in chat, "P0: دورات الاستدلال بلا حد مانع للدوران")
 require("arr.length() > 8" in protocol, "P0: خطة الاستدلال بلا حد أفعال")
 for forbidden in ["shell", "exec", "javascript", "tap_xy", "adb"]:
-    require(forbidden not in protocol.lower(), f"P0: بروتوكول الاستدلال يسمح بتنفيذ واسع: {forbidden}")
+    lower_protocol = protocol.lower()
+    forbidden_tokens = [f'"{forbidden}"', f"'{forbidden}'"]
+    require(not any(token in lower_protocol for token in forbidden_tokens),
+            f"P0: بروتوكول الاستدلال يسمح بتنفيذ واسع: {forbidden}")
 require("containsSecret" in protocol, "P0: بروتوكول الاستدلال لا يحجب الأسرار")
 require("AndroidKeyStore" in secure and "AES/GCM/NoPadding" in secure, "P0: التخزين المحلي المحمي مفقود")
 

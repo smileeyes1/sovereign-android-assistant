@@ -14,6 +14,7 @@ CORE_COMMIT="b7f87cc4a0a620e5ca7ff4c582c758295355db26"
 CORE_URL="https://raw.githubusercontent.com/smileeyes1/sovereign-android-assistant/$CORE_COMMIT/scripts/termux-hakim-adb-bootstrap.sh"
 SEED_ENDPOINT="192.168.1.11:40409"
 RDC_VERSION="0.2.48"
+RDC_PATTERN='@wonderwhy-er/desktop-commander.*remote'
 
 say() { printf '%s\n' "$*"; }
 
@@ -34,15 +35,32 @@ install_adb_core() {
   return 0
 }
 
+stop_stale_remote_maintenance() {
+  local pids i
+  pids="$(pgrep -f "$RDC_PATTERN" 2>/dev/null || true)"
+  [ -n "$pids" ] || return 0
+  printf '%s\n' "$(date -Iseconds) HAKIM_RDC_RESTART reason=rescue_refresh pids=$(printf '%s' "$pids" | tr '\n' ',')" >>"$RDC_LOG"
+  kill $pids 2>/dev/null || true
+  for i in 1 2 3 4 5; do
+    pgrep -f "$RDC_PATTERN" >/dev/null 2>&1 || return 0
+    sleep 1
+  done
+  pids="$(pgrep -f "$RDC_PATTERN" 2>/dev/null || true)"
+  [ -z "$pids" ] || kill -9 $pids 2>/dev/null || true
+  sleep 1
+}
+
 start_remote_maintenance() {
-  if pgrep -f '@wonderwhy-er/desktop-commander.*remote' >/dev/null 2>&1; then
-    return 0
-  fi
+  # مسار rescue يجب أن ينعش النقل نفسه، لا أن يثق بمجرد وجود PID قديم.
+  # لا تُحذف بيانات الاعتماد؛ لذلك يعاد الاتصال تلقائيًا إن كان رمز الجهاز الدائم صالحًا،
+  # وإن احتاجت الخدمة تحققًا جديدًا فسيظهر رمز حديث بدل إبقاء رمز منتهي.
+  stop_stale_remote_maintenance
   nohup npx --yes "@wonderwhy-er/desktop-commander@$RDC_VERSION" remote >>"$RDC_LOG" 2>&1 </dev/null &
-  printf '%s\n' "$!" > "$OMEGA/remote-desktop-commander.pid"
+  local pid="$!"
+  printf '%s\n' "$pid" > "$OMEGA/remote-desktop-commander.pid"
   chmod 600 "$OMEGA/remote-desktop-commander.pid" 2>/dev/null || true
-  sleep 4
-  pgrep -f '@wonderwhy-er/desktop-commander.*remote' >/dev/null 2>&1
+  sleep 6
+  kill -0 "$pid" 2>/dev/null || pgrep -f "$RDC_PATTERN" >/dev/null 2>&1
 }
 
 recover_adb() {
@@ -59,18 +77,18 @@ main() {
 
   RDC=FAIL
   ADB=FAIL
-  start_remote_maintenance && RDC=STARTED || true
+  start_remote_maintenance && RDC=RESTARTED || true
   recover_adb && ADB=PASS || true
 
   say "REMOTE_MAINTENANCE=$RDC"
   say "ADB_LOCAL=$ADB"
 
-  if [ "$RDC" = STARTED ] || [ "$ADB" = PASS ]; then
+  if [ "$RDC" = RESTARTED ] || [ "$ADB" = PASS ]; then
     say 'RESCUE=READY'
     exit 0
   fi
 
-  # لا نعيد الاقتران تلقائيا ولا نلغي أي بيانات. إن بقيت القناتان مغلقتين، الموافقة المحلية لأندرويد هي المانع الوحيد.
+  # لا نلغي أي بيانات أو نمنح صلاحيات خفية. إن بقيت القناتان مغلقتين، الموافقة المحلية لأندرويد هي المانع الوحيد.
   say 'RESCUE=LOCAL_ANDROID_APPROVAL_NEEDED'
   exit 2
 }

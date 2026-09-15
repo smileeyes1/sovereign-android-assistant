@@ -18,6 +18,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: صحح الجزء الأول وتحقق من البايتات
+        shell: bash
+        run: |
+          set -euo pipefail
+          size="$(wc -c < .hakim-sync/part0)"
+          if [ "$size" = "50368" ]; then
+            head -c 12592 .hakim-sync/part0 > /tmp/part0.correct
+            mv /tmp/part0.correct .hakim-sync/part0
+          fi
+          test "$(wc -c < .hakim-sync/part0)" = "12592"
+          echo 'cc29f4e2d6bf2deec5728211867a7e8014e92d99ddfa88f7116e86fe0a74471e  .hakim-sync/part0' | sha256sum -c -
+          test "$(git hash-object .hakim-sync/part0)" = "9ddc2ce656fabde35cf95ca44a0a50ed44e49d74"
+
       - name: تحقق من حزمة النقل وطبقها
         shell: bash
         run: |

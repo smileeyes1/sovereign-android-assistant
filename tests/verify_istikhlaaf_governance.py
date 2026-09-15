@@ -22,10 +22,27 @@ for token in [
 ]:
     require(token in ist, f"P0: مبدأ استخلاف قرآني مفقود: {token}")
 
-require('put("stewardship_is_responsibility_and_test", true)' in ist, "P0: الاستخلاف لا يُحكم كمسؤولية وابتلاء")
-require('put("intelligence_is_tool_not_supreme_value", true)' in ist, "P0: الذكاء قد يصبح قيمة مطلقة")
-require('put("no_divine_mandate_for_personal_rule", true)' in ist, "P0: غاب منع ادعاء التفويض الإلهي الشخصي")
-require('put("no_coercion_or_rights_bypass_from_stewardship_claim", true)' in ist, "P0: غاب منع تجاوز الحقوق باسم الاستخلاف")
+for token in [
+    'put("stewardship_is_responsibility_and_test", true)',
+    'put("responsible_human_sovereignty_not_absolute_rule", true)',
+    'put("human_data_choice_and_portability_sovereignty", true)',
+    'put("vulnerable_support_is_part_of_responsible_stewardship", true)',
+    'put("muslim_support_never_licenses_injustice", true)',
+    'put("intelligence_is_tool_not_supreme_value", true)',
+    'put("no_divine_mandate_for_personal_rule", true)',
+    'put("no_coercion_or_rights_bypass_from_stewardship_claim", true)',
+    'put("baraka_and_tawfiq_not_technical_mechanisms", true)',
+]:
+    require(token in ist, f"P0: ضابط استخلاف/سيادة مفقود: {token}")
+
+require("سيادة المستخلف" in ist and "لا تعني سيادة مطلقة على الناس" in ist,
+        "P0: مفهوم السيادة قد ينقلب إلى سلطة مطلقة")
+require("نصرة الضعيف والمستضعف" in ist,
+        "P0: نصرة الضعيف والمستضعف غير صريحة")
+require("لا بالتعدي على بريء" in ist and "غير مسلم" in ist,
+        "P0: نصرة المسلمين/المستضعفين غير مقيدة بحقوق الأبرياء")
+require("لا تنسب نتيجة تقنية إلى معجزة" in ist,
+        "P0: المعجزة قد تعامل كآلية تقنية")
 require("لا تستعمل مفهوم الاستخلاف لتبرير إكراه الناس" in ist, "P0: حاجز الإكراه والحقوق مفقود")
 require("HakimIstikhlaafFramework.promptContext(raw)" in framework, "P0: إطار الاستخلاف لا يصل للإطار القرآني")
 require('put("istikhlaaf_framework", HakimIstikhlaafFramework.status())' in framework, "P0: حالة الاستخلاف غير ظاهرة")

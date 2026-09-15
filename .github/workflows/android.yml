@@ -69,6 +69,14 @@ jobs:
         run: python3 tests/verify_verified_quran_corpus.py
       - name: بوابة الإنسان أولًا والكرامة والرحمة
         run: python3 tests/verify_human_first_policy.py
+      - name: بوابة حماية القلب الجسدي والاتصال الصحي اللاسلكي
+        run: python3 tests/verify_cardiac_safety_policy.py
+      - name: بوابة سيادة الطاقة والاتصال والخدمات والذكاء
+        run: python3 tests/verify_resource_sovereignty_policy.py
+      - name: بوابة الارتقاء المستمر للنية والمقصد والهدف والغاية
+        run: python3 tests/verify_intent_elevation_policy.py
+      - name: بوابة الابتكار المتسارع ومقاومة العوائق المحكومة
+        run: python3 tests/verify_innovation_resilience_policy.py
       - name: بوابة نظام الأنظمة والأنظمة المنبثقة
         run: python3 tests/verify_system_of_systems.py
       - name: بوابة شبكة التفوق والأدوات والخدمات
@@ -159,6 +167,11 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "apk_path=$FIELD_APK" >> "$GITHUB_OUTPUT"
+      - name: حفظ أداة التوقيع الرسمية للتوقيع الخاص خارج CI
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          mkdir -p app/build/outputs/tooling
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/lib/apksigner.jar" app/build/outputs/tooling/apksigner.jar
       - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v7
         with:
@@ -166,6 +179,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/tooling/apksigner.jar
           if-no-files-found: error
       - name: حفظ تحديث حكيم الميداني
         if: steps.field_sign.outputs.signed == 'true'

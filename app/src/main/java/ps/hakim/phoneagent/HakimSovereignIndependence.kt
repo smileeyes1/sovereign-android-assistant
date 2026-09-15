@@ -9,7 +9,7 @@ import org.json.JSONObject
  * لا يعني الاستقلال إنكار اعتماد التطبيق على Android أو ادعاء نموذج متقدم مكافئ بلا شبكة/مزود.
  */
 object HakimSovereignIndependence {
-    const val VERSION = "HAKIM-SOVEREIGN-INDEPENDENCE-2026-09-15-v2"
+    const val VERSION = "HAKIM-SOVEREIGN-INDEPENDENCE-2026-09-15-v3"
 
     enum class Domain { IDENTITY, GOVERNANCE, DATA, QURAN_SOURCE, REASONING, EXECUTION, NETWORK, UPDATE, RECOVERY, RESOURCES, PORTABILITY }
 
@@ -83,7 +83,7 @@ object HakimSovereignIndependence {
                 readyNow = provider.optBoolean("advanced_reasoning_ready_now"),
                 externalDependency = true,
                 reason = if (provider.optBoolean("advanced_reasoning_ready_now"))
-                    "القلب والتنفيذ المحليان مستقلان؛ الاستدلال المتقدم متاح كخدمة خارجية قابلة للفقد"
+                    "القلب والتنفيذ المحليان مستقلان؛ الاستدلال المتقدم متاح كخدمة خارجية قابلة للفقد والاستبدال"
                 else "الاستدلال المتقدم غير جاهز؛ يستمر القلب المحلي دون ادعاء تكافؤ نموذج متقدم"
             ),
             DomainState(
@@ -98,7 +98,7 @@ object HakimSovereignIndependence {
                 sovereign = true,
                 readyNow = mesh["validated_network"]?.readyNow == true,
                 externalDependency = true,
-                reason = "فقد الشبكة يغيّر المسار إلى وضع محلي/انتظار واستئناف؛ لا يسقط القلب"
+                reason = "فقد الشبكة يغيّر المسار إلى محلي/cache/queue ثم استئناف؛ لا يسقط القلب، ولا تُستخدم إلا قنوات مأذونة"
             ),
             DomainState(
                 Domain.UPDATE,
@@ -119,7 +119,7 @@ object HakimSovereignIndependence {
                 sovereign = resource.optBoolean("resource_governor"),
                 readyNow = resource.optBoolean("resource_governor"),
                 externalDependency = false,
-                reason = "حاكم الموارد يحمي المهمة الحالية ويخفض الخلفية غير الضرورية فقط"
+                reason = "حاكم الموارد يحمي البطارية والحرارة والذاكرة والبيانات؛ وسياسة السيادة تفضّل المجاني/المملوك المشروع دون سرقة خدمة أو ادعاء طاقة من العدم"
             ),
             DomainState(
                 Domain.PORTABILITY,
@@ -139,10 +139,11 @@ object HakimSovereignIndependence {
         assess(context).forEach { d ->
             appendLine("• ${d.domain}: سيادي=${d.sovereign}، جاهز الآن=${d.readyNow} — ${d.reason}")
         }
-        appendLine("الأولوية: محلي ومملوك للمستخدم أولًا → جلسة موجودة/مجانية عند الحاجة → بديل موثوق → انتظار آمن. لا اشتراك أو صلاحية أو كشف بيانات لمجرد زيادة الاستقلال.")
+        appendLine("الأولوية: محلي ومملوك للمستخدم أولًا → جلسة موجودة/مجانية مشروعة عند الحاجة → بديل موثوق → انتظار آمن واستئناف. لا اشتراك أو صلاحية أو كشف بيانات لمجرد زيادة الاستقلال.")
         appendLine("لا تدّع استقلالًا مطلقًا: حكيم يعتمد على Android والهاتف نفسه، والاستدلال المتقدم قد يحتاج مزودًا خارجيًا. المطلوب منع الارتهان ونقطة الفشل الواحدة، لا إنكار الواقع التقني.")
+        append(HakimResourceSovereigntyPolicy.promptContext())
         append(HakimReasoningProviderRegistry.promptContext(context))
-    }.take(10000)
+    }.take(18000)
 
     fun status(context: Context): JSONObject {
         val states = assess(context)
@@ -157,6 +158,7 @@ object HakimSovereignIndependence {
             .put("external_services_are_replaceable_capabilities", true)
             .put("android_platform_dependency_acknowledged", true)
             .put("advanced_model_equivalence_offline_not_claimed", true)
+            .put("resource_sovereignty", HakimResourceSovereigntyPolicy.status())
             .put("domains", JSONArray(states.map { it.toJson() }))
             .put("provider_registry", HakimReasoningProviderRegistry.status(context))
             .put("portability", HakimSovereignPortability.status(context))

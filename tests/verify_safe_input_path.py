@@ -21,20 +21,30 @@ crash = text("app/src/main/java/ps/hakim/phoneagent/HakimCrashShield.kt")
 proactive = text("app/src/main/java/ps/hakim/phoneagent/HakimProactiveEngine.kt")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) >= 20037, "P0: مسار الكتابة الآمن يتطلب ٢٠٠٣٧ أو أحدث")
+require(m and int(m.group(1)) >= 20038, "P0: تثبيت مربع الكتابة يتطلب ٢٠٠٣٨ أو أحدث")
 require('android:windowSoftInputMode="adjustResize"' in manifest,
-        "P0: adjustResize مفقود من نشاط المحادثة")
+        "P0: مسار التوافق adjustResize مفقود من نشاط المحادثة")
 
 require("HakimInputSafety.install(app)" in ime,
         "P0: حارس الإدخال غير مربوط بمسار بدء IME")
 require("WindowInsetsCompat.Type.ime()" in ime,
         "P0: لا تتم مراقبة ظهور IME")
-require("ime.bottom" not in ime,
-        "P0: ارتفاع لوحة المفاتيح الكامل عاد كـ padding للجذر")
+require("WindowInsetsAnimationCompat.Callback" in ime,
+        "P0: حركة مربع الكتابة غير متزامنة مع حركة لوحة المفاتيح")
+require("calculateImeOverlap" in ime and "currentWindowMetrics.bounds.bottom" in ime,
+        "P0: لا يوجد قياس فعلي لتداخل composer مع IME")
+require("composer.translationY" in ime,
+        "P0: composer لا يملك مسار رفع منخفض الكلفة فوق IME")
+require("updateMessageListPadding" in ime,
+        "P0: سجل الرسائل لا يحجز مساحة التداخل الفعلية")
 require("systemBars()" in ime and "displayCutout()" in ime,
         "P0: حواف النظام/القص غير محمية")
-require("if (view.paddingLeft != left" in ime,
-        "P0: لا يوجد منع لإعادة setPadding بلا تغير فعلي")
+require("val bottom = state.baseContentPadding[3] + bars.bottom" in ime,
+        "P0: Padding الجذر يجب أن يتبع حواف النظام فقط")
+require("baseContentPadding[3] + ime.bottom" not in ime,
+        "P0: عاد ارتفاع لوحة المفاتيح الكامل إلى Padding الجذر")
+require("double_lift_prevented_when_adjust_resize_already_works" in ime,
+        "P0: لا يوجد عقد لمنع الرفع المزدوج عند نجاح adjustResize")
 
 for token in [
     "RESUME_GRACE_MS",
@@ -54,4 +64,6 @@ require("if (HakimCrashShield.shouldSuppressProactiveResume(context)) return nul
 
 print("HAKIM_SAFE_INPUT_PATH=PASS")
 print("HAKIM_TYPING_PREEMPTS_PROACTIVE_RESUME=PASS")
+print("HAKIM_IME_DOCKED_COMPOSER=PASS")
 print("HAKIM_NO_FULL_IME_ROOT_PADDING=PASS")
+print("HAKIM_NO_DOUBLE_IME_LIFT=PASS")

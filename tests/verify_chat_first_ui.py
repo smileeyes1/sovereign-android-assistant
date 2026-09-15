@@ -16,6 +16,8 @@ def require(cond: bool, msg: str) -> None:
 manifest = text("app/src/main/AndroidManifest.xml")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 ui = text("app/src/main/java/ps/hakim/phoneagent/HakimChatUi.kt")
+ime = text("app/src/main/java/ps/hakim/phoneagent/HakimImeResilience.kt")
+app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 resource = text("app/src/main/java/ps/hakim/phoneagent/HakimResourceGovernor.kt")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
@@ -25,8 +27,18 @@ require(version is not None and int(version.group(1)) >= 20022,
         "P0: واجهة حكيم الحديثة ليست ضمن خط إصدار شبكة التفوق أو أحدث")
 require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
-launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-900:]
+launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-1200:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: التطبيق لا يفتح مباشرة على المحادثة")
+require('android:windowSoftInputMode="adjustResize"' in launcher_block,
+        "P0: لوحة المفاتيح قد تغطي مربع الكتابة بدل إعادة تحجيم المحادثة")
+require("HakimImeResilience.install(this)" in app,
+        "P0: حارس IME غير مفعّل عند بدء التطبيق")
+require("ViewCompat.setOnApplyWindowInsetsListener" in ime and "WindowInsetsCompat.Type.ime()" in ime,
+        "P0: Android 15+ لا يعالج Insets لوحة المفاتيح صراحة")
+require("Build.VERSION_CODES.VANILLA_ICE_CREAM" in ime and "navigationBars()" in ime,
+        "P0: حارس IME لا يميز فرض edge-to-edge في Android 15+ أو لا يحمي شريط التنقل")
+require("composer_must_remain_visible_with_keyboard" in ime,
+        "P0: عقد بقاء مربع الكتابة ظاهرًا مع لوحة المفاتيح مفقود")
 
 require("class HakimChatMessageAdapter" in ui and "BaseAdapter" in ui, "P0: سجل الرسائل غير معاد التدوير")
 require("hasStableIds" in ui, "P0: محول الرسائل لا يعلن IDs ثابتة")
@@ -62,3 +74,4 @@ require("quality_and_governance_never_downgraded" in resource, "P0: تحسين �
 require("verify_chat_first_ui.py" in workflow, "P0: لا توجد بوابة CI تمنع انحدار واجهة المحادثة")
 
 print("HAKIM_CHAT_FIRST_UI=PASS")
+print("HAKIM_IME_RESIZE_GUARD=PASS")

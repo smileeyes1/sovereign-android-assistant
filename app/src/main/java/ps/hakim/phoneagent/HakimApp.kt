@@ -14,6 +14,7 @@ class HakimApp : Application() {
         HakimLearning.initialize(this)
         HakimProactiveEngine.initialize(this)
         HakimIntegrationFabric.install(this)
+        HakimImeResilience.install(this)
         restoreActiveMissionState()
 
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)

@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20028
-        versionName '2.0.28-final-one-app-hc1-quran-prophetic'
+        versionCode 20029
+        versionName '2.0.29-elite-wisdom-professional-quranic'
     }
 
     compileOptions {

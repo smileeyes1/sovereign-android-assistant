@@ -29,12 +29,11 @@ identity = text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json")
 elite_ci = text(".github/workflows/elite-professional.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version and int(version.group(1)) >= 20029, "P0: الحكمة الاحترافية بلا رقم إصدار جديد")
-require("2.0.29-elite-wisdom-professional-quranic" in build, "P0: هوية إصدار 20029 مفقودة")
+require(version and int(version.group(1)) >= 20034, "P0: الحكمة الاحترافية ليست على المرشح التقاربي 20034 أو أحدث")
+require("2.0.34-converged-elite-wisdom-privacy" in build, "P0: هوية إصدار 20034 التقاربي مفقودة")
 require('"current_field_version": 20025' in identity, "P0: جرى تزوير خط الأساس الميداني بدل تطوير مرشح")
-require('"current_candidate_version": 20029' in identity, "P0: هوية المرشح لا تشير إلى 20029")
+require('"current_candidate_version": 20034' in identity, "P0: هوية المرشح لا تشير إلى 20034")
 
-# القرآن والسنة ميزان، والوسائل الدنيوية بالدليل بلا سببية غيبية تقنية.
 for token in [
     "quranic_value_governance", "authentic_sunnah_guidance", "worldly_means_by_evidence",
     "no_mystical_technical_causation", "truth_gate", "justice_gate", "amanah_gate",
@@ -48,7 +47,6 @@ require("لا تنقل نص آية حرفيًا هنا إلا بعد تحقق ا
 require("القرآن ليس خوارزمية تقنية ولا ضمانًا ماديًا" in wisdom, "P0: حاجز السببية التقنية الغيبية مفقود")
 require("العلم والهندسة والخبرة" in wisdom, "P0: الوسائل الدنيوية لا تُحسم بالدليل الفني")
 
-# سجل قرار مهني منضبط بدل طلب سلسلة التفكير الداخلية.
 for token in [
     "protocol_version", "phase", "plan_id", "idempotency_key", "confidence", "alternatives_considered",
     "assumptions", "unknowns", "evidence_needed", "evidence_refs", "success_criteria", "expected_state",
@@ -66,7 +64,6 @@ require("expectedState.isEmpty()" in deliberation, "P0: الحالة المتو�
 require('plan.phase == "research"' in deliberation and 'plan.phase == "verify"' in deliberation, "P0: فصل البحث/التحقق غير مفروض")
 require("confidence > wisdom.confidenceCeiling" in deliberation, "P0: الثقة غير معايرة بسقف الدليل")
 
-# دفاع متعدد الطبقات: المزود لا يقرر التنفيذ وحده، والمنفذ يعيد التدقيق.
 require("HakimEliteWisdomEngine.promptContext" in bridge, "P0: جسر الاستدلال لا يرث الحكمة")
 require("HakimDeliberationQuality.promptContext" in bridge, "P0: جسر الاستدلال لا يطلب سجل قرار مهني")
 require(bridge.count("HakimDeliberationQuality.audit") >= 3, "P0: الخطط لا تُدقق عبر مسارات المزودات")
@@ -80,7 +77,6 @@ require("HakimExecutionTransaction.markVerified" in executor, "P0: التحقق 
 require("HakimEliteWisdomEngine.assess" in decision, "P0: مصفوفة القرار لا تمر عبر الحكمة")
 require("coerceAtMost(wisdom.confidenceCeiling)" in decision, "P0: المصفوفة تستطيع تجاوز سقف الثقة")
 
-# الجاهزية نفسها لا تدعي نجاحًا ميدانيًا من المصدر.
 require("field_verified_current_build" in readiness, "P0: حالة الميدان غير ظاهرة في جاهزية الاحتراف")
 require('"NOT_FIELD_VERIFIED"' in readiness, "P0: المصدر قد يعلن نجاحًا ميدانيًا افتراضيًا")
 require("no_marketing_superlative_without_evidence" in readiness, "P0: لا يوجد حاجز ضد أوصاف تسويقية غير مثبتة")
@@ -95,8 +91,9 @@ require("HakimEliteWisdomEngine.promptContext" in sovereign and "HakimDeliberati
 
 require("tests/verify_*.py" in elite_ci and "gradle assembleDebug assembleRelease" in elite_ci,
         "P0: بوابة الفئة العليا لا تشغل كل الاختبارات والبناء الحقيقي")
-require("hakim-elite-20029-ci-NOT-INSTALLABLE" in elite_ci,
-        "P0: أثر CI للنخبة غير موسوم بوضوح كغير قابل للتثبيت الميداني")
+require("gradle lintDebug lintRelease" in elite_ci, "P0: Android Lint الكامل غير مفروض")
+require("hakim-converged-20034-ci-NOT-INSTALLABLE" in elite_ci,
+        "P0: أثر CI للمرشح التقاربي غير موسوم بوضوح كغير قابل للتثبيت الميداني")
 
 for phrase in [
     "فصل الحقائق عن الافتراضات والمجهولات",

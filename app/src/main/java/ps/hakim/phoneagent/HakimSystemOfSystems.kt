@@ -6,12 +6,12 @@ import org.json.JSONObject
 
 /** نظام الأنظمة: تركيب مؤقت من الأنظمة والقدرات الموثوقة بحسب المقصد والموارد. */
 object HakimSystemOfSystems {
-    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-15-v3"
+    const val VERSION = "HAKIM-SYSTEM-OF-SYSTEMS-2026-09-15-v4"
 
     enum class Unit(val title: String, val duty: String) {
         GOVERNANCE("الحاكمية", "يثبت العقد والحدود وترتيب الأولويات"),
         QURAN_SUNNAH("منهج القرآن والهدي النبوي", "يحكم الغاية والقيم والحدود الشرعية مع التثبت"),
-        HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وأقل عبء وسيادة المستخدم"),
+        HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وإكرام الضعيف والمستضعف والعادة الصالحة وسيادة المستخدم"),
         INDEPENDENCE("الاستقلال السيادي", "يمنع الارتهان لمزود/شبكة/أداة واحدة ويحفظ قابلية النقل والاستئناف"),
         INTENT("فهم المقصد", "يفهم أقل إشارة ويستعيد السياق الموثوق"),
         CAPABILITY_MESH("شبكة التفوق والقدرات", "تكتشف الأدوات والخدمات وتختار الأعلى وتجهز البدائل"),
@@ -23,7 +23,7 @@ object HakimSystemOfSystems {
         EDUCATION("التعليم", "يبني المهام التعليمية وفق السياق والمنهاج والقواعد"),
         VERIFICATION("التحقق", "يفحص النتيجة الفعلية والانحدار"),
         RECOVERY("التعافي", "يبدل المسار ويستعيد الحالة دون توسيع السلطة"),
-        LEARNING("التعلم", "يثبت ما نجح ويعيد ترتيب البدائل الآمنة"),
+        LEARNING("التعلم", "يثبت ما نجح ويعيد ترتيب البدائل الآمنة والعادات النافعة المثبتة"),
         RESOURCE("الموارد", "يحمي الأداء والبطارية والحرارة والذاكرة"),
         AUTHORITY("السلطة والأمان", "يمنع التوسع في الصلاحية أو كشف الأسرار أو الأثر العالي الصامت")
     }
@@ -49,6 +49,7 @@ object HakimSystemOfSystems {
             .put("inherits_governance", true)
             .put("inherits_sovereign_independence", true)
             .put("inherits_capability_mesh", true)
+            .put("inherits_human_first_mercy_honor_good_habits", true)
             .put("cannot_expand_authority", true)
             .put("cannot_mutate_code", true)
             .put("wip_one_under_pressure", true)
@@ -124,11 +125,13 @@ object HakimSystemOfSystems {
             appendLine("القدرات المفضلة بالترتيب: ${d.preferredCapabilities.joinToString(" ← ")}")
             appendLine("بروتوكول التشغيل الحاكم:")
             d.protocol.forEach { appendLine("• $it") }
+            append(HakimHumanFirstPolicy.promptContext())
             append(HakimSovereignIndependence.promptContext(context))
             append(HakimCapabilityMesh.promptContext(context, d.goal))
+            appendLine("كل نظام فرعي ذي صلة يرث ميثاق الإنسان أولًا: الرحمة، إصلاح القلب دون ادعاء الباطن، إكرام الضعيف والمستضعف، العادة الصالحة النافعة، وعدم استغلال الحاجة أو التوسع الصامت في السلطة.")
             appendLine("يجوز إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث العقد والحاكمية والسلطة والموارد وشبكة القدرات والاستقلال السيادي، وتبقى WIP=1 تحت الضغط.")
             appendLine("لا تعتبر كثرة الأنظمة أو الأدوات جودة بحد ذاتها؛ فعّل أقل مجموعة تحقق الغاية بأعلى أثر صافٍ، ثم أضف فقط عند فجوة مادية مثبتة.")
-        }.take(22000)
+        }.take(30000)
     }
 
     fun status(context: Context): JSONObject = JSONObject()
@@ -138,6 +141,7 @@ object HakimSystemOfSystems {
         .put("derived_systems_are_ephemeral_orchestration", true)
         .put("derived_systems_inherit_quran_sunnah", true)
         .put("derived_systems_inherit_human_first", true)
+        .put("derived_systems_inherit_mercy_heart_reform_vulnerable_honor_good_habits", true)
         .put("derived_systems_inherit_sovereign_independence", true)
         .put("derived_systems_inherit_authority_envelope", true)
         .put("derived_systems_inherit_resource_governor", true)

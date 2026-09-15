@@ -397,6 +397,13 @@ object HakimUnifiedRelay {
             .put("auto_update", AutoUpdater.diagnostics(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
+            .put("professional_readiness", HakimProfessionalReadiness.status(context))
+            .put("execution_transaction", HakimExecutionTransaction.status(context))
+            .put("question_operator", HakimQuestionOperator.status())
+            .put("adaptive_nstar", HakimAdaptiveNStarLoop.status())
+            .put("scientific_engineering", HakimScientificEngineeringKernel.status())
+            .put("personal_sovereignty", HakimPersonalSovereignty.status(context))
+            .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
     }
 
     private fun launch(context: Context, payload: JSONObject): JSONObject {

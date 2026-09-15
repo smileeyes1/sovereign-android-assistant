@@ -17,6 +17,11 @@ object HakimAgentSystem {
         FILES("وكيل الملفات", "ينشئ ويفتح ويرفع وينظم الملفات ضمن الصلاحيات"),
         COMMUNICATION("وكيل التواصل", "يجهز الرسائل والإرسال ويقف عند البوابات عالية الأثر"),
         EDUCATION("الوكيل التربوي", "ينفذ مهام التعليم وفق سياق المستخدم وقواعد حكيم"),
+        MATHEMATICS("وكيل الرياضيات", "يبني البرهان/الحساب ويفحص الحدود والحل العكسي واتساق الوحدات"),
+        PHYSICS("وكيل الفيزياء", "يختار النموذج الفيزيائي ويفحص الأبعاد وقوانين الحفظ وعدم اليقين"),
+        CHEMISTRY("وكيل الكيمياء", "يفحص الحفظ الذري والستويكيومترية والبيانات التجريبية ومخاطر المواد"),
+        ENGINEERING("وكيل الهندسة", "يحوّل الغاية إلى متطلبات وبدائل وأنماط فشل واختبار وقبول وتراجع"),
+        SECURITY("وكيل الأمن", "يبني نموذج التهديد ويطبق أقل صلاحية والعزل والفشل المغلق والتعافي"),
         RELIGIOUS("وكيل النزاهة الشرعية", "يتحقق من النقل الشرعي ويفصل النص عن التفسير والاجتهاد والخلاف المعتبر"),
         RESILIENCE("وكيل الاستمرارية والتعافي", "يحفظ حالة المهمة ويبدل المسار عند الفشل ويمنع الدوران والانحدار"),
         VERIFIER("وكيل التحقق", "يفحص الناتج الفعلي ويكشف الفشل والانحدار"),
@@ -79,6 +84,14 @@ object HakimAgentSystem {
             "نشر نهائي", "إرسال نهائي", "وافق نهائي", "صلاحية مدير", "إدارة الجهاز")
 
         val sovereign = HakimSovereignEngine.assess(context, text, preliminaryHighImpact, sensitive)
+        val scientific = HakimScientificEngineeringKernel.assess(text)
+        if (HakimScientificEngineeringKernel.Domain.MATHEMATICS in scientific.domains) selected += Agent.MATHEMATICS
+        if (HakimScientificEngineeringKernel.Domain.PHYSICS in scientific.domains) selected += Agent.PHYSICS
+        if (HakimScientificEngineeringKernel.Domain.CHEMISTRY in scientific.domains) selected += Agent.CHEMISTRY
+        if (HakimScientificEngineeringKernel.Domain.ENGINEERING in scientific.domains) selected += Agent.ENGINEERING
+        if (HakimScientificEngineeringKernel.Domain.SECURITY in scientific.domains) selected += Agent.SECURITY
+        if (HakimScientificEngineeringKernel.Domain.SAFETY in scientific.domains || scientific.hazardous) selected += Agent.SAFETY
+        if (scientific.researchRequired) selected += Agent.RESEARCH
         val religious = sovereign.religious
         if (religious.religious) selected += Agent.RELIGIOUS
         if (religious.exactSourceRequired || sovereign.shouldResearchFirst) selected += Agent.RESEARCH
@@ -139,6 +152,7 @@ object HakimAgentSystem {
             appendLine("قرار المصفوفة: ${p.decisionMode} • القيمة: ${p.decisionScore}/100")
             appendLine("قاعدة التنفيذ: أنجز تلقائيًا كل خطوة منخفضة الخطر وقابلة للتراجع ومتاحة، استخدم الشاشة الحالية والمتصفح/الأدوات عند الحاجة، غيّر المسار عند فشل الوسيلة، وافحص الناتج الفعلي قبل إعلان النجاح.")
             appendLine("قاعدة أقل إشارة: عند غموض منخفض الأثر لا تسأل؛ اختر أفضل تفسير مدعوم بالسياق، نفّذ خطوة قابلة للتراجع، تحقق، ثم صحح المسار إن لزم. اسأل فقط إذا كان الغموض جوهريًا أو يسبق أثرًا مرتفعًا.")
+            appendLine("هرم فهم المستخدم: التصريح الحالي/التصحيح > القاعدة الصريحة المحفوظة > السياق > الاستنتاج. لا يستخدم الاستنتاج وحده لتغيير قرار سيادي أو فعل مرتفع الأثر.")
             appendLine("قاعدة البيانات: استخدم خزنة حكيم محليًا للتعبئة أولًا؛ لا ترسل القيم الشخصية لمحرك الاستدلال إلا إذا فعّل المستخدم ذلك وكان الكشف لازمًا للمهمة.")
             appendLine("قاعدة الأثر العالي: حضّر كل شيء ثم اطلب موافقة المستخدم عند آخر فعل جوهري غير قابل للتراجع أو عند كشف سر/دفع/حذف نهائي/إرسال حساس/صلاحية كبيرة.")
             appendLine("قاعدة الأسرار: لا تطلب أو تحفظ أو تعيد عرض كلمة مرور أو OTP أو PIN أو CVV أو رقم بطاقة كامل. استخدم مدير اعتماد النظام أو حقل الموقع الآمن عند الحاجة.")
@@ -182,6 +196,11 @@ object HakimAgentSystem {
             .put("decision_matrix", true)
             .put("religious_integrity", true)
             .put("sovereign_engine", true)
+            .put("scientific_engineering_kernel", HakimScientificEngineeringKernel.status())
+            .put("adaptive_nstar_loop", HakimAdaptiveNStarLoop.status())
+            .put("question_operator", HakimQuestionOperator.status())
+            .put("personal_sovereignty", HakimPersonalSovereignty.status(context))
+            .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
             .put("wip_one", true)
             .put("agents", JSONArray(Agent.values().map { it.name }))
             .put("last_plan", prefs.getString("last_plan", ""))

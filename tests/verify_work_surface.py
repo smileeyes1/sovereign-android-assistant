@@ -38,9 +38,9 @@ for token in [
     "WAITING_CREDENTIAL",
     "WAITING_TRUST",
     "HakimWorkToolHub.tools(activity)",
-    "private_chain_of_thought_exposed\" to false",
-    "secret_redaction\" to true",
-    "moves_with_ime_docked_composer\" to true",
+    '"private_chain_of_thought_exposed" to false',
+    '"secret_redaction" to true',
+    '"moves_with_ime_docked_composer" to true',
 ]:
     require(token in work, f"P0: سطح العمل يفتقد {token}")
 
@@ -57,8 +57,8 @@ for token in [
     "CommandCenterActivity::class.java",
     "UnifiedHomeActivity::class.java",
     "HakimSystemSettingsActivity::class.java",
-    "new_privilege_granted\" to false",
-    "high_impact_gate_preserved\" to true",
+    '"new_privilege_granted" to false',
+    '"high_impact_gate_preserved" to true',
 ]:
     require(token in tools, f"P0: سجل الأدوات يفتقد {token}")
 
@@ -80,7 +80,7 @@ require("moves_with_ime_docked_composer" in work,
         "P0: لوحة العمل ليست مرتبطة بحاوية الإدخال المتحركة")
 
 # WIP=1 وحالة المهمة الفعلية تبقى أساس العرض.
-require("wip_limit\", 1" in ledger and "enum class Phase" in ledger,
+require('put("wip_limit", 1)' in ledger and "enum class Phase" in ledger,
         "P0: سطح العمل بُني فوق نموذج مهمة مختلف عن سجل حكيم")
 require('putString("last_plan"' in agents,
         "P0: لا توجد خطة فعلية محفوظة لاشتقاق الأداة الجارية")

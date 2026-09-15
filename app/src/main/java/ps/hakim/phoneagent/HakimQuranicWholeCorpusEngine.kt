@@ -10,7 +10,7 @@ import org.json.JSONObject
  * من غير إجبار كل سورة على كل مسألة ومن غير تحويل البركة إلى خاصية تقنية.
  */
 object HakimQuranicWholeCorpusEngine {
-    const val VERSION = "QURANIC-WHOLE-CORPUS-OPERATING-2026-09-15-v1"
+    const val VERSION = "QURANIC-WHOLE-CORPUS-OPERATING-2026-09-15-v2"
 
     private val operatingAxes = listOf(
         "صدق النسبة والحقيقة وعدم اختلاق الدليل",
@@ -29,6 +29,7 @@ object HakimQuranicWholeCorpusEngine {
         val verifiedCorpusReady: Boolean,
         val sourceVerificationRequired: Boolean,
         val wholeCorpusScanReady: Boolean,
+        val wholeCorpusScanComplete: Boolean,
         val noForcedSurahRelevance: Boolean,
         val barakahSpiritualNotTechnical: Boolean,
         val worldlyMeansEvidenceBased: Boolean,
@@ -41,6 +42,7 @@ object HakimQuranicWholeCorpusEngine {
             .put("verified_corpus_ready", verifiedCorpusReady)
             .put("source_verification_required", sourceVerificationRequired)
             .put("whole_corpus_scan_ready", wholeCorpusScanReady)
+            .put("whole_corpus_scan_complete", wholeCorpusScanComplete)
             .put("no_forced_surah_relevance", noForcedSurahRelevance)
             .put("barakah_spiritual_not_technical", barakahSpiritualNotTechnical)
             .put("worldly_means_evidence_based", worldlyMeansEvidenceBased)
@@ -53,6 +55,14 @@ object HakimQuranicWholeCorpusEngine {
         val religious = HakimReligiousIntegrity.assess(goal)
         val ready = HakimVerifiedQuranCorpus.isReady(context)
         val sourceRequired = corpus.requiresSourceVerification || religious.exactSourceRequired
+        val scan = if (corpus.wholeCorpusRequested && ready) {
+            HakimVerifiedQuranCorpus.scanAllSurahs(context, goal, 1)
+        } else null
+        val scanComplete = when {
+            !corpus.wholeCorpusRequested -> true
+            scan == null -> false
+            else -> scan.completeCoverage && scan.inspectedSurahCount == 114 && scan.inspectedAyahCount == 6236
+        }
         return MissionAttestation(
             inherited = true,
             all114InNormativeScope = HakimQuranicCorpusPolicy.allSurahNumbers.size == 114,
@@ -60,6 +70,7 @@ object HakimQuranicWholeCorpusEngine {
             verifiedCorpusReady = ready,
             sourceVerificationRequired = sourceRequired,
             wholeCorpusScanReady = !corpus.wholeCorpusRequested || ready,
+            wholeCorpusScanComplete = scanComplete,
             noForcedSurahRelevance = true,
             barakahSpiritualNotTechnical = true,
             worldlyMeansEvidenceBased = true,
@@ -79,10 +90,10 @@ object HakimQuranicWholeCorpusEngine {
             appendLine("جميع سور القرآن الـ١١٤ داخل مجال الهداية والميزان الحاكم. لا تنتقِ ما يوافق نتيجة مسبقة، ولا تُجبر كل سورة على كل مسألة.")
             appendLine("قبل كل قرار راجع محاور التشغيل: ${a.axes.joinToString("؛ ")}.")
             if (a.wholeCorpusRequested) {
-                if (a.verifiedCorpusReady) {
-                    appendLine("طُلب استقراء شامل: افحص corpus المحلي المتحقق عبر السور الـ١١٤ كلها، ثم استخدم فقط المواضع ذات الصلة المثبتة مع سياقها ومصدرها.")
-                } else {
-                    appendLine("طُلب استقراء شامل لكن corpus المحلي المتحقق غير جاهز: لا تدّع فحص السور كلها؛ تحقّق من المصدر الرسمي أولًا ثم أعد الاستقراء.")
+                when {
+                    !a.verifiedCorpusReady -> appendLine("طُلب استقراء شامل لكن corpus المحلي المتحقق غير جاهز: لا تدّع فحص السور كلها؛ تحقّق من المصدر الرسمي أولًا ثم أعد الاستقراء.")
+                    a.wholeCorpusScanComplete -> appendLine("تمت دورة تغطية محلية فعلية عبر السور الـ١١٤/الآيات ٦٢٣٦ لهذه المهمة قبل الاستدلال؛ استخدم فقط المواضع ذات الصلة المثبتة مع سياقها ومصدرها.")
+                    else -> appendLine("تعذر إثبات اكتمال مسح السور الـ١١٤؛ لا تعلن الاستقراء الشامل مكتملًا وأعد التحقق.")
                 }
             }
             if (a.sourceVerificationRequired) appendLine("هذه المهمة تحتاج تحققًا مصدريًا قبل نسبة نص أو تفسير أو سبب نزول أو معنى محدد إلى الوحي.")
@@ -98,6 +109,7 @@ object HakimQuranicWholeCorpusEngine {
             .put("all_114_surahs_in_scope", HakimQuranicCorpusPolicy.allSurahNumbers.size == 114)
             .put("verified_whole_corpus_ready", ready)
             .put("whole_corpus_scan_available", ready)
+            .put("whole_corpus_scan_is_actual_full_iteration", true)
             .put("no_cherry_picking", true)
             .put("no_forced_surah_relevance", true)
             .put("barakah_is_spiritual_not_technical", true)

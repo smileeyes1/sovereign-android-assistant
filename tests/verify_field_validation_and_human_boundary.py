@@ -36,26 +36,41 @@ for required in [
 ]:
     req(required in preflight, f"P0: الفحص التمهيدي لا يثبت المكوّن المطلوب: {required}")
 
-# اسمح فقط بسحب APK المثبت إلى مجلد مؤقت محلي وتنظيف ذلك المجلد؛ امنع أي كتابة للجهاز.
-active = "\n".join(
-    line for line in preflight.splitlines()
+active_lines = [
+    line.strip() for line in preflight.splitlines()
     if line.strip() and not line.lstrip().startswith("#")
+]
+active = "\n".join(active_lines)
+
+# قفل أقوى: كل استدعاء فعلي عبر ADB_CMD يجب أن يكون واحدًا من أوامر القراءة الأربعة فقط.
+adb_cmd_lines = [line for line in active_lines if '"${ADB_CMD[@]}"' in line]
+req(len(adb_cmd_lines) == 4, "P0: تغير عدد أوامر ADB المصرح بها في الفحص التمهيدي")
+allowed_adb_fragments = (
+    ' get-state',
+    ' shell pm path ',
+    ' shell dumpsys package ',
+    ' pull "$BASE_APK" "$LOCAL_APK"',
 )
+for line in adb_cmd_lines:
+    req(any(fragment in line for fragment in allowed_adb_fragments),
+        f"P0: أمر ADB خارج قائمة القراءة الصريحة: {line}")
+
+# الاستدعاء المباشر الوحيد لـ ADB_BIN هو تعداد الأجهزة المصرح بها.
+direct_adb_lines = [line for line in active_lines if '"$ADB_BIN"' in line and 'ADB_CMD=(' not in line]
+req(len(direct_adb_lines) == 1 and ' devices ' in direct_adb_lines[0],
+    "P0: ظهر استدعاء ADB مباشر غير مصرح به خارج تعداد الأجهزة")
+
+# دفاع إضافي ضد أشهر الأفعال المعدلة للجهاز.
 for pattern in [
-    r'\badb\b[^\n]*\binstall\b',
-    r'\badb\b[^\n]*\buninstall\b',
-    r'\badb\b[^\n]*\bpush\b',
-    r'\bshell\s+pm\s+clear\b',
-    r'\bshell\s+pm\s+(?:grant|revoke)\b',
-    r'\bshell\s+settings\s+put\b',
-    r'\bshell\s+appops\s+set\b',
-    r'\bshell\s+rm\b',
-    r'\bshell\s+reboot\b',
-    r'\bdisable-user\b',
-    r'\benable\s+[^\n]*ps\.hakim\.stable',
+    r'\binstall\b', r'\buninstall\b', r'\bpush\b',
+    r'\bshell\s+pm\s+clear\b', r'\bshell\s+pm\s+(?:grant|revoke)\b',
+    r'\bshell\s+settings\s+put\b', r'\bshell\s+appops\s+set\b',
+    r'\bshell\s+(?:rm|reboot|input)\b', r'\bdisable-user\b', r'\bforce-stop\b',
 ]:
-    req(re.search(pattern, active, re.I) is None,
+    command_lines = "\n".join(adb_cmd_lines + direct_adb_lines)
+    req(re.search(pattern, command_lines, re.I) is None,
         f"P0: الفحص التمهيدي خرج من وضع القراءة فقط: {pattern}")
+
 req('rm -rf "$TMP"' in preflight, "P0: الفحص التمهيدي لا ينظف ملفه المحلي المؤقت")
 req('pull "$BASE_APK" "$LOCAL_APK"' in preflight, "P0: الفحص لا يسحب APK المثبت للتحقق المحلي")
 

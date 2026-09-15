@@ -37,6 +37,8 @@ jobs:
         run: python3 tests/verify_chat_first_ui.py
       - name: بوابة ثبات الكتابة وبقاء مربع النص فوق لوحة المفاتيح
         run: python3 tests/verify_safe_input_path.py
+      - name: بوابة مساحة العمل الحية والأدوات
+        run: python3 tests/verify_work_surface.py
       - name: بوابة الاستدلال داخل واجهة حكيم
         run: python3 tests/verify_in_app_reasoning.py
       - name: بوابة توافق Play Protect للتثبيت

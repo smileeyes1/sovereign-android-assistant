@@ -14,6 +14,7 @@ def require(cond: bool, msg: str) -> None:
 
 independence = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignIndependence.kt")
 portability = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignPortability.kt")
+quran = text("app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt")
 providers = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProviderRegistry.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
@@ -23,13 +24,19 @@ registry = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityRegistry.k
 workflow = text(".github/workflows/android.yml")
 
 require("object HakimSovereignIndependence" in independence, "P0: طبقة الاستقلال السيادي الشامل مفقودة")
-for domain in ["IDENTITY", "GOVERNANCE", "DATA", "REASONING", "EXECUTION", "NETWORK", "UPDATE", "RECOVERY", "RESOURCES", "PORTABILITY"]:
+for domain in ["IDENTITY", "GOVERNANCE", "DATA", "QURAN_SOURCE", "REASONING", "EXECUTION", "NETWORK", "UPDATE", "RECOVERY", "RESOURCES", "PORTABILITY"]:
     require(domain in independence, f"P0: مجال الاستقلال مفقود: {domain}")
 require("single_external_point_of_failure_forbidden" in independence, "P0: لا يوجد منع صريح لنقطة فشل خارجية واحدة")
 require("offline_graceful_degradation" in independence, "P0: لا توجد سياسة تدهور آمن دون شبكة")
 require("android_platform_dependency_acknowledged" in independence, "P0: الاستقلال يدعي ضمنيًا التخلص من اعتماد Android")
 require("advanced_model_equivalence_offline_not_claimed" in independence, "P0: قد يدعي حكيم تكافؤ نموذج متقدم بلا مزود")
 require("HakimReasoningProviderRegistry.promptContext" in independence, "P0: استقلال المزود غير داخل عقد الاستقلال")
+require("HakimVerifiedQuranCorpus.status" in independence,
+        "P0: استقلال مصدر القرآن غير داخل قياس الاستقلال السيادي")
+require("offline_reimport_source_available" in independence and "restore_reuses_full_official_verification" in independence,
+        "P0: مجال مصدر القرآن لا يربط الجاهزية بمصدر محلي قابل للاستعادة والتحقق")
+require("exact_text_fails_closed_without_verified_source" in independence,
+        "P0: السيادة قد تعتبر النص القرآني جاهزًا دون مصدر متحقق")
 require('readyNow = provider.optBoolean("advanced_reasoning_ready_now")' in independence,
         "P0: جاهزية الاستدلال المتقدم لا تتبع حالته الفعلية")
 require('advanced_reasoning_ready_now") || true' not in independence,
@@ -40,6 +47,8 @@ require('readyNow = resource.optBoolean("resource_governor")' in independence,
         "P0: جاهزية حاكم الموارد لا تتبع حالته الفعلية")
 require('readyNow = portability.optBoolean("sovereign_portability")' in independence,
         "P0: جاهزية قابلية النقل لا تتبع حالتها الفعلية")
+require("preserved_official_archive" in quran and "export_reverifies_official_hashes" in quran,
+        "P0: مصدر القرآن لا يملك أصلًا محليًا محفوظًا مع إعادة تحقق عند النقل")
 
 require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")
 require("LOCAL_DETERMINISTIC" in providers and "EXTERNAL_ADVANCED" in providers, "P0: لا يوجد فصل بين المحلي والاستدلال المتقدم")

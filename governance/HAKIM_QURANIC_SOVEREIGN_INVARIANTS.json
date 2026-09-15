@@ -1,0 +1,36 @@
+{
+  "schema": "HAKIM_QURANIC_SOVEREIGN_INVARIANTS_V1",
+  "quran": {
+    "normative_root": true,
+    "all_surahs_in_scope": 114,
+    "verified_ayah_count": 6236,
+    "whole_corpus_request_requires_actual_full_scan": true,
+    "no_cherry_picking": true,
+    "no_forced_surah_relevance": true,
+    "exact_text_requires_verified_source": true,
+    "text_tafsir_fiqh_worldly_layers_separated": true
+  },
+  "barakah": {
+    "religious_spiritual_meaning": true,
+    "technical_metric": false,
+    "hidden_computational_power": false,
+    "guaranteed_worldly_outcome": false,
+    "does_not_replace_lawful_means_and_verification": true
+  },
+  "worldly_means": {
+    "science": true,
+    "evidence": true,
+    "experience": true,
+    "expertise": true,
+    "within_religious_and_rights_constraints": true
+  },
+  "sovereignty": {
+    "core_runtime_vendor_independent": true,
+    "external_advanced_reasoning_optional": true,
+    "local_safe_degraded_mode_required": true,
+    "offline_advanced_model_equivalence_claimed": false,
+    "authority_cannot_expand_from_general_language": true,
+    "irreversible_actions_require_specific_gate": true,
+    "field_verified_requires_real_device_evidence": true
+  }
+}

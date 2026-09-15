@@ -12,6 +12,7 @@ object HakimSovereignEngine {
         val mission: HakimMissionLedger.Mission,
         val decision: HakimDecisionMatrix.Decision,
         val quranic: HakimQuranicFramework.Assessment,
+        val quranicWholeCorpus: HakimQuranicWholeCorpusEngine.MissionAttestation,
         val religious: HakimReligiousIntegrity.Assessment,
         val failureBudgetRemaining: Int,
         val route: String,
@@ -36,6 +37,7 @@ object HakimSovereignEngine {
         val mission = HakimMissionLedger.beginOrResume(context, goal)
         val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
         val quranic = HakimQuranicFramework.assess(goal)
+        val quranicWholeCorpus = HakimQuranicWholeCorpusEngine.attestMission(context, goal)
         val religious = HakimReligiousIntegrity.assess(goal)
         HakimQuranSunnahMethod.assess(goal)
         HakimSystemOfSystems.compose(context, goal)
@@ -45,9 +47,11 @@ object HakimSovereignEngine {
         val cancelledOrBlocked = mission.phase == HakimMissionLedger.Phase.CANCELLED ||
             mission.phase == HakimMissionLedger.Phase.BLOCKED
         val localQuranReady = HakimVerifiedQuranCorpus.isReady(context)
+        val wholeCorpusIncomplete = quranicWholeCorpus.wholeCorpusRequested && !quranicWholeCorpus.wholeCorpusScanComplete
         val forceResearch = failures >= MAX_CONSECUTIVE_FAILURES ||
             decision.mode == HakimDecisionMatrix.Mode.RESEARCH_FIRST ||
             (quranic.exactQuranTextRequired && !localQuranReady) ||
+            wholeCorpusIncomplete ||
             religious.exactSourceRequired
         val blocked = cancelledOrBlocked || blockedByFailures || decision.mode == HakimDecisionMatrix.Mode.BLOCK
         val approval = !blocked && decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE
@@ -65,6 +69,7 @@ object HakimSovereignEngine {
             mission = HakimMissionLedger.active(context) ?: mission,
             decision = decision,
             quranic = quranic,
+            quranicWholeCorpus = quranicWholeCorpus,
             religious = religious,
             failureBudgetRemaining = (HARD_FAILURE_LIMIT - failures).coerceAtLeast(0),
             route = route,
@@ -89,6 +94,7 @@ object HakimSovereignEngine {
             appendLine("[المحرك السيادي لحكيم]")
             appendLine("مهمة واحدة نشطة فقط WIP=1. المرحلة=${a.mission.phase}، المسار=${a.route}، ميزانية الفشل المتبقية=${a.failureBudgetRemaining}.")
             append(HakimQuranicFramework.promptContext(goal))
+            append(HakimQuranicWholeCorpusEngine.promptContext(context, goal))
             append(HakimQuranSunnahMethod.promptContext(goal))
             appendLine("[حالة النص القرآني المحلي المتحقق]")
             appendLine(if (verifiedQuran.optBoolean("ready")) "قاعدة حفص المحلية متحققة من المصدر الرسمي: ${verifiedQuran.optInt("surah_count")} سورة / ${verifiedQuran.optInt("ayah_count")} آية. يجوز استخدامها للنص الدقيق مع إبقاء طبقات التفسير/الاستنباط منفصلة." else "الحاكمية القرآنية الشاملة مفعلة، لكن نص القرآن الكامل ليس متحققًا محليًا بعد؛ لا تنقل نصًا دقيقًا من الذاكرة، واستخدم مصدرًا رسميًا موثوقًا قبل الجزم.")
@@ -141,7 +147,12 @@ object HakimSovereignEngine {
         HakimIntegrationFabric.requireCore(context, "sovereign_complete")
         if (HakimMissionLedger.isCancelled(context)) return
         check(!HakimFaultLedger.repeatedMaterialFault(context)) { "لا يجوز إغلاق المهمة مع عطل مادي متكرر غير معالج" }
-        val missionId = HakimMissionLedger.active(context)?.id.orEmpty()
+        val active = HakimMissionLedger.active(context)
+        if (active != null) {
+            val whole = HakimQuranicWholeCorpusEngine.attestMission(context, active.goal)
+            check(!whole.wholeCorpusRequested || whole.wholeCorpusScanComplete) { "لا يجوز إغلاق استقراء القرآن كله قبل إثبات مسح السور الـ١١٤ كاملة" }
+        }
+        val missionId = active?.id.orEmpty()
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
         HakimAdaptiveLearning.recordMissionOutcome(context, missionId, true)
@@ -157,6 +168,7 @@ object HakimSovereignEngine {
         .put("mission", HakimMissionLedger.status(context))
         .put("decision_dimensions", HakimDecisionMatrix.dimensions())
         .put("quranic_framework", HakimQuranicFramework.status())
+        .put("quranic_whole_corpus_engine", HakimQuranicWholeCorpusEngine.status(context))
         .put("quran_sunnah_method", HakimQuranSunnahMethod.status())
         .put("quranic_invariant_kernel", HakimQuranicInvariantKernel.status())
         .put("verified_quran_corpus", HakimVerifiedQuranCorpus.status(context))

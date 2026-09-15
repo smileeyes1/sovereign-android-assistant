@@ -13,6 +13,7 @@ def require(condition: bool, message: str) -> None:
 
 
 method = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt")
+prophetic = text("app/src/main/java/ps/hakim/phoneagent/HakimPropheticKnowledgePolicy.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
 integration = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
@@ -27,6 +28,18 @@ require("worldly_facts_and_means_require_domain_evidence" in method, "P0: الو
 require("no_religious_technical_mystification" in method, "P0: منع تحويل الدين إلى آلية تقنية مفقود")
 require("لا تنسب حديثًا أو سنة أو قصة أو فضيلة أو وعدًا" in method, "P0: منع النسبة النبوية غير المتحققة مفقود")
 require("لا تحوّل القرآن أو السنة أو البركة أو الدعاء إلى خوارزمية تقنية أو ضمان نتيجة مادية" in method, "P0: حاجز الخلط التقني/الغَيبي مفقود")
+
+require("HakimPropheticKnowledgePolicy.assess(raw)" in method, "P0: المعرفة النبوية الموثقة غير مدمجة في المنهج")
+require("HakimPropheticKnowledgePolicy.promptContext(raw)" in method, "P0: سياق المعرفة النبوية لا يصل إلى القرار")
+require('put("prophetic_knowledge_policy", HakimPropheticKnowledgePolicy.status())' in method, "P0: حالة المعرفة النبوية غير ظاهرة")
+require("propheticKnowledge.requiresVerification" in method, "P0: الوقائع النبوية المحددة لا تفرض تحقق المصدر")
+require("COVERAGE_DOMAINS.size == 20" in prophetic, "P0: نطاق كل ما يخص النبي ﷺ غير مقفل على مجالاته")
+require('put("local_exhaustive_prophetic_corpus_verified", false)' in prophetic, "P0: ادعاء corpus نبوي محلي شامل بلا دليل")
+require('put("all_heritage_reports_assumed_authentic", false)' in prophetic, "P0: التراث الروائي قد يُعامل كله كصحيح")
+require('put("weak_or_fabricated_not_presented_as_authentic", true)' in prophetic, "P0: حاجز الضعيف والموضوع مفقود")
+require('put("completeness_claim_fail_closed", true)' in prophetic, "P0: ادعاء الاكتمال النبوي لا يفشل مغلقًا")
+require("لا تدّع أن السنة أو السيرة «مكتملة محليًا»" in prophetic, "P0: منع ادعاء اكتمال السنة محليًا مفقود")
+require("صحيحا البخاري ومسلم" in prophetic, "P0: مرجعا الصحيحين غير مثبتين في سلم التحقق")
 
 require("HakimQuranSunnahMethod.assess(goal)" in sovereign, "P0: المحرك السيادي لا يمر على منهج القرآن والسنة")
 require("HakimQuranSunnahMethod.promptContext(goal)" in sovereign, "P0: منهج القرآن والسنة لا يدخل سياق القرار")

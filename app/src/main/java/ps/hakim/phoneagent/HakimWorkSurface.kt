@@ -186,7 +186,7 @@ object HakimWorkSurface {
             val active = missionPrefs.getBoolean("active", false)
             val evidence = safeText(missionPrefs.getString("evidence", "").orEmpty())
             val plan = parsePlan(agentPrefs.getString("last_plan", "").orEmpty())
-            val tool = currentTool(plan)
+            val tool = if (active) currentTool(plan) else ""
             val phaseLabel = phaseLabel(phase, active)
             current.text = buildString {
                 append(phaseLabel)
@@ -253,7 +253,8 @@ object HakimWorkSurface {
         }
 
         private fun appendHistory(phase: String, tool: String, evidence: String) {
-            val array = runCatching { JSONArray(historyPrefs.getString(HISTORY_KEY, "[]")) }.getOrDefault(JSONArray())
+            val stored = historyPrefs.getString(HISTORY_KEY, "[]") ?: "[]"
+            val array = runCatching { JSONArray(stored) }.getOrDefault(JSONArray())
             val text = buildString {
                 append(phase)
                 if (tool.isNotBlank()) append(" — ").append(tool)
@@ -268,7 +269,8 @@ object HakimWorkSurface {
         }
 
         private fun readHistory(): List<String> {
-            val array = runCatching { JSONArray(historyPrefs.getString(HISTORY_KEY, "[]")) }.getOrDefault(JSONArray())
+            val stored = historyPrefs.getString(HISTORY_KEY, "[]") ?: "[]"
+            val array = runCatching { JSONArray(stored) }.getOrDefault(JSONArray())
             val out = ArrayList<String>(array.length())
             for (i in 0 until array.length()) {
                 val item = safeText(array.optString(i))

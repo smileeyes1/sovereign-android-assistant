@@ -6,12 +6,13 @@ import org.json.JSONObject
 
 /** نظام الأنظمة: تركيب مؤقت ذكي من الأنظمة والقدرات الموثوقة بحسب المقصد والموارد والدليل. */
 object HakimSystemOfSystems {
-    const val VERSION = "HAKIM-SMART-SYSTEM-OF-SYSTEMS-2026-09-15-v5"
+    const val VERSION = "HAKIM-SMART-SYSTEM-OF-SYSTEMS-2026-09-15-v6"
 
     enum class Unit(val title: String, val duty: String) {
         GOVERNANCE("الحاكمية", "يثبت العقد والحدود وترتيب الأولويات"),
         QURAN_SUNNAH("منهج القرآن والهدي النبوي", "يحكم الغاية والقيم والحدود الشرعية مع التثبت"),
         HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وإكرام الضعيف والمستضعف والعادة الصالحة وسيادة المستخدم"),
+        CARDIAC_SAFETY("حماية القلب الجسدي", "يفصل القلب الطبي عن المعنى الوجداني ويقصر التكامل اللاسلكي على القراءة والتنبيه والتصعيد الآمن دون تحكم علاجي"),
         INDEPENDENCE("الاستقلال السيادي", "يمنع الارتهان لمزود/شبكة/أداة واحدة ويحفظ قابلية النقل والاستئناف"),
         INTENT("فهم المقصد", "يفهم أقل إشارة ويستعيد السياق الموثوق"),
         INTENT_ELEVATION("الارتقاء المستمر المحكوم", "يرفع النية والمقصد والهدف والغاية إلى أفضل مسار مشروع مثبت دون كسر نجاح موثوق"),
@@ -54,6 +55,7 @@ object HakimSystemOfSystems {
             .put("inherits_sovereign_independence", true)
             .put("inherits_capability_mesh", true)
             .put("inherits_human_first_mercy_honor_good_habits", true)
+            .put("inherits_cardiac_safety_when_relevant", true)
             .put("inherits_intent_elevation", true)
             .put("inherits_smart_decision_matrix", true)
             .put("inherits_smart_algorithms", true)
@@ -97,6 +99,7 @@ object HakimSystemOfSystems {
             Unit.AUTHORITY
         )
 
+        if (containsAny(s, "قلب", "نبض", "تخطيط القلب", "ecg", "ekg", "أكسجة", "اكسجة", "spo2", "ضغط الدم", "منظم قلب", "مزيل رجفان", "جهاز مزروع", "صحة القلب", "لاسلكي")) units += Unit.CARDIAC_SAFETY
         if (containsAny(s, "ابحث", "قارن", "تحقق", "مصدر", "حديث", "آية", "احدث", "أحدث")) units += Unit.RESEARCH
         if (containsAny(s, "موقع", "متصفح", "رابط", "صفحة", "افتح", "سجل دخول")) units += Unit.BROWSER
         if (containsAny(s, "نموذج", "املأ", "عبئ", "ادخل البيانات", "استمارة")) units += Unit.FORMS
@@ -141,6 +144,7 @@ object HakimSystemOfSystems {
             appendLine("بروتوكول التشغيل الحاكم:")
             d.protocol.forEach { appendLine("• $it") }
             append(HakimHumanFirstPolicy.promptContext())
+            if (Unit.CARDIAC_SAFETY in d.units) append(HakimCardiacSafetyPolicy.promptContext())
             append(HakimIntentElevationPolicy.promptContext())
             append(HakimDecisionMatrix.promptContext(d.goal))
             append(HakimExcellenceOptimizer.promptContext())
@@ -149,6 +153,7 @@ object HakimSystemOfSystems {
             appendLine("طبّق المنظومات الذكية والمصفوفات الذكية والخوارزميات الذكية على كل موضع يحقق فائدة مثبتة: الفهم، البحث، المفاضلة، التخطيط، التنفيذ، التحقق، التعافي، التعلم، والعادات. لا تضف طبقة ذكاء إذا كان المسار الأبسط يحقق نفس الغاية بجودة مساوية أو أعلى.")
             appendLine("اختيار الخوارزمية تكيفي لكن محكوم: ابدأ بالحتمية/الأبسط، ارفع العمق عند غموض أو مخاطر أو بدائل متعددة أو فشل، وارجع إلى LAST_VERIFIED_BASELINE عند الانحدار.")
             appendLine("كل نظام فرعي ذي صلة يرث ميثاق الإنسان أولًا: الرحمة، إصلاح القلب دون ادعاء الباطن، إكرام الضعيف والمستضعف، العادة الصالحة النافعة، وعدم استغلال الحاجة أو التوسع الصامت في السلطة.")
+            appendLine("عند أي معنى طبي/جسدي للقلب، يرث النظام الفرعي حارس القلب الجسدي: قراءة وتنبيه وتصعيد فقط، ولا تحكم علاجي أو اقتران خفي أو تجاوز مصادقة.")
             appendLine("يجوز إنشاء أنظمة فرعية منطقية عند الحاجة، لكنها ترث العقد والحاكمية والسلطة والموارد وشبكة القدرات والاستقلال السيادي، وتبقى WIP=1 تحت الضغط.")
             appendLine("لا تعتبر كثرة الأنظمة أو الأدوات أو الخوارزميات جودة بحد ذاتها؛ فعّل أقل مجموعة تحقق الغاية بأعلى أثر صافٍ، ثم أضف فقط عند فجوة مادية مثبتة.")
         }.take(34000)
@@ -159,6 +164,7 @@ object HakimSystemOfSystems {
         .put("system_of_systems", true)
         .put("smart_systems", true)
         .put("intent_elevation_policy", HakimIntentElevationPolicy.status())
+        .put("cardiac_safety_policy", HakimCardiacSafetyPolicy.status())
         .put("intent_goal_purpose_elevation_inherited", true)
         .put("smart_decision_matrices", true)
         .put("smart_algorithms", true)
@@ -169,6 +175,7 @@ object HakimSystemOfSystems {
         .put("derived_systems_inherit_quran_sunnah", true)
         .put("derived_systems_inherit_human_first", true)
         .put("derived_systems_inherit_mercy_heart_reform_vulnerable_honor_good_habits", true)
+        .put("derived_systems_inherit_cardiac_safety_when_relevant", true)
         .put("derived_systems_inherit_smart_decision_matrix", true)
         .put("derived_systems_inherit_excellence_optimizer", true)
         .put("derived_systems_inherit_sovereign_independence", true)

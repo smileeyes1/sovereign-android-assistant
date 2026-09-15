@@ -14,6 +14,7 @@ object HakimSystemOfSystems {
         HUMAN_FIRST("الإنسان أولًا", "يحفظ الكرامة والرحمة وإكرام الضعيف والمستضعف والعادة الصالحة وسيادة المستخدم"),
         INDEPENDENCE("الاستقلال السيادي", "يمنع الارتهان لمزود/شبكة/أداة واحدة ويحفظ قابلية النقل والاستئناف"),
         INTENT("فهم المقصد", "يفهم أقل إشارة ويستعيد السياق الموثوق"),
+        INTENT_ELEVATION("الارتقاء المستمر المحكوم", "يرفع النية والمقصد والهدف والغاية إلى أفضل مسار مشروع مثبت دون كسر نجاح موثوق"),
         DECISION_MATRIX("المصفوفات الذكية", "تحول البدائل إلى قرار متعدد الأبعاد قابل للفحص دون شراء السلامة بالنقاط"),
         SMART_ALGORITHMS("الخوارزميات الذكية", "تختار أبسط خوارزمية كافية وتزيد الذكاء فقط عند مكسب مادي مثبت"),
         EXCELLENCE("محسن التفوق", "يقارن خط الأساس والبدائل معجميًا وعلى جبهة Pareto ويمنع الانحدار"),
@@ -53,6 +54,7 @@ object HakimSystemOfSystems {
             .put("inherits_sovereign_independence", true)
             .put("inherits_capability_mesh", true)
             .put("inherits_human_first_mercy_honor_good_habits", true)
+            .put("inherits_intent_elevation", true)
             .put("inherits_smart_decision_matrix", true)
             .put("inherits_smart_algorithms", true)
             .put("inherits_excellence_optimizer", true)
@@ -86,6 +88,7 @@ object HakimSystemOfSystems {
             Unit.HUMAN_FIRST,
             Unit.INDEPENDENCE,
             Unit.INTENT,
+            Unit.INTENT_ELEVATION,
             Unit.DECISION_MATRIX,
             Unit.SMART_ALGORITHMS,
             Unit.EXCELLENCE,
@@ -138,6 +141,7 @@ object HakimSystemOfSystems {
             appendLine("بروتوكول التشغيل الحاكم:")
             d.protocol.forEach { appendLine("• $it") }
             append(HakimHumanFirstPolicy.promptContext())
+            append(HakimIntentElevationPolicy.promptContext())
             append(HakimDecisionMatrix.promptContext(d.goal))
             append(HakimExcellenceOptimizer.promptContext())
             append(HakimSovereignIndependence.promptContext(context))
@@ -154,6 +158,8 @@ object HakimSystemOfSystems {
         .put("version", VERSION)
         .put("system_of_systems", true)
         .put("smart_systems", true)
+        .put("intent_elevation_policy", HakimIntentElevationPolicy.status())
+        .put("intent_goal_purpose_elevation_inherited", true)
         .put("smart_decision_matrices", true)
         .put("smart_algorithms", true)
         .put("smartness_applies_to_every_materially_useful_layer", true)

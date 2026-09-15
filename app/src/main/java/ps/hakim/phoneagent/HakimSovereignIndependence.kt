@@ -9,9 +9,9 @@ import org.json.JSONObject
  * لا يعني الاستقلال إنكار اعتماد التطبيق على Android أو ادعاء نموذج متقدم مكافئ بلا شبكة/مزود.
  */
 object HakimSovereignIndependence {
-    const val VERSION = "HAKIM-SOVEREIGN-INDEPENDENCE-2026-09-15-v1"
+    const val VERSION = "HAKIM-SOVEREIGN-INDEPENDENCE-2026-09-15-v2"
 
-    enum class Domain { IDENTITY, GOVERNANCE, DATA, REASONING, EXECUTION, NETWORK, UPDATE, RECOVERY, RESOURCES, PORTABILITY }
+    enum class Domain { IDENTITY, GOVERNANCE, DATA, QURAN_SOURCE, REASONING, EXECUTION, NETWORK, UPDATE, RECOVERY, RESOURCES, PORTABILITY }
 
     data class DomainState(
         val domain: Domain,
@@ -37,6 +37,7 @@ object HakimSovereignIndependence {
         val recovery = HakimConnectionResilience.status(app)
         val mesh = HakimCapabilityMesh.discover(app).associateBy { it.id }
         val portability = HakimSovereignPortability.status(app)
+        val quran = HakimVerifiedQuranCorpus.status(app)
 
         return listOf(
             DomainState(
@@ -59,6 +60,22 @@ object HakimSovereignIndependence {
                 readyNow = true,
                 externalDependency = false,
                 reason = "المخزن المشفر وخزنة البيانات محليان؛ الأسرار الخام ممنوعة من الخزنة"
+            ),
+            DomainState(
+                Domain.QURAN_SOURCE,
+                sovereign = quran.optBoolean("verified_local_quran_corpus") &&
+                    quran.optBoolean("exact_text_fails_closed_without_verified_source") &&
+                    quran.optBoolean("restore_reuses_full_official_verification"),
+                readyNow = quran.optBoolean("ready") && quran.optBoolean("offline_reimport_source_available"),
+                externalDependency = !quran.optBoolean("offline_reimport_source_available"),
+                reason = when {
+                    quran.optBoolean("ready") && quran.optBoolean("offline_reimport_source_available") ->
+                        "نص السور الـ١١٤ متحقق محليًا والمصدر الرسمي الأصلي محفوظ وقابل للتصدير والاستعادة دون شبكة مع إعادة فحص البصمة"
+                    quran.optBoolean("ready") ->
+                        "النص القرآني متحقق محليًا، لكن نسخة المصدر الرسمية القابلة للاستعادة دون شبكة غير متاحة بعد"
+                    else ->
+                        "الحاكمية القرآنية فعالة، لكن النص الدقيق المحلي لم يُعتمد بعد من مصدر رسمي مطابق للبصمة"
+                }
             ),
             DomainState(
                 Domain.REASONING,
@@ -109,7 +126,7 @@ object HakimSovereignIndependence {
                 sovereign = portability.optBoolean("sovereign_portability"),
                 readyNow = portability.optBoolean("sovereign_portability"),
                 externalDependency = false,
-                reason = "النظام الحاكم والبيانات غير الحساسة والثقة قابلة للتصدير والاستعادة بإجراء صريح"
+                reason = "النظام الحاكم والقواعد والتعلم والبيانات والثقة قابلة للتصدير والاستعادة، ومصدر القرآن الموثق له مسار مستقل حتى لا يُضغط داخل نسخة الإعدادات"
             )
         )
     }
@@ -125,7 +142,7 @@ object HakimSovereignIndependence {
         appendLine("الأولوية: محلي ومملوك للمستخدم أولًا → جلسة موجودة/مجانية عند الحاجة → بديل موثوق → انتظار آمن. لا اشتراك أو صلاحية أو كشف بيانات لمجرد زيادة الاستقلال.")
         appendLine("لا تدّع استقلالًا مطلقًا: حكيم يعتمد على Android والهاتف نفسه، والاستدلال المتقدم قد يحتاج مزودًا خارجيًا. المطلوب منع الارتهان ونقطة الفشل الواحدة، لا إنكار الواقع التقني.")
         append(HakimReasoningProviderRegistry.promptContext(context))
-    }.take(9000)
+    }.take(10000)
 
     fun status(context: Context): JSONObject {
         val states = assess(context)
@@ -143,5 +160,6 @@ object HakimSovereignIndependence {
             .put("domains", JSONArray(states.map { it.toJson() }))
             .put("provider_registry", HakimReasoningProviderRegistry.status(context))
             .put("portability", HakimSovereignPortability.status(context))
+            .put("verified_quran_corpus", HakimVerifiedQuranCorpus.status(context))
     }
 }

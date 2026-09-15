@@ -96,6 +96,7 @@ object HakimVerifiedQuranCorpus {
             .put("all_114_surahs_scanned", coverageComplete && scannedSurahCount == 114)
             .put("all_6236_ayat_scanned", coverageComplete && scannedAyahCount == EXPECTED_AYA_COUNT)
             .put("retrieval_is_lexical_not_tafsir", true)
+            .put("forced_relevance_forbidden", true)
             .put("candidate_count", candidates.size)
             .put("reason", reason)
             .put("candidates", JSONArray(candidates.map { it.toJson() }))
@@ -221,7 +222,8 @@ object HakimVerifiedQuranCorpus {
 
     /**
      * يمسح فعليًا كل السجلات المحلية الموثقة عند طلب الاستقراء الشامل.
-     * لا يفسر الآيات ولا يحكم على صلتها الشرعية؛ بل ينتج مرشحات لفظية ليقيّمها المحرك/المصدر المختص لاحقًا.
+     * لا يفسر الآيات ولا يحكم على صلتها الشرعية؛ بل ينتج مرشحات لفظية من ألفاظ المقصد نفسه فقط.
+     * لا توجد بذور قيمية مخفية ولا تُفرض صلة شرعية لمجرد أن الآية تتناول قيمة عامة.
      */
     fun fullCorpusScan(context: Context, rawQuery: String, limit: Int = 28): FullCorpusScan {
         HakimQuranicInvariantKernel.requireInherited("verified_quran_full_scan")
@@ -231,9 +233,6 @@ object HakimVerifiedQuranCorpus {
         }
 
         val queryTerms = retrievalTerms(rawQuery)
-        val normativeSeeds = listOf(
-            "حق", "عدل", "امانه", "رحمه", "احسان", "علم", "حكمه", "شورى", "وفاء", "عهد", "صدق", "ظلم", "فساد"
-        )
         val matches = ArrayList<CorpusCandidate>()
         val visitedSurahs = HashSet<Int>(114)
         var scanned = 0
@@ -252,11 +251,9 @@ object HakimVerifiedQuranCorpus {
                 visitedSurahs += surah
 
                 val normalized = normalizeArabic(if (imlaey.isNotBlank()) imlaey else text)
-                val directScore = queryTerms.sumOf { term ->
+                val score = queryTerms.sumOf { term ->
                     if (normalized.contains(term)) 10 + term.length.coerceAtMost(10) else 0
                 }
-                val normativeScore = normativeSeeds.count { normalized.contains(it) }
-                val score = directScore + normativeScore
                 if (score > 0) matches += CorpusCandidate(surah, ayah, name, text, score)
             }
         }
@@ -268,8 +265,9 @@ object HakimVerifiedQuranCorpus {
             .take(safeLimit)
         val reason = when {
             !coverage -> "الفحص لم يثبت المرور على القرآن المحلي كاملًا؛ لا يجوز ادعاء الاستقراء الشامل"
-            candidates.isEmpty() -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة، لكن لم تنتج المطابقة اللفظية مرشحات كافية؛ يلزم بحث/تفسير موثوق بدل اختلاق صلة"
-            else -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة؛ المرشحات الناتجة استرجاع لفظي فقط وتحتاج فحص الدلالة والسياق والمصدر قبل الاستنباط"
+            queryTerms.isEmpty() -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة، لكن المقصد لم ينتج ألفاظ بحث كافية؛ لا تُفرض آيات عامة قسرًا، ويلزم تحليل دلالي موثوق عند الحاجة"
+            candidates.isEmpty() -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة، لكن لم تنتج المطابقة اللفظية مرشحات؛ يلزم بحث/تفسير موثوق بدل اختلاق صلة"
+            else -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة؛ المرشحات الناتجة استرجاع لفظي من ألفاظ المقصد فقط وتحتاج فحص الدلالة والسياق والمصدر قبل الاستنباط"
         }
         return FullCorpusScan(true, coverage, scanned, visitedSurahs.size, candidates, reason)
     }
@@ -299,6 +297,7 @@ object HakimVerifiedQuranCorpus {
             .put("full_corpus_scan_available", ready)
             .put("full_corpus_scan_requires_verified_local_text", true)
             .put("full_corpus_scan_is_lexical_retrieval_not_tafsir", true)
+            .put("full_corpus_scan_forced_relevance_forbidden", true)
             .put("policy_coverage_is_not_text_coverage", true)
             .put("exact_text_fails_closed_without_verified_source", true)
             .put("official_source_page", OFFICIAL_SOURCE_PAGE)

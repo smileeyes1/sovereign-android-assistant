@@ -20,8 +20,36 @@ workflow = text(".github/workflows/android.yml")
 
 require("object HakimSystemOfSystems" in sos, "P0: نظام الأنظمة مفقود")
 require("DerivedSystem" in sos and "compose(context" in sos, "P0: توليد النظام المنبثق غير منفذ")
-for unit in ["GOVERNANCE", "QURAN_SUNNAH", "HUMAN_FIRST", "INDEPENDENCE", "INTENT", "CAPABILITY_MESH", "RESOURCE", "AUTHORITY", "VERIFICATION", "RECOVERY", "LEARNING"]:
-    require(unit in sos, f"P0: نظام حاكم أساسي مفقود من نظام الأنظمة: {unit}")
+for unit in [
+    "GOVERNANCE", "QURAN_SUNNAH", "HUMAN_FIRST", "INDEPENDENCE", "INTENT",
+    "DECISION_MATRIX", "SMART_ALGORITHMS", "EXCELLENCE", "CAPABILITY_MESH",
+    "RESOURCE", "AUTHORITY", "VERIFICATION", "RECOVERY", "LEARNING"
+]:
+    require(unit in sos, f"P0: نظام حاكم/ذكي أساسي مفقود: {unit}")
+
+for token in [
+    "smart_systems",
+    "smart_decision_matrices",
+    "smart_algorithms",
+    "smartness_applies_to_every_materially_useful_layer",
+    "simple_first_complexity_on_evidence",
+    "inherits_smart_decision_matrix",
+    "inherits_smart_algorithms",
+    "inherits_excellence_optimizer",
+    "smartness_requires_material_gain",
+    "simple_algorithm_preferred_when_sufficient",
+]:
+    require(token in sos, f"P0: عقد الذكاء المنظومي مفقود: {token}")
+
+require("HakimDecisionMatrix.evaluate" in sos and "HakimDecisionMatrix.promptContext" in sos,
+        "P0: مصفوفة القرار الذكية غير مدمجة في تكوين/سياق النظام")
+require("HakimExcellenceOptimizer.promptContext" in sos and "HakimExcellenceOptimizer.status" in sos,
+        "P0: محسن التفوق غير مدمج في نظام الأنظمة")
+require("المسار الأبسط" in sos and "فائدة مثبتة" in sos,
+        "P0: الذكاء قد يتحول إلى تعقيد بلا مكسب مثبت")
+require("LAST_VERIFIED_BASELINE" in sos,
+        "P0: الخوارزميات الذكية لا تعود إلى آخر خط أساس مثبت عند الانحدار")
+
 require("ephemeral_derived_system" in sos, "P0: الأنظمة المنبثقة قد تتحول إلى خدمات دائمة")
 require("inherits_sovereign_independence" in sos, "P0: النظام المنبثق لا يثبت وراثة الاستقلال")
 require("derived_systems_inherit_sovereign_independence" in sos, "P0: حالة نظام الأنظمة لا تحرس وراثة الاستقلال")
@@ -40,16 +68,8 @@ require("HakimSovereignIndependence.promptContext" in sos, "P0: نظام الأ�
 require("SEQUENTIAL_WIP1_MINIMAL_BACKGROUND" in sos, "P0: ضغط الموارد لا يفرض مسارًا خفيفًا متسلسلًا")
 
 for phrase in [
-    "و؟ الواقع",
-    "و؟ المقصد",
-    "و؟ القيود",
-    "لِمَ؟",
-    "و؟ البدائل",
-    "و؟ الدليل",
-    "اعتمد",
-    "أصلح",
-    "أكمل",
-    "هَيّا",
+    "و؟ الواقع", "و؟ المقصد", "و؟ القيود", "لِمَ؟", "و؟ البدائل", "و؟ الدليل",
+    "اعتمد", "أصلح", "أكمل", "هَيّا",
 ]:
     require(phrase in sos, f"P0: بروتوكول حكيم ناقص في نظام الأنظمة: {phrase}")
 

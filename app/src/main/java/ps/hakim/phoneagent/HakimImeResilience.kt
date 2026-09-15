@@ -5,6 +5,8 @@ import android.app.Application
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ListView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
@@ -16,15 +18,12 @@ import kotlin.math.roundToInt
  * حارس احترافي لمربع الكتابة مع لوحة المفاتيح.
  *
  * نبقي adjustResize لمسار التوافق الرسمي، لكن لا نفترض أنه كافٍ على كل جهاز/OEM.
- * إذا بقي الـcomposer متداخلًا فعليًا مع IME، نحسب مقدار التداخل الحقيقي فقط
+ * إذا بقي composer متداخلًا فعليًا مع IME، نحسب مقدار التداخل الحقيقي فقط
  * ونرفعه بالـtranslation دون إضافة ارتفاع لوحة المفاتيح إلى Padding الجذر.
  * كما نزامن الحركة مع WindowInsetsAnimationCompat على Android 11+، ونزيد
  * padding سجل الرسائل بمقدار التداخل فقط كي يبقى آخر محتوى قابلًا للقراءة.
  */
 object HakimImeResilience {
-    const val COMPOSER_TAG = "hakim_chat_composer_outer"
-    const val MESSAGE_LIST_TAG = "hakim_chat_message_list"
-
     private var installed = false
 
     private data class UiState(
@@ -61,8 +60,10 @@ object HakimImeResilience {
 
     private fun configure(activity: HakimAgentsChatActivity) {
         val content = activity.findViewById<View>(android.R.id.content) ?: return
-        val composer = content.findViewWithTag<View>(COMPOSER_TAG) ?: return
-        val messageList = content.findViewWithTag<ListView>(MESSAGE_LIST_TAG) ?: return
+        val input = findFirstEditText(content) ?: return
+        val inputRow = input.parent as? View ?: input
+        val composer = inputRow.parent as? View ?: inputRow
+        val messageList = findFirstListView(content) ?: return
 
         val state = synchronized(configured) {
             configured[content]?.let { return }
@@ -111,7 +112,7 @@ object HakimImeResilience {
             insets
         }
 
-        // Android 11+ يتيح مزامنة الـcomposer مع انزلاق الكيبورد دون إعادة layout للجذر كل frame.
+        // Android 11+ يتيح مزامنة composer مع انزلاق الكيبورد دون إعادة layout للجذر كل frame.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             ViewCompat.setWindowInsetsAnimationCallback(
                 content,
@@ -230,6 +231,26 @@ object HakimImeResilience {
     }
 
     private fun baseTopOnScreen(view: View): Float = renderedTopOnScreen(view) - view.translationY
+
+    private fun findFirstEditText(view: View): EditText? {
+        if (view is EditText) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findFirstEditText(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun findFirstListView(view: View): ListView? {
+        if (view is ListView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findFirstListView(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
 
     private fun isImeAnimation(animation: WindowInsetsAnimationCompat): Boolean =
         animation.typeMask and WindowInsetsCompat.Type.ime() != 0

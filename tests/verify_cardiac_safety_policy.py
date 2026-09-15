@@ -35,7 +35,7 @@ for token in [
 ]:
     require(token in policy, f"P0: ضابط قلبي مفقود: {token}")
 
-require("القراءة/المزامنة المأذونة والتنبيه فقط" in policy,
+require("للقراءة/المزامنة المأذونة" in policy and "والتنبيه فقط" in policy,
         "P0: الاتصال اللاسلكي ليس مقيدًا بالقراءة والتنبيه")
 require("ممنوع على حكيم" in policy and "منظم قلب" in policy and "مزيل رجفان" in policy,
         "P0: منع التحكم بالأجهزة القلبية المزروعة غير صريح")

@@ -80,6 +80,8 @@ class HakimSystemSettingsActivity : Activity() {
             }
 
             REQ_QURAN_IMPORT -> importVerifiedQuran(uri)
+            REQ_QURAN_EXPORT -> exportVerifiedQuran(uri)
+            REQ_QURAN_RESTORE -> restoreVerifiedQuran(uri)
         }
     }
 
@@ -123,6 +125,23 @@ class HakimSystemSettingsActivity : Activity() {
             setOnClickListener { chooseOfficialQuranArchive() }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(quranRow)
+
+        val quranPortabilityRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        quranPortabilityRow.addView(Button(this).apply {
+            text = "تصدير المصدر الموثق"
+            textSize = 15f
+            setOnClickListener { exportVerifiedQuranArchive() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        quranPortabilityRow.addView(Button(this).apply {
+            text = "استعادة المصدر الموثق"
+            textSize = 15f
+            setOnClickListener { restoreVerifiedQuranArchive() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(quranPortabilityRow)
+        root.addView(note("بعد اعتماد المصدر الرسمي يحتفظ حكيم بنسخته الأصلية محليًا. يمكنك تصديرها لنسخة احتياطية خاصة بك ثم استعادتها دون شبكة؛ حكيم يعيد فحص البصمة الرسمية والسور والآيات قبل الاعتماد، ولا يصدّر أسرارًا أو بيانات حسابات."))
 
         root.addView(section("الاستقلال السيادي والمبادرة"))
         root.addView(note("الحالة: ${if (HakimSovereignIndependence.isCoreSovereign(this)) "القلب السيادي مستقل عن مزود خارجي منفرد" else "توجد فجوة استقلال بنيوية تحتاج إصلاحًا"}. الخدمات الخارجية قدرات قابلة للاستبدال وليست حاكمًا."))
@@ -272,11 +291,48 @@ class HakimSystemSettingsActivity : Activity() {
         }.start()
     }
 
+    private fun exportVerifiedQuranArchive() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+            putExtra(Intent.EXTRA_TITLE, "Hakim-Quran-Verified-Source.zip")
+        }
+        startActivityForResult(intent, REQ_QURAN_EXPORT)
+    }
+
+    private fun exportVerifiedQuran(uri: Uri) {
+        Toast.makeText(this, "يعيد حكيم فحص بصمة المصدر قبل التصدير…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val result = HakimVerifiedQuranCorpus.exportPreservedOfficialArchive(this, uri)
+            runOnUiThread { Toast.makeText(this, result.message, Toast.LENGTH_LONG).show() }
+        }.start()
+    }
+
+    private fun restoreVerifiedQuranArchive() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+        }
+        startActivityForResult(intent, REQ_QURAN_RESTORE)
+    }
+
+    private fun restoreVerifiedQuran(uri: Uri) {
+        Toast.makeText(this, "يتحقق حكيم من المصدر كاملًا قبل الاستعادة…", Toast.LENGTH_LONG).show()
+        Thread {
+            val result = HakimVerifiedQuranCorpus.restorePreservedOfficialArchive(this, uri)
+            runOnUiThread {
+                refreshQuranCorpusStatus()
+                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+            }
+        }.start()
+    }
+
     private fun refreshQuranCorpusStatus() {
         if (!::quranCorpusStatus.isInitialized) return
         val s = HakimVerifiedQuranCorpus.status(this)
         quranCorpusStatus.text = if (s.optBoolean("ready")) {
-            "جاهز ومتحقق محليًا: ${s.optInt("surah_count")} سورة، ${s.optInt("ayah_count")} آية، المصدر=${s.optString("source_title")}, تحديث=${s.optString("source_update")}."
+            val offline = if (s.optBoolean("offline_reimport_source_available")) "المصدر الرسمي محفوظ محليًا وقابل للتصدير/الاستعادة دون شبكة" else "النص متحقق لكن نسخة المصدر الاحتياطية غير مثبتة"
+            "جاهز ومتحقق محليًا: ${s.optInt("surah_count")} سورة، ${s.optInt("ayah_count")} آية، المصدر=${s.optString("source_title")}, تحديث=${s.optString("source_update")}. $offline."
         } else {
             "غير مثبت محليًا بعد. تبقى الحاكمية القرآنية مفعلة، لكن النص الدقيق لا يُنسب من الذاكرة؛ استخدم المصدر الرسمي ثم اختر «اعتماد الملف الرسمي»."
         }
@@ -364,5 +420,7 @@ class HakimSystemSettingsActivity : Activity() {
         private const val REQ_EXPORT = 7301
         private const val REQ_IMPORT = 7302
         private const val REQ_QURAN_IMPORT = 7303
+        private const val REQ_QURAN_EXPORT = 7304
+        private const val REQ_QURAN_RESTORE = 7305
     }
 }

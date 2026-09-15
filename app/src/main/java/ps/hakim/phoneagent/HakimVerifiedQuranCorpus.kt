@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.net.Uri
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -59,6 +60,46 @@ object HakimVerifiedQuranCorpus {
         val message: String,
         val bytes: Long = 0L
     )
+
+    /**
+     * نتيجة استقراء كامل للنص المحلي الموثق.
+     * المرشحات لفظية/استرجاعية فقط وليست تفسيرًا ولا حكمًا ولا إثبات صلة شرعية بذاتها.
+     */
+    data class CorpusCandidate(
+        val surah: Int,
+        val ayah: Int,
+        val surahNameAr: String,
+        val text: String,
+        val lexicalScore: Int
+    ) {
+        fun toJson(): JSONObject = JSONObject()
+            .put("surah", surah)
+            .put("ayah", ayah)
+            .put("surah_name_ar", surahNameAr)
+            .put("text", text)
+            .put("lexical_score", lexicalScore)
+    }
+
+    data class FullCorpusScan(
+        val ready: Boolean,
+        val coverageComplete: Boolean,
+        val scannedAyahCount: Int,
+        val scannedSurahCount: Int,
+        val candidates: List<CorpusCandidate>,
+        val reason: String
+    ) {
+        fun toJson(): JSONObject = JSONObject()
+            .put("ready", ready)
+            .put("coverage_complete", coverageComplete)
+            .put("scanned_ayah_count", scannedAyahCount)
+            .put("scanned_surah_count", scannedSurahCount)
+            .put("all_114_surahs_scanned", coverageComplete && scannedSurahCount == 114)
+            .put("all_6236_ayat_scanned", coverageComplete && scannedAyahCount == EXPECTED_AYA_COUNT)
+            .put("retrieval_is_lexical_not_tafsir", true)
+            .put("candidate_count", candidates.size)
+            .put("reason", reason)
+            .put("candidates", JSONArray(candidates.map { it.toJson() }))
+    }
 
     // بصمات منشورة في منصة المطورين الرسمية. لا تقبل بصمة جديدة تلقائيًا دون تحديث موثق.
     val acceptedSources = listOf(
@@ -178,6 +219,61 @@ object HakimVerifiedQuranCorpus {
         }
     }
 
+    /**
+     * يمسح فعليًا كل السجلات المحلية الموثقة عند طلب الاستقراء الشامل.
+     * لا يفسر الآيات ولا يحكم على صلتها الشرعية؛ بل ينتج مرشحات لفظية ليقيّمها المحرك/المصدر المختص لاحقًا.
+     */
+    fun fullCorpusScan(context: Context, rawQuery: String, limit: Int = 28): FullCorpusScan {
+        HakimQuranicInvariantKernel.requireInherited("verified_quran_full_scan")
+        val app = context.applicationContext
+        if (!isReady(app)) {
+            return FullCorpusScan(false, false, 0, 0, emptyList(), "قاعدة القرآن المحلية الكاملة غير متحققة")
+        }
+
+        val queryTerms = retrievalTerms(rawQuery)
+        val normativeSeeds = listOf(
+            "حق", "عدل", "امانه", "رحمه", "احسان", "علم", "حكمه", "شورى", "وفاء", "عهد", "صدق", "ظلم", "فساد"
+        )
+        val matches = ArrayList<CorpusCandidate>()
+        val visitedSurahs = HashSet<Int>(114)
+        var scanned = 0
+
+        Db(app).readableDatabase.rawQuery(
+            "SELECT sura_no, aya_no, sura_name_ar, aya_text, aya_text_emlaey FROM aya ORDER BY sura_no, aya_no",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val surah = c.getInt(0)
+                val ayah = c.getInt(1)
+                val name = c.getString(2)
+                val text = c.getString(3)
+                val imlaey = c.getString(4).orEmpty()
+                scanned++
+                visitedSurahs += surah
+
+                val normalized = normalizeArabic(if (imlaey.isNotBlank()) imlaey else text)
+                val directScore = queryTerms.sumOf { term ->
+                    if (normalized.contains(term)) 10 + term.length.coerceAtMost(10) else 0
+                }
+                val normativeScore = normativeSeeds.count { normalized.contains(it) }
+                val score = directScore + normativeScore
+                if (score > 0) matches += CorpusCandidate(surah, ayah, name, text, score)
+            }
+        }
+
+        val coverage = scanned == EXPECTED_AYA_COUNT && visitedSurahs.size == 114 && (1..114).all { it in visitedSurahs }
+        val safeLimit = limit.coerceIn(1, 64)
+        val candidates = matches
+            .sortedWith(compareByDescending<CorpusCandidate> { it.lexicalScore }.thenBy { it.surah }.thenBy { it.ayah })
+            .take(safeLimit)
+        val reason = when {
+            !coverage -> "الفحص لم يثبت المرور على القرآن المحلي كاملًا؛ لا يجوز ادعاء الاستقراء الشامل"
+            candidates.isEmpty() -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة، لكن لم تنتج المطابقة اللفظية مرشحات كافية؛ يلزم بحث/تفسير موثوق بدل اختلاق صلة"
+            else -> "تم فحص السور الـ١١٤ والآيات الـ٦٢٣٦ كاملة؛ المرشحات الناتجة استرجاع لفظي فقط وتحتاج فحص الدلالة والسياق والمصدر قبل الاستنباط"
+        }
+        return FullCorpusScan(true, coverage, scanned, visitedSurahs.size, candidates, reason)
+    }
+
     fun isReady(context: Context): Boolean {
         val app = context.applicationContext
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -200,6 +296,9 @@ object HakimVerifiedQuranCorpus {
             .put("verified_local_quran_corpus", true)
             .put("ready", ready)
             .put("all_114_surahs_text_locally_verified", ready)
+            .put("full_corpus_scan_available", ready)
+            .put("full_corpus_scan_requires_verified_local_text", true)
+            .put("full_corpus_scan_is_lexical_retrieval_not_tafsir", true)
             .put("policy_coverage_is_not_text_coverage", true)
             .put("exact_text_fails_closed_without_verified_source", true)
             .put("official_source_page", OFFICIAL_SOURCE_PAGE)
@@ -216,6 +315,27 @@ object HakimVerifiedQuranCorpus {
             .put("export_reverifies_official_hashes", true)
             .put("restore_reuses_full_official_verification", true)
     }
+
+    private fun retrievalTerms(raw: String): List<String> {
+        val normalized = normalizeArabic(raw)
+        val stop = setOf(
+            "القران", "القرءان", "كل", "جميع", "سوره", "سور", "شيء", "شي", "قم", "طبق", "تطبيق", "وكل", "هذا", "هذه", "من", "الى", "على", "في", "عن", "مع", "ثم", "او", "ما", "هو", "هي", "ان", "بكل", "كامل", "كامله"
+        )
+        return normalized
+            .split(Regex("[^\\p{L}\\p{N}]+"))
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.length >= 3 && it !in stop }
+            .distinct()
+            .take(24)
+            .toList()
+    }
+
+    private fun normalizeArabic(value: String): String = value
+        .lowercase()
+        .replace(Regex("[\\u0610-\\u061A\\u064B-\\u065F\\u0670\\u06D6-\\u06EDـ]"), "")
+        .replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
+        .replace('ى', 'ي').replace('ؤ', 'و').replace('ئ', 'ي').replace('ة', 'ه')
 
     private fun installArchiveAndDatabase(context: Context, archive: File, ayat: List<Ayah>, source: SourceSpec) {
         val target = File(context.filesDir, PRESERVED_ARCHIVE_NAME)

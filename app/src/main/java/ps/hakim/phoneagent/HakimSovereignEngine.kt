@@ -84,6 +84,9 @@ object HakimSovereignEngine {
         HakimIntegrationFabric.requireCore(context, "sovereign_prompt")
         val a = assess(context, goal, highImpact, sensitive)
         val verifiedQuran = HakimVerifiedQuranCorpus.status(context)
+        val wholeQuranScan = if (
+            a.quranic.wholeQuranCorpusRequested && verifiedQuran.optBoolean("ready")
+        ) HakimVerifiedQuranCorpus.fullCorpusScan(context, goal, 28) else null
         val faults = HakimFaultLedger.status(context)
         return buildString {
             appendLine("[المحرك السيادي لحكيم]")
@@ -92,6 +95,22 @@ object HakimSovereignEngine {
             append(HakimQuranSunnahMethod.promptContext(goal))
             appendLine("[حالة النص القرآني المحلي المتحقق]")
             appendLine(if (verifiedQuran.optBoolean("ready")) "قاعدة حفص المحلية متحققة من المصدر الرسمي: ${verifiedQuran.optInt("surah_count")} سورة / ${verifiedQuran.optInt("ayah_count")} آية. يجوز استخدامها للنص الدقيق مع إبقاء طبقات التفسير/الاستنباط منفصلة." else "الحاكمية القرآنية الشاملة مفعلة، لكن نص القرآن الكامل ليس متحققًا محليًا بعد؛ لا تنقل نصًا دقيقًا من الذاكرة، واستخدم مصدرًا رسميًا موثوقًا قبل الجزم.")
+            if (a.quranic.wholeQuranCorpusRequested) {
+                appendLine("[استقراء القرآن كله — تنفيذ فعلي لا شعار]")
+                if (wholeQuranScan == null) {
+                    appendLine("تعذر تنفيذ مسح السور الـ١١٤ محليًا لأن corpus النص الموثق غير جاهز. لا تدّع الشمول؛ انتقل إلى بحث مصدري موثوق ثم أعد التخطيط.")
+                } else {
+                    appendLine("تم المرور الفعلي على ${wholeQuranScan.scannedSurahCount} سورة و${wholeQuranScan.scannedAyahCount} آية؛ اكتمال التغطية=${wholeQuranScan.coverageComplete}.")
+                    appendLine(wholeQuranScan.reason)
+                    appendLine("الآيات التالية مرشحات استرجاع لفظي من النص الموثق وليست تفسيرًا ولا حكمًا ولا إثباتًا للصلة بذاتها؛ افحص السياق والدلالة والتفسير الموثوق قبل الاستنباط:")
+                    wholeQuranScan.candidates.forEach { c ->
+                        appendLine("• ${c.surahNameAr} ${c.surah}:${c.ayah} — ${c.text}")
+                    }
+                    if (wholeQuranScan.candidates.isEmpty()) {
+                        appendLine("لم ينتج الاسترجاع اللفظي مرشحات كافية؛ لا تملأ الفراغ بالتكلف. استخدم بحثًا/تفسيرًا موثوقًا مع بقاء إثبات مسح الـ١١٤ سورة مستقلًا عن نتيجة الصلة.")
+                    }
+                }
+            }
             append(HakimHumanFirstPolicy.promptContext())
             append(HakimHumanCapabilityBoundary.promptContext(goal))
             append(HakimSystemOfSystems.promptContext(context, goal))

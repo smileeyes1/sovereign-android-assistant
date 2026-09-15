@@ -123,6 +123,7 @@ object HakimPersonalSovereignty {
         if (encoded.length > MAX_CHARTER_CHARS) return null
         return out
     }
+
     fun captureExplicitDeclaration(context: Context, raw: String, source: String = "hakim_chat"): Boolean {
         val text = raw.trim()
         if (text.isBlank()) return false
@@ -143,6 +144,4 @@ object HakimPersonalSovereignty {
         }
         return ok
     }
-
 }
-

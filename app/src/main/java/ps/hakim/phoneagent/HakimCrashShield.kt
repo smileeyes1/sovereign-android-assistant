@@ -14,7 +14,7 @@ import android.os.Bundle
  * بعد CRASH/ANR حديث يمنع الاستئناف الاستباقي مؤقتًا كي لا يتحول الخطأ إلى حلقة إغلاق.
  */
 object HakimCrashShield {
-    const val VERSION = "CRASH-SHIELD-2026-09-15-v1"
+    const val VERSION = "CRASH-SHIELD-2026-09-15-v2"
     private const val PREFS = "hakim_crash_shield"
     private const val PROACTIVE_PREFS = "hakim_proactive"
     private const val SAFE_RECOVERY_MS = 30L * 60L * 1000L
@@ -62,6 +62,18 @@ object HakimCrashShield {
     fun recordNonFatal(context: Context, label: String, error: Throwable) {
         if (isFatal(error)) throw error
         record(context, label, error)
+    }
+
+    fun suppressProactiveResumeFor(context: Context, durationMs: Long, reason: String) {
+        val now = System.currentTimeMillis()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val currentUntil = prefs.getLong("safe_recovery_until", 0L)
+        val requestedUntil = now + durationMs.coerceIn(0L, 60L * 60L * 1000L)
+        prefs.edit()
+            .putLong("safe_recovery_until", maxOf(currentUntil, requestedUntil))
+            .putString("last_suppression_reason", reason.take(120))
+            .putLong("last_suppression_at", now)
+            .apply()
     }
 
     fun shouldSuppressProactiveResume(context: Context): Boolean {
@@ -128,10 +140,12 @@ object HakimCrashShield {
             "version" to VERSION,
             "installed" to installed,
             "recent_crash_or_anr_suppresses_proactive_resume" to true,
+            "interactive_suppression_supported" to true,
             "records_user_text_or_credentials" to false,
             "safe_recovery_active" to shouldSuppressProactiveResume(context),
             "last_exit_reason" to p.getInt("last_exit_reason", -1),
-            "last_recorded_failure_at" to p.getLong("last_recorded_failure_at", 0L)
+            "last_recorded_failure_at" to p.getLong("last_recorded_failure_at", 0L),
+            "last_suppression_reason" to p.getString("last_suppression_reason", "").orEmpty()
         )
     }
 }

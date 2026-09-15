@@ -10,12 +10,12 @@ import androidx.core.view.WindowInsetsCompat
 import java.util.WeakHashMap
 
 /**
- * يحمي واجهة المحادثة من تغطية لوحة المفاتيح، خصوصًا مع فرض edge-to-edge
- * على Android 15+ للتطبيقات التي تستهدف API 35.
+ * حارس إدخال منخفض الكلفة.
  *
- * على Android 14 وما قبله يكفي adjustResize التقليدي في الـManifest.
- * على Android 15+ نضيف حجزًا صريحًا لمساحة IME/شريط التنقل لأن الواجهة
- * مبنية بViews مخصصة وليست Material/Compose ذات معالجة insets تلقائية.
+ * على Android 15+ لا نضيف ارتفاع لوحة المفاتيح كاملًا إلى Padding الجذر؛
+ * فهذا يضاعف إعادة التخطيط مع adjustResize على بعض الأجهزة ويزيد التقطيع.
+ * نكتفي بحواف النظام/القص، ونراقب IME دون تحويل ارتفاعه إلى Padding للجذر.
+ * إبقاء composer ظاهرًا أثناء الكتابة يعتمد على adjustResize المعلن في Manifest.
  */
 object HakimImeResilience {
     private var installed = false
@@ -24,6 +24,7 @@ object HakimImeResilience {
     fun install(app: Application) {
         if (installed) return
         installed = true
+        HakimInputSafety.install(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                 if (activity !is HakimAgentsChatActivity) return
@@ -49,11 +50,20 @@ object HakimImeResilience {
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
-            val navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            val bottomInset = if (imeVisible) maxOf(ime.bottom, navigation.bottom) else navigation.bottom
-            view.setPadding(base[0], base[1], base[2], base[3] + bottomInset)
+            val left = base[0] + bars.left
+            val top = base[1] + bars.top
+            val right = base[2] + bars.right
+            val bottom = base[3] + if (imeVisible) 0 else bars.bottom
+
+            if (view.paddingLeft != left || view.paddingTop != top ||
+                view.paddingRight != right || view.paddingBottom != bottom
+            ) {
+                view.setPadding(left, top, right, bottom)
+            }
             insets
         }
         ViewCompat.requestApplyInsets(content)
@@ -61,8 +71,12 @@ object HakimImeResilience {
 
     fun status(): Map<String, Any> = linkedMapOf(
         "manifest_adjust_resize_required" to true,
-        "android_15_plus_ime_insets_handled" to true,
+        "android_15_plus_system_insets_handled" to true,
+        "ime_observed_without_full_root_padding" to true,
+        "full_ime_height_root_padding_forbidden" to true,
         "composer_must_remain_visible_with_keyboard" to true,
-        "legacy_android_relies_on_adjust_resize" to true
+        "legacy_android_relies_on_adjust_resize" to true,
+        "input_layout_churn_reduced" to true,
+        "typing_preempts_proactive_resume" to true
     )
 }

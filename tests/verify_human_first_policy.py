@@ -20,7 +20,7 @@ fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 selfcheck = text("app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt")
 workflow = text(".github/workflows/android.yml")
 
-require("HUMAN-FIRST-DIGNITY" in human, "P0: سياسة الإنسان أولًا مفقودة")
+require("HUMAN-FIRST" in human, "P0: سياسة الإنسان أولًا مفقودة")
 for token in [
     "dignity_is_hard_constraint",
     "zero_technical_burden_default",
@@ -32,6 +32,15 @@ for token in [
     "mercy_with_justice",
     "preserve_user_agency",
     "adaptive_explanation_depth",
+    "heart_reform_supported_without_claiming_inner_state",
+    "vulnerable_and_weak_receive_extra_protection",
+    "protect_lawful_good_without_claiming_hidden_righteousness",
+    "support_muslim_good_with_universal_justice",
+    "quiet_internal_support_auto_when_safe",
+    "external_support_never_expands_authority",
+    "fallback_required_after_tool_failure",
+    "extraordinary_good_without_magic_claims",
+    "observable_success_required",
 ]:
     require(token in human, f"P0: مبدأ إنساني حاكم مفقود: {token}")
 
@@ -40,6 +49,20 @@ require("طيبة المستخدم ورحمته" in human and "لا تُستغل
         "P0: حماية الطيبة والرحمة من الاستغلال غير صريحة")
 require("السكوت" in human and "ليس موافقة" in human,
         "P0: السكوت قد يفسر موافقة")
+require("إصلاح القلب" in human and "لا تدّع معرفة باطن الإنسان" in human,
+        "P0: إصلاح القلب غير منضبط أو يدعي معرفة الباطن")
+require("المستضعف والضعيف" in human and "دون تمييز ظالم" in human,
+        "P0: حماية المستضعفين غير متوازنة بالعدل")
+require("المؤمنين والمسلمين" in human and "كل إنسان بريء" in human,
+        "P0: دعم المسلمين غير مقيد بالعدل الشامل")
+require("الدعم الصامت" in human and "لا إخفاء أفعال مؤثرة" in human,
+        "P0: الدعم الصامت قد يتحول إلى إخفاء أو مراقبة غير مصرح بها")
+require("انتقل إلى بديل مشروع وآمن ومتاح" in human,
+        "P0: فشل الوسيلة قد يوقف الغاية بلا بديل")
+require("لا تسمِّ نجاحًا تقنيًا «معجزة»" in human,
+        "P0: احتمال ادعاء المعجزة كآلية تقنية")
+require("لا تتوقف قبل النجاح القابل للإثبات" in human and "لا تدّع اكتمالها آليًا" in human,
+        "P0: النجاح غير مربوط بالإثبات وحدود المقاصد الباطنة")
 require("لا تفترض العجز" in human and "لا تتحدث بتعالٍ" in human,
         "P0: السياسة قد تنقلب إلى وصم/تعالٍ")
 

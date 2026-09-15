@@ -62,19 +62,23 @@ object HakimDecisionMatrix {
         val text = raw.trim()
         val s = text.lowercase()
         val quranic = HakimQuranicFramework.assess(raw)
-        if (sensitive || sensitiveRegex.containsMatchIn(s)) {
+        val wisdom = HakimEliteWisdomEngine.assess(raw, highImpact, sensitive)
+        if (sensitive || sensitiveRegex.containsMatchIn(s) || wisdom.gate == HakimEliteWisdomEngine.Gate.BLOCK) {
             val sig = inferSignals(s, highImpact = true, sensitive = true, quranic = quranic)
-            return Decision(Mode.BLOCK, 0, 100, "سر أو اعتماد حساس لا يمر عبر الاستدلال/التنفيذ النصي", sig)
+            return Decision(Mode.BLOCK, 0, 100, wisdom.reason.ifBlank { "سر أو اعتماد حساس لا يمر عبر الاستدلال/التنفيذ النصي" }, sig)
         }
         val impact = highImpact || highImpactRegex.containsMatchIn(s)
         val sig = inferSignals(s, impact, false, quranic).normalized()
         val score = weightedScore(sig)
-        val confidence = ((sig.evidence * 0.27) + (sig.clarity * 0.26) + (sig.freshness * 0.13) +
+        val rawConfidence = ((sig.evidence * 0.27) + (sig.clarity * 0.26) + (sig.freshness * 0.13) +
             (sig.authority * 0.12) + (sig.safety * 0.10) + (sig.normativeIntegrity * 0.12))
             .roundToInt().coerceIn(0, 100)
+        val confidence = rawConfidence.coerceAtMost(wisdom.confidenceCeiling)
 
         val mode = when {
             sig.authority < 45 || sig.safety < 35 || sig.privacy < 35 -> Mode.BLOCK
+            wisdom.gate == HakimEliteWisdomEngine.Gate.VERIFY_FIRST -> Mode.RESEARCH_FIRST
+            wisdom.gate == HakimEliteWisdomEngine.Gate.APPROVAL -> Mode.APPROVAL_GATE
             quranic.exactQuranTextRequired || sig.normativeIntegrity < 45 -> Mode.RESEARCH_FIRST
             impact || sig.reversibility < 35 -> Mode.APPROVAL_GATE
             sig.evidence < 45 || sig.clarity < 45 || sig.freshness < 35 -> Mode.RESEARCH_FIRST
@@ -82,12 +86,16 @@ object HakimDecisionMatrix {
             else -> Mode.AUTO_VERIFY
         }
         val reason = when (mode) {
-            Mode.AUTO -> "قيمة مرتفعة مع دليل ووضوح وسلامة وقابلية تراجع وسلامة معيارية كافية"
+            Mode.AUTO -> "قيمة مرتفعة مع دليل ووضوح وسلامة وقابلية تراجع وسلامة معيارية كافية، وبعد اجتياز بوابة الحكمة"
             Mode.AUTO_VERIFY -> "يمكن التنفيذ بخطوة قابلة للتراجع مع تحقق مباشر بعد كل فعل"
-            Mode.RESEARCH_FIRST -> if (quranic.exactQuranTextRequired || sig.normativeIntegrity < 45)
+            Mode.RESEARCH_FIRST -> if (wisdom.gate == HakimEliteWisdomEngine.Gate.VERIFY_FIRST)
+                wisdom.reason
+            else if (quranic.exactQuranTextRequired || sig.normativeIntegrity < 45)
                 "يلزم تحقق شرعي/نصي قبل الجزم؛ السلامة المعيارية بوابة لا تعوضها نقاط المنفعة"
             else "الدليل/الوضوح/الحداثة غير كافية للتنفيذ المباشر؛ يلزم تحقق أو بحث أولًا"
-            Mode.APPROVAL_GATE -> "الأثر أو عدم القابلية للتراجع يفرضان بوابة موافقة عند آخر خطوة جوهرية"
+            Mode.APPROVAL_GATE -> if (wisdom.gate == HakimEliteWisdomEngine.Gate.APPROVAL)
+                wisdom.reason
+            else "الأثر أو عدم القابلية للتراجع يفرضان بوابة موافقة عند آخر خطوة جوهرية"
             Mode.BLOCK -> "السلطة أو السلامة أو الخصوصية دون الحد الأدنى المسموح"
         }
         return Decision(mode, score, confidence, reason, sig)
@@ -95,13 +103,15 @@ object HakimDecisionMatrix {
 
     fun promptContext(raw: String, highImpact: Boolean = false, sensitive: Boolean = false): String {
         val d = evaluate(raw, highImpact, sensitive)
+        val wisdom = HakimEliteWisdomEngine.assess(raw, highImpact, sensitive)
         return buildString {
             appendLine("[مصفوفة القرار السيادي]")
             appendLine("الوضع: ${d.mode} • القيمة: ${d.score}/100 • ثقة القرار: ${d.confidence}/100")
             appendLine("السبب: ${d.reason}")
+            appendLine("بوابة الحكمة: ${wisdom.gate} • سقف الثقة=${wisdom.confidenceCeiling}/100")
             appendLine("الأبعاد: منفعة=${d.signals.benefit}، دليل=${d.signals.evidence}، تراجع=${d.signals.reversibility}، سلطة=${d.signals.authority}، خصوصية=${d.signals.privacy}، سلامة=${d.signals.safety}، سلامة معيارية/شرعية=${d.signals.normativeIntegrity}، وضوح=${d.signals.clarity}، ملاءمة كلفة=${d.signals.costFit}، خفض عبء=${d.signals.burdenReduction}، حداثة=${d.signals.freshness}.")
-            appendLine("لا يجوز أن يرفع مجموع النقاط فعلًا محظورًا أو يتجاوز بوابة السلطة/الخصوصية/الأثر العالي/السلامة المعيارية؛ القيود الحاكمة بوابات لا أوزان تعويضية.")
-        }.take(2900)
+            appendLine("لا يجوز أن يرفع مجموع النقاط فعلًا محظورًا أو يتجاوز بوابة الحقيقة/الأمانة/العدل/الحقوق/السلطة/الخصوصية/الأثر العالي/السلامة المعيارية؛ القيود الحاكمة بوابات لا أوزان تعويضية.")
+        }.take(3200)
     }
 
     fun dimensions(): JSONArray = JSONArray(listOf(

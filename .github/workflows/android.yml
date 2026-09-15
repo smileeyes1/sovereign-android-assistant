@@ -71,6 +71,8 @@ jobs:
         run: python3 tests/verify_human_first_policy.py
       - name: بوابة حماية القلب الجسدي والاتصال الصحي اللاسلكي
         run: python3 tests/verify_cardiac_safety_policy.py
+      - name: بوابة سيادة الطاقة والاتصال والخدمات والذكاء
+        run: python3 tests/verify_resource_sovereignty_policy.py
       - name: بوابة الارتقاء المستمر للنية والمقصد والهدف والغاية
         run: python3 tests/verify_intent_elevation_policy.py
       - name: بوابة نظام الأنظمة والأنظمة المنبثقة

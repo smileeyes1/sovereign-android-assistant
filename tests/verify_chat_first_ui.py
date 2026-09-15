@@ -27,27 +27,37 @@ build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version is not None and int(version.group(1)) >= 20037,
-        "P0: إصلاح ثبات الإدخال ليس ضمن إصدار ٢٠٠٣٧ أو أحدث")
+require(version is not None and int(version.group(1)) >= 20038,
+        "P0: إصلاح تثبيت مربع الكتابة ليس ضمن إصدار ٢٠٠٣٨ أو أحدث")
 require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-1200:]
 require('android:name=".HakimAgentsChatActivity"' in launcher_block, "P0: التطبيق لا يفتح مباشرة على المحادثة")
 require('android:windowSoftInputMode="adjustResize"' in launcher_block,
-        "P0: لوحة المفاتيح قد تغطي مربع الكتابة بدل إعادة تحجيم المحادثة")
+        "P0: مسار التوافق الرسمي للوحة المفاتيح adjustResize مفقود")
 require("HakimImeResilience.install(this)" in app,
         "P0: حارس IME غير مفعّل عند بدء التطبيق")
 require("HakimInputSafety.install(app)" in ime,
         "P0: حارس الكتابة غير مربوط بمسار IME الفعلي")
 require("ViewCompat.setOnApplyWindowInsetsListener" in ime and "WindowInsetsCompat.Type.ime()" in ime,
-        "P0: Android 15+ لا يراقب Insets لوحة المفاتيح")
+        "P0: لا تتم مراقبة Insets لوحة المفاتيح")
+require("WindowInsetsAnimationCompat.Callback" in ime,
+        "P0: composer غير متزامن مع حركة لوحة المفاتيح")
 require("Build.VERSION_CODES.VANILLA_ICE_CREAM" in ime and "systemBars()" in ime,
         "P0: حارس IME لا يميز فرض edge-to-edge في Android 15+ أو لا يحمي حواف النظام")
 require("displayCutout()" in ime, "P0: حارس IME لا يحمي القص/النوتش")
-require("full_ime_height_root_padding_forbidden" in ime and "ime.bottom" not in ime,
-        "P0: عاد تطبيق ارتفاع IME الكامل كـ padding على جذر الواجهة")
+require("calculateImeOverlap" in ime and "currentWindowMetrics.bounds.bottom" in ime,
+        "P0: لا يوجد قياس هندسي فعلي لتداخل composer مع IME")
+require("composer.translationY" in ime,
+        "P0: لا يوجد رفع منخفض الكلفة لمربع الكتابة عند التداخل")
+require("val bottom = state.baseContentPadding[3] + bars.bottom" in ime,
+        "P0: Padding الجذر يجب أن يتبع حواف النظام فقط")
+require("baseContentPadding[3] + ime.bottom" not in ime,
+        "P0: عاد ارتفاع IME الكامل إلى Padding الجذر")
 require("composer_must_remain_visible_with_keyboard" in ime,
         "P0: عقد بقاء مربع الكتابة ظاهرًا مع لوحة المفاتيح مفقود")
+require("double_lift_prevented_when_adjust_resize_already_works" in ime,
+        "P0: لا يوجد عقد يمنع الرفع المزدوج")
 
 for token in [
     "foreground_input_grace",
@@ -120,10 +130,11 @@ require("if (tts != null) return" in chat, "P0: يمكن إنشاء أكثر م�
 require("HakimResourceGovernor.snapshot" in ui, "P0: الواجهة لا تتكيف مع ضغط موارد الهاتف")
 require("RecyclerView" not in build and "compose" not in build.lower(), "P0: أضيف إطار UI أثقل دون حاجة مادية")
 require("quality_and_governance_never_downgraded" in resource, "P0: تحسين الواجهة قد يخفض جودة الحكم")
-require("verify_chat_first_ui.py" in workflow, "P0: لا توجد بوابة CI تمنع انحدار واجهة المحادثة")
+require("verify_chat_first_ui.py" in workflow and "verify_safe_input_path.py" in workflow,
+        "P0: لا توجد بوابات CI تمنع انحدار واجهة المحادثة ومسار الكتابة")
 
 print("HAKIM_CHAT_FIRST_UI=PASS")
-print("HAKIM_IME_RESIZE_GUARD=PASS")
+print("HAKIM_IME_DOCKED_COMPOSER_GUARD=PASS")
 print("HAKIM_INPUT_STABILITY_GUARD=PASS")
 print("HAKIM_CRASH_LOOP_GUARD=PASS")
 print("HAKIM_SIMPLE_PROFESSIONAL_UI=PASS")

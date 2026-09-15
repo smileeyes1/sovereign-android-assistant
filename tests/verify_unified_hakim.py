@@ -52,6 +52,13 @@ require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهي
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
 require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة الموافقة للأفعال المتغيرة مفقودة")
+
+# HC1 يجب أن يستعيد نفسه بعد الإقلاع حتى لو لم تعد القناة القديمة مهيأة.
+require('HakimUnifiedRelay.isConfigured(context)' in boot and 'HakimUnifiedRelay.start(context)' in boot,
+        "P0: HC1 لا يستعيد الاستماع تلقائيًا بعد الإقلاع")
+require(boot.index('HakimUnifiedRelay.start(context)') < boot.index('if (disabled || !legacyPaired) return'),
+        "P0: استعادة HC1 ما زالت مشروطة خطأ بوجود القناة القديمة")
+
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")

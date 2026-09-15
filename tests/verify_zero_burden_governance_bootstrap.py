@@ -16,6 +16,7 @@ gov = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 pairing = text("app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt")
+rescue = text("scripts/hakim-zero-burden-rescue.sh")
 
 # لا يجوز أن يبدأ حكيم بلا نظام حاكم.
 require("DEFAULT_GLOBAL_INSTRUCTIONS" in gov, "P0: لا توجد نواة حاكمة افتراضية")
@@ -55,5 +56,21 @@ require("سيعيد حكيم الاتصال تلقائيًا دون طلب ال�
         "P0: واجهة الاقتران لا تشرح الاستمرارية بعد النجاح")
 require("local_adb_paired" in pairing and "reconnectAsync" in pairing,
         "P0: الاقتران لا يحفظ الحالة أو لا يملك إعادة اتصال تلقائية")
+
+# Remote Desktop Commander: لا نجاح لمجرد بقاء PID، ولا دليل قديم يُنسب للمحاولة الحالية.
+require("stop_stale_remote_maintenance" in rescue, "P0: إنعاش RDC القديم مفقود")
+require("fresh_remote_log" in rescue and "RDC_PREV_LOG" in rescue,
+        "P0: سجل RDC الحالي غير معزول عن النجاح التاريخي")
+require(rescue.index("fresh_remote_log") < rescue.index("nohup npx --yes"),
+        "P0: يجب عزل سجل RDC قبل بدء المحاولة الجديدة")
+require("REMOTE_MAINTENANCE=ONLINE" in rescue, "P0: إثبات اتصال RDC الفعلي مفقود")
+require("REMOTE_MAINTENANCE=PAIRING_REQUIRED" in rescue, "P0: بوابة تحقق RDC المحلي مفقودة")
+require("REMOTE_MAINTENANCE=WAITING_UNPROVEN" in rescue, "P0: حالة RDC غير المثبتة مفقودة")
+require("Device ready|Device marked as online|Channel subscribed" in rescue,
+        "P0: لا يوجد دليل نقل فعلي قبل إعلان ONLINE")
+require("Code expires in [0-9]+ minutes" in rescue,
+        "P0: كشف رمز التحقق الحديث لـRDC مفقود")
+for forbidden in ['rm -rf "$HOME/.desktop-commander', "pm clear", "uninstall", "settings put", "appops set"]:
+    require(forbidden not in rescue, f"P0: مسار rescue يحتوي إجراءً هدّامًا/موسعًا: {forbidden}")
 
 print("ZERO_BURDEN_GOVERNANCE_BOOTSTRAP=PASS")

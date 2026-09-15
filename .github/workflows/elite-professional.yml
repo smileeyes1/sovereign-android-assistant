@@ -25,6 +25,9 @@ jobs:
     steps:
       - name: جلب المصدر
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
       - name: كل بوابات حكيم تلقائيًا
         shell: bash
         run: |
@@ -51,6 +54,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+
       - name: بناء Debug وRelease الحقيقي
         run: gradle assembleDebug assembleRelease --stacktrace
 

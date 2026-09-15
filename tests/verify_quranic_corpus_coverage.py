@@ -16,6 +16,7 @@ def require(condition: bool, message: str) -> None:
 corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
 source = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt")
 framework = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
+sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 workflow = text(".github/workflows/android.yml")
 
@@ -50,6 +51,19 @@ for phrase in [
 ]:
     require(whole_regex.search(phrase) is not None,
             f"P0: الصياغة العربية الطبيعية لا تشغل استقراء السور الـ١١٤: {phrase}")
+
+# الاستقراء الشامل ليس شعارًا: يجب أن يفرض مصدرًا متحققًا قبل الادعاء بالشمول.
+require("corpus.wholeCorpusRequested" in framework and
+        "exactQuranRegex.containsMatchIn(s) || corpus.exactTextRequested || corpus.wholeCorpusRequested" in framework,
+        "P0: طلب القرآن كله لا يرفع بوابة تحقق المصدر")
+require("whole_quran_corpus_requires_verified_source" in framework,
+        "P0: حالة الإطار لا تكشف أن الاستقراء الشامل يحتاج مصدرًا متحققًا")
+require("لا تعتبر الاستقراء الشامل مكتملًا من سياسة التغطية وحدها" in framework,
+        "P0: قد يُدعى شمول السور من السياسة دون corpus نصي متحقق")
+require("quranic.exactQuranTextRequired && !localQuranReady" in sovereign,
+        "P0: المحرك السيادي لا يحول غياب corpus المتحقق إلى بحث/إعادة تخطيط")
+require('forceResearch -> "research_then_replan"' in sovereign,
+        "P0: بوابة المصدر لا تغيّر مسار التنفيذ فعليًا عند غياب النص المتحقق")
 
 # طبقات المعرفة لا تختلط.
 for layer in ["REVELATION_TEXT", "QIRAAT", "TAFSIR", "ASBAB_AL_NUZUL", "SURAH_METADATA", "SCHOLARLY_INFERENCE"]:

@@ -37,6 +37,7 @@ object HakimMissionLedger {
         val hash = sha256(clean)
         val current = active(context)
         // BLOCKED/CANCELLED يبقيان حاجزًا لنفس الغاية؛ لا تعيد إنشاء المهمة لتصفير الحالة.
+        // رفع CANCELLED لا يحدث إلا بطلب استمرار صريح عبر resumeCancelledByUser.
         if (current != null && current.goalHash == hash && current.phase != Phase.COMPLETE) return current
 
         val now = System.currentTimeMillis()
@@ -54,6 +55,21 @@ object HakimMissionLedger {
             .putBoolean("active", true)
             .apply()
         return active(context)!!
+    }
+
+    /**
+     * يعكس إلغاء المستخدم فقط عندما يطلب المستخدم نفسه الاستمرار صراحةً لاحقًا.
+     * لا تستعمله الخلفية أو المبادرة الذاتية، ولذلك يبقى CANCELLED غير قابل للاستئناف التلقائي.
+     */
+    fun resumeCancelledByUser(context: Context, evidence: String = "استأنف المستخدم المهمة صراحة"): Mission? {
+        val current = active(context) ?: return null
+        if (current.phase != Phase.CANCELLED) return current
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("phase", Phase.RECOVER.name)
+            .putString("evidence", sanitizeEvidence(evidence))
+            .putLong("updated_at", System.currentTimeMillis())
+            .apply()
+        return active(context)
     }
 
     fun active(context: Context): Mission? {
@@ -138,6 +154,8 @@ object HakimMissionLedger {
             .put("secret_redaction", true)
             .put("blocked_same_goal_persists", true)
             .put("user_cancel_is_sovereign", true)
+            .put("cancel_never_auto_resumes", true)
+            .put("explicit_user_continue_can_resume_cancelled", true)
     }
 
     private fun sanitizeGoal(v: String): String {

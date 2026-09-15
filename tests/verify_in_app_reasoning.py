@@ -22,15 +22,15 @@ executor = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecuto
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 natural = text("app/src/main/java/ps/hakim/phoneagent/HakimNaturalActionEngine.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
+intent = text("app/src/main/java/ps/hakim/phoneagent/HakimIntentContext.kt")
+mission = text("app/src/main/java/ps/hakim/phoneagent/HakimMissionLedger.kt")
 manifest = text("app/src/main/AndroidManifest.xml")
 build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version is not None and int(version.group(1)) >= 20025,
-        "P0: موجّه الاستدلال المتعدد ليس ضمن الإصدار ٢٠٠٢٥ أو أحدث")
-# لا نربط بقاء القدرة باسم versionName؛ الاسم وصفي للإضافة الأحدث، أما القدرة
-# نفسها فيثبتها عقد المزودات والجسر والتنفيذ واختبارات الانحدار أدناه.
+require(version is not None and int(version.group(1)) >= 20033,
+        "P0: إصلاح الاستئناف وخصوصية المسار ليس ضمن الإصدار ٢٠٠٣٣ أو أحدث")
 
 # الاستقلال عن مزود واحد.
 require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")
@@ -116,6 +116,28 @@ require(natural.count("return Result(false, false") >= 8,
 require("if (local.handled)" in chat and "runAutonomousCycle(cue, preferred, resolvedGoal)" in chat,
         "P0: واجهة المحادثة لا تسلّم handled=false إلى الحلقة الذاتية")
 
+# إصلاح الملاحظة الميدانية ٢٠٠٣٢: الإلغاء لا يستأنف آليًا، لكن طلب المستخدم الصريح «أكمل» يستطيع عكسه.
+require("fun resumeCancelledByUser" in mission,
+        "P0: لا توجد آلية صريحة لاستئناف مهمة ألغاها المستخدم لاحقًا")
+require('put("cancel_never_auto_resumes", true)' in mission,
+        "P0: إصلاح الاستئناف أضعف سيادة الإلغاء التلقائي")
+require('put("explicit_user_continue_can_resume_cancelled", true)' in mission,
+        "P0: حالة السجل لا تعلن عقد الاستئناف الصريح")
+require("isExplicitContinueCue(raw) && HakimMissionLedger.isCancelled(context)" in intent and
+        "HakimMissionLedger.resumeCancelledByUser" in intent,
+        "P0: «أكمل/تابع/استأنف» لا يرفع CANCELLED إلى RECOVER عند إشارة المستخدم")
+
+# رابط الاستعادة الخام ومعرف المحادثة يبقيان محليين ولا يظهران في المقصد أو prompt مزود الاستدلال.
+require("safeRouteLabel" in intent and "مسار ويب محفوظ على" in intent,
+        "P0: لا يوجد وصف آمن لمسار الويب المستعاد")
+require("lastUrlContext = if (lastUrl.isBlank()) \"\" else lastRoute" in intent,
+        "P0: lastUrlContext ما زال يستطيع تسريب الرابط الخام")
+require("استأنف من مسار الويب الحالي $lastUrl" not in intent and
+        "استأنف العمل على المسار الحالي $lastUrl" not in intent,
+        "P0: رابط الجلسة الخام ما زال يدخل نص الاستدلال")
+require("رابط الاستعادة الخام ومعرفات الجلسة/المحادثة تبقى محلية" in intent,
+        "P0: عقد خصوصية المسار غير مثبت في prompt")
+
 require('android:name=".HakimAccessibilityService"' not in manifest,
         "P0: النسخة الميدانية تعيد إعلان Accessibility وتكسر ملف Play Protect الآمن")
 require("allowedTypes" in protocol and "arr.length() > 8" in protocol and "containsSecret" in protocol,
@@ -126,3 +148,4 @@ require('FIELD_APK="app/build/outputs/apk/release/hakim-field-${VERSION_CODE}.ap
         "P0: مسار إصدار CI لا يتبع versionCode ديناميكيًا")
 
 print("HAKIM_MULTI_PROVIDER_IN_APP_REASONING=PASS")
+print("HAKIM_EXPLICIT_RESUME_AND_ROUTE_PRIVACY=PASS")

@@ -13,7 +13,7 @@ catalog = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicResourceCatalo
 source = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt")
 corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
 method = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt")
-workflow = text(".github/workflows/android.yml")
+workflow = text(".github/workflows/quranic-resource-catalog.yml")
 
 require("مجمع الملك فهد لطباعة المصحف الشريف" in catalog and "qurancomplex.gov.sa" in catalog,
         "P0: المصدر الرسمي لفهرس الموارد القرآنية غير مثبت")
@@ -51,7 +51,6 @@ require("translation_is_meaning_not_arabic_quran" in source,
 require("recognized_disagreement_respected" in source,
         "P0: الخلاف المعتبر غير محروس في سلطة المصادر")
 
-# لا نختزل توسعة الأساس الأحدث: ١٨ نطاقًا قرآنيًا تبقى كما هي.
 require("QURAN_KNOWLEDGE_DOMAINS.size == 18" in corpus,
         "P0: نطاق علوم القرآن الأحدث انحدر")
 for layer in ["RASM_DABT_AYAH_NUMBERING", "TAJWEED_WAQF_IBTIDA", "MUHKAM_MUTASHABIH",
@@ -62,7 +61,6 @@ for layer in ["RASM_DABT_AYAH_NUMBERING", "TAJWEED_WAQF_IBTIDA", "MUHKAM_MUTASHA
 require('put("local_exhaustive_secondary_quranic_sciences_corpus_verified", false)' in corpus,
         "P0: قد يُدعى اكتمال علوم القرآن الثانوية محليًا بلا دليل")
 
-# البركة: إثبات شرعي منضبط، لا ادعاء تقني أو غيبي مخصوص بلا دليل.
 require("HakimPropheticKnowledgePolicy" in method,
         "P0: إدخال البركة أسقط سياسة المعرفة النبوية")
 require("القرآن كتاب مبارك" in method,
@@ -76,6 +74,6 @@ require("قوة تقنية خفية" in method and "ضمان نتيجة مادي
 require("لا تنسب حديثًا أو سنة أو قصة أو فضيلة أو وعدًا" in method,
         "P0: حاجز النسبة النبوية المثبت انحدر")
 
-require("verify_quranic_resource_catalog.py" in workflow,
+require("python3 tests/verify_quranic_resource_catalog.py" in workflow,
         "P0: اختبار الموارد والبركة غير موصول بـCI")
 print("HAKIM_QURANIC_RESOURCE_CATALOG=PASS")

@@ -66,8 +66,10 @@ require(rescue.index("fresh_remote_log") < rescue.index("nohup npx --yes"),
 require("REMOTE_MAINTENANCE=ONLINE" in rescue, "P0: إثبات اتصال RDC الفعلي مفقود")
 require("REMOTE_MAINTENANCE=PAIRING_REQUIRED" in rescue, "P0: بوابة تحقق RDC المحلي مفقودة")
 require("REMOTE_MAINTENANCE=WAITING_UNPROVEN" in rescue, "P0: حالة RDC غير المثبتة مفقودة")
-require("Device ready|Device marked as online|Channel subscribed" in rescue,
-        "P0: لا يوجد دليل نقل فعلي قبل إعلان ONLINE")
+require("grep -Fq 'Device ready'" in rescue,
+        "P0: إعلان ONLINE لا يعتمد الحالة النهائية Device ready")
+require("Device marked as online|Channel subscribed" not in rescue,
+        "P0: حالة RDC جزئية قد تُعامل كنجاح نهائي")
 require("Code expires in [0-9]+ minutes" in rescue,
         "P0: كشف رمز التحقق الحديث لـRDC مفقود")
 for forbidden in ['rm -rf "$HOME/.desktop-commander', "pm clear", "uninstall", "settings put", "appops set"]:

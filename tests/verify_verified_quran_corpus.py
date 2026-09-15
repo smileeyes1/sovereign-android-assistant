@@ -26,7 +26,28 @@ req("official_hash_mismatch" in corpus, "P0: ملف قرآن غير مطابق �
 req("exact_text_fails_closed_without_verified_source" in corpus, "P0: النص الدقيق لا يفشل مغلقًا دون مصدر متحقق")
 req("policy_coverage_is_not_text_coverage" in corpus, "P0: قد يُخلط بين سياسة التغطية وامتلاك النص")
 req("whole_corpus_scan_on_comprehensive_request" in policy, "P0: سياسة الاستقراء الشامل للـ١١٤ سورة مفقودة")
+
+# الاستقلال المحلي: نحفظ المصدر الرسمي نفسه لا نسخة نصية غير قابلة لإثبات الأصل.
+req("PRESERVED_ARCHIVE_NAME" in corpus and "installArchiveAndDatabase" in corpus,
+    "P0: المصدر الرسمي لا يُحفظ محليًا مع القاعدة المتحققة")
+req("exportPreservedOfficialArchive" in corpus and "verifiedPreservedArchive" in corpus,
+    "P0: لا يوجد تصدير محلي يعيد التحقق من بصمة المصدر قبل الإخراج")
+req("restorePreservedOfficialArchive" in corpus and "importOfficialArchive(context, uri)" in corpus,
+    "P0: الاستعادة لا تعود لمسار التحقق الرسمي الكامل")
+req('fileDigest(staged, "MD5")' in corpus and 'fileDigest(staged, "SHA-1")' in corpus,
+    "P0: النسخة المحلية للمصدر لا تُفحص بعد الحفظ")
+req("offline_reimport_source_available" in corpus and "export_reverifies_official_hashes" in corpus,
+    "P0: حالة الاستقلال القرآني لا تعرض توفر إعادة الاستيراد دون شبكة")
+req("MAX_OFFICIAL_ARCHIVE_BYTES" in corpus,
+    "P0: استيراد المصدر القرآني بلا حد حجم وقائي")
+
 req("اعتماد الملف الرسمي" in settings and "فتح المصدر الرسمي" in settings, "P0: لا توجد واجهة لاعتماد المصدر الرسمي")
 req("HakimVerifiedQuranCorpus.importOfficialArchive" in settings, "P0: واجهة القرآن غير موصولة بالتحقق الفعلي")
+req("تصدير المصدر الموثق" in settings and "استعادة المصدر الموثق" in settings,
+    "P0: المستخدم لا يستطيع حفظ المصدر القرآني الموثق واستعادته دون شبكة")
+req("HakimVerifiedQuranCorpus.exportPreservedOfficialArchive" in settings,
+    "P0: زر تصدير المصدر القرآني غير موصول بإعادة فحص البصمة")
+req("HakimVerifiedQuranCorpus.restorePreservedOfficialArchive" in settings,
+    "P0: زر الاستعادة لا يعيد التحقق من المصدر كاملًا")
 req("verify_verified_quran_corpus.py" in workflow, "P0: بوابة القرآن المتحقق غير موصولة بـCI")
 print("HAKIM_VERIFIED_QURAN_CORPUS=PASS")

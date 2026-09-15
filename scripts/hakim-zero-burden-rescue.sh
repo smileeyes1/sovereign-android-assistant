@@ -104,10 +104,8 @@ main() {
 
   RDC=FAIL
   ADB=FAIL
-  set +e
   start_remote_maintenance
   rdc_rc=$?
-  set -e 2>/dev/null || true
   case "$rdc_rc" in
     0) RDC=ONLINE ;;
     2) RDC=PAIRING_REQUIRED ;;

@@ -84,12 +84,33 @@ class HakimChatMessageAdapter(private val context: Context) : BaseAdapter() {
     private var maxMessages = 90
 
     fun append(role: Role, text: String) {
-        val clean = text.trim()
+        val clean = humanFacing(role, text).trim()
         if (clean.isBlank()) return
+        if (role == Role.ASSISTANT && items.lastOrNull()?.role == role && items.lastOrNull()?.text == clean) return
         updateResourceBudget()
         items.add(Message(nextId++, role, clean.take(16000)))
         trimToBudget()
         notifyDataSetChanged()
+    }
+
+    private fun humanFacing(role: Role, raw: String): String {
+        if (role == Role.USER) return raw
+        val text = raw.trim()
+        if (text.startsWith("أنا حكيم. اكتب أو تحدث بطريقتك الطبيعية")) {
+            return "أنا حكيم. اكتب ما تريد إنجازه، وسأتولى الباقي ضمن حدودك. يمكنك قول «توقف» في أي وقت."
+        }
+        if (text.startsWith("حكيم يفكر عبر") || text.startsWith("أرسلت المهمة المحكومة إلى") ||
+            text.startsWith("حكيم يفكر عبر Gemini")) {
+            return "أعمل على أفضل مسار للمهمة…"
+        }
+        return text.lineSequence()
+            .filterNot { line ->
+                val t = line.trim()
+                t.startsWith("الثقة:") || t.startsWith("الوكلاء:") || t.startsWith("المسار:") ||
+                    t.startsWith("قرار المصفوفة:") || t.startsWith("درجة فهم المقصد:")
+            }
+            .joinToString("\n")
+            .trim()
     }
 
     fun clear() {

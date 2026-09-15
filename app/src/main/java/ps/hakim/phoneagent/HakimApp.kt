@@ -23,6 +23,7 @@ class HakimApp : Application() {
         HakimCrashShield.guardNonCritical(this, "integration_install") { HakimIntegrationFabric.install(this) }
         HakimCrashShield.guardNonCritical(this, "ime_resilience_install") { HakimImeResilience.install(this) }
         HakimCrashShield.guardNonCritical(this, "ui_polish_install") { HakimUiPolish.install(this) }
+        HakimCrashShield.guardNonCritical(this, "work_surface_install") { HakimWorkSurface.install(this) }
         HakimCrashShield.guardNonCritical(this, "restore_mission_state") { restoreActiveMissionState() }
 
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)

@@ -50,17 +50,44 @@ stop_stale_remote_maintenance() {
   sleep 1
 }
 
+show_fresh_pairing_instructions() {
+  say 'REMOTE_MAINTENANCE=PAIRING_REQUIRED'
+  say 'حكيم: يلزم تحقق جهاز جديد. استخدم الرمز الظاهر أدناه فقط؛ الرمز القديم المنتهي لا يُستخدم.'
+  grep -E 'https://mcp\.desktopcommander\.app/device/verify|Enter this code|^[[:space:]]*[A-Z0-9]{4}-[A-Z0-9]{4}[[:space:]]*$|Code expires' "$RDC_LOG" 2>/dev/null | tail -n 8 || true
+}
+
 start_remote_maintenance() {
-  # مسار rescue يجب أن ينعش النقل نفسه، لا أن يثق بمجرد وجود PID قديم.
-  # لا تُحذف بيانات الاعتماد؛ لذلك يعاد الاتصال تلقائيًا إن كان رمز الجهاز الدائم صالحًا،
-  # وإن احتاجت الخدمة تحققًا جديدًا فسيظهر رمز حديث بدل إبقاء رمز منتهي.
+  # مسار rescue ينعش النقل نفسه؛ وجود PID وحده ليس دليل اتصال.
+  # لا نحذف هوية الجهاز أو الرموز المحفوظة. إذا احتاج المزود تحققًا جديدًا نعرض الرمز الحديث محليًا.
   stop_stale_remote_maintenance
+  printf '%s\n' "$(date -Iseconds) HAKIM_RDC_START version=$RDC_VERSION" >>"$RDC_LOG"
   nohup npx --yes "@wonderwhy-er/desktop-commander@$RDC_VERSION" remote >>"$RDC_LOG" 2>&1 </dev/null &
-  local pid="$!"
+  local pid="$!" i
   printf '%s\n' "$pid" > "$OMEGA/remote-desktop-commander.pid"
   chmod 600 "$OMEGA/remote-desktop-commander.pid" 2>/dev/null || true
-  sleep 6
-  kill -0 "$pid" 2>/dev/null || pgrep -f "$RDC_PATTERN" >/dev/null 2>&1
+
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if grep -Eq 'Device ready|Device marked as online|Channel subscribed' "$RDC_LOG" 2>/dev/null; then
+      say 'REMOTE_MAINTENANCE=ONLINE'
+      return 0
+    fi
+    if grep -Eq 'Please complete authentication|Enter this code when prompted|Code expires in [0-9]+ minutes' "$RDC_LOG" 2>/dev/null; then
+      show_fresh_pairing_instructions
+      return 2
+    fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+  done
+
+  if ! kill -0 "$pid" 2>/dev/null && ! pgrep -f "$RDC_PATTERN" >/dev/null 2>&1; then
+    say 'REMOTE_MAINTENANCE=FAILED'
+    tail -n 8 "$RDC_LOG" 2>/dev/null | sed -E 's#https?://[^[:space:]]+#[رابط]#g' || true
+    return 1
+  fi
+
+  say 'REMOTE_MAINTENANCE=WAITING_UNPROVEN'
+  say 'حكيم: العملية تعمل لكن الاتصال البعيد لم يُثبت بعد؛ لن يُعلن نجاحًا وهميًا.'
+  return 3
 }
 
 recover_adb() {
@@ -77,15 +104,28 @@ main() {
 
   RDC=FAIL
   ADB=FAIL
-  start_remote_maintenance && RDC=RESTARTED || true
+  set +e
+  start_remote_maintenance
+  rdc_rc=$?
+  set -e 2>/dev/null || true
+  case "$rdc_rc" in
+    0) RDC=ONLINE ;;
+    2) RDC=PAIRING_REQUIRED ;;
+    3) RDC=WAITING_UNPROVEN ;;
+    *) RDC=FAIL ;;
+  esac
   recover_adb && ADB=PASS || true
 
-  say "REMOTE_MAINTENANCE=$RDC"
+  say "REMOTE_MAINTENANCE_STATE=$RDC"
   say "ADB_LOCAL=$ADB"
 
-  if [ "$RDC" = RESTARTED ] || [ "$ADB" = PASS ]; then
+  if [ "$RDC" = ONLINE ] || [ "$ADB" = PASS ]; then
     say 'RESCUE=READY'
     exit 0
+  fi
+  if [ "$RDC" = PAIRING_REQUIRED ]; then
+    say 'RESCUE=LOCAL_VERIFY_NEEDED'
+    exit 3
   fi
 
   # لا نلغي أي بيانات أو نمنح صلاحيات خفية. إن بقيت القناتان مغلقتين، الموافقة المحلية لأندرويد هي المانع الوحيد.

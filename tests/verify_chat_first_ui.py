@@ -17,6 +17,7 @@ manifest = text("app/src/main/AndroidManifest.xml")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 ui = text("app/src/main/java/ps/hakim/phoneagent/HakimChatUi.kt")
 ime = text("app/src/main/java/ps/hakim/phoneagent/HakimImeResilience.kt")
+input_safety = text("app/src/main/java/ps/hakim/phoneagent/HakimInputSafety.kt")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 crash = text("app/src/main/java/ps/hakim/phoneagent/HakimCrashShield.kt")
 polish = text("app/src/main/java/ps/hakim/phoneagent/HakimUiPolish.kt")
@@ -26,8 +27,8 @@ build = text("app/build.gradle")
 workflow = text(".github/workflows/android.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version is not None and int(version.group(1)) >= 20036,
-        "P0: إصلاح الصمود/البساطة ليس ضمن إصدار ٢٠٠٣٦ أو أحدث")
+require(version is not None and int(version.group(1)) >= 20037,
+        "P0: إصلاح ثبات الإدخال ليس ضمن إصدار ٢٠٠٣٧ أو أحدث")
 require("versionName '" in build, "P0: اسم إصدار حكيم مفقود")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب بقاء واجهة تشغيل واحدة")
 launcher_block = manifest.split('android.intent.category.LAUNCHER')[0][-1200:]
@@ -36,12 +37,28 @@ require('android:windowSoftInputMode="adjustResize"' in launcher_block,
         "P0: لوحة المفاتيح قد تغطي مربع الكتابة بدل إعادة تحجيم المحادثة")
 require("HakimImeResilience.install(this)" in app,
         "P0: حارس IME غير مفعّل عند بدء التطبيق")
+require("HakimInputSafety.install(app)" in ime,
+        "P0: حارس الكتابة غير مربوط بمسار IME الفعلي")
 require("ViewCompat.setOnApplyWindowInsetsListener" in ime and "WindowInsetsCompat.Type.ime()" in ime,
-        "P0: Android 15+ لا يعالج Insets لوحة المفاتيح صراحة")
-require("Build.VERSION_CODES.VANILLA_ICE_CREAM" in ime and "navigationBars()" in ime,
-        "P0: حارس IME لا يميز فرض edge-to-edge في Android 15+ أو لا يحمي شريط التنقل")
+        "P0: Android 15+ لا يراقب Insets لوحة المفاتيح")
+require("Build.VERSION_CODES.VANILLA_ICE_CREAM" in ime and "systemBars()" in ime,
+        "P0: حارس IME لا يميز فرض edge-to-edge في Android 15+ أو لا يحمي حواف النظام")
+require("displayCutout()" in ime, "P0: حارس IME لا يحمي القص/النوتش")
+require("full_ime_height_root_padding_forbidden" in ime and "ime.bottom" not in ime,
+        "P0: عاد تطبيق ارتفاع IME الكامل كـ padding على جذر الواجهة")
 require("composer_must_remain_visible_with_keyboard" in ime,
         "P0: عقد بقاء مربع الكتابة ظاهرًا مع لوحة المفاتيح مفقود")
+
+for token in [
+    "foreground_input_grace",
+    "typing_active",
+    "TYPING_SUPPRESS_MS",
+    "setOnFocusChangeListener",
+    "reads_or_stores_user_text\" to false",
+]:
+    require(token in input_safety, f"P0: حارس الكتابة يفتقد {token}")
+require("suppressProactiveResumeFor" in crash,
+        "P0: لا توجد بوابة لكبح الاستئناف التلقائي أثناء الكتابة")
 
 require("HakimCrashShield.install(this)" in app,
         "P0: حارس التعطل لا يسبق تهيئة المكونات")
@@ -107,5 +124,6 @@ require("verify_chat_first_ui.py" in workflow, "P0: لا توجد بوابة CI 
 
 print("HAKIM_CHAT_FIRST_UI=PASS")
 print("HAKIM_IME_RESIZE_GUARD=PASS")
+print("HAKIM_INPUT_STABILITY_GUARD=PASS")
 print("HAKIM_CRASH_LOOP_GUARD=PASS")
 print("HAKIM_SIMPLE_PROFESSIONAL_UI=PASS")

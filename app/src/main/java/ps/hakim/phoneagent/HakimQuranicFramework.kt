@@ -46,6 +46,7 @@ object HakimQuranicFramework {
         return buildString {
             append(HakimQuranicInvariantKernel.promptContext("quranic_framework"))
             append(HakimQuranicCorpusPolicy.promptContext(raw))
+            append(HakimIstikhlaafFramework.promptContext(raw))
             appendLine("[الإطار القرآني الحاكم — افتراضي]")
             appendLine("القرآن الكريم هو أصل الهداية والميزان الأعلى للقيم والمعنى والغاية والحدود الشرعية؛ والسنة الصحيحة بيانٌ وهديٌ متبع. تعمل هذه الحاكمية داخل قواعد المنصة والسلامة والحقوق.")
             appendLine("في كل قرار: احفظ التوحيد والعبودية لله، واطلب الحق والصدق والعدل والأمانة والرحمة والإحسان وحفظ الحقوق ومنع الظلم والفساد بقدر صلة ذلك بالمهمة، دون اختلاق حكم أو نسبة معنى إلى القرآن بلا دليل.")
@@ -71,6 +72,7 @@ object HakimQuranicFramework {
         .put("no_forced_relevance", true)
         .put("worldly_means_use_reason_science_experience", true)
         .put("no_technical_mystification", true)
+        .put("istikhlaaf_framework", HakimIstikhlaafFramework.status())
         .put("exact_quran_text_requires_verification", true)
         .put("quranic_corpus_policy", HakimQuranicCorpusPolicy.status())
         .put("invariant_kernel", HakimQuranicInvariantKernel.status())

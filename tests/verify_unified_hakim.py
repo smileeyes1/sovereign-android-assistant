@@ -27,6 +27,7 @@ chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 resilience = text("app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt")
+health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version = re.search(r"versionCode\s+(\d+)", build)
@@ -74,6 +75,16 @@ require('if (localPaired) HakimLocalPairing.reconnectAsync(app)' in resilience,
 require('secure_reconnect_requested' in resilience and 'secure_relay_state' in resilience,
         "P0: تشخيص استعادة HC1 غير قابل للرصد")
 
+# نبضة الصحة يجب أن تستخدم نتيجة HC1 أولًا، ثم تحتفظ بالقناة القديمة كمسار توافق فقط.
+require('HakimUnifiedRelay.KEY_RESULT_URL' in health and 'HakimUnifiedRelay.KEY_RELAY_KEY' in health,
+        "P0: نبضة الصحة لا تستخدم إعداد HC1")
+require('secure_webhook' in health and 'legacy_ntfy' in health,
+        "P0: ترتيب مسارات نبضة الصحة غير قابل للرصد")
+require(health.index('secure_webhook') < health.index('legacy_ntfy'),
+        "P0: نبضة الصحة لا تفضّل HC1 على الناقل القديم")
+require('secure_failed_no_legacy' in health,
+        "P0: فشل HC1 بلا ناقل قديم غير ظاهر تشخيصيًا")
+
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
@@ -81,7 +92,7 @@ require('تأسيس ADB المحلي' in home and 'مركز القيادة' in h
 require('مركز حكيم والاتصال المحلي' in chat, "P0: واجهة المحادثة لا تصل إلى مركز الاتصال المحلي")
 require('object HakimCapabilityMesh' in mesh and 'rank(context' in mesh, "P0: شبكة التفوق/الأدوات غير مدمجة")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot, resilience])
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot, resilience, health])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

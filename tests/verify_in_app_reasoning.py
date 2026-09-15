@@ -29,8 +29,8 @@ workflow = text(".github/workflows/android.yml")
 version = re.search(r"versionCode\s+(\d+)", build)
 require(version is not None and int(version.group(1)) >= 20025,
         "P0: موجّه الاستدلال المتعدد ليس ضمن الإصدار ٢٠٠٢٥ أو أحدث")
-require("multi-provider" in build or "multi-provider" in build.lower(),
-        "P0: اسم الإصدار لا يثبت انتقال حكيم للاستدلال متعدد المزودات")
+# لا نربط بقاء القدرة باسم versionName؛ الاسم وصفي للإضافة الأحدث، أما القدرة
+# نفسها فيثبتها عقد المزودات والجسر والتنفيذ واختبارات الانحدار أدناه.
 
 # الاستقلال عن مزود واحد.
 require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")

@@ -14,6 +14,7 @@ evolution = text("app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService
 field = text("app/src/main/java/ps/hakim/phoneagent/HakimFieldValidation.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 workflow = text(".github/workflows/android.yml")
+legacy_service = text("app/src/main/java/ps/hakim/phoneagent/HakimService.kt")
 
 req("object HakimFaultLedger" in ledger, "P0: سجل الأعطال السببي مفقود")
 req("silent_failure_forbidden" in ledger, "P0: لا توجد قاعدة تمنع الفشل الصامت")
@@ -26,4 +27,8 @@ req("HakimFaultLedger.status(app)" in field, "P0: الاختبار الميدا�
 req("الاختبار الميداني" in settings and "HakimFieldValidation.run" in settings,
     "P0: المستخدم لا يملك بوابة فعلية لاختبار الفشل/الجاهزية على الهاتف")
 req("verify_fault_prevention.py" in workflow, "P0: بوابة منع الفشل الصامت غير موصولة بـCI")
+req("authKey().isNotBlank()" in legacy_service, "P0: القناة القديمة قد تتصل بلا مفتاح توثيق")
+req("legacy_channel_missing_auth_key" in legacy_service, "P0: غياب مفتاح القناة القديمة لا يفشل مغلقًا")
+req("return try { JSONObject(rawMessage) }" not in legacy_service,
+    "P0: القناة القديمة ما زالت تقبل أوامر غير موقعة عند غياب المفتاح")
 print("HAKIM_FAULT_PREVENTION=PASS")

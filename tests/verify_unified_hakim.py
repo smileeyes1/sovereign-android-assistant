@@ -22,6 +22,7 @@ accessibility = text("app/src/main/java/ps/hakim/phoneagent/HakimAccessibilitySe
 notifications = text("app/src/main/java/ps/hakim/phoneagent/HakimNotificationListener.kt")
 local_pairing = text("app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt")
 local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManager.kt")
+termux_adb = text("scripts/termux-hakim-adb-bootstrap.sh")
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
@@ -88,6 +89,12 @@ require('secure_failed_no_legacy' in health,
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
+require(': "${PREFIX:=/data/data/com.termux/files/usr}"' in termux_adb,
+        "P0: استعادة ADB في Termux تنهار إذا لم تورث جلسة الصيانة PREFIX")
+require(termux_adb.index(': "${PREFIX:=/data/data/com.termux/files/usr}"') < termux_adb.index('set -u'),
+        "P0: قيمة PREFIX الافتراضية تأتي بعد set -u ولا تمنع الانهيار")
+require(termux_adb.count(': "${PREFIX:=/data/data/com.termux/files/usr}"') >= 3,
+        "P0: مسارا الإقلاع وbashrc لا يرثان حماية PREFIX")
 require('تأسيس ADB المحلي' in home and 'مركز القيادة' in home, "P0: مركز حكيم لا يعرض مسار التأسيس والقيادة")
 require('مركز حكيم والاتصال المحلي' in chat, "P0: واجهة المحادثة لا تصل إلى مركز الاتصال المحلي")
 require('object HakimCapabilityMesh' in mesh and 'rank(context' in mesh, "P0: شبكة التفوق/الأدوات غير مدمجة")

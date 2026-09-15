@@ -54,9 +54,14 @@ object HakimCrashShield {
         block()
         true
     } catch (t: Throwable) {
-        if (t is VirtualMachineError || t is ThreadDeath || t is LinkageError) throw t
+        if (isFatal(t)) throw t
         record(context, label, t)
         false
+    }
+
+    fun recordNonFatal(context: Context, label: String, error: Throwable) {
+        if (isFatal(error)) throw error
+        record(context, label, error)
     }
 
     fun shouldSuppressProactiveResume(context: Context): Boolean {
@@ -101,6 +106,9 @@ object HakimCrashShield {
             edit.apply()
         }
     }
+
+    private fun isFatal(t: Throwable): Boolean =
+        t is VirtualMachineError || t is ThreadDeath || t is LinkageError
 
     private fun record(context: Context, label: String, error: Throwable) {
         val stack = error.stackTrace.take(16).joinToString("\n") {

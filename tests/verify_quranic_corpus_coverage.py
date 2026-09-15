@@ -14,6 +14,7 @@ def require(condition: bool, message: str) -> None:
 
 
 corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
+verified = text("app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt")
 source = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt")
 framework = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
@@ -65,6 +66,46 @@ require("quranic.exactQuranTextRequired && !localQuranReady" in sovereign,
 require('forceResearch -> "research_then_replan"' in sovereign,
         "P0: بوابة المصدر لا تغيّر مسار التنفيذ فعليًا عند غياب النص المتحقق")
 
+# المسح الفعلي: يمر على النص كله، وحد النتائج لا يختصر المرور.
+require("fun fullCorpusScan" in verified,
+        "P0: لا يوجد مسح تشغيلي فعلي للقرآن كله")
+require("ORDER BY sura_no, aya_no" in verified,
+        "P0: المسح الكامل لا يثبت المرور المنظم على السور والآيات")
+require("scanned == EXPECTED_AYA_COUNT" in verified and "visitedSurahs.size == 114" in verified,
+        "P0: اكتمال ٦٢٣٦ آية/١١٤ سورة غير محروس داخل المسح")
+require("(1..114).all { it in visitedSurahs }" in verified,
+        "P0: قد يمر العدد الإجمالي دون إثبات كل أرقام السور")
+require(".take(safeLimit)" in verified and verified.index("while (c.moveToNext())") < verified.index(".take(safeLimit)"),
+        "P0: حد المرشحات قد يوقف المسح قبل القرآن كله")
+require("retrieval_is_lexical_not_tafsir" in verified,
+        "P0: الاسترجاع اللفظي قد يُقدّم كتفسير")
+require("full_corpus_scan_forced_relevance_forbidden" in verified,
+        "P0: لا توجد شهادة تمنع فرض الصلة على نتائج المسح الكامل")
+require("HakimVerifiedQuranCorpus.fullCorpusScan(context, goal, 28)" in sovereign,
+        "P0: الاستدلال لا ينفذ مسح القرآن كله عند الطلب")
+
+# بوابة الإغلاق مستقلة عن مسار الـprompt: لا اكتمال بلا إثبات ١١٤/٦٢٣٦.
+require("HakimQuranicCorpusPolicy.assess(active.goal).wholeCorpusRequested" in sovereign,
+        "P0: الإغلاق لا يكتشف أن المهمة طلبت القرآن كله")
+require("HakimVerifiedQuranCorpus.fullCorpusScan(context, active.goal, 1)" in sovereign,
+        "P0: بوابة الإغلاق لا تعيد إثبات المسح الكامل")
+require("scan.ready && scan.coverageComplete" in sovereign,
+        "P0: الإغلاق قد يقبل مسحًا غير جاهز أو ناقصًا")
+require("scan.scannedSurahCount == HakimQuranicCorpusPolicy.SURAH_COUNT" in sovereign and
+        "scan.scannedAyahCount == 6236" in sovereign,
+        "P0: الإغلاق غير مقفول صراحة على ١١٤ سورة و٦٢٣٦ آية")
+require("لا يجوز إغلاق طلب استقراء القرآن كله" in sovereign,
+        "P0: فشل بوابة الإغلاق غير صريح")
+
+# البركة والهداية لا تتحولان إلى ادعاء تقني أو بديل للسبب.
+require("البركة والبسملة والدعاء معانٍ شرعية كريمة" in framework,
+        "P0: معنى البركة الشرعي غير مثبت في الإطار")
+require("لا تستبدل السبب المشروع والتحقق والعمل المتقن" in framework and
+        "لا تُستخدم كخوارزمية أو ضمان نتيجة مادية" in framework,
+        "P0: قد تتحول البركة إلى بديل للسبب أو ادعاء تقني")
+require("worldly_means_use_reason_science_experience" in framework and "no_technical_mystification" in framework,
+        "P0: الوسائل الدنيوية أو منع الأسطرة التقنية غير محروسين")
+
 # طبقات المعرفة لا تختلط.
 for layer in ["REVELATION_TEXT", "QIRAAT", "TAFSIR", "ASBAB_AL_NUZUL", "SURAH_METADATA", "SCHOLARLY_INFERENCE"]:
     require(layer in corpus, f"P0: طبقة قرآنية/علمية مفقودة: {layer}")
@@ -73,7 +114,7 @@ require("نص الوحي ≠ القراءات ≠ التفسير ≠ أسباب 
 require("exact_text_requires_verified_mushaf_source" in corpus and "مصدرًا قرآنيًا موثوقًا ومراجعًا" in corpus,
         "P0: النص القرآني الدقيق قد ينقل بلا مصدر مصحفي موثوق")
 require("asbab_requires_source_verification" in corpus,
-        "P0: أسباب النزول قد تنسب بلا تثبت")
+        "P0: أسباب النزول قد تنسب بلا تثت")
 require("surah_metadata_requires_documented_source" in corpus,
         "P0: بيانات السورة قد تنسب بلا توثيق")
 require("worldly_science_requires_independent_evidence" in corpus,

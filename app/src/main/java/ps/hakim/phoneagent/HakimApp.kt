@@ -46,6 +46,9 @@ class HakimApp : Application() {
                         AutoUpdater.startRealtimeListener(app)
                     }
                 }
+                // تأسيس القرآن المحلي المتحقق يتم مرةً عند الحاجة فقط، على شبكة غير محسوبة
+                // ومع موارد مناسبة؛ والثقة النهائية تبقى للبصمة الرسمية + فحص ١١٤/٦٢٣٦.
+                runCatching { HakimQuranBootstrap.syncIfNeeded(app) }
                 runCatching {
                     val report = HakimSelfCheck.run(app)
                     HakimLearning.recordHealth(app, report)

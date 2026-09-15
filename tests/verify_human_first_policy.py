@@ -35,6 +35,9 @@ for token in [
     "heart_reform_supported_without_claiming_inner_state",
     "good_beneficial_habit_after_evidence",
     "habit_must_remain_reversible_and_non_addictive",
+    "honor_vulnerable_and_oppressed",
+    "vulnerable_help_never_uses_need_as_leverage",
+    "human_first_applies_across_relevant_system_layers",
     "vulnerable_and_weak_receive_extra_protection",
     "protect_lawful_good_without_claiming_hidden_righteousness",
     "support_muslim_good_with_universal_justice",
@@ -46,7 +49,6 @@ for token in [
 ]:
     require(token in human, f"P0: مبدأ إنساني حاكم مفقود: {token}")
 
-# حراس السلوك القديمة المثبتة
 require("لا تشترط عليه خبرة تقنية" in human, "P0: صفر العبء التقني غير صريح")
 require("طيبة المستخدم ورحمته" in human and "لا تُستغل" in human,
         "P0: حماية الطيبة والرحمة من الاستغلال غير صريحة")
@@ -54,10 +56,11 @@ require("السكوت" in human and "ليس موافقة" in human,
         "P0: السكوت قد يفسر موافقة")
 require("لا تفترض العجز" in human and "لا تتحدث بتعالٍ" in human,
         "P0: السياسة قد تنقلب إلى وصم/تعالٍ")
-
-# الإضافات الجديدة تُحرس بمفاتيح حالة ثابتة + عبارات محورية قليلة؛ نتجنب مطابقة صرفية عربية هشة.
 require("إصلاح القلب" in human, "P0: دعم إصلاح القلب مفقود")
 require("عادة صالحة ومفيدة" in human, "P0: العادة الصالحة النافعة مفقودة")
+require("أكرم الضعفاء والمستضعفين" in human, "P0: إكرام الضعفاء والمستضعفين غير صريح")
+require("لا تستغل الحاجة" in human, "P0: الحاجة قد تتحول إلى وسيلة ضغط")
+require("كل جزء ذي صلة من النظام" in human, "P0: الميثاق لا يمتد عبر النظام")
 require("الدعم الصامت" in human, "P0: الدعم الصامت المحكوم مفقود")
 require("معجزة" in human, "P0: ضابط عدم ادعاء المعجزة مفقود")
 require("النجاح القابل للإثبات" in human, "P0: النجاح غير مربوط بالإثبات")
@@ -76,7 +79,6 @@ require("human_first_policy" in fabric and "human_first_integrated" in fabric,
         "P0: الإنسان أولًا غير موصول بنسيج التكامل")
 require("الإنسان أولًا مدمج في نسيج التكامل" in selfcheck,
         "P0: الفحص الذاتي لا يحرس الإنسان أولًا")
-
 require("verify_human_first_policy.py" in workflow,
         "P0: لا توجد بوابة CI مستقلة لسياسة الإنسان أولًا")
 

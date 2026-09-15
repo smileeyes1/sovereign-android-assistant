@@ -84,6 +84,33 @@ object HakimProactiveEngine {
             actions.put("constraint_doctor_deferred_conserve_mode")
         }
 
+        // تأسيس النص القرآني الموثق عمل صيانة نادر ومنخفض الأثر، لكنه قد ينقل قرابة ١٠–٢٢ م.ب.
+        // لذلك لا يبدأ تلقائيًا على شبكة محسوبة/وضع اقتصاد/ضغط موارد، ولا يعتمد الملف إلا بعد
+        // بصمة المصدر الرسمي وفحص السور الـ١١٤ والآيات كاملة داخل HakimVerifiedQuranCorpus.
+        if (!HakimVerifiedQuranCorpus.isReady(app)) {
+            if (resources.mode != HakimResourceGovernor.Mode.CONSERVE &&
+                HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)
+            ) {
+                runCatching {
+                    val quran = HakimQuranBootstrap.syncIfNeeded(app)
+                    actions.put(
+                        when {
+                            quran.success -> "verified_quran_bootstrap:ready"
+                            quran.deferred -> "verified_quran_bootstrap:deferred"
+                            else -> "verified_quran_bootstrap:rejected_or_failed"
+                        }
+                    )
+                }.onFailure {
+                    HakimFaultLedger.record(app, "proactive_quran_bootstrap", it, severity = HakimFaultLedger.Severity.WARNING)
+                    actions.put("verified_quran_bootstrap:failed_recorded")
+                }
+            } else {
+                actions.put("verified_quran_bootstrap:deferred_by_resources_or_network")
+            }
+        } else {
+            actions.put("verified_quran_bootstrap:already_ready")
+        }
+
         runCatching {
             AutoUpdater.schedule(app)
             if (HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)) {
@@ -153,6 +180,8 @@ object HakimProactiveEngine {
             .put("beneficial_safe_actions_auto", true)
             .put("background_safe_maintenance", true)
             .put("resource_adaptive_background", true)
+            .put("verified_quran_bootstrap_integrated", true)
+            .put("verified_quran_bootstrap_unmetered_and_resource_guarded", true)
             .put("foreground_safe_resume", true)
             .put("realtime_update_reasserted", true)
             .put("high_impact_never_silently_authorized", true)
@@ -161,6 +190,8 @@ object HakimProactiveEngine {
             .put("active_mission", mission != null)
             .put("active_phase", mission?.phase?.name ?: "IDLE")
             .put("resource_governor", HakimResourceGovernor.status(context))
+            .put("verified_quran", HakimVerifiedQuranCorpus.status(context))
+            .put("quran_bootstrap", HakimQuranBootstrap.status(context))
             .put("last_run_at", p.getLong("last_run_at", 0L))
             .put("last_auto_resume_at", p.getLong("last_auto_resume_at", 0L))
     }
@@ -173,10 +204,11 @@ object HakimProactiveEngine {
             appendLine("مفعلة=${s.optBoolean("enabled")}. ابحث تلقائيًا عن كل مكسب مفيد وآمن داخل العقد ولا تنتظر طلبًا جديدًا إذا كان التنفيذ منخفض الأثر وقابلًا للتراجع ومصرحًا.")
             appendLine("حالة موارد الهاتف=${resource.optString("mode", "UNKNOWN")}. الأولوية دائمًا لسرعة المهمة الحالية؛ عند ضغط الموارد تُؤجل الصيانة غير العاجلة ولا تُخفَّض جودة القرار أو الحاكمية.")
             appendLine("نفذ تلقائيًا: الصيانة، التحقق، التعلم، تحسين الأداء، التعافي، استعادة الاتصال، فحص التحديثات الموثوقة، واستئناف المهمة الآمنة غير المكتملة عند توفر سياق كافٍ.")
+            appendLine("إذا لم تكن قاعدة القرآن المتحققة جاهزة، يجوز تأسيسها تلقائيًا فقط عند موارد وشبكة مناسبة؛ التنزيل قناة نقل لا مصدر ثقة، والاعتماد يبقى رهين البصمة الرسمية وفحص الـ١١٤ سورة.")
             appendLine("حافظ على قناة التحديث الفوري عندما تسمح الموارد والشبكة، ومعها الفحص الدوري كمسار بديل؛ انقطاع مسار واحد لا يلغي التطور أو التحديث.")
             appendLine("حضّر فقط وتوقف عند آخر بوابة: دفع/شراء، حذف نهائي، إرسال حساس أو علني، كشف سر أو بيانات محمية، منح صلاحية نظام، تغيير حق أو التزام، أو فعل غير قابل للتراجع.")
             appendLine("لا تعتبر الصمت أو الطيبة أو عبارة عامة تفويضًا جديدًا. المبادرة تزيد الفائدة داخل السلطة ولا توسع السلطة نفسها.")
-        }.take(4200)
+        }.take(4800)
     }
 
     private fun lastHealthStatus(context: Context): String =

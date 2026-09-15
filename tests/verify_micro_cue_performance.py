@@ -38,8 +38,12 @@ require("cachedInference" in intent and "now - cachedAt in 0..MICRO_CACHE_MS" in
         "P0: ذاكرة الاستنتاج اللحظية غير مستخدمة فعليًا")
 require(intent.count("val screen = screenSummary()") == 1,
         "P0: الاستنتاج يقرأ الشاشة أكثر من مرة داخل الدورة")
-require("screenContext = screen" in intent and "lastUrlContext = lastUrl.take(500)" in intent,
-        "P0: سياق الاستنتاج لا يعاد استخدامه في العرض")
+require("screenContext = screen" in intent and
+        'lastUrlContext = if (lastUrl.isBlank()) "" else lastRoute' in intent and
+        "safeRouteLabel(lastUrl)" in intent,
+        "P0: سياق الاستنتاج المنقّح لا يعاد استخدامه في العرض")
+require("lastUrl.take(500)" not in intent,
+        "P0: اختبار الأداء يسمح مجددًا بتسريب رابط الاستعادة الخام إلى العرض")
 
 require("no_authority_expansion_from_generic_cues" in authority and "silence_is_not_consent" in authority,
         "P0: أقل إشارة قد توسع السلطة")
@@ -47,3 +51,4 @@ require("verify_micro_cue_performance.py" in workflow,
         "P0: لا توجد بوابة CI للإشارة الدقيقة والأداء")
 
 print("HAKIM_MICRO_CUE_PERFORMANCE=PASS")
+print("HAKIM_MICRO_CUE_ROUTE_PRIVACY=PASS")

@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20036
-        versionName '2.0.36-crash-safe-simple-ui'
+        versionCode 20037
+        versionName '2.0.37-safe-input'
     }
 
     compileOptions {

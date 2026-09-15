@@ -1,0 +1,35 @@
+name: بوابة موارد القرآن وبركته المنضبطة
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicResourceCatalog.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt'
+      - 'tests/verify_quranic_resource_catalog.py'
+      - '.github/workflows/quranic-resource-catalog.yml'
+  push:
+    branches:
+      - main
+      - feature/hakim-governance-editor
+    paths:
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicResourceCatalog.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt'
+      - 'tests/verify_quranic_resource_catalog.py'
+      - '.github/workflows/quranic-resource-catalog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quranic-resource-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب المشروع
+        uses: actions/checkout@v7
+      - name: تحقق موارد القرآن وبركته المنضبطة وعدم الانحدار
+        run: python3 tests/verify_quranic_resource_catalog.py

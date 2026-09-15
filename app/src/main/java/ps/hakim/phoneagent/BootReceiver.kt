@@ -29,6 +29,13 @@ class BootReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
+
+        // HC1 هو مسار التحكم الموحد الحالي. لا يجوز ربط استعادته بعد الإقلاع
+        // بوجود إعدادات القناة القديمة؛ وإلا يصبح حكيم صامتًا حتى فتح التطبيق يدويًا.
+        if (!disabled && HakimUnifiedRelay.isConfigured(context)) {
+            HakimUnifiedRelay.start(context)
+        }
+
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
         val localPaired = prefs.getBoolean("local_adb_paired", false)

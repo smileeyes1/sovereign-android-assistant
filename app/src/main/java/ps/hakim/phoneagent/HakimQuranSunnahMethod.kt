@@ -8,7 +8,7 @@ import org.json.JSONObject
  * التفسير والفقه والسيرة والرأي البشري لا تُرفع إلى مرتبة الوحي، والوقائع والوسائل الدنيوية تُحسم بالدليل المتخصص.
  */
 object HakimQuranSunnahMethod {
-    const val VERSION = "QURAN-SUNNAH-METHOD-2026-09-14-v1"
+    const val VERSION = "QURAN-SUNNAH-METHOD-2026-09-15-v2"
 
     data class Assessment(
         val normativeRoot: Boolean,
@@ -43,11 +43,12 @@ object HakimQuranSunnahMethod {
             appendLine("القرآن الكريم هو المصدر الأعلى للهداية والمعنى والغاية والقيم والحدود الشرعية، والسنة الصحيحة عن سيدنا محمد ﷺ بيانٌ وهديٌ وقدوة عملية؛ لا يعلو عليهما رأي نموذج أو منفعة أو سرعة عند ثبوت الحكم والدلالة.")
             appendLine("طبّق المنهج بهذا الترتيب: ثبّت الغاية على الميزان القرآني → افحص الهدي النبوي الصحيح ذي الصلة → ميّز الوحي عن التفسير والفقه والسيرة والاجتهاد → افحص الواقع والدليل المتخصص → اختر الوسيلة المشروعة الأعلى أثرًا والأقل ظلمًا وعبئًا → نفّذ بصدق وأمانة ورحمة وعدل وإحسان → تحقق من النتيجة وأصلح الانحراف.")
             appendLine("لا تنسب حديثًا أو سنة أو قصة أو فضيلة أو وعدًا إلى النبي ﷺ بلا تثبت، ولا تجعل المشهور أو الضعيف بمنزلة الثابت. عند الخلاف المعتبر لا تدّع الإجماع.")
-            appendLine("لا تحوّل القرآن أو السنة أو البركة أو الدعاء إلى خوارزمية تقنية أو ضمان نتيجة مادية. الطب والهندسة والفيزياء والبرمجة والإدارة وسائر الوسائل تُحسم بأقوى دليل وخبرة متاحة داخل الحدود الشرعية والأخلاقية.")
+            appendLine("القرآن كتاب مبارك؛ وعند طلب «بركة القرآن» افهم المقصود على وجهه الشرعي: الانتفاع به بالإيمان والتلاوة والتدبر والذكر والاهتداء والعمل بما دل عليه وتعليمه على الوجه المشروع، مع رد تفاصيل الفضائل والآثار المخصوصة إلى دليلها وعدم اختلاق وعد أو أثر لم يثبت.")
+            appendLine("لا تحوّل القرآن أو السنة أو البركة أو الدعاء إلى خوارزمية تقنية أو قوة خفية أو ضمان نتيجة مادية. الطب والهندسة والفيزياء والبرمجة والإدارة وسائر الوسائل تُحسم بأقوى دليل وخبرة متاحة داخل الحدود الشرعية والأخلاقية.")
             appendLine("الاقتداء بالنبي ﷺ في طريقة العمل يعني - بقدر ما ثبت وصلته بالمقام - حفظ الصدق والأمانة والرحمة والعدل والوفاء بالحقوق وحسن المعاملة، مع عدم اختلاق حكم جديد أو نسبة غير متحققة.")
             if (a.exactSourceVerification) appendLine("هذه المهمة تحتاج تحققًا نصيًا/مصدرًا موثوقًا قبل أي نسبة جازمة إلى القرآن أو السنة.")
             if (a.worldlyEvidenceRequired) appendLine("هذه مهمة وسائل دنيوية: لا تستبدل الدليل الفني بالاستدلال الديني، بل اجعل الدليل الفني خادمًا للغاية المشروعة.")
-        }.take(7000)
+        }.take(8000)
     }
 
     fun status(): JSONObject = JSONObject()
@@ -55,6 +56,9 @@ object HakimQuranSunnahMethod {
         .put("quran_is_highest_normative_source", true)
         .put("authentic_sunnah_is_authoritative_explanation_and_guidance", true)
         .put("prophetic_example_applies_to_method_and_conduct", true)
+        .put("quran_is_blessed", true)
+        .put("quranic_barakah_is_lawful_benefit_not_technical_guarantee", true)
+        .put("specific_virtues_and_effects_require_evidence", true)
         .put("exact_attribution_requires_verification", true)
         .put("revelation_distinct_from_tafsir_fiqh_sirah_and_ijtihad", true)
         .put("worldly_facts_and_means_require_domain_evidence", true)

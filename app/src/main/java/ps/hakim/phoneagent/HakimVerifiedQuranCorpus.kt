@@ -18,12 +18,18 @@ import java.util.zip.ZipInputStream
  * خزنة محلية للنص القرآني المتحقق. لا تعتبر سياسة تغطية السور الـ١١٤ بديلًا عن امتلاك النص نفسه.
  * لا تقبل corpus على أنه رسمي إلا إذا تطابقت بصمة الأرشيف مع بصمة منشورة من مجمع الملك فهد،
  * ثم اجتاز المحتوى فحص البنية والتغطية الكاملة قبل الاستبدال الذري للبيانات السابقة.
+ * بعد الاعتماد تحفظ نسخة المصدر الرسمية نفسها داخل مساحة التطبيق حتى يمكن تصديرها واستعادتها
+ * دون اعتماد إلزامي على الشبكة؛ وعند التصدير تعاد مطابقة بصمتها مع المصدر المقبول قبل إخراجها.
  */
 object HakimVerifiedQuranCorpus {
     const val OFFICIAL_SOURCE_PAGE = "https://qurancomplex.gov.sa/en/techquran/dev/"
     private const val PREFS = "hakim_verified_quran_corpus"
     private const val EXPECTED_AYA_COUNT = 6236
     private const val DB_NAME = "hakim_verified_quran.db"
+    private const val PRESERVED_ARCHIVE_NAME = "hakim-quran-official-source.zip"
+    private const val STAGED_ARCHIVE_NAME = "hakim-quran-official-source.new"
+    private const val BACKUP_ARCHIVE_NAME = "hakim-quran-official-source.bak"
+    private const val MAX_OFFICIAL_ARCHIVE_BYTES = 32L * 1024L * 1024L
 
     data class SourceSpec(
         val id: String,
@@ -46,6 +52,12 @@ object HakimVerifiedQuranCorpus {
         val message: String,
         val sourceId: String = "",
         val ayahCount: Int = 0
+    )
+
+    data class TransferResult(
+        val success: Boolean,
+        val message: String,
+        val bytes: Long = 0L
     )
 
     // بصمات منشورة في منصة المطورين الرسمية. لا تقبل بصمة جديدة تلقائيًا دون تحديث موثق.
@@ -73,16 +85,20 @@ object HakimVerifiedQuranCorpus {
         return try {
             val md5 = MessageDigest.getInstance("MD5")
             val sha1 = MessageDigest.getInstance("SHA-1")
+            var total = 0L
             app.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(temp).use { output ->
                     val buffer = ByteArray(64 * 1024)
                     while (true) {
                         val n = input.read(buffer)
                         if (n <= 0) break
+                        total += n
+                        check(total <= MAX_OFFICIAL_ARCHIVE_BYTES) { "ملف المصدر أكبر من الحد الآمن" }
                         md5.update(buffer, 0, n)
                         sha1.update(buffer, 0, n)
                         output.write(buffer, 0, n)
                     }
+                    output.fd.sync()
                 }
             } ?: return ImportResult(false, "تعذر قراءة الملف المحدد")
 
@@ -97,7 +113,7 @@ object HakimVerifiedQuranCorpus {
 
             val ayat = readCsvFromOfficialArchive(temp)
             validate(ayat)
-            replaceDatabaseAtomically(app, ayat)
+            installArchiveAndDatabase(app, temp, ayat, source)
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean("verified", true)
                 .putString("source_id", source.id)
@@ -105,19 +121,52 @@ object HakimVerifiedQuranCorpus {
                 .putString("source_update", source.update)
                 .putString("md5", md5Hex)
                 .putString("sha1", sha1Hex)
+                .putBoolean("preserved_official_archive", true)
+                .putLong("preserved_archive_bytes", File(app.filesDir, PRESERVED_ARCHIVE_NAME).length())
                 .putInt("ayah_count", ayat.size)
                 .putInt("surah_count", ayat.map { it.surah }.distinct().size)
                 .putLong("verified_at", System.currentTimeMillis())
                 .apply()
             HakimFaultLedger.resolve(app, "quran_corpus_import", "verified:${source.id}:${ayat.size}")
-            ImportResult(true, "تم اعتماد قاعدة القرآن المحلية بعد مطابقة البصمة الرسمية وفحص السور والآيات.", source.id, ayat.size)
+            ImportResult(
+                true,
+                "تم اعتماد قاعدة القرآن المحلية وحفظ نسخة المصدر الرسمية محليًا للاستعادة دون شبكة بعد مطابقة البصمة وفحص السور والآيات.",
+                source.id,
+                ayat.size
+            )
         } catch (t: Throwable) {
             HakimFaultLedger.record(app, "quran_corpus_import", t, severity = HakimFaultLedger.Severity.MATERIAL)
             ImportResult(false, "تعذر اعتماد قاعدة القرآن: ${t.message.orEmpty().take(160)}")
         } finally {
             runCatching { temp.delete() }
+            runCatching { File(app.filesDir, STAGED_ARCHIVE_NAME).delete() }
         }
     }
+
+    /**
+     * يصدّر نسخة المصدر الرسمية الأصلية لا قاعدة مشتقة منها. قبل الإخراج يعاد حساب MD5 وSHA-1
+     * ومطابقتهما مع البصمات الصلبة المقبولة؛ لذلك لا يمكن لملف محلي معدل أن يخرج باعتباره مصدرًا موثقًا.
+     */
+    fun exportPreservedOfficialArchive(context: Context, uri: Uri): TransferResult {
+        HakimQuranicInvariantKernel.requireInherited("verified_quran_export")
+        val app = context.applicationContext
+        if (!isReady(app)) return TransferResult(false, "النص القرآني المحلي غير مثبت بعد")
+        val pair = verifiedPreservedArchive(app)
+            ?: return TransferResult(false, "نسخة المصدر الرسمية المحلية غير متاحة أو لم تعد تطابق البصمة الموثقة")
+        val file = pair.first
+        return try {
+            app.contentResolver.openOutputStream(uri, "w")?.use { output ->
+                FileInputStream(file).use { input -> input.copyTo(output, 64 * 1024) }
+            } ?: return TransferResult(false, "تعذر فتح وجهة الحفظ")
+            TransferResult(true, "تم تصدير نسخة المصدر القرآني الرسمية المتحققة دون أسرار أو بيانات حسابات.", file.length())
+        } catch (t: Throwable) {
+            HakimFaultLedger.record(app, "quran_corpus_export", t, severity = HakimFaultLedger.Severity.WARNING)
+            TransferResult(false, "تعذر تصدير مصدر القرآن: ${t.message.orEmpty().take(160)}")
+        }
+    }
+
+    /** الاستعادة تمر بالمسار نفسه تمامًا: بصمة رسمية → بنية → ١١٤ سورة → ٦٢٣٦ آية → استبدال محكوم. */
+    fun restorePreservedOfficialArchive(context: Context, uri: Uri): ImportResult = importOfficialArchive(context, uri)
 
     fun ayah(context: Context, surah: Int, ayah: Int): Ayah? {
         if (!isReady(context) || surah !in 1..114 || ayah <= 0) return null
@@ -130,18 +179,23 @@ object HakimVerifiedQuranCorpus {
     }
 
     fun isReady(context: Context): Boolean {
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.getBoolean("verified", false) || p.getInt("ayah_count", 0) != EXPECTED_AYA_COUNT || p.getInt("surah_count", 0) != 114) return false
         return runCatching {
-            Db(context.applicationContext).readableDatabase.rawQuery("SELECT COUNT(*), COUNT(DISTINCT sura_no) FROM aya", null).use { c ->
+            Db(app).readableDatabase.rawQuery("SELECT COUNT(*), COUNT(DISTINCT sura_no) FROM aya", null).use { c ->
                 c.moveToFirst() && c.getInt(0) == EXPECTED_AYA_COUNT && c.getInt(1) == 114
             }
         }.getOrDefault(false)
     }
 
     fun status(context: Context): JSONObject {
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val ready = isReady(context)
+        val app = context.applicationContext
+        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val ready = isReady(app)
+        val preserved = File(app.filesDir, PRESERVED_ARCHIVE_NAME)
+        val sourceKnown = acceptedSources.any { it.id == p.getString("source_id", "") }
+        val archivePresent = p.getBoolean("preserved_official_archive", false) && preserved.isFile && preserved.length() > 0 && sourceKnown
         return JSONObject()
             .put("verified_local_quran_corpus", true)
             .put("ready", ready)
@@ -156,6 +210,51 @@ object HakimVerifiedQuranCorpus {
             .put("ayah_count", p.getInt("ayah_count", 0))
             .put("surah_count", p.getInt("surah_count", 0))
             .put("verified_at", p.getLong("verified_at", 0L))
+            .put("preserved_official_archive", archivePresent)
+            .put("preserved_archive_bytes", if (archivePresent) preserved.length() else 0L)
+            .put("offline_reimport_source_available", ready && archivePresent)
+            .put("export_reverifies_official_hashes", true)
+            .put("restore_reuses_full_official_verification", true)
+    }
+
+    private fun installArchiveAndDatabase(context: Context, archive: File, ayat: List<Ayah>, source: SourceSpec) {
+        val target = File(context.filesDir, PRESERVED_ARCHIVE_NAME)
+        val staged = File(context.filesDir, STAGED_ARCHIVE_NAME)
+        val backup = File(context.filesDir, BACKUP_ARCHIVE_NAME)
+        runCatching { staged.delete() }
+        runCatching { backup.delete() }
+        archive.copyTo(staged, overwrite = true)
+        check(staged.length() == archive.length() && staged.length() > 0L) { "تعذر تثبيت نسخة المصدر القرآني كاملة" }
+        check(fileDigest(staged, "MD5").equals(source.md5, ignoreCase = true)) { "فشل تحقق MD5 بعد حفظ المصدر محليًا" }
+        check(fileDigest(staged, "SHA-1").equals(source.sha1, ignoreCase = true)) { "فشل تحقق SHA-1 بعد حفظ المصدر محليًا" }
+
+        val hadOld = target.exists()
+        if (hadOld) check(target.renameTo(backup)) { "تعذر حماية نسخة المصدر السابقة قبل الاستبدال" }
+        try {
+            check(staged.renameTo(target)) { "تعذر اعتماد نسخة المصدر المحلية الجديدة" }
+            replaceDatabaseAtomically(context, ayat)
+            runCatching { backup.delete() }
+        } catch (t: Throwable) {
+            runCatching { target.delete() }
+            if (hadOld && backup.exists()) runCatching { backup.renameTo(target) }
+            throw t
+        } finally {
+            runCatching { staged.delete() }
+        }
+    }
+
+    private fun verifiedPreservedArchive(context: Context): Pair<File, SourceSpec>? {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val source = acceptedSources.firstOrNull { it.id == p.getString("source_id", "") } ?: return null
+        val file = File(context.filesDir, PRESERVED_ARCHIVE_NAME)
+        if (!file.isFile || file.length() <= 0L || file.length() > MAX_OFFICIAL_ARCHIVE_BYTES) return null
+        val md5 = runCatching { fileDigest(file, "MD5") }.getOrNull() ?: return null
+        val sha1 = runCatching { fileDigest(file, "SHA-1") }.getOrNull() ?: return null
+        if (!source.md5.equals(md5, ignoreCase = true) || !source.sha1.equals(sha1, ignoreCase = true)) {
+            HakimFaultLedger.record(context, "quran_preserved_archive_hash", message = "preserved_source_hash_mismatch", severity = HakimFaultLedger.Severity.MATERIAL)
+            return null
+        }
+        return file to source
     }
 
     private fun readCsvFromOfficialArchive(file: File): List<Ayah> {
@@ -258,6 +357,19 @@ object HakimVerifiedQuranCorpus {
         } finally {
             db.endTransaction()
         }
+    }
+
+    private fun fileDigest(file: File, algorithm: String): String {
+        val digest = MessageDigest.getInstance(algorithm)
+        FileInputStream(file).use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buffer)
+                if (n <= 0) break
+                digest.update(buffer, 0, n)
+            }
+        }
+        return digest.digest().hex()
     }
 
     private class Db(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, 1) {

@@ -10,15 +10,20 @@ import org.json.JSONObject
  * وعند المهمة المحددة لا يُستعمل إلا ما ثبتت صلته بعد التحقق.
  */
 object HakimQuranicCorpusPolicy {
-    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-15-v3"
+    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-15-v4"
     const val SURAH_COUNT = 114
 
     enum class Layer {
         REVELATION_TEXT,
         QIRAAT,
+        TAJWEED,
         TAFSIR,
+        GHAREEB,
         ASBAB_AL_NUZUL,
+        QURANIC_SCIENCES,
         SURAH_METADATA,
+        TRANSLATION,
+        FIQH_DERIVATION,
         SCHOLARLY_INFERENCE
     }
 
@@ -46,7 +51,8 @@ object HakimQuranicCorpusPolicy {
         val tafsir = tafsirRegex.containsMatchIn(s)
         val asbab = asbabRegex.containsMatchIn(s)
         val metadata = metadataRegex.containsMatchIn(s)
-        val verify = exact || qiraat || tafsir || asbab || metadata || whole
+        val relatedSciences = relatedSciencesRegex.containsMatchIn(s)
+        val verify = exact || qiraat || tafsir || asbab || metadata || relatedSciences || whole
         return Assessment(
             wholeCorpusRequested = whole,
             exactTextRequested = exact,
@@ -62,6 +68,7 @@ object HakimQuranicCorpusPolicy {
                 tafsir -> "المطلوب تفسير؛ يجب نسبته لمصدره وعدم رفعه إلى مرتبة نص الوحي"
                 asbab -> "المطلوب أسباب نزول؛ يلزم تثبت من الرواية والمصدر"
                 metadata -> "المطلوب بيانات سورة؛ يلزم مصدر موثق مع فصل المشهور والتوقيفي والاجتهادي"
+                relatedSciences -> "المطلوب من علوم القرآن أو خدمته؛ يلزم مصدر متخصص موثوق وفصل العلم البشري والتعليمي عن ألفاظ الوحي"
                 else -> "القرآن كله داخل التغطية الحاكمة، مع استعمال الدلالة ذات الصلة فقط دون تكلف"
             }
         )
@@ -74,12 +81,13 @@ object HakimQuranicCorpusPolicy {
             appendLine("[سياسة القرآن كله — السور الـ١١٤]")
             appendLine("التغطية الافتراضية تشمل جميع سور القرآن من ١ إلى ١١٤. لا تنتقِ سورة أو آية لمجرد موافقة نتيجة مسبقة، ولا تُسقط ما يخالف الترجيح البشري.")
             appendLine("عند طلب استقراء شامل: ابحث عبر corpus السور الـ١١٤ كلها، ثم استخرج فقط الدلالات ذات الصلة المثبتة مع بيان المصدر والسياق؛ لا تُجبر كل سورة على كل مسألة.")
-            appendLine("افصل طبقات المعرفة دائمًا: نص الوحي ≠ القراءات ≠ التفسير ≠ أسباب النزول ≠ بيانات السورة ≠ الاستنباط البشري. كل طبقة تُوسم بمصدرها ولا تُرفع طبقة بشرية إلى مقام النص.")
+            appendLine("افصل طبقات المعرفة دائمًا: نص الوحي ≠ القراءات ≠ التجويد ≠ التفسير ≠ غريب القرآن ≠ أسباب النزول ≠ علوم القرآن ≠ بيانات السورة ≠ الترجمة ≠ الفقه والاستنباط. كل طبقة تُوسم بمصدرها ولا تُرفع طبقة بشرية إلى مقام النص.")
             appendLine("نص الآية ورقمها واسم السورة والرسم والضبط والقراءة لا تُنقل جزمًا من الذاكرة غير المتحققة إذا كانت الدقة مؤثرة؛ استخدم مصحفًا/مصدرًا قرآنيًا موثوقًا ومراجعًا.")
-            appendLine("في أسماء السور ومقاصدها والمكي والمدني ووجوه التسمية وأسباب النزول: ميّز المشهور والتوقيفي والاجتهادي والخلاف المنقول، ولا تدّع الإجماع بلا دليل.")
+            appendLine("في أسماء السور ومقاصدها والمكي والمدني ووجوه التسمية وأسباب النزول وعلوم القرآن: ميّز المشهور والتوقيفي والاجتهادي والخلاف المنقول، ولا تدّع الإجماع بلا دليل.")
+            appendLine("الترجمة تفسير لمعنى القرآن وليست القرآن العربي نفسه. وأحكام الفقه المستنبطة تُنسب إلى أدلتها وأقوال أهل العلم عند الحاجة مع احترام الخلاف المعتبر.")
             appendLine("في العلوم الدنيوية، بما فيها الذرة والنواة والطب والهندسة: القرآن يحكم الهداية والغاية والقيم والحدود؛ أما القانون التجريبي والسبب الفني فيثبت بالعلم والتجربة والدليل المستقل.")
-            if (a.requiresSourceVerification) appendLine("هذه المهمة تتطلب تحققًا مصدريًا قبل الجزم أو الاقتباس أو نسبة معنى محدد إلى سورة/آية.")
-        }.take(7800)
+            if (a.requiresSourceVerification) appendLine("هذه المهمة تتطلب تحققًا مصدريًا قبل الجزم أو الاقتباس أو نسبة معنى محدد إلى سورة/آية أو علم قرآني.")
+        }.take(9000)
     }
 
     fun status(): JSONObject = JSONObject()
@@ -94,6 +102,11 @@ object HakimQuranicCorpusPolicy {
         .put("exact_text_requires_verified_mushaf_source", true)
         .put("revelation_distinct_from_tafsir_and_inference", true)
         .put("qiraat_distinct_from_tafsir", true)
+        .put("tajweed_requires_documented_source", true)
+        .put("ghareeb_requires_documented_source", true)
+        .put("quranic_sciences_require_documented_source", true)
+        .put("translation_is_meaning_not_quran_text", true)
+        .put("fiqh_derivation_is_not_revelation_text", true)
         .put("asbab_requires_source_verification", true)
         .put("surah_metadata_requires_documented_source", true)
         .put("worldly_science_requires_independent_evidence", true)
@@ -106,8 +119,11 @@ object HakimQuranicCorpusPolicy {
     private val exactTextRegex = Regex(
         "(?i)(نص\\s*الآية|نص\\s*الاية|اكتب\\s*الآية|قال\\s*الله|رقم\\s*الآية|اسم\\s*السورة|اقتباس\\s*قرآني|الرسم\\s*العثماني|ضبط\\s*المصحف)"
     )
-    private val qiraatRegex = Regex("(?i)(قراءة|قراءات|رواية\\s*حفص|ورش|قالون|الدوري|شعبة|روايات\\s*القرآن)")
+    private val qiraatRegex = Regex("(?i)(قراءة|قراءات|رواية\\s*حفص|ورش|قالون|الدوري|شعبة|السوسي|روايات\\s*القرآن)")
     private val tafsirRegex = Regex("(?i)(تفسير|المفسرون|معنى\\s*الآية|معنى\\s*السورة|تأويل)")
     private val asbabRegex = Regex("(?i)(سبب\\s*النزول|أسباب\\s*النزول|اسباب\\s*النزول|نزلت\\s*في)")
     private val metadataRegex = Regex("(?i)(مقاصد\\s*السورة|موضوعات\\s*السورة|مكية|مدنية|مكي\\s*ومدني|تسمية\\s*السورة|أسماء\\s*السورة|ترتيب\\s*السور)")
+    private val relatedSciencesRegex = Regex(
+        "(?i)(تجويد|احكام\\s*التجويد|أحكام\\s*التجويد|غريب\\s*القرآن|غريب\\s*القرءان|علوم\\s*القرآن|علوم\\s*القرءان|ترجمة\\s*القرآن|ترجمة\\s*القرءان|ترجمات\\s*القرآن|فقه\\s*الآية|أحكام\\s*القرآن|احكام\\s*القرآن|استنباط\\s*فقهي)"
+    )
 }

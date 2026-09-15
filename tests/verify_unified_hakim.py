@@ -26,6 +26,7 @@ home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
 mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
+resilience = text("app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version = re.search(r"versionCode\s+(\d+)", build)
@@ -59,6 +60,20 @@ require('HakimUnifiedRelay.isConfigured(context)' in boot and 'HakimUnifiedRelay
 require(boot.index('HakimUnifiedRelay.start(context)') < boot.index('if (disabled || !legacyPaired) return'),
         "P0: استعادة HC1 ما زالت مشروطة خطأ بوجود القناة القديمة")
 
+# حارس الاتصال نفسه يجب أن يكون مستقلًا عن القناة القديمة: HC1 والمحلي مساران أصيلان.
+require('val securePaired = HakimUnifiedRelay.isConfigured(app)' in resilience,
+        "P0: حارس الاتصال لا يعترف باقتران HC1")
+require('val localPaired = p.getBoolean("local_adb_paired", false)' in resilience,
+        "P0: حارس الاتصال لا يعترف بالاقتران المحلي")
+require('val anyPaired = legacyPaired || securePaired || localPaired' in resilience,
+        "P0: الاستعادة ما زالت أسيرة القناة القديمة")
+require('if (securePaired) HakimUnifiedRelay.start(app)' in resilience,
+        "P0: حارس الاتصال لا يعيد تشغيل HC1 ذاتيًا")
+require('if (localPaired) HakimLocalPairing.reconnectAsync(app)' in resilience,
+        "P0: حارس الاتصال لا يعيد وصل المسار المحلي ذاتيًا")
+require('secure_reconnect_requested' in resilience and 'secure_relay_state' in resilience,
+        "P0: تشخيص استعادة HC1 غير قابل للرصد")
+
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
@@ -66,7 +81,7 @@ require('تأسيس ADB المحلي' in home and 'مركز القيادة' in h
 require('مركز حكيم والاتصال المحلي' in chat, "P0: واجهة المحادثة لا تصل إلى مركز الاتصال المحلي")
 require('object HakimCapabilityMesh' in mesh and 'rank(context' in mesh, "P0: شبكة التفوق/الأدوات غير مدمجة")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot])
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot, resilience])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

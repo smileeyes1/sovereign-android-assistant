@@ -33,6 +33,8 @@ for token in [
     "preserve_user_agency",
     "adaptive_explanation_depth",
     "heart_reform_supported_without_claiming_inner_state",
+    "good_beneficial_habit_after_evidence",
+    "habit_must_remain_reversible_and_non_addictive",
     "vulnerable_and_weak_receive_extra_protection",
     "protect_lawful_good_without_claiming_hidden_righteousness",
     "support_muslim_good_with_universal_justice",
@@ -51,8 +53,13 @@ require("السكوت" in human and "ليس موافقة" in human,
         "P0: السكوت قد يفسر موافقة")
 require("إصلاح القلب" in human and "لا تدّع معرفة باطن الإنسان" in human,
         "P0: إصلاح القلب غير منضبط أو يدعي معرفة الباطن")
-require("المستضعف" in human and "الضعيف" in human and "تمييز ظالم" in human,
-        "P0: حماية المستضعفين غير متوازنة بالعدل")
+require("عادة صالحة ومفيدة" in human and "ثبوت نفعه وسلامته" in human,
+        "P0: العادة الصالحة غير مربوطة بالنفع والسلامة")
+require("قابلة للإيقاف والتعديل" in human and "الحيل الإدمانية" in human,
+        "P0: العادة قد تسلب الإرادة أو تستخدم الإدمان")
+require("المستضعف" in human, "P0: المستضعف غير مشمول بالحماية")
+require("الضعيف" in human, "P0: الضعيف غير مشمول بالحماية")
+require("تمييز ظالم" in human, "P0: حماية الضعيف غير مقيدة بمنع التمييز الظالم")
 require("المؤمنين والمسلمين" in human and "إنسان بريء" in human,
         "P0: دعم المسلمين غير مقيد بالعدل الشامل")
 require("الدعم الصامت" in human and "إخفاء أفعال مؤثرة" in human and "مراقبة الناس سرًا" in human,

@@ -138,29 +138,36 @@ object HakimProactiveEngine {
     /**
      * يعيد مهمة لاستئنافها فقط في واجهة حكيم عندما تكون منخفضة الأثر وغير منتظرة لسر/ثقة/موافقة.
      * لا ينفذ شيئًا هنا؛ التنفيذ لاحقًا يمر مجددًا عبر المحرك السيادي وغلاف السلطة.
+     * أي خلل غير حاكم في فحص الاستئناف يسجل محليًا ويعيد null بدل إسقاط واجهة المستخدم.
      */
     fun foregroundOpportunity(context: Context): HakimMissionLedger.Mission? {
-        if (!isEnabled(context)) return null
-        val mission = HakimMissionLedger.active(context) ?: return null
-        if (mission.phase in setOf(
-                HakimMissionLedger.Phase.COMPLETE,
-                HakimMissionLedger.Phase.CANCELLED,
-                HakimMissionLedger.Phase.BLOCKED,
-                HakimMissionLedger.Phase.WAITING_APPROVAL,
-                HakimMissionLedger.Phase.WAITING_CREDENTIAL,
-                HakimMissionLedger.Phase.WAITING_TRUST
-            )) return null
-        if (mission.failures >= 3) return null
+        if (HakimCrashShield.shouldSuppressProactiveResume(context)) return null
+        return try {
+            if (!isEnabled(context)) return null
+            val mission = HakimMissionLedger.active(context) ?: return null
+            if (mission.phase in setOf(
+                    HakimMissionLedger.Phase.COMPLETE,
+                    HakimMissionLedger.Phase.CANCELLED,
+                    HakimMissionLedger.Phase.BLOCKED,
+                    HakimMissionLedger.Phase.WAITING_APPROVAL,
+                    HakimMissionLedger.Phase.WAITING_CREDENTIAL,
+                    HakimMissionLedger.Phase.WAITING_TRUST
+                )) return null
+            if (mission.failures >= 3) return null
 
-        val decision = HakimDecisionMatrix.evaluate(mission.goal)
-        if (decision.mode != HakimDecisionMatrix.Mode.AUTO && decision.mode != HakimDecisionMatrix.Mode.AUTO_VERIFY) return null
+            val decision = HakimDecisionMatrix.evaluate(mission.goal)
+            if (decision.mode != HakimDecisionMatrix.Mode.AUTO && decision.mode != HakimDecisionMatrix.Mode.AUTO_VERIFY) return null
 
-        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val now = System.currentTimeMillis()
-        val lastId = p.getString("last_auto_resume_mission_id", "")
-        val lastAt = p.getLong("last_auto_resume_at", 0L)
-        if (lastId == mission.id && now - lastAt < AUTO_RESUME_COOLDOWN_MS) return null
-        return mission
+            val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val lastId = p.getString("last_auto_resume_mission_id", "")
+            val lastAt = p.getLong("last_auto_resume_at", 0L)
+            if (lastId == mission.id && now - lastAt < AUTO_RESUME_COOLDOWN_MS) return null
+            mission
+        } catch (t: Throwable) {
+            HakimCrashShield.recordNonFatal(context, "proactive_foreground_opportunity", t)
+            null
+        }
     }
 
     fun markForegroundResume(context: Context, mission: HakimMissionLedger.Mission) {
@@ -183,6 +190,7 @@ object HakimProactiveEngine {
             .put("verified_quran_bootstrap_integrated", true)
             .put("verified_quran_bootstrap_unmetered_and_resource_guarded", true)
             .put("foreground_safe_resume", true)
+            .put("crash_safe_recovery_suppresses_auto_resume", HakimCrashShield.shouldSuppressProactiveResume(context))
             .put("realtime_update_reasserted", true)
             .put("high_impact_never_silently_authorized", true)
             .put("silence_not_consent", true)

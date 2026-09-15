@@ -13,15 +13,19 @@ CURRENT_D1 = "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:
 HISTORICAL_F4 = "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E"
 FORBIDDEN_4C = "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99"
 
-assert POLICY["schema_version"] >= 4
+assert POLICY["schema_version"] >= 5
 assert POLICY["canonical_package"] == "ps.hakim.stable"
 assert POLICY["certificate_sha256"] == CURRENT_D1
-assert POLICY["current_field_version"] == 20022
-assert POLICY["field_evidence"]["version_code"] == 20022
+assert POLICY["current_field_version"] == 20025
+assert POLICY["field_evidence"]["version_code"] == 20025
+assert POLICY["field_evidence"]["version_name"] == "2.0.25-multi-provider-sovereign-chat"
 assert POLICY["field_evidence"]["signer_sha256"] == CURRENT_D1
+assert POLICY["field_evidence"]["apk_sha256"] == "06284169af90e89662a64a38262f7783c49216540e01e22b88fb8dd054b2ee7b"
+assert POLICY["field_evidence"]["supersedes_direct_field_version"] == 20022
 assert POLICY["historical_previous_lineage"]["certificate_sha256"] == HISTORICAL_F4
 assert POLICY["known_nonmatching_certificate_sha256"] == FORBIDDEN_4C
 assert 20022 in POLICY["known_matching_versions"]
+assert 20025 in POLICY["known_matching_versions"]
 assert 20017 in POLICY["historical_previous_lineage"]["known_signed_versions"]
 assert POLICY["continuity"]["one_app_only"] is True
 assert POLICY["continuity"]["preserve_app_data_required"] is True
@@ -33,6 +37,7 @@ assert "applicationId 'ps.hakim.stable'" in BUILD
 version = re.search(r"versionCode\s+(\d+)", BUILD)
 assert version and int(version.group(1)) >= 20026
 current = int(version.group(1))
+assert current > POLICY["current_field_version"]
 assert POLICY["current_candidate_version"] == current
 
 assert "field_signer_mismatch" in SCRIPT

@@ -24,6 +24,7 @@ object HakimImeResilience {
     fun install(app: Application) {
         if (installed) return
         installed = true
+        HakimInputSafety.install(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                 if (activity !is HakimAgentsChatActivity) return
@@ -75,6 +76,7 @@ object HakimImeResilience {
         "full_ime_height_root_padding_forbidden" to true,
         "composer_must_remain_visible_with_keyboard" to true,
         "legacy_android_relies_on_adjust_resize" to true,
-        "input_layout_churn_reduced" to true
+        "input_layout_churn_reduced" to true,
+        "typing_preempts_proactive_resume" to true
     )
 }

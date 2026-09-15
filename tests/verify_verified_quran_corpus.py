@@ -10,6 +10,8 @@ def req(cond, msg):
         raise SystemExit(msg)
 
 corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt")
+bootstrap = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranBootstrap.kt")
+app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 policy = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 workflow = text(".github/workflows/android.yml")
@@ -40,6 +42,32 @@ req("offline_reimport_source_available" in corpus and "export_reverifies_officia
     "P0: حالة الاستقلال القرآني لا تعرض توفر إعادة الاستيراد دون شبكة")
 req("MAX_OFFICIAL_ARCHIVE_BYTES" in corpus,
     "P0: استيراد المصدر القرآني بلا حد حجم وقائي")
+
+# التأسيس التلقائي: الرابط قناة فقط؛ الاعتماد يبقى للبصمة الرسمية وفحص النص كاملًا.
+req("object HakimQuranBootstrap" in bootstrap, "P0: تأسيس القرآن المحلي التلقائي مفقود")
+req("download.qurancomplex.gov.sa" in bootstrap, "P0: مسار الجلب التلقائي لا يبدأ من نطاق المجمع")
+req("official_hash_is_authority_not_url" in bootstrap,
+    "P0: قد يصبح رابط التنزيل نفسه مصدر ثقة بدل البصمة الرسمية")
+req("HakimVerifiedQuranCorpus.importOfficialArchive" in bootstrap,
+    "P0: الجلب التلقائي يتجاوز بوابة التحقق الرسمية")
+req("HakimVerifiedQuranCorpus.isReady" in bootstrap,
+    "P0: الجلب التلقائي لا يثبت جاهزية القاعدة بعد الاستيراد")
+req("MAX_ARCHIVE_BYTES = 32L * 1024L * 1024L" in bootstrap,
+    "P0: تنزيل قاعدة القرآن بلا حد حجم")
+req("snapshot.meteredNetwork" in bootstrap,
+    "P0: حكيم قد يستهلك شبكة محسوبة تلقائيًا لتنزيل قاعدة القرآن")
+req("Mode.PRESSURE" in bootstrap and "snapshot.powerSave" in bootstrap,
+    "P0: تأسيس القرآن التلقائي لا يحترم ضغط الموارد/توفير الطاقة")
+req("RETRY_MS = 24L * 60L * 60L * 1000L" in bootstrap,
+    "P0: فشل المصدر قد يسبب حلقة تنزيل متكررة")
+req("finalHost == \"qurancomplex.gov.sa\"" in bootstrap and "endsWith(\".qurancomplex.gov.sa\")" in bootstrap,
+    "P0: إعادة توجيه التنزيل قد تغادر نطاق المصدر المعتمد")
+req("runCatching { tmp.delete() }" in bootstrap,
+    "P0: ملف القرآن المؤقت قد يبقى بلا تنظيف")
+req("HakimQuranBootstrap.syncIfNeeded(app)" in app,
+    "P0: التأسيس التلقائي موجود لكنه غير موصول بدورة صيانة حكيم")
+req("HakimResourceGovernor.canRunNonEssentialBackground" in app,
+    "P0: تأسيس القرآن قد ينافس المهمة الحالية تحت ضغط الموارد")
 
 req("اعتماد الملف الرسمي" in settings and "فتح المصدر الرسمي" in settings, "P0: لا توجد واجهة لاعتماد المصدر الرسمي")
 req("HakimVerifiedQuranCorpus.importOfficialArchive" in settings, "P0: واجهة القرآن غير موصولة بالتحقق الفعلي")

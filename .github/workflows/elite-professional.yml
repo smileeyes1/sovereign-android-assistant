@@ -1,8 +1,8 @@
-name: بوابة حكيم ٢٠٠٣٥ الفئة العليا المتقاربة
+name: بوابة حكيم الفئة العليا المتقاربة
 
 on:
   push:
-    branches: [ feature/hakim-convergence-20035 ]
+    branches: [ feature/hakim-governance-editor ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: إثبات بقاء بوابات الحكمة والخصوصية وIME معًا
+      - name: إثبات بقاء بوابات الحكمة والخصوصية والصمود وIME معًا
         shell: bash
         run: |
           set -euo pipefail
@@ -45,6 +45,8 @@ jobs:
             tests/verify_resource_sovereignty_policy.py
             tests/verify_chat_first_ui.py
             app/src/main/java/ps/hakim/phoneagent/HakimImeResilience.kt
+            app/src/main/java/ps/hakim/phoneagent/HakimCrashShield.kt
+            app/src/main/java/ps/hakim/phoneagent/HakimUiPolish.kt
           )
           for f in "${required[@]}"; do test -f "$f" || { echo "MISSING $f"; exit 1; }; done
 
@@ -81,20 +83,22 @@ jobs:
       - name: Android Lint كامل
         run: gradle lintDebug lintRelease --stacktrace
 
-      - name: إثبات هوية ٢٠٠٣٥ وفصل المصدر عن الميدان
+      - name: إثبات هوية المرشح وفصل المصدر عن الميدان
+        id: candidate
         shell: bash
         run: |
           set -euo pipefail
+          version="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
+          test "$version" -ge 20035
           grep -q "applicationId 'ps.hakim.stable'" app/build.gradle
-          grep -q "versionCode 20035" app/build.gradle
-          grep -q "2.0.35-converged-elite-wisdom-privacy-ime" app/build.gradle
           grep -q '"current_field_version": 20025' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
-          grep -q '"current_candidate_version": 20035' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+          grep -q "\"current_candidate_version\": $version" governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: حفظ أثر CI غير القابل للتثبيت الميداني
         uses: actions/upload-artifact@v7
         with:
-          name: hakim-converged-20035-ci-NOT-INSTALLABLE
+          name: hakim-converged-${{ steps.candidate.outputs.version }}-ci-NOT-INSTALLABLE
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk

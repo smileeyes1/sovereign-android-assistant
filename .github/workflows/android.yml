@@ -61,6 +61,8 @@ jobs:
         run: python3 tests/verify_quran_sunnah_method.py
       - name: بوابة الاستخلاف والحكمة وهدي الأنبياء
         run: python3 tests/verify_istikhlaaf_governance.py
+      - name: بوابة صمود قناة HC1 والناقل الاحتياطي
+        run: python3 tests/verify_hc1_transport_resilience.py
       - name: بوابة شمول سور القرآن ١١٤ وفصل طبقات المعرفة
         run: python3 tests/verify_quranic_corpus_coverage.py
       - name: بوابة القرآن المحلي المتحقق من المصدر الرسمي

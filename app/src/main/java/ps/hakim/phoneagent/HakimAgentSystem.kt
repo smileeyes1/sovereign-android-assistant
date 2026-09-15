@@ -163,23 +163,19 @@ object HakimAgentSystem {
         }.take(30000)
     }
 
+    /** ملخص بشري فقط؛ تفاصيل الثقة والوكلاء والمسار تبقى في الحالة الداخلية والسجل. */
     fun summary(context: Context, raw: String, preferred: Agent? = null): String {
         val p = plan(context, raw, preferred)
-        val names = p.agents.joinToString("، ") { it.title }
+        val goal = p.goal.ifBlank { "استمرار المهمة الحالية" }
         return buildString {
-            append("فهمت المقصد").append(if (p.inferenceSource == "explicit_user_intent") "" else " من السياق")
-            append(": ").append(p.goal.ifBlank { "استمرار المهمة الحالية" })
-            append("\nالثقة: ").append(p.inferenceConfidence)
-            append(" • القرار: ").append(p.decisionMode).append(" ").append(p.decisionScore).append("/100")
-            append("\nالوكلاء: ").append(names)
-            append("\nالمسار: ").append(when (p.route) {
-                "browser" -> "المتصفح والتنفيذ"
-                "research_then_replan" -> "تحقق/بحث ثم إعادة تخطيط"
-                "blocked" -> "متوقف بحاكم سيادي"
-                else -> "الفهم والتخطيط ثم التنفيذ"
-            })
-            if (p.religiousTask) append("\nالنزاهة الشرعية مفعلة لهذه المهمة.")
-            if (p.needsApproval) append("\nلن أتجاوز بوابة الموافقة/المنع اللازمة.")
+            append(if (p.inferenceSource == "explicit_user_intent") "فهمت: " else "فهمت من السياق: ")
+            append(goal)
+            when {
+                p.route == "blocked" -> append("\nهناك قيد حاكم يمنع التنفيذ الآن؛ لن أتجاوزه.")
+                p.needsApproval -> append("\nسأنجز ما يمكن بأمان، ثم أطلب موافقتك قبل الخطوة المؤثرة.")
+                p.route == "research_then_replan" -> append("\nسأتحقق أولًا، ثم أنفذ على أساس الدليل.")
+                else -> append("\nسأعمل عليه الآن وأتحقق من النتيجة.")
+            }
         }
     }
 
@@ -206,6 +202,7 @@ object HakimAgentSystem {
             .put("last_plan", prefs.getString("last_plan", ""))
             .put("secret_redaction", true)
             .put("high_impact_gate", true)
+            .put("human_facing_summary_hides_internal_telemetry", true)
             .put("sovereign_status", HakimSovereignEngine.status(context))
     }
 

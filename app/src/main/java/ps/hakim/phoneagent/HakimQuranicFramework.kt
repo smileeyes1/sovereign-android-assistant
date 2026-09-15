@@ -23,7 +23,7 @@ object HakimQuranicFramework {
         val corpus = HakimQuranicCorpusPolicy.assess(raw)
         val s = raw.trim().lowercase()
         val religious = religiousDecisionRegex.containsMatchIn(s)
-        val exact = exactQuranRegex.containsMatchIn(s) || corpus.exactTextRequested
+        val exact = exactQuranRegex.containsMatchIn(s) || corpus.exactTextRequested || corpus.wholeCorpusRequested
         val worldly = worldlyMeansRegex.containsMatchIn(s) && !religious
         return Assessment(
             quranicNormativeDefault = true,
@@ -32,7 +32,7 @@ object HakimQuranicFramework {
             worldlyMeansTask = worldly,
             wholeQuranCorpusRequested = corpus.wholeCorpusRequested,
             reason = when {
-                corpus.wholeCorpusRequested -> "المهمة تطلب استقراء القرآن كله؛ تغطية السور الـ١١٤ مطلوبة بلا انتقاء مسبق أو تكلف في الصلة"
+                corpus.wholeCorpusRequested -> "المهمة تطلب استقراء القرآن كله؛ تغطية السور الـ١١٤ مطلوبة من مصدر قرآني متحقق، بلا انتقاء مسبق أو تكلف في الصلة"
                 exact -> "المهمة تحتاج تثبتًا دقيقًا من نص القرآن ودلالته"
                 religious -> "المهمة تتضمن حكمًا أو معنى شرعيًا يخضع للقرآن والسنة الصحيحة"
                 worldly -> "المهمة دنيوية؛ الميزان القيمي قرآني والوسيلة تُحسم بالعلم والخبرة والدليل"
@@ -53,8 +53,8 @@ object HakimQuranicFramework {
             appendLine("في الطب والهندسة والحساب والإدارة والبرمجة والفيزياء الذرية والنووية وسائر الوسائل الدنيوية: استخدم العقل والعلم والتجربة والخبرة والمصادر الموثوقة لاختيار السبب الأنسب؛ هذه أدوات تحت الهداية وليست بدائل عنها. لا تنسب نتيجة تقنية أو تجريبية إلى القرآن بلا دليل، ولا تنسب قانونًا ذريًا أو نوويًا إلى القرآن بلا دليل مستقل صالح.")
             appendLine("افصل دائمًا بين: الوحي، فهم البشر للوحي، الحكم الشرعي المستنبط، الحقيقة التجريبية، والقرار التنفيذي. لا تخلط بينها ولا تجعل أحدها يدّعي مقام الآخر.")
             appendLine("البركة والبسملة والدعاء معانٍ شرعية كريمة، لكنها لا تستبدل السبب المشروع والتحقق والعمل المتقن، ولا تُستخدم كخوارزمية أو ضمان نتيجة مادية.")
-            if (a.exactQuranTextRequired) appendLine("هذه المهمة تتطلب تحققًا نصيًا من المصحف/مصدر موثوق قبل نقل الآية أو رقمها أو نسبتها.")
-            if (a.wholeQuranCorpusRequested) appendLine("نفّذ استقراءً على مجال السور الـ١١٤ كاملًا، ثم استعمل فقط ما ثبتت صلته بالمقصد؛ لا تُجبر كل سورة على كل مسألة ولا تنتقِ الشواهد لموافقة نتيجة مسبقة.")
+            if (a.exactQuranTextRequired) appendLine("هذه المهمة تتطلب تحققًا نصيًا من المصحف/مصدر موثوق قبل نقل الآية أو رقمها أو نسبتها أو ادعاء استقراء القرآن كله.")
+            if (a.wholeQuranCorpusRequested) appendLine("نفّذ استقراءً على مجال السور الـ١١٤ كاملًا من corpus نصه متحقق، ثم استعمل فقط ما ثبتت صلته بالمقصد؛ لا تعتبر الاستقراء الشامل مكتملًا من سياسة التغطية وحدها، ولا تُجبر كل سورة على كل مسألة ولا تنتقِ الشواهد لموافقة نتيجة مسبقة.")
             if (a.worldlyMeansTask) appendLine("هذه مهمة وسائل دنيوية: طبّق الميزان القرآني على الغاية والأثر والحقوق، ودع اختيار الوسيلة للدليل الفني/التجريبي الأقوى.")
         }.take(12000)
     }
@@ -66,6 +66,7 @@ object HakimQuranicFramework {
         .put("quran_as_guidance_and_value_origin", true)
         .put("authentic_sunnah_as_explanation_and_guidance", true)
         .put("all_114_surahs_in_governed_corpus", true)
+        .put("whole_quran_corpus_requires_verified_source", true)
         .put("no_cherry_picking", true)
         .put("no_forced_relevance", true)
         .put("worldly_means_use_reason_science_experience", true)

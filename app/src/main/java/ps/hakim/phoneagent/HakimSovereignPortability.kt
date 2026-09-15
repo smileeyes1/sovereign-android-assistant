@@ -7,9 +7,11 @@ import org.json.JSONObject
 /**
  * قابلية نقل محلية صريحة. لا تصدّر كلمات المرور/OTP/PIN/CVV/المفاتيح أو هوية التوقيع الخاصة.
  * قد تتضمن النسخة بيانات شخصية غير سرية خزّنها المستخدم (مثل الاسم/الهاتف/العنوان)، والتصدير لا يحدث إلا بفعل المستخدم إلى وجهة يختارها نظام Android.
+ * الإصدار ٢ يضيف القواعد الفعالة المنقحة ودليل التعلم المحلي المجهول، دون مهمة جارية أو أسرار.
  */
 object HakimSovereignPortability {
-    const val SCHEMA_VERSION = 1
+    const val SCHEMA_VERSION = 2
+    private const val MIN_SUPPORTED_SCHEMA_VERSION = 1
     private const val MAX_BACKUP_BYTES = 512 * 1024
     private const val MAX_SITES = 80
     private const val MAX_TRUSTED_HOSTS = 120
@@ -22,7 +24,9 @@ object HakimSovereignPortability {
         val profile: Map<String, String>,
         val trustedHosts: Set<String>,
         val proactiveEnabled: Boolean,
-        val reasoningSharing: Boolean
+        val reasoningSharing: Boolean,
+        val effectiveRules: JSONArray,
+        val adaptiveEvidence: JSONObject
     )
 
     fun exportJson(context: Context): String {
@@ -38,6 +42,8 @@ object HakimSovereignPortability {
         val trusted = JSONArray()
         HakimSiteTrust.trustedHosts(context).sorted().forEach { trusted.put(it) }
         val safeGlobal = HakimGovernanceStore.exportSafeText(HakimGovernanceStore.global(context))
+        val effectiveRules = HakimRuleLedger.portableRules(context)
+        val adaptiveEvidence = HakimAdaptiveLearningPortability.exportEvidence(context)
 
         return JSONObject()
             .put("schema_version", SCHEMA_VERSION)
@@ -45,14 +51,17 @@ object HakimSovereignPortability {
             .put("exported_at", System.currentTimeMillis())
             .put("contains_secrets", false)
             .put("contains_signing_private_key", false)
+            .put("contains_pending_mission", false)
             .put("contains_personal_data", profile.length() > 0)
             .put("governance_global", safeGlobal.take(24000))
             .put("site_instructions", sites)
             .put("profile_non_sensitive", profile)
             .put("trusted_profile_hosts", trusted)
+            .put("effective_rules", effectiveRules)
+            .put("adaptive_learning_evidence", adaptiveEvidence)
             .put("proactive_enabled", HakimProactiveEngine.isEnabled(context))
             .put("share_profile_with_reasoning", HakimPersonalVault.reasoningSharingEnabled(context))
-            .put("note", "النسخة تستبعد كلمات المرور ورموز التحقق والبطاقات والمفاتيح الخاصة، لكنها قد تحتوي بيانات شخصية خزّنها المستخدم؛ احفظها في وجهة موثوقة يختارها بنفسه")
+            .put("note", "النسخة تستبعد كلمات المرور ورموز التحقق والبطاقات والمفاتيح الخاصة والمهمة الجارية. تنقل القواعد الفعالة بعد تنقيح الأسرار ودليل التعلم المجهول، وقد تحتوي بيانات شخصية خزّنها المستخدم؛ احفظها في وجهة موثوقة يختارها بنفسه")
             .toString(2)
     }
 
@@ -64,7 +73,8 @@ object HakimSovereignPortability {
         val root = runCatching { JSONObject(raw) }.getOrElse {
             return ImportResult(false, 0, "ملف النسخة ليس JSON صالحًا")
         }
-        if (root.optInt("schema_version", -1) != SCHEMA_VERSION) {
+        val schema = root.optInt("schema_version", -1)
+        if (schema !in MIN_SUPPORTED_SCHEMA_VERSION..SCHEMA_VERSION) {
             return ImportResult(false, 0, "إصدار مخطط النسخة غير مدعوم")
         }
         if (root.optString("package") != "ps.hakim.stable") {
@@ -72,6 +82,9 @@ object HakimSovereignPortability {
         }
         if (root.optBoolean("contains_secrets", false) || root.optBoolean("contains_signing_private_key", false)) {
             return ImportResult(false, 0, "رفضت النسخة لأنها تعلن احتواء أسرار أو مفتاح توقيع")
+        }
+        if (root.optBoolean("contains_pending_mission", false)) {
+            return ImportResult(false, 0, "رفضت النسخة لأنها تعلن احتواء مهمة جارية")
         }
 
         // لا نثق بإعلان الملف وحده: ننقّي نصوص الحاكمية مرة أخرى عند الاستيراد.
@@ -101,6 +114,16 @@ object HakimSovereignPortability {
             if (profileObj.has(field.id)) profile[field.id] = profileObj.optString(field.id, "").take(4000)
         }
 
+        // v1 يبقى مدعومًا بلا مسح الحالة الجديدة التي لم يكن يعرفها.
+        val portableRules: JSONArray? = if (schema >= 2) {
+            root.optJSONArray("effective_rules")
+                ?: return ImportResult(false, 0, "نسخة الإصدار ٢ تفتقد القواعد الفعالة")
+        } else null
+        val adaptiveEvidence: JSONObject? = if (schema >= 2) {
+            root.optJSONObject("adaptive_learning_evidence")
+                ?: return ImportResult(false, 0, "نسخة الإصدار ٢ تفتقد دليل التعلم")
+        } else null
+
         // PREVENT: التقط الحالة قبل أي كتابة حتى لا تبقى استعادة نصف مكتملة.
         val before = snapshot(context)
         fun fail(message: String): ImportResult {
@@ -123,7 +146,13 @@ object HakimSovereignPortability {
             return fail("تعذر استعادة ثقة المواقع.")
         }
         if (!replaceProfileSafely(context, profile)) {
-            return fail("تعذر استعادة خزنة البيانات غير السرية.")
+            return fail("تعذر استعادة خزنة البيانات الشخصية القابلة للنقل.")
+        }
+        if (portableRules != null && !HakimRuleLedger.replacePortableRules(context, portableRules)) {
+            return fail("تعذر استعادة القواعد الفعالة بصورة ذرية.")
+        }
+        if (adaptiveEvidence != null && !HakimAdaptiveLearningPortability.replaceEvidence(context, adaptiveEvidence)) {
+            return fail("تعذر استعادة دليل التعلم المحلي.")
         }
 
         HakimPersonalVault.setReasoningSharing(
@@ -135,11 +164,16 @@ object HakimSovereignPortability {
             root.optBoolean("proactive_enabled", true)
         )
 
-        val changed = 1 + sites.size + trusted.size + profile.size + 2
+        val changed = 1 + sites.size + trusted.size + profile.size + 2 +
+            (portableRules?.length() ?: 0) + if (adaptiveEvidence != null) 1 else 0
         return ImportResult(
             true,
             changed,
-            "تمت الاستعادة محليًا كوحدة واحدة قابلة للتراجع بعد تنقيح نصوص الحاكمية. لم تُستورد أسرار أو مفاتيح توقيع."
+            if (schema >= 2) {
+                "تمت الاستعادة السيادية محليًا كوحدة واحدة قابلة للتراجع، بما فيها القواعد الفعالة ودليل التعلم. لم تُستورد أسرار أو مهمة جارية أو مفاتيح توقيع."
+            } else {
+                "تمت استعادة النسخة القديمة محليًا مع حفظ القواعد ودليل التعلم الحاليين لأن هذا المخطط القديم لم يكن ينقلهما."
+            }
         )
     }
 
@@ -181,7 +215,9 @@ object HakimSovereignPortability {
         profile = HakimPersonalVault.all(context),
         trustedHosts = HakimSiteTrust.trustedHosts(context),
         proactiveEnabled = HakimProactiveEngine.isEnabled(context),
-        reasoningSharing = HakimPersonalVault.reasoningSharingEnabled(context)
+        reasoningSharing = HakimPersonalVault.reasoningSharingEnabled(context),
+        effectiveRules = HakimRuleLedger.portableRules(context),
+        adaptiveEvidence = HakimAdaptiveLearningPortability.exportEvidence(context)
     )
 
     private fun restoreSnapshot(context: Context, before: LocalSnapshot): Boolean {
@@ -190,6 +226,8 @@ object HakimSovereignPortability {
         if (!restoreSitesBestEffort(context, before.sites)) ok = false
         if (!HakimSiteTrust.replaceTrustedHosts(context, before.trustedHosts)) ok = false
         if (!restoreProfileBestEffort(context, before.profile)) ok = false
+        if (!HakimRuleLedger.replacePortableRules(context, before.effectiveRules)) ok = false
+        if (!HakimAdaptiveLearningPortability.replaceEvidence(context, before.adaptiveEvidence)) ok = false
         HakimPersonalVault.setReasoningSharing(context, before.reasoningSharing)
         HakimProactiveEngine.setEnabled(context, before.proactiveEnabled)
         return ok
@@ -222,11 +260,15 @@ object HakimSovereignPortability {
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("sovereign_portability", true)
+        .put("schema_version", SCHEMA_VERSION)
         .put("explicit_user_export", true)
         .put("explicit_user_import_confirmation", true)
         .put("portable_governance", true)
         .put("portable_non_sensitive_profile", true)
         .put("portable_site_trust", true)
+        .put("portable_effective_rules", true)
+        .put("portable_adaptive_evidence", true)
+        .put("pending_mission_excluded", true)
         .put("restore_rollback_guard", true)
         .put("profile_restore_replaces_not_merges", true)
         .put("secrets_excluded", true)
@@ -234,4 +276,5 @@ object HakimSovereignPortability {
         .put("export_may_contain_personal_data", HakimPersonalVault.all(context).isNotEmpty())
         .put("current_sites", HakimGovernanceStore.allSites(context).size)
         .put("current_trusted_hosts", HakimSiteTrust.trustedHosts(context).size)
+        .put("current_portable_rules", HakimRuleLedger.portableRules(context).length())
 }

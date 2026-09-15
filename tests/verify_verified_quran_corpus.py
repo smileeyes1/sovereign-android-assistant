@@ -13,6 +13,7 @@ corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt
 bootstrap = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranBootstrap.kt")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 policy = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
+sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
 settings = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemSettingsActivity.kt")
 workflow = text(".github/workflows/android.yml")
 
@@ -42,6 +43,24 @@ req("offline_reimport_source_available" in corpus and "export_reverifies_officia
     "P0: حالة الاستقلال القرآني لا تعرض توفر إعادة الاستيراد دون شبكة")
 req("MAX_OFFICIAL_ARCHIVE_BYTES" in corpus,
     "P0: استيراد المصدر القرآني بلا حد حجم وقائي")
+
+# «كل السور» تنفيذ فعلي: المرور على كل قاعدة النص الموثقة ثم مرشحات لفظية فقط.
+req("fun fullCorpusScan" in corpus and "verified_quran_full_scan" in corpus,
+    "P0: لا يوجد تنفيذ فعلي لمسح القرآن كله")
+req("scanned == EXPECTED_AYA_COUNT" in corpus and "visitedSurahs.size == 114" in corpus,
+    "P0: اكتمال مسح ٦٢٣٦ آية/١١٤ سورة غير محروس")
+req("all_114_surahs_scanned" in corpus and "all_6236_ayat_scanned" in corpus,
+    "P0: دليل تغطية الاستقراء الكامل غير ظاهر")
+req("retrieval_is_lexical_not_tafsir" in corpus and "ليست تفسيرًا" in corpus,
+    "P0: الاسترجاع اللفظي قد يلتبس بالتفسير أو الحكم الشرعي")
+req("لا يجوز ادعاء الاستقراء الشامل" in corpus,
+    "P0: فشل اكتمال المسح لا يفشل مغلقًا")
+req("wholeQuranScan" in sovereign and "HakimVerifiedQuranCorpus.fullCorpusScan" in sovereign,
+    "P0: المحرك السيادي لا يشغل المسح الكامل عند طلب القرآن كله")
+req("استقراء القرآن كله — تنفيذ فعلي لا شعار" in sovereign,
+    "P0: المحرك لا يميز التنفيذ الحقيقي عن سياسة التغطية")
+req("مرشحات استرجاع لفظي" in sovereign and "ليست تفسيرًا ولا حكمًا" in sovereign,
+    "P0: مرشحات المسح قد تُعرض كاستنباط شرعي")
 
 # التأسيس التلقائي: الرابط قناة فقط؛ الاعتماد يبقى للبصمة الرسمية وفحص النص كاملًا.
 req("object HakimQuranBootstrap" in bootstrap, "P0: تأسيس القرآن المحلي التلقائي مفقود")

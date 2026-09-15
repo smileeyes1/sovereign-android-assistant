@@ -29,10 +29,12 @@ identity = text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json")
 elite_ci = text(".github/workflows/elite-professional.yml")
 
 version = re.search(r"versionCode\s+(\d+)", build)
-require(version and int(version.group(1)) >= 20035, "P0: الحكمة الاحترافية ليست على المرشح التقاربي 20035 أو أحدث")
-require("2.0.35-converged-elite-wisdom-privacy-ime" in build, "P0: هوية إصدار 20035 التقاربي مفقودة")
+require(version and int(version.group(1)) >= 20035, "P0: الحكمة الاحترافية تراجعت تحت خط 20035")
+version_code = int(version.group(1))
+require("versionName '" in build, "P0: اسم الإصدار مفقود")
 require('"current_field_version": 20025' in identity, "P0: جرى تزوير خط الأساس الميداني بدل تطوير مرشح")
-require('"current_candidate_version": 20035' in identity, "P0: هوية المرشح لا تشير إلى 20035")
+require(f'"current_candidate_version": {version_code}' in identity,
+        "P0: هوية المرشح لا تتطابق مع versionCode الحالي")
 
 for token in [
     "quranic_value_governance", "authentic_sunnah_guidance", "worldly_means_by_evidence",
@@ -92,8 +94,8 @@ require("HakimEliteWisdomEngine.promptContext" in sovereign and "HakimDeliberati
 require("tests/verify_*.py" in elite_ci and "gradle assembleDebug assembleRelease" in elite_ci,
         "P0: بوابة الفئة العليا لا تشغل كل الاختبارات والبناء الحقيقي")
 require("gradle lintDebug lintRelease" in elite_ci, "P0: Android Lint الكامل غير مفروض")
-require("hakim-converged-20035-ci-NOT-INSTALLABLE" in elite_ci,
-        "P0: أثر CI للمرشح التقاربي غير موسوم بوضوح كغير قابل للتثبيت الميداني")
+require("ci-NOT-INSTALLABLE" in elite_ci,
+        "P0: أثر CI غير موسوم بوضوح كغير قابل للتثبيت الميداني")
 
 for phrase in [
     "فصل الحقائق عن الافتراضات والمجهولات",

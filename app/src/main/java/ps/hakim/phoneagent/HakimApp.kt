@@ -9,28 +9,36 @@ import android.os.Looper
 class HakimApp : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        // يثبت أولًا حتى تكون أي علة لاحقة قابلة للتشخيص محليًا بدل حلقة إغلاق صامتة.
+        HakimCrashShield.install(this)
+
+        // هذان حاكمان: إذا فشلا لا يجوز تشغيل تنفيذ غير محكوم.
         HakimQuranicInvariantKernel.requireInherited("app_start")
         HakimConstitution.install(this)
-        HakimLearning.initialize(this)
-        HakimProactiveEngine.initialize(this)
-        HakimIntegrationFabric.install(this)
-        HakimImeResilience.install(this)
-        restoreActiveMissionState()
+
+        // فشل مكوّن مساعد لا يجب أن يسقط واجهة حكيم كلها؛ يسجل محليًا ويُستعاد لاحقًا.
+        HakimCrashShield.guardNonCritical(this, "learning_initialize") { HakimLearning.initialize(this) }
+        HakimCrashShield.guardNonCritical(this, "proactive_initialize") { HakimProactiveEngine.initialize(this) }
+        HakimCrashShield.guardNonCritical(this, "integration_install") { HakimIntegrationFabric.install(this) }
+        HakimCrashShield.guardNonCritical(this, "ime_resilience_install") { HakimImeResilience.install(this) }
+        HakimCrashShield.guardNonCritical(this, "ui_polish_install") { HakimUiPolish.install(this) }
+        HakimCrashShield.guardNonCritical(this, "restore_mission_state") { restoreActiveMissionState() }
 
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
-        PairingDefaults.ensure(prefs)
+        HakimCrashShield.guardNonCritical(this, "pairing_defaults") { PairingDefaults.ensure(prefs) }
 
-        // لا ننشئ خيط شبكة دائمًا بلا إعداد فعلي؛ هذه كانت كلفة بلا منفعة على الهاتف.
-        if (HakimUnifiedRelay.isConfigured(this)) {
-            HakimUnifiedRelay.start(this)
+        // لا ننشئ خيط شبكة دائمًا بلا إعداد فعلي؛ وأي فشل هنا لا يغلق المحادثة.
+        HakimCrashShield.guardNonCritical(this, "relay_autostart") {
+            if (HakimUnifiedRelay.isConfigured(this)) HakimUnifiedRelay.start(this)
         }
         startHakimIfPaired(prefs)
 
-        // الجدولة رخيصة؛ التنفيذ الفعلي يُحكم لاحقًا بحالة الموارد.
-        HakimConnectionResilience.install(this)
-        AutoUpdater.schedule(this)
-        HakimSelfCheck.schedule(this)
-        scheduleDeferredMaintenance()
+        // الجدولة والصيانة خدمات مساعدة؛ تبقى الواجهة قابلة للاستخدام حتى عند تعطل إحداها.
+        HakimCrashShield.guardNonCritical(this, "connection_resilience_install") { HakimConnectionResilience.install(this) }
+        HakimCrashShield.guardNonCritical(this, "auto_update_schedule") { AutoUpdater.schedule(this) }
+        HakimCrashShield.guardNonCritical(this, "self_check_schedule") { HakimSelfCheck.schedule(this) }
+        HakimCrashShield.guardNonCritical(this, "deferred_maintenance_schedule") { scheduleDeferredMaintenance() }
     }
 
     private fun scheduleDeferredMaintenance() {
@@ -55,19 +63,19 @@ class HakimApp : Application() {
                     HakimLearning.recordHealth(app, report)
                 }
                 runCatching { HakimProactiveEngine.runSafeBackground(app, "app_start_deferred") }
-                HakimResourceGovernor.markStartupMaintenance(app)
+                runCatching { HakimResourceGovernor.markStartupMaintenance(app) }
             }.start()
         }, delay)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        HakimResourceGovernor.noteTrimMemory(this, level)
+        runCatching { HakimResourceGovernor.noteTrimMemory(this, level) }
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        HakimResourceGovernor.noteLowMemory(this)
+        runCatching { HakimResourceGovernor.noteLowMemory(this) }
     }
 
     private fun restoreActiveMissionState() {
@@ -96,7 +104,7 @@ class HakimApp : Application() {
             val intent = Intent(this, HakimService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
         } catch (e: Exception) {
-            prefs.edit().putString("last_autostart_error", e.message.orEmpty().take(300)).apply()
+            prefs.edit().putString("last_autostart_error", e.javaClass.name.take(180)).apply()
         }
     }
 }

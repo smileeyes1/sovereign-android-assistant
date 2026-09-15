@@ -1,0 +1,23 @@
+name: بوابة حفظ حالة حكيم قبل إعادة التوقيع
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/hakim-rekey-state-audit.sh'
+      - 'tests/verify_rekey_state_audit.py'
+      - '.github/workflows/rekey-state-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب المشروع
+        uses: actions/checkout@v4
+      - name: منع الترحيل الهدام وكشف الحالة
+        run: |
+          python3 tests/verify_rekey_state_audit.py
+          bash -n scripts/hakim-rekey-state-audit.sh

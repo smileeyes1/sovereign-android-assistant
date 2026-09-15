@@ -7,8 +7,8 @@ import android.os.Looper
 
 /**
  * جسر الاستدلال المتقدم متعدد المزودات.
- * التنفيذ المحلي يسبق هذه الطبقة؛ عند الحاجة للاستدلال المتقدم يجرب حكيم مزودات الويب الموثوقة تلقائيًا
- * ويبدل بينها عند الفشل. لا مزود خارجي يحكم حكيم أو يملك التنفيذ المباشر.
+ * التنفيذ المحلي يسبق هذه الطبقة؛ وعند الحاجة للاستدلال المتقدم تمر كل خطة عبر
+ * ميزان الحكمة وناقد المداولة محليًا قبل أن تصل إلى منفذ الأفعال.
  */
 object HakimReasoningBridge {
     private const val PACKAGE = "com.openai.chatgpt"
@@ -29,6 +29,15 @@ object HakimReasoningBridge {
         onProgress: (String) -> Unit = {},
         onComplete: (Result) -> Unit
     ) {
+        val goalForAudit = basePrompt.take(12000)
+        val governedPrompt = buildString {
+            appendLine(basePrompt.take(15000))
+            append(HakimEliteWisdomEngine.promptContext(goalForAudit))
+            append(HakimDeliberationQuality.promptContext(goalForAudit))
+            append(HakimDecisionMatrix.promptContext(goalForAudit))
+            append(HakimExcellenceOptimizer.promptContext())
+        }.take(24000)
+
         val preference = HakimReasoningProviderRegistry.preferredProviderId(activity)
         if (preference == HakimReasoningProviderRegistry.LOCAL_ONLY) {
             onComplete(Result(true, null, "", "الوضع محلي فقط؛ لم تُرسل المهمة إلى مزود خارجي", "local_deterministic"))
@@ -52,15 +61,29 @@ object HakimReasoningBridge {
             onProgress("يحتاج الاستدلال المتقدم جلسة دخول. سأفتح مزودًا واحدًا فقط ثم أعود إلى حكيم.")
             HakimWebReasoningBridge.ask(
                 activity = activity,
-                basePrompt = basePrompt,
+                basePrompt = governedPrompt,
                 providerId = first.id,
                 interactiveLogin = true,
                 onProgress = onProgress,
                 onComplete = { web ->
-                    if (web.plan != null || web.responseText.isNotBlank()) {
-                        onComplete(Result(true, web.plan, web.responseText, web.reason, web.providerId))
+                    val plan = web.plan
+                    if (plan != null) {
+                        val audit = HakimDeliberationQuality.audit(plan, goalForAudit)
+                        if (audit.acceptable) {
+                            onComplete(Result(true, plan, web.responseText, "${web.reason} • ${audit.reason}", web.providerId))
+                        } else {
+                            maybeOfficialAppFallback(
+                                activity,
+                                governedPrompt,
+                                "رفض ناقد المداولة الخطة: ${audit.reason}",
+                                onProgress,
+                                onComplete
+                            )
+                        }
+                    } else if (web.responseText.isNotBlank()) {
+                        onComplete(Result(true, null, web.responseText, web.reason, web.providerId))
                     } else {
-                        maybeOfficialAppFallback(activity, basePrompt, web.reason, onProgress, onComplete)
+                        maybeOfficialAppFallback(activity, governedPrompt, web.reason, onProgress, onComplete)
                     }
                 }
             )
@@ -72,16 +95,24 @@ object HakimReasoningBridge {
                 return
             }
             val provider = candidates[index]
-            onProgress(if (index == 0) "حكيم يفكر عبر أفضل مزود متاح…" else "أبدّل تلقائيًا إلى مزود استدلال آخر دون فقد المهمة…")
+            onProgress(if (index == 0) "حكيم يفكر عبر أفضل مزود متاح ثم يدقق الخطة محليًا…" else "أبدّل تلقائيًا إلى مزود استدلال آخر دون فقد المهمة…")
             HakimWebReasoningBridge.ask(
                 activity = activity,
-                basePrompt = basePrompt,
+                basePrompt = governedPrompt,
                 providerId = provider.id,
                 interactiveLogin = false,
                 onProgress = onProgress,
                 onComplete = { web ->
                     when {
-                        web.plan != null -> onComplete(Result(true, web.plan, web.responseText, web.reason, web.providerId))
+                        web.plan != null -> {
+                            val audit = HakimDeliberationQuality.audit(web.plan, goalForAudit)
+                            if (audit.acceptable) {
+                                onComplete(Result(true, web.plan, web.responseText, "${web.reason} • ${audit.reason}", web.providerId))
+                            } else {
+                                failures += "${provider.title}: خطة دون معيار مهني كافٍ (${audit.score}/100)"
+                                tryProvider(index + 1)
+                            }
+                        }
                         web.responseText.isNotBlank() && !web.reason.startsWith("NEEDS_LOGIN") -> {
                             failures += "${provider.title}: عاد رد بلا خطة موثوقة"
                             tryProvider(index + 1)
@@ -157,7 +188,12 @@ object HakimReasoningBridge {
                     val visible = service.visibleTextForPackage(PACKAGE)
                     val plan = HakimReasoningProtocol.parse(visible, request)
                     if (plan != null) {
-                        onComplete(Result(true, plan, visible.takeLast(8000), "وصلت خطة حكيم المقيدة", "chatgpt_official"))
+                        val audit = HakimDeliberationQuality.audit(plan, basePrompt)
+                        if (audit.acceptable) {
+                            onComplete(Result(true, plan, visible.takeLast(8000), "وصلت خطة حكيم المقيدة واجتازت التدقيق المهني", "chatgpt_official"))
+                        } else {
+                            fail("وصلت خطة قابلة للتحليل لكنها لم تجتز جودة المداولة: ${audit.reason}")
+                        }
                     } else {
                         if (visible == lastText && visible.isNotBlank()) stable += 1 else stable = 0
                         lastText = visible

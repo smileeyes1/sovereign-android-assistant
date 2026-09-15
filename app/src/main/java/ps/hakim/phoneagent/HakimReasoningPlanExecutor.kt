@@ -35,15 +35,45 @@ object HakimReasoningPlanExecutor {
             return
         }
         val mission = HakimMissionLedger.active(activity)
+        val professionalAudit = HakimDeliberationQuality.audit(plan, mission?.goal.orEmpty())
+        if (!professionalAudit.acceptable) {
+            if (professionalAudit.blocked) {
+                HakimMissionLedger.block(activity, professionalAudit.reason)
+            } else {
+                HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, professionalAudit.reason)
+            }
+            onComplete(
+                Outcome(
+                    progressed = false,
+                    completed = false,
+                    steps = 0,
+                    needsApproval = false,
+                    needsDataTrust = false,
+                    blocked = professionalAudit.blocked,
+                    reason = professionalAudit.reason
+                )
+            )
+            return
+        }
         if ((mission?.failures ?: 0) >= 5) {
             HakimMissionLedger.block(activity, "تجاوزت المهمة حد الإخفاقات؛ يلزم تغير دليل/حالة قبل التنفيذ")
             onComplete(Outcome(false, false, 0, false, false, true, "أوقف حاكم الاستمرارية التنفيذ بعد فشل متكرر"))
             return
         }
+        val transactionGate = HakimExecutionTransaction.prepare(activity, mission, plan)
+        if (!transactionGate.proceed) {
+            HakimMissionLedger.progress(
+                activity,
+                if (transactionGate.requiresVerification) HakimMissionLedger.Phase.VERIFY else HakimMissionLedger.Phase.PLAN,
+                transactionGate.reason
+            )
+            onComplete(Outcome(false, false, 0, false, false, false, transactionGate.reason))
+            return
+        }
 
         val handler = Handler(Looper.getMainLooper())
         val service = HakimAccessibilityService.instance
-        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة", attempted = true)
+        HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.EXECUTE, "بدء تنفيذ خطة الاستدلال المقيدة بعد اجتياز التدقيق المهني ${professionalAudit.score}/100", attempted = true)
         var index = 0
         var steps = 0
         var progressed = false
@@ -67,13 +97,17 @@ object HakimReasoningPlanExecutor {
                 needsApproval -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_APPROVAL, reason)
                 needsDataTrust -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.WAITING_TRUST, reason)
                 blocked -> HakimMissionLedger.block(activity, reason)
-                isActualFailure(reason) -> HakimSovereignEngine.recordVerification(activity, false, reason)
+                isActualFailure(reason) -> {
+                    HakimExecutionTransaction.markRecovering(activity, mission, plan)
+                    HakimSovereignEngine.recordVerification(activity, false, reason)
+                }
                 else -> HakimMissionLedger.progress(activity, HakimMissionLedger.Phase.PLAN, reason)
             }
             onComplete(Outcome(progressed, completed, steps, needsApproval, needsDataTrust, blocked, reason))
         }
 
         fun recordStep(evidence: String) {
+            HakimExecutionTransaction.markProgressed(activity, mission, plan)
             HakimSovereignEngine.recordExecution(activity, evidence)
         }
 
@@ -122,11 +156,15 @@ object HakimReasoningPlanExecutor {
             } else if (finished || activity.isFinishing || activity.isDestroyed) {
                 if (!finished) finish(false, reason = "انتهت واجهة التنفيذ")
             } else if (index >= plan.actions.size) {
-                val verifiedDone = plan.done && plan.actions.isEmpty()
+                if (plan.phase == "execute" && plan.actions.isNotEmpty()) {
+                    HakimExecutionTransaction.markAwaitingVerification(activity, mission, plan)
+                }
+                val verifiedDone = plan.done && plan.actions.isEmpty() && plan.phase == "verify"
+                if (verifiedDone) HakimExecutionTransaction.markVerified(activity, mission)
                 finish(
                     verifiedDone,
-                    reason = if (verifiedDone) "جولة تحقق مستقلة أكدت عدم الحاجة إلى فعل إضافي"
-                    else "انتهت أفعال الجولة؛ يلزم تحقق جديد من الحالة الفعلية قبل إعلان الاكتمال"
+                    reason = if (verifiedDone) "جولة تحقق مستقلة أكدت postcondition ومعيار النجاح؛ لا حاجة إلى فعل إضافي"
+                    else "انتهت أفعال الجولة؛ يلزم تحقق مستقل من الحالة الفعلية قبل إعلان الاكتمال"
                 )
             } else {
                 val action = plan.actions[index++]
@@ -137,6 +175,7 @@ object HakimReasoningPlanExecutor {
                         if (uri == null || uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) {
                             finish(false, blocked = true, reason = "رفضت رابطًا غير آمن أو غير صالح من خطة الاستدلال")
                         } else {
+                            HakimExecutionTransaction.markAttempting(activity, mission, plan)
                             activity.getSharedPreferences("hakim", Activity.MODE_PRIVATE).edit().putString("last_url", raw).apply()
                             activity.startActivity(Intent(activity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                             progressed = true
@@ -158,7 +197,9 @@ object HakimReasoningPlanExecutor {
                                     when (authority.gate) {
                                         HakimAuthorityEnvelope.Gate.BLOCK, HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
                                         HakimAuthorityEnvelope.Gate.APPROVAL, HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
-                                        else -> clickLeastPrivilege(web, target) { ok ->
+                                        else -> {
+                                            HakimExecutionTransaction.markAttempting(activity, mission, plan)
+                                            clickLeastPrivilege(web, target) { ok ->
                                             if (!ok) finish(false, reason = "لم أجد العنصر الذي حدده الاستدلال على صفحة الموقع")
                                             else {
                                                 progressed = true
@@ -167,6 +208,7 @@ object HakimReasoningPlanExecutor {
                                                 onProgress("نفذت نقرة منخفضة الأثر داخل متصفح حكيم بعد فحص الصفحة وغلاف السلطة.")
                                                 handler.postDelayed(next, 600L)
                                             }
+                                        }
                                         }
                                     }
                                 }
@@ -191,7 +233,9 @@ object HakimReasoningPlanExecutor {
                                             authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
                                             authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
                                             !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الموقع غير معتمد لاستخدام بيانات الخزنة")
-                                            else -> setTextLeastPrivilege(web, target, value) { ok ->
+                                            else -> {
+                                                HakimExecutionTransaction.markAttempting(activity, mission, plan)
+                                                setTextLeastPrivilege(web, target, value) { ok ->
                                                 if (!ok) finish(false, reason = "تعذر العثور على حقل «$target» لتعبئته من الخزنة")
                                                 else {
                                                     progressed = true
@@ -200,6 +244,7 @@ object HakimReasoningPlanExecutor {
                                                     onProgress("عبأت «$fieldId» محليًا في موقع معتمد دون كشف قيمته لمحرك الاستدلال.")
                                                     handler.postDelayed(next, 500L)
                                                 }
+                                            }
                                             }
                                         }
                                     }
@@ -221,7 +266,9 @@ object HakimReasoningPlanExecutor {
                                         authority.gate == HakimAuthorityEnvelope.Gate.BLOCK || authority.gate == HakimAuthorityEnvelope.Gate.CREDENTIAL -> finish(false, blocked = true, reason = authority.reason)
                                         authority.gate == HakimAuthorityEnvelope.Gate.APPROVAL || authority.gate == HakimAuthorityEnvelope.Gate.SYSTEM_PERMISSION -> finish(false, needsApproval = true, reason = authority.reason)
                                         containsStoredProfileValue(activity, value) && !HakimSiteTrust.canUseProfile(activity, targetSnapshot) -> finish(false, needsDataTrust = true, reason = "الخطة ستستخدم قيمة من خزنة المستخدم في موقع غير معتمد")
-                                        else -> setTextLeastPrivilege(web, target, value.take(6000)) { ok ->
+                                        else -> {
+                                            HakimExecutionTransaction.markAttempting(activity, mission, plan)
+                                            setTextLeastPrivilege(web, target, value.take(6000)) { ok ->
                                             if (!ok) finish(false, reason = "تعذر العثور على الحقل المحدد في الخطة على صفحة الموقع")
                                             else {
                                                 progressed = true
@@ -230,6 +277,7 @@ object HakimReasoningPlanExecutor {
                                                 onProgress("كتبت محتوى غير حساس داخل متصفح حكيم بعد فحص الصفحة والسياسة وغلاف السلطة.")
                                                 handler.postDelayed(next, 500L)
                                             }
+                                        }
                                         }
                                     }
                                 }
@@ -240,6 +288,7 @@ object HakimReasoningPlanExecutor {
                     "back" -> ensureHakimBrowser(activity, handler, 0) { web ->
                         if (web == null && service == null) finish(false, reason = "تعذر استعادة المتصفح للرجوع")
                         else {
+                            HakimExecutionTransaction.markAttempting(activity, mission, plan)
                             val ok = backLeastPrivilege(web)
                             if (!ok) finish(false, reason = "تعذر الرجوع")
                             else {

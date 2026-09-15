@@ -376,6 +376,7 @@ class HakimAgentsChatActivity : Activity() {
             return
         }
         val cue = typed.ifBlank { "أكمل" }
+        if (typed.isNotBlank()) HakimPersonalSovereignty.captureExplicitDeclaration(this, typed, "agents_chat")
         appendUser(if (typed.isBlank()) "…" else typed)
         input.setText("")
         setStatus("أفهم المقصد وأختار أفضل مسار…")

@@ -13,6 +13,7 @@ object HakimSovereignEngine {
         val decision: HakimDecisionMatrix.Decision,
         val quranic: HakimQuranicFramework.Assessment,
         val religious: HakimReligiousIntegrity.Assessment,
+        val shubuhat: HakimHalalShubuhatGuard.Decision?,
         val failureBudgetRemaining: Int,
         val route: String,
         val shouldResearchFirst: Boolean,
@@ -37,6 +38,7 @@ object HakimSovereignEngine {
         val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
         val quranic = HakimQuranicFramework.assess(goal)
         val religious = HakimReligiousIntegrity.assess(goal)
+        val shubuhat = HakimHalalShubuhatGuard.assessTask(goal, highImpact)
         HakimQuranSunnahMethod.assess(goal)
         HakimSystemOfSystems.compose(context, goal)
         HakimHumanCapabilityBoundary.assess(goal)
@@ -48,7 +50,9 @@ object HakimSovereignEngine {
         val forceResearch = failures >= MAX_CONSECUTIVE_FAILURES ||
             decision.mode == HakimDecisionMatrix.Mode.RESEARCH_FIRST ||
             (quranic.exactQuranTextRequired && !localQuranReady) ||
-            religious.exactSourceRequired
+            religious.exactSourceRequired ||
+            shubuhat?.gate == HakimHalalShubuhatGuard.Gate.VERIFY_FIRST ||
+            shubuhat?.gate == HakimHalalShubuhatGuard.Gate.ABSTAIN
         val blocked = cancelledOrBlocked || blockedByFailures || decision.mode == HakimDecisionMatrix.Mode.BLOCK
         val approval = !blocked && decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE
         val route = when {
@@ -66,6 +70,7 @@ object HakimSovereignEngine {
             decision = decision,
             quranic = quranic,
             religious = religious,
+            shubuhat = shubuhat,
             failureBudgetRemaining = (HARD_FAILURE_LIMIT - failures).coerceAtLeast(0),
             route = route,
             shouldResearchFirst = forceResearch,
@@ -93,6 +98,13 @@ object HakimSovereignEngine {
             appendLine("مهمة واحدة نشطة فقط WIP=1. المرحلة=${a.mission.phase}، المسار=${a.route}، ميزانية الفشل المتبقية=${a.failureBudgetRemaining}.")
             append(HakimQuranicFramework.promptContext(goal))
             append(HakimQuranSunnahMethod.promptContext(goal))
+            append(HakimQuestionOperator.promptContext())
+            append(HakimAdaptiveNStarLoop.promptContext())
+            append(HakimScientificEngineeringKernel.promptContext(goal))
+            append(HakimTaqwaCultivationCycle.promptContext(goal))
+            append(HakimPersonalSovereignty.externalSafeContext(context))
+            append(HakimEliteWisdomEngine.promptContext(goal))
+            append(HakimDeliberationQuality.promptContext(goal))
             appendLine("[حالة النص القرآني المحلي المتحقق]")
             appendLine(if (verifiedQuran.optBoolean("ready")) "قاعدة حفص المحلية متحققة من المصدر الرسمي: ${verifiedQuran.optInt("surah_count")} سورة / ${verifiedQuran.optInt("ayah_count")} آية. يجوز استخدامها للنص الدقيق مع إبقاء طبقات التفسير/الاستنباط منفصلة." else "الحاكمية القرآنية الشاملة مفعلة، لكن نص القرآن الكامل ليس متحققًا محليًا بعد؛ لا تنقل نصًا دقيقًا من الذاكرة، واستخدم مصدرًا رسميًا موثوقًا قبل الجزم.")
             if (a.quranic.wholeQuranCorpusRequested) {
@@ -121,6 +133,7 @@ object HakimSovereignEngine {
             append(HakimSelfLeadershipController.promptContext(context, goal))
             append(HakimAuthorityEnvelope.promptContext())
             append(HakimReligiousIntegrity.promptContext(goal))
+            append(HakimHalalShubuhatGuard.promptContext(goal, highImpact))
             appendLine("التعلم التكيفي المحلي: ${HakimAdaptiveLearning.status(context).optString("last_adaptation_decision", "COLLECTING_EVIDENCE")}؛ يغيّر ترتيب البدائل الآمنة فقط، ولا يوسع السلطة أو يبدل الدستور.")
             appendLine("منع الفشل الصامت: أحداث حديثة=${faults.optInt("recent_event_count")}, عطل مادي متكرر=${faults.optBoolean("repeated_material_fault")}. الخطأ المتكرر يفرض سببًا جذريًا قبل ادعاء الاكتمال.")
             appendLine("سلسلة الاستقلالية المتكاملة: اعرض الغاية والأثر على الميزان القرآني→افحص الهدي النبوي الصحيح ذي الصلة دون اختلاق نسبة→احفظ كرامة الإنسان وحقوقه→افهم المقصد→كوّن نظام المهمة المنبثق بأقل الأنظمة اللازمة→ثبّت العقد→افحص التكامل والموارد والقدرات والسلطة→طبّق و؟→و؟→و؟→لِمَ؟→و؟→و؟→اعتمد→أصلح→أكمل→هَيّا→ابحث ذاتيًا عن كل مكسب مفيد آمن→ولّد البدائل اللازمة→رشّحها بالبوابات والترتيب الأعلى→استفد من الخبرة المحلية المثبتة دون كسر خط الأساس→فوّض الوكلاء→نفّذ أقل خطوة كافية→تحقق من الأثر→سجّل أي فشل بدل إخفائه→أصلح السبب→استعد الوصل/تعافَ/أعد التخطيط→تعلم محكومًا→واصل تلقائيًا ما دام هناك مكسب مادي آمن→أغلق بالدليل.")
@@ -186,6 +199,15 @@ object HakimSovereignEngine {
         .put("hard_failure_limit", HARD_FAILURE_LIMIT)
         .put("mission", HakimMissionLedger.status(context))
         .put("decision_dimensions", HakimDecisionMatrix.dimensions())
+        .put("elite_wisdom", HakimEliteWisdomEngine.status())
+        .put("deliberation_quality", HakimDeliberationQuality.status())
+        .put("execution_transaction", HakimExecutionTransaction.status(context))
+        .put("professional_readiness", HakimProfessionalReadiness.status(context))
+        .put("question_operator", HakimQuestionOperator.status())
+        .put("adaptive_nstar_loop", HakimAdaptiveNStarLoop.status())
+        .put("scientific_engineering_kernel", HakimScientificEngineeringKernel.status())
+        .put("taqwa_cultivation_cycle", HakimTaqwaCultivationCycle.status())
+        .put("personal_sovereignty", HakimPersonalSovereignty.status(context))
         .put("quranic_framework", HakimQuranicFramework.status())
         .put("quran_sunnah_method", HakimQuranSunnahMethod.status())
         .put("quranic_invariant_kernel", HakimQuranicInvariantKernel.status())
@@ -203,5 +225,6 @@ object HakimSovereignEngine {
         .put("capability_registry", HakimCapabilityRegistry.status(context))
         .put("adaptive_learning", HakimAdaptiveLearning.status(context))
         .put("religious_integrity", true)
+        .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
         .put("independence_policy", "قيادة ذاتية سيادية بنظام أنظمة متكامل وإنساني ومتعلّم ومبادر ومحكوم بالموارد داخل غلاف السلطة وتحت منهج القرآن والهدي النبوي الصحيح: المستخدم يملك WHAT/WHY/الحدود، وحكيم يملك HOW وتكوين الأنظمة المنبثقة والتفويض والوصل والتعافي والتحقق والمبادرة بكل مكسب آمن؛ أقصى مساعدة رقمية ممكنة دون ادعاء تكافؤ الإنسان جسديًا أو قانونيًا، ولا توسع صلاحيات ولا تعديل كود ذاتي ولا نجاح بلا دليل ولا استغلال للطيبة أو الجهل التقني")
 }

@@ -160,7 +160,18 @@ object HakimSovereignEngine {
         HakimIntegrationFabric.requireCore(context, "sovereign_complete")
         if (HakimMissionLedger.isCancelled(context)) return
         check(!HakimFaultLedger.repeatedMaterialFault(context)) { "لا يجوز إغلاق المهمة مع عطل مادي متكرر غير معالج" }
-        val missionId = HakimMissionLedger.active(context)?.id.orEmpty()
+
+        val active = HakimMissionLedger.active(context)
+        if (active != null && HakimQuranicCorpusPolicy.assess(active.goal).wholeCorpusRequested) {
+            val scan = HakimVerifiedQuranCorpus.fullCorpusScan(context, active.goal, 1)
+            check(
+                scan.ready && scan.coverageComplete &&
+                    scan.scannedSurahCount == HakimQuranicCorpusPolicy.SURAH_COUNT &&
+                    scan.scannedAyahCount == 6236
+            ) { "لا يجوز إغلاق طلب استقراء القرآن كله قبل إثبات المرور الفعلي على السور الـ١١٤ والآيات الـ٦٢٣٦ من النص المحلي المتحقق" }
+        }
+
+        val missionId = active?.id.orEmpty()
         HakimMissionLedger.complete(context, evidence)
         HakimLearning.recordResult(context, "sovereign_mission", true)
         HakimAdaptiveLearning.recordMissionOutcome(context, missionId, true)

@@ -10,7 +10,7 @@ import org.json.JSONObject
  * وعند المهمة المحددة لا يُستعمل إلا ما ثبتت صلته بعد التحقق.
  */
 object HakimQuranicCorpusPolicy {
-    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-14-v2"
+    const val VERSION = "QURANIC-CORPUS-ALL-114-2026-09-15-v3"
     const val SURAH_COUNT = 114
 
     enum class Layer {
@@ -90,6 +90,7 @@ object HakimQuranicCorpusPolicy {
         .put("no_cherry_picking", true)
         .put("no_forced_relevance", true)
         .put("whole_corpus_scan_on_comprehensive_request", true)
+        .put("natural_arabic_whole_corpus_phrasing", true)
         .put("exact_text_requires_verified_mushaf_source", true)
         .put("revelation_distinct_from_tafsir_and_inference", true)
         .put("qiraat_distinct_from_tafsir", true)
@@ -100,7 +101,7 @@ object HakimQuranicCorpusPolicy {
         .put("layers", JSONArray(Layer.values().map { it.name }))
 
     private val wholeCorpusRegex = Regex(
-        "(?i)(كل\\s*سور|جميع\\s*سور|القرآن\\s*كله|القرءان\\s*كله|من\\s*كل\\s*سورة|استقراء\\s*القرآن|استقراء\\s*القرءان|على\\s*كل\\s*شيء\\s*من\\s*سور)"
+        "(?i)(كل\\s*(?:ال)?سور|جميع\\s*(?:ال)?سور|كل\\s*(?:ال)?سورة|جميع\\s*(?:ال)?سورة|القرآن\\s*كله|القرءان\\s*كله|كل\\s*(?:ال)?قرآن|كل\\s*(?:ال)?قرءان|من\\s*كل\\s*(?:ال)?سورة|استقراء\\s*(?:ال)?قرآن|استقراء\\s*(?:ال)?قرءان|على\\s*كل\\s*شيء\\s*من\\s*(?:ال)?سور)"
     )
     private val exactTextRegex = Regex(
         "(?i)(نص\\s*الآية|نص\\s*الاية|اكتب\\s*الآية|قال\\s*الله|رقم\\s*الآية|اسم\\s*السورة|اقتباس\\s*قرآني|الرسم\\s*العثماني|ضبط\\s*المصحف)"

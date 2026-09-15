@@ -44,7 +44,7 @@ req("offline_reimport_source_available" in corpus and "export_reverifies_officia
 req("MAX_OFFICIAL_ARCHIVE_BYTES" in corpus,
     "P0: استيراد المصدر القرآني بلا حد حجم وقائي")
 
-# «كل السور» تنفيذ فعلي: المرور على كل قاعدة النص الموثقة ثم مرشحات لفظية فقط.
+# «كل السور» تنفيذ فعلي: المرور على كل قاعدة النص الموثقة ثم مرشحات لفظية من المقصد فقط.
 req("fun fullCorpusScan" in corpus and "verified_quran_full_scan" in corpus,
     "P0: لا يوجد تنفيذ فعلي لمسح القرآن كله")
 req("scanned == EXPECTED_AYA_COUNT" in corpus and "visitedSurahs.size == 114" in corpus,
@@ -55,6 +55,12 @@ req("retrieval_is_lexical_not_tafsir" in corpus and "ليست تفسيرًا" in
     "P0: الاسترجاع اللفظي قد يلتبس بالتفسير أو الحكم الشرعي")
 req("لا يجوز ادعاء الاستقراء الشامل" in corpus,
     "P0: فشل اكتمال المسح لا يفشل مغلقًا")
+req("normativeSeeds" not in corpus,
+    "P0: عادت بذور قيمية مخفية تفرض صلة آيات عامة بالمقصد")
+req("full_corpus_scan_forced_relevance_forbidden" in corpus and "forced_relevance_forbidden" in corpus,
+    "P0: منع الصلة القسرية غير مثبت في حالة الاستقراء الكامل")
+req("queryTerms.isEmpty()" in corpus and "لا تُفرض آيات عامة قسرًا" in corpus,
+    "P0: المقصد الذي لا ينتج ألفاظ بحث قد يُملأ بآيات مفروضة بدل الاعتراف بحد الاسترجاع")
 req("wholeQuranScan" in sovereign and "HakimVerifiedQuranCorpus.fullCorpusScan" in sovereign,
     "P0: المحرك السيادي لا يشغل المسح الكامل عند طلب القرآن كله")
 req("استقراء القرآن كله — تنفيذ فعلي لا شعار" in sovereign,

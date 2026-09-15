@@ -13,6 +13,7 @@ def require(cond: bool, msg: str) -> None:
 
 
 proactive = text("app/src/main/java/ps/hakim/phoneagent/HakimProactiveEngine.kt")
+quran_bootstrap = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranBootstrap.kt")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 evolution = text("app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService.kt")
@@ -39,6 +40,24 @@ require("HakimResourceGovernor.Mode.PRESSURE" in proactive and "DEFERRED_RESOURC
         "P0: المبادرة لا تؤجل الصيانة غير الجوهرية عند ضغط الهاتف")
 require("HakimResourceGovernor.Mode.CONSERVE" in proactive and "resource_adaptive_background" in proactive,
         "P0: المبادرة لا تملك صيانة خفيفة متكيفة مع الموارد")
+
+# تأسيس القرآن المتحقق ذاتي، لكنه لا يستهلك شبكة محسوبة ولا يحول الرابط إلى مصدر ثقة.
+require("HakimQuranBootstrap.syncIfNeeded" in proactive,
+        "P0: تأسيس القرآن المتحقق غير داخل دورة المبادرة الذاتية")
+require("HakimVerifiedQuranCorpus.isReady" in proactive,
+        "P0: المبادرة قد تعيد تنزيل القرآن رغم وجود قاعدة متحققة")
+require("HakimResourceGovernor.canUseRealtimeBackgroundNetwork" in proactive and
+        "HakimResourceGovernor.Mode.CONSERVE" in proactive,
+        "P0: جلب القرآن التلقائي لا يحترم قيود الشبكة/الموارد")
+require('"verified_quran_bootstrap_integrated", true' in proactive and
+        '"verified_quran_bootstrap_unmetered_and_resource_guarded", true' in proactive,
+        "P0: حالة المبادرة لا تثبت دمج التأسيس القرآني المحروس")
+require("official_hash_is_authority_not_url" in quran_bootstrap,
+        "P0: التأسيس القرآني قد يثق بالرابط بدل بصمة المصدر الرسمي")
+require("metered_background_download_forbidden" in quran_bootstrap and "MAX_ARCHIVE_BYTES" in quran_bootstrap,
+        "P0: تنزيل القرآن التلقائي بلا حاجز شبكة محسوبة/حجم")
+require("HakimVerifiedQuranCorpus.importOfficialArchive" in quran_bootstrap,
+        "P0: الملف المنزل لا يمر عبر التحقق الرسمي الكامل")
 
 # الاستئناف التلقائي في الواجهة يمر مجددًا بالمصفوفة ويستبعد الحالات المحمية.
 require("foregroundOpportunity" in proactive and "HakimDecisionMatrix.evaluate" in proactive, "P0: الاستئناف التلقائي لا يعاد تصنيفه")

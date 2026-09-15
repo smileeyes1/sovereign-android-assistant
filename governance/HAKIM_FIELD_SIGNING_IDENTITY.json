@@ -1,35 +1,47 @@
 {
-  "schema_version": 3,
-  "status": "CURRENT_F4_LINEAGE_PINNED__BLOCKED_ON_PRIVATE_SIGNER_RECOVERY",
+  "schema_version": 4,
+  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20022__F4_HISTORICAL_ONLY",
   "canonical_package": "ps.hakim.stable",
-  "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+  "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "public_key": "RSA-3072",
-  "signature_algorithm": "SHA384withRSA",
-  "valid_from_utc": "2026-09-11T16:44:32Z",
-  "known_matching_versions": [20013, 20016, 20017],
+  "known_matching_versions": [20018, 20019, 20020, 20021, 20022],
+  "current_field_version": 20022,
   "current_candidate_version": 20026,
-  "alternate_new_lineage_certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-  "alternate_new_lineage_known_signed_versions": [20018, 20019, 20020, 20021, 20022],
+  "field_evidence": {
+    "observed_at_utc": "2026-09-15T03:04:53Z",
+    "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_PREFLIGHT",
+    "package": "ps.hakim.stable",
+    "version_code": 20022,
+    "version_name": "2.0.22-capability-mesh",
+    "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "claim_scope": "PACKAGE_VERSION_AND_CURRENT_APK_SIGNER_ONLY"
+  },
+  "historical_previous_lineage": {
+    "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+    "known_signed_versions": [20013, 20016, 20017],
+    "status": "SUPERSEDED_BY_DIRECT_FIELD_EVIDENCE_20022_D1"
+  },
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
-  "migration": {
-    "explicit_user_authorization": false,
-    "data_loss_accepted": false,
+  "continuity": {
     "one_app_only": true,
     "preserve_app_data_required": true,
-    "uninstall_or_clear_data_forbidden_without_new_explicit_approval": true,
-    "alternate_lineage_install_over_current_app_allowed": false,
-    "decision": "Keep the installed F4-signed ps.hakim.stable lineage. Do not uninstall, clear data, or replace it with the D1 lineage unless a separate state-preserving migration is proven and the user explicitly approves that migration at the final consequential gate."
+    "uninstall_or_clear_data_forbidden": true,
+    "inplace_update_requires_exact_current_signer": true,
+    "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
+    "unknown_source_permission_not_required_by_policy": true,
+    "decision": "Treat the directly observed 20022/D1 ps.hakim.stable installation as the current field lineage. Future in-place updates must preserve package identity, use exactly D1, increase versionCode, pass artifact identity/integrity gates, and preserve app data. Do not uninstall or clear data."
   },
   "rules": [
-    "The installed phone app lineage is F4 and is the canonical in-place update identity until a new explicit migration decision is made.",
-    "Any in-place update for the current phone must be signed by certificate_sha256 exactly.",
-    "The D1 alternate lineage is not an in-place update for the current F4-signed phone app and must not be installed over it.",
-    "Do not uninstall the current app or clear its data without a new explicit migration approval after state preservation is proven.",
-    "Do not store private signing material in this public repository.",
+    "Direct read-only evidence from the real phone supersedes older checkpoints that described 20017/F4 as current.",
+    "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
+    "F4 is historical and must not be used to overwrite the current D1 installation.",
+    "The known 4C companion signer must never be accepted for ps.hakim.stable.",
+    "Do not uninstall the current app or clear its data as part of routine updating.",
+    "Do not require or encourage Android unknown-source installation permission as a standing capability.",
+    "Do not store private signing material or pairing secrets in this public repository.",
     "Maintain exactly one user-facing Hakim Android app: ps.hakim.stable.",
-    "Build or CI success alone does not establish physical-phone field installation.",
-    "current_candidate_version is not added to known_matching_versions until its signed APK is independently verified against certificate_sha256.",
-    "If the F4 private signer cannot be recovered, prepare a state-preserving re-key migration and stop at the explicit approval gate before any destructive or irreversible action."
+    "Build or CI success alone does not establish physical-phone field qualification.",
+    "current_candidate_version is not field-qualified until the exact delivered signed artifact is verified on the real phone.",
+    "If a future phone read contradicts this baseline, fail closed and update the baseline only from the newer direct evidence."
   ]
 }

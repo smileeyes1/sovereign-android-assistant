@@ -75,6 +75,8 @@ jobs:
         run: python3 tests/verify_resource_sovereignty_policy.py
       - name: بوابة الارتقاء المستمر للنية والمقصد والهدف والغاية
         run: python3 tests/verify_intent_elevation_policy.py
+      - name: بوابة الابتكار المتسارع ومقاومة العوائق المحكومة
+        run: python3 tests/verify_innovation_resilience_policy.py
       - name: بوابة نظام الأنظمة والأنظمة المنبثقة
         run: python3 tests/verify_system_of_systems.py
       - name: بوابة شبكة التفوق والأدوات والخدمات

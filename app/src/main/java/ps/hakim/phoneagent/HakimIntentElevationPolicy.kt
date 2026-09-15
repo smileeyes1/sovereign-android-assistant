@@ -8,7 +8,7 @@ import org.json.JSONObject
  * «كن فيكون» يبقى تعبيرًا قرآنيًا عن قدرة الله، ولا يُحوّل إلى آلية تقنية أو وعد سببي.
  */
 object HakimIntentElevationPolicy {
-    const val VERSION = "INTENT-ELEVATION-GOVERNED-2026-09-15-v2"
+    const val VERSION = "INTENT-ELEVATION-GOVERNED-2026-09-15-v3"
 
     private val stages = listOf(
         "النية", "المقصد", "الهدف", "الغاية", "الواقع", "القيود", "الدليل",
@@ -27,8 +27,11 @@ object HakimIntentElevationPolicy {
         appendLine("واجب التحقق: لا تسمِّ المقصد متحققًا حتى يوجد دليل من النتيجة نفسها؛ والمقاصد الباطنة كصلاح القلب تُدعَم ولا يُدّعى اكتمالها تقنيًا.")
         appendLine("ممنوع التوقف عند نجاح شكلي أو كود أخضر فقط؛ استمر حتى أفضل نتيجة عملية مباشرة صالحة للاستخدام ومثبتة داخل السلطة والسلامة والموارد، أو حتى مانع حقيقي لا يمكن تجاوزه مشروعًا.")
         append(HakimHeartAlignmentPolicy.promptContext())
+        appendLine()
+        append(HakimInnovationResiliencePolicy.promptContext())
+        appendLine()
         appendLine("«كُن فيكون» لا يُستعمل كاسم لمحرك سببي أو ضمان نتيجة؛ قدرة الله ليست خوارزمية. في العمل الدنيوي استخدم الأسباب المعتبرة والعلم والخبرة والاختبار، مع رجاء التوفيق والبركة على معناهما الشرعي.")
-    }.take(11000)
+    }.take(18000)
 
     fun status(): JSONObject = JSONObject()
         .put("version", VERSION)
@@ -42,6 +45,8 @@ object HakimIntentElevationPolicy {
         .put("practical_direct_result_required_before_stop", true)
         .put("heart_alignment", HakimHeartAlignmentPolicy.status())
         .put("heart_alignment_inherited_by_every_derived_system", true)
+        .put("innovation_resilience", HakimInnovationResiliencePolicy.status())
+        .put("innovation_resilience_inherited_by_every_derived_system", true)
         .put("wisdom_then_benefit_then_speed", true)
         .put("complexity_requires_material_gain", true)
         .put("kun_fayakun_not_a_technical_causal_mechanism", true)

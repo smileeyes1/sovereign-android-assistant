@@ -13,6 +13,7 @@ def require(condition: bool, message: str) -> None:
 
 
 method = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt")
+quran_corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
 prophetic = text("app/src/main/java/ps/hakim/phoneagent/HakimPropheticKnowledgePolicy.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
 integration = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
@@ -29,6 +30,31 @@ require("no_religious_technical_mystification" in method, "P0: منع تحويل
 require("لا تنسب حديثًا أو سنة أو قصة أو فضيلة أو وعدًا" in method, "P0: منع النسبة النبوية غير المتحققة مفقود")
 require("لا تحوّل القرآن أو السنة أو البركة أو الدعاء إلى خوارزمية تقنية أو ضمان نتيجة مادية" in method, "P0: حاجز الخلط التقني/الغَيبي مفقود")
 
+# «القرآن كاملًا بكل ما يخصه»: النص الكامل شيء، ونطاق علوم القرآن شيء آخر؛ كلاهما محروس بلا ادعاء زائد.
+require("QURAN_KNOWLEDGE_DOMAINS.size == 18" in quran_corpus, "P0: نطاق علوم القرآن الموسع غير مقفل")
+for layer in [
+    "REVELATION_TEXT", "RASM_DABT_AYAH_NUMBERING", "QIRAAT", "TAJWEED_WAQF_IBTIDA",
+    "TAFSIR", "ASBAB_AL_NUZUL", "MAKKI_MADANI_REVELATION_CHRONOLOGY",
+    "SURAH_METADATA_THEMES_MAQASID", "MUHKAM_MUTASHABIH", "NASIKH_MANSUKH_CLAIMS",
+    "GHARIB_LEXICON", "IRAB_BALAGHA_NAZM", "AHKAM_FIQH_INFERENCE",
+    "MUNASABAT_SURAH_AYAH_COHERENCE", "MUSHAF_COMPILATION_TRANSMISSION_HISTORY",
+    "TRANSLATIONS_AND_EXPLANATORY_RENDERINGS", "SCHOLARLY_INFERENCE", "WORLDLY_SCIENCE_BOUNDARY",
+]:
+    require(layer in quran_corpus, f"P0: مجال من علوم القرآن مفقود: {layer}")
+require('put("local_exhaustive_secondary_quranic_sciences_corpus_verified", false)' in quran_corpus,
+        "P0: قد يُدعى اكتمال corpus علوم القرآن محليًا بلا دليل")
+require('put("secondary_sciences_completeness_claim_fail_closed", true)' in quran_corpus,
+        "P0: ادعاء اكتمال علوم القرآن لا يفشل مغلقًا")
+require('put("translation_is_not_quran_text", true)' in quran_corpus,
+        "P0: الترجمة قد تختلط بنص القرآن")
+require('put("nasikh_mansukh_claims_require_documented_scholarly_source", true)' in quran_corpus,
+        "P0: دعاوى النسخ قد تُقبل بلا مصدر علمي")
+require("العقد الأساسي المحفوظ: نص الوحي ≠ القراءات ≠ التفسير ≠ أسباب النزول ≠ بيانات السورة ≠ الاستنباط البشري" in quran_corpus,
+        "P0: عقد الفصل القرآني السابق انحدر أثناء التوسعة")
+require("لا تدّع أن كل علوم القرآن «مكتملة محليًا»" in quran_corpus,
+        "P0: منع ادعاء اكتمال علوم القرآن محليًا مفقود")
+
+# «الرسول محمد ﷺ وكل ما يخصه»: اكتمال نطاق مع فشل مغلق عند الرواية غير الموثقة.
 require("HakimPropheticKnowledgePolicy.assess(raw)" in method, "P0: المعرفة النبوية الموثقة غير مدمجة في المنهج")
 require("HakimPropheticKnowledgePolicy.promptContext(raw)" in method, "P0: سياق المعرفة النبوية لا يصل إلى القرار")
 require('put("prophetic_knowledge_policy", HakimPropheticKnowledgePolicy.status())' in method, "P0: حالة المعرفة النبوية غير ظاهرة")

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "generated_at_local": "2026-09-16T05:35:00+03:00",
+  "purpose": "Runtime-aware capability registry for Hakim control plane",
+  "policy": {
+    "use_all_available_capabilities": "only when materially useful",
+    "minimum_toolset_for_full_goal": true,
+    "failover_on_tool_failure": true,
+    "permission_escalation_automatic": false,
+    "paid_signup_automatic": false,
+    "external_control_requires_authorization": true,
+    "physical_control_requires_fail_safe": true,
+    "private_chain_of_thought_exposed": false
+  },
+  "chatgpt_work": {
+    "role": "long-running cloud orchestrator for research, files, connected apps and cloud browser",
+    "current_chat_is_work_mode": false,
+    "activation_requires_user_select_work_mode": true
+  },
+  "available_connector_namespaces_in_this_conversation": [
+    "GitHub", "Google_Drive", "Gmail", "Google_Calendar", "Dropbox", "Notion",
+    "Make", "Replit", "Vercel", "Figma", "Canva", "Todoist", "TinyFish",
+    "Remote_Desktop_Commander"
+  ],
+  "confirmed_plugin_directory_state": {
+    "Google Drive": "installed",
+    "Google Calendar": "installed",
+    "Render": "available_not_installed_suggested",
+    "Homey": "available_not_installed_recently_suggested_do_not_repeat"
+  },
+  "industrial_robotics": {
+    "dedicated_ros_plc_opcua_modbus_plugin_found": false,
+    "preferred_bridge_pattern": ["MCP/API", "MQTT/Home automation gateway", "ROS bridge", "OPC-UA/Modbus gateway"],
+    "rule": "Only authorized owned/managed equipment; read/monitor first; physical actuation requires explicit limits, emergency stop and safe failure."
+  },
+  "field_device": {
+    "remote_desktop_channel": "offline_at_last_check",
+    "protected_apk_baseline": "HAKIM-20039-D1.apk",
+    "physical_field_verification_20039": false
+  }
+}

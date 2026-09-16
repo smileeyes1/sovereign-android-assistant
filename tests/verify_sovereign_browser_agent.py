@@ -21,6 +21,8 @@ skills = text("app/src/main/java/ps/hakim/phoneagent/HakimSkillFactory.kt")
 browser_runtime = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignBrowserRuntime.kt")
 downloads = text("app/src/main/java/ps/hakim/phoneagent/HakimBrowserDownloadLedger.kt")
 work = text("app/src/main/java/ps/hakim/phoneagent/HakimWorkToolHub.kt")
+legacy_auto = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
+legacy_plan = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningPlanExecutor.kt")
 identity = text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json")
 
 m = re.search(r"versionCode\s+(\d+)", build)
@@ -31,8 +33,8 @@ require('"current_candidate_version": 20040' in identity, "P0: هوية مرشح
 # طبقات التحكم المطلوبة وترتيبها، مع fallback مأذون لا افتراضي.
 for token in ["DOM", "AUTHORIZED_JS", "COORDINATE", "ANDROID_UI", "clickLayered", "coordinateClick", "androidUiFallback"]:
     require(token in agent, f"P0: طبقة تحكم مفقودة: {token}")
-order = agent.index('JSONArray(listOf("DOM", "AUTHORIZED_JS", "COORDINATE", "ANDROID_UI_AUTHORIZED"))')
-require(order >= 0, "P0: ترتيب طبقات التحكم غير مثبت في الحالة")
+require('JSONArray(listOf("DOM", "AUTHORIZED_JS", "COORDINATE", "ANDROID_UI_AUTHORIZED"))' in agent,
+        "P0: ترتيب طبقات التحكم غير مثبت في الحالة")
 require("HakimAccessibilityService.instance" in agent, "P0: fallback Android UI لا يتحقق من التفويض الفعلي")
 require('android:name=".HakimAccessibilityService"' not in manifest,
         "P0: تم تفعيل AccessibilityService افتراضيًا خلاف أقل صلاحية")
@@ -44,6 +46,16 @@ require("el.removeAttribute('value')" in web and "contenteditable" in web,
         "P0: لقطة الصفحة قد تعيد قيم الحقول القابلة للتحرير")
 require("arbitrary_javascript" in agent and '.put("arbitrary_javascript", false)' in agent,
         "P0: لا يوجد عقد يمنع JavaScript الحر")
+
+# المسارات القديمة يجب أن ترث DOM→JS→الإحداثيات قبل Android UI، لا تتجاوز BrowserAgent الجديد.
+for token in ["resolveRef(web, target", "semanticThenCoordinate", "semanticClick", "coordinateTap", "MotionEvent.ACTION_DOWN", "MotionEvent.ACTION_UP"]:
+    require(token in web, f"P0: مسار التوافق متعدد الطبقات يفتقد {token}")
+require("HakimWebAutomation.clickText" in legacy_auto and "HakimAccessibilityService.instance" in legacy_auto,
+        "P0: المنفذ الذاتي القديم لم يعد يرث WebView ثم Android UI")
+require("HakimWebAutomation.clickText" in legacy_plan and "HakimAccessibilityService.instance" in legacy_plan,
+        "P0: منفذ خطة الاستدلال القديم لم يعد يرث WebView ثم Android UI")
+require(web.index("resolveRef(web, target") < web.index("semanticThenCoordinate") < web.index("coordinateTap"),
+        "P0: ترتيب DOM ثم JS ثم الإحداثيات في مسار التوافق غير مثبت")
 
 # تبويبات وجلسات محلية.
 for token in ["MAX_TABS = 8", "newTab", "switchTo", "close", "CookieManager.getInstance().flush", "single_webview_memory_efficient"]:
@@ -87,6 +99,7 @@ require("private_chain_of_thought" not in agent.lower() or 'private_chain_of_tho
 
 print("HAKIM_SOVEREIGN_BROWSER_AGENT=PASS")
 print("HAKIM_BROWSER_LAYERED_CONTROL=PASS")
+print("HAKIM_LEGACY_EXECUTORS_INHERIT_LAYERING=PASS")
 print("HAKIM_BROWSER_TABS_SESSIONS=PASS")
 print("HAKIM_BROWSER_UPLOAD_DOWNLOAD=PASS")
 print("HAKIM_SOVEREIGN_TOOL_REGISTRY=PASS")

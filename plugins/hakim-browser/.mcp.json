@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "hakim-browser": {
+      "url": "${HAKIM_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${HAKIM_MCP_BEARER}"
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+name: بوابة ربط ChatGPT بمتصفح حكيم
+
+on:
+  push:
+    paths:
+      - 'mcp-server/**'
+      - 'plugins/hakim-browser/**'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimSovereignBrowserRuntime.kt'
+      - 'tests/verify_chatgpt_mcp_bridge.py'
+      - '.github/workflows/chatgpt-mcp-bridge.yml'
+  pull_request:
+    paths:
+      - 'mcp-server/**'
+      - 'plugins/hakim-browser/**'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimSovereignBrowserRuntime.kt'
+      - 'tests/verify_chatgpt_mcp_bridge.py'
+      - '.github/workflows/chatgpt-mcp-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: اختبار خادم MCP والتشفير
+        working-directory: mcp-server
+        run: |
+          npm install --ignore-scripts
+          npm test
+      - name: اختبار عقد الهاتف والإضافة
+        run: python3 tests/verify_chatgpt_mcp_bridge.py
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+      - name: بناء تطبيق حكيم
+        run: gradle assembleDebug --stacktrace

@@ -22,11 +22,13 @@ class HakimEvolutionJobService : JobService() {
                 HakimConstitution.install(app)
                 HakimLearning.initialize(app)
                 HakimProactiveEngine.initialize(app)
+                HakimInfluenceSupersystem.initialize(app)
                 HakimLearning.maintenance(app)
 
                 if (resources.mode == HakimResourceGovernor.Mode.CONSERVE) {
                     HakimAdaptiveLearning.consolidate(app, "CONSERVE_MODE")
                     HakimProactiveEngine.runSafeBackground(app, "evolution_job_conserve", "CONSERVE_MODE")
+                    HakimInfluenceSupersystem.runSafeCycle(app, "evolution_job_conserve")
                     getSharedPreferences("hakim_governance", MODE_PRIVATE).edit()
                         .putString("last_evolution_state", "LIGHT_PASS")
                         .putLong("last_evolution_at", System.currentTimeMillis())
@@ -40,6 +42,7 @@ class HakimEvolutionJobService : JobService() {
                         "evolution_job",
                         report.optString("status", "UNKNOWN")
                     )
+                    HakimInfluenceSupersystem.runSafeCycle(app, "evolution_job")
                     getSharedPreferences("hakim_governance", MODE_PRIVATE).edit()
                         .putString("last_evolution_state", "FULL_PASS")
                         .putLong("last_evolution_at", System.currentTimeMillis())

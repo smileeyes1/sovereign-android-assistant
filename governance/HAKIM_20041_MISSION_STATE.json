@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "mission": "ربط ChatGPT بمتصفح حكيم مع إقرار حاكمية القرآن والسنة ومسار تحديث محلي آمن",
+  "status": "PRE_FIELD",
+  "last_verified_baseline": {
+    "branch": "hakim/20041-chatgpt-mcp-bridge",
+    "parent_commit": "b58035d9595da3170503c08a78c225f9e741d5a0",
+    "automated_tests": "PASS",
+    "phone_field_test": "NOT_PROVEN"
+  },
+  "protected_invariants": [
+    "LOCAL_DEVICE_ONLY_SIGNING_KEY",
+    "NO_UNINSTALL",
+    "NO_APP_DATA_CLEAR",
+    "NO_SIGNER_CHANGE",
+    "ONE_PACKAGE_ps.hakim.stable",
+    "NO_SECRET_IN_REPOSITORY_OR_LOG",
+    "NO_FIELD_SUCCESS_WITHOUT_SIGNED_PHONE_EVIDENCE",
+    "QURAN_AND_AUTHENTIC_SUNNAH_WITH_EXACT_ATTRIBUTION_VERIFICATION",
+    "REVELATION_DISTINCT_FROM_HUMAN_INTERPRETATION_AND_WORLDLY_SCIENCE"
+  ],
+  "proven_successes": [
+    "MCP_STREAMABLE_HTTP_AUTH_AND_CRYPTO_TESTS",
+    "BROWSER_OBSERVE_AND_PHONE_APPROVAL_CONTRACT",
+    "ANDROID_DEBUG_RELEASE_AND_LINT_GATES",
+    "QURAN_SUNNAH_RUNTIME_GOVERNANCE_GATES"
+  ],
+  "open_work": [
+    "DOWNLOAD_LOCAL_SIGNING_KIT",
+    "SIGN_WITH_D1_ON_PHONE",
+    "INSTALL_IN_PLACE_AND_CAPTURE_FIELD_EVIDENCE",
+    "CONNECT_PRIVATE_HTTPS_MCP_ENDPOINT_TO_CHATGPT",
+    "RUN_OBSERVE_ACTION_OBSERVE_FIELD_TEST"
+  ],
+  "rollback_point": "b58035d9595da3170503c08a78c225f9e741d5a0"
+}

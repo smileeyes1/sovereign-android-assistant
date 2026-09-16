@@ -58,6 +58,8 @@ test("MCP endpoint rejects unauthenticated access and advertises governed tools"
   assert.equal(listed.status, 200);
   const tools = parseMcpResponse(await listed.text()).result.tools;
   const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
+  assert.equal(byName.hakim_governance.annotations.readOnlyHint, true);
+  assert.ok(byName.hakim_governance.description.includes("إقرار الهاتف"));
   assert.equal(byName.browser_observe.annotations.readOnlyHint, true);
   assert.equal(byName.browser_click.annotations.readOnlyHint, false);
   assert.ok(byName.browser_type.description.includes("ممنوع"));

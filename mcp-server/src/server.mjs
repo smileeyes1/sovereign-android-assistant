@@ -6,7 +6,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { loadConfig, RelayClient } from "./relay.mjs";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const SENSITIVE_TARGET = /(?:password|passcode|otp|pin|cvv|cvc|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|مفتاح.?سري)/i;
 
 function isSafeHttpUrl(value) {
@@ -48,7 +48,7 @@ function toolResult(value) {
 export function createHakimMcpServer(relay) {
   const server = new McpServer(
     { name: "hakim-browser", version: VERSION },
-    { instructions: "ابدأ بالحالة ثم مشاهدة الصفحة. بعد كل فعل أعد المشاهدة. لا تطلب أو تكتب كلمات مرور أو رموز تحقق أو بيانات دفع، ولا تتجاوز CAPTCHA. الأفعال المتغيرة للحالة لا تنفذ إلا بعد موافقة الهاتف." },
+    { instructions: "ابدأ بالحالة ثم مشاهدة الصفحة. قبل نسبة دينية أو إعداد نشر ديني تحقق من hakim_governance ومن المصدر الدقيق. بعد كل فعل أعد المشاهدة. لا تطلب أو تكتب كلمات مرور أو رموز تحقق أو بيانات دفع، ولا تتجاوز CAPTCHA. الأفعال المتغيرة للحالة لا تنفذ إلا بعد موافقة الهاتف، والنشر العلني يحتاج تفويضًا بشريًا صريحًا." },
   );
 
   server.registerTool("hakim_status", {
@@ -57,6 +57,32 @@ export function createHakimMcpServer(relay) {
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   }, async () => toolResult(await relay.call("status", {})));
+
+  server.registerTool("hakim_governance", {
+    title: "حاكمية حكيم الموثقة",
+    description: "اقرأ إقرار الهاتف الموقّع بمنهج القرآن والسنة وحدود التحقق والنشر قبل أي نسبة دينية أو إعداد مادة للنشر.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, async () => {
+    const status = await relay.call("status", {});
+    if (!status?.ok) return toolResult(status);
+    const method = status.quran_sunnah_method;
+    const kernel = status.quranic_invariant_kernel;
+    if (!method || !kernel || method.exact_attribution_requires_verification !== true || kernel.runtime_fail_closed_attestation !== true) {
+      return toolResult({ ok: false, error: "phone_governance_attestation_missing" });
+    }
+    return toolResult({
+      ok: true,
+      attested_by: "signed_phone_status",
+      quran_sunnah_method: method,
+      quranic_invariant_kernel: kernel,
+      religious_claim_requires_exact_source: true,
+      revelation_is_distinct_from_human_interpretation: true,
+      worldly_means_require_domain_evidence: true,
+      public_religious_publication_requires_human_approval: true,
+      coercion_or_mass_unsolicited_publication_allowed: false,
+    });
+  });
 
   server.registerTool("browser_observe", {
     title: "مشاهدة متصفح حكيم",

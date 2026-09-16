@@ -1,0 +1,45 @@
+name: بوابة متصفح حكيم السيادي ٢٠٠٤٠
+
+on:
+  push:
+    branches: [ feature/hakim-governance-editor ]
+    paths:
+      - 'app/**'
+      - 'tests/verify_sovereign_browser_agent.py'
+      - 'governance/HAKIM_FIELD_SIGNING_IDENTITY.json'
+      - '.github/workflows/sovereign-browser-agent.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/verify_sovereign_browser_agent.py'
+      - 'governance/HAKIM_FIELD_SIGNING_IDENTITY.json'
+      - '.github/workflows/sovereign-browser-agent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sovereign-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: بوابة الوكيل السيادي
+        run: python3 tests/verify_sovereign_browser_agent.py
+      - name: بوابات واجهة العمل والإدخال
+        run: |
+          python3 tests/verify_chat_first_ui.py
+          python3 tests/verify_safe_input_path.py
+          python3 tests/verify_work_surface.py
+          python3 tests/verify_signing_continuity_policy.py
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+      - name: بناء Android فعلي
+        run: gradle assembleDebug assembleRelease --stacktrace
+      - name: Lint المتصفح والتطبيق
+        run: gradle lintDebug lintRelease --stacktrace

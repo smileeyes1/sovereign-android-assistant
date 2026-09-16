@@ -1,13 +1,16 @@
 package ps.hakim.phoneagent
 
 import android.net.Uri
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.webkit.WebView
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * تحكم DOM/JavaScript داخل WebView حكيم بأقل صلاحية.
+ * تحكم DOM/JavaScript/إحداثيات داخل WebView حكيم بأقل صلاحية.
  * لا يعيد قيم input/textarea/select/contenteditable إلى حكيم، ولا ينفذ JavaScript حرًا من المستخدم أو النموذج.
+ * clickText وsetText يحافظان على التوافق مع المنفذات القديمة مع توريث الطبقات الجديدة تلقائيًا.
  */
 object HakimWebAutomation {
     private const val PACKAGE = "ps.hakim.stable"
@@ -79,9 +82,26 @@ object HakimWebAutomation {
         """.trimIndent(), callback)
     }
 
-    /** JavaScript المأذون: مطابقة دلالية للنص الظاهر، لا سكربت حر. */
+    /**
+     * مسار توافق متعدد الطبقات للمنفذات القديمة:
+     * DOM-ref -> JavaScript ثابت مأذون -> إحداثيات WebView محلية.
+     * إذا فشلت الثلاث يعيد false ليبقى Android/UI المأذون هو fallback الأخير عند المنفذ.
+     */
     fun clickText(web: WebView, target: String, callback: (Boolean) -> Unit) {
         if (!isUsable(web) || target.isBlank()) { callback(false); return }
+        resolveRef(web, target, clickableOnly = true) { ref ->
+            fun semanticThenCoordinate() {
+                semanticClick(web, target) { jsOk ->
+                    if (jsOk) callback(true)
+                    else coordinateTap(web, target, callback)
+                }
+            }
+            if (ref != null) clickRef(web, ref) { domOk -> if (domOk) callback(true) else semanticThenCoordinate() }
+            else semanticThenCoordinate()
+        }
+    }
+
+    private fun semanticClick(web: WebView, target: String, callback: (Boolean) -> Unit) {
         val targetLiteral = JSONObject.quote(target.take(500))
         evalOk(web, """
             (() => {
@@ -95,14 +115,41 @@ object HakimWebAutomation {
         """.trimIndent(), callback)
     }
 
+    private fun coordinateTap(web: WebView, target: String, callback: (Boolean) -> Unit) {
+        elementCenter(web, target) { center ->
+            if (center == null) { callback(false); return@elementCenter }
+            web.post {
+                val scale = web.scale.coerceAtLeast(0.1f)
+                val x = center.first * scale
+                val y = center.second * scale
+                val down = SystemClock.uptimeMillis()
+                val d = MotionEvent.obtain(down, down, MotionEvent.ACTION_DOWN, x, y, 0)
+                val u = MotionEvent.obtain(down, down + 70L, MotionEvent.ACTION_UP, x, y, 0)
+                val downOk = web.dispatchTouchEvent(d)
+                val upOk = web.dispatchTouchEvent(u)
+                d.recycle(); u.recycle()
+                callback(downOk || upOk)
+            }
+        }
+    }
+
     fun setTextByRef(web: WebView, ref: String, value: String, callback: (Boolean) -> Unit) {
         if (!isUsable(web) || ref.isBlank()) { callback(false); return }
         val refLiteral = JSONObject.quote(ref.take(180)); val valueLiteral = JSONObject.quote(value.take(6000))
         evalOk(web, editScript("document.querySelector('[data-hakim-ref=' + CSS.escape($refLiteral) + ']')", valueLiteral), callback)
     }
 
+    /** DOM-ref أولًا ثم JavaScript ثابت؛ يعيد false للـAndroid/UI fallback عند الحاجة. */
     fun setText(web: WebView, target: String, value: String, callback: (Boolean) -> Unit) {
         if (!isUsable(web) || target.isBlank()) { callback(false); return }
+        resolveRef(web, target, editableOnly = true) { ref ->
+            fun semantic() = semanticSetText(web, target, value, callback)
+            if (ref != null) setTextByRef(web, ref, value) { domOk -> if (domOk) callback(true) else semantic() }
+            else semantic()
+        }
+    }
+
+    private fun semanticSetText(web: WebView, target: String, value: String, callback: (Boolean) -> Unit) {
         val targetLiteral = JSONObject.quote(target.take(500)); val valueLiteral = JSONObject.quote(value.take(6000))
         val script = """
             (() => {
@@ -178,6 +225,30 @@ object HakimWebAutomation {
 
     fun goBack(web: WebView): Boolean { if (!isUsable(web) || !web.canGoBack()) return false; web.goBack(); return true }
 
+    private fun resolveRef(
+        web: WebView,
+        target: String,
+        clickableOnly: Boolean = false,
+        editableOnly: Boolean = false,
+        callback: (String?) -> Unit
+    ) {
+        val wanted = normalize(target)
+        snapshot(web) { arr ->
+            var partial: String? = null
+            for (i in 1 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                if (o.optBoolean("sensitive", false)) continue
+                if (clickableOnly && !o.optBoolean("clickable", false)) continue
+                if (editableOnly && !o.optBoolean("editable", false)) continue
+                val ref = o.optString("ref")
+                val labels = listOf(o.optString("text"), o.optString("desc"), o.optString("id")).map(::normalize)
+                if (ref == target || labels.any { it == wanted }) { callback(ref); return@snapshot }
+                if (partial == null && wanted.length >= 2 && labels.any { it.contains(wanted) }) partial = ref
+            }
+            callback(partial)
+        }
+    }
+
     private fun editScript(hitExpression: String, valueLiteral: String): String = """
         (()=>{const forbidden=/(password|passcode|otp|pin|cvv|cvc|security.?code|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|مفتاح.?سري)/i;const hit=$hitExpression;if(!hit)return 'NO';const meta=[hit.getAttribute('type'),hit.getAttribute('aria-label'),hit.getAttribute('placeholder'),hit.getAttribute('name'),hit.id,hit.getAttribute('title')].filter(Boolean).join(' ');if(String(hit.getAttribute('type')||'').toLowerCase()==='password'||forbidden.test(meta))return 'NO';${editBody("hit", valueLiteral)}})()
     """.trimIndent()
@@ -199,4 +270,6 @@ object HakimWebAutomation {
         val value=raw.orEmpty(); if(value=="null"||value.isBlank())return ""
         return runCatching { JSONArray("[$value]").optString(0) }.getOrDefault("")
     }
+
+    private fun normalize(value: String): String = value.lowercase().replace(Regex("\\s+"), " ").trim()
 }

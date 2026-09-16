@@ -20,6 +20,7 @@ class HakimApp : Application() {
         // فشل مكوّن مساعد لا يجب أن يسقط واجهة حكيم كلها؛ يسجل محليًا ويُستعاد لاحقًا.
         HakimCrashShield.guardNonCritical(this, "learning_initialize") { HakimLearning.initialize(this) }
         HakimCrashShield.guardNonCritical(this, "proactive_initialize") { HakimProactiveEngine.initialize(this) }
+        HakimCrashShield.guardNonCritical(this, "influence_supersystem_initialize") { HakimInfluenceSupersystem.initialize(this) }
         HakimCrashShield.guardNonCritical(this, "integration_install") { HakimIntegrationFabric.install(this) }
         HakimCrashShield.guardNonCritical(this, "ime_resilience_install") { HakimImeResilience.install(this) }
         HakimCrashShield.guardNonCritical(this, "ui_polish_install") { HakimUiPolish.install(this) }
@@ -64,6 +65,7 @@ class HakimApp : Application() {
                     HakimLearning.recordHealth(app, report)
                 }
                 runCatching { HakimProactiveEngine.runSafeBackground(app, "app_start_deferred") }
+                runCatching { HakimInfluenceSupersystem.runSafeCycle(app, "app_start_deferred") }
                 runCatching { HakimResourceGovernor.markStartupMaintenance(app) }
             }.start()
         }, delay)

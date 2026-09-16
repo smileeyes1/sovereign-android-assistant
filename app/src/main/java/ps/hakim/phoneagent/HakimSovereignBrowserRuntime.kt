@@ -30,6 +30,7 @@ object HakimSovereignBrowserRuntime {
     private var activityRef: WeakReference<Activity>? = null
     private var webRef: WeakReference<WebView>? = null
     private var ticker: Runnable? = null
+    private val remoteSensitivePath = Regex("(?i)(password|passcode|otp|token|secret|api.?key|كلمة.?المرور|رمز.?التحقق|مفتاح.?سري)")
 
     fun attach(activity: Activity, web: WebView) {
         activityRef = WeakReference(activity); webRef = WeakReference(web)
@@ -176,18 +177,26 @@ object HakimSovereignBrowserRuntime {
     fun remoteObserve(payload: JSONObject = JSONObject(), callback: (JSONObject) -> Unit) {
         val activity = activityRef?.get()
         val web = webRef?.get()
-        if (activity == null || activity.isFinishing || activity.isDestroyed || !HakimWebAutomation.isUsable(web)) {
+        if (activity == null || web == null) {
             callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
             return
         }
         val maxElements = payload.optInt("max_elements", 40).coerceIn(1, 60)
-        web!!.post {
+        web.post {
+            if (activity.isFinishing || activity.isDestroyed || !HakimWebAutomation.isUsable(web)) {
+                callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+                return@post
+            }
             HakimWebAutomation.snapshot(web) { snapshot ->
                 val nodes = JSONArray()
                 val limit = minOf(snapshot.length(), maxElements + 1)
                 for (i in 0 until limit) snapshot.optJSONObject(i)?.let(nodes::put)
                 val safeUrl = runCatching {
-                    Uri.parse(web.url.orEmpty()).buildUpon().clearQuery().fragment(null).build().toString()
+                    val uri = Uri.parse(web.url.orEmpty())
+                    val path = uri.path.orEmpty().take(1000)
+                    val safePath = if (remoteSensitivePath.containsMatchIn(path)) "/" else path
+                    if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) ""
+                    else "${uri.scheme}://${uri.host}${if (uri.port > 0) ":${uri.port}" else ""}$safePath"
                 }.getOrDefault("")
                 callback(
                     JSONObject()
@@ -204,7 +213,7 @@ object HakimSovereignBrowserRuntime {
 
     fun remoteExecute(payload: JSONObject, callback: (JSONObject) -> Unit) {
         val activity = activityRef?.get()
-        if (activity == null || activity.isFinishing || activity.isDestroyed) {
+        if (activity == null) {
             callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
             return
         }
@@ -232,6 +241,10 @@ object HakimSovereignBrowserRuntime {
             dy = payload.optInt("dy", 900).coerceIn(-3000, 3000)
         )
         activity.runOnUiThread {
+            if (activity.isFinishing || activity.isDestroyed) {
+                callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+                return@runOnUiThread
+            }
             HakimSovereignBrowserAgent.execute(activity, action) { result ->
                 remoteObserve(JSONObject().put("max_elements", 40)) { observation ->
                     callback(

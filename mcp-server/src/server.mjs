@@ -7,6 +7,16 @@ import { z } from "zod";
 import { loadConfig, RelayClient } from "./relay.mjs";
 
 const VERSION = "0.1.0";
+const SENSITIVE_TARGET = /(?:password|passcode|otp|pin|cvv|cvc|secret|token|api.?key|كلمة.?المرور|رمز.?التحقق|رمز.?الأمان|مفتاح.?سري)/i;
+
+function isSafeHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !SENSITIVE_TARGET.test(url.search);
+  } catch {
+    return false;
+  }
+}
 
 function sameToken(left, right) {
   const a = Buffer.from(left || "", "utf8");
@@ -63,11 +73,11 @@ export function createHakimMcpServer(relay) {
   }, async (args) => toolResult(await relay.call("browser_action", build(args))));
 
   actionTool("browser_navigate", "فتح صفحة في حكيم", "افتح رابط HTTP أو HTTPS صريحًا داخل متصفح حكيم.",
-    { url: z.string().url().max(5000) }, ({ url }) => ({ action: "navigate", url }));
+    { url: z.string().url().max(5000).refine(isSafeHttpUrl, "الرابط يجب أن يكون HTTP/HTTPS بلا اعتماد أو سر في الاستعلام") }, ({ url }) => ({ action: "navigate", url }));
   actionTool("browser_click", "النقر في حكيم", "انقر عنصرًا مرئيًا باستخدام مرجع العنصر أو نصه؛ لا تستخدمه لتأكيد شراء أو حذف أو إرسال دون تفويض صريح.",
     { target: z.string().min(1).max(500) }, ({ target }) => ({ action: "click", target }));
   actionTool("browser_type", "الكتابة في حكيم", "اكتب نصًا عابرًا في حقل غير حساس. ممنوع لكلمات المرور ورموز التحقق وبيانات الدفع والأسرار.",
-    { target: z.string().min(1).max(500), value: z.string().min(1).max(6000) }, ({ target, value }) => ({ action: "type", target, value }));
+    { target: z.string().min(1).max(500).refine((value) => !SENSITIVE_TARGET.test(value), "الحقل الحساس يُدخل يدويًا على الهاتف"), value: z.string().min(1).max(6000) }, ({ target, value }) => ({ action: "type", target, value }));
   actionTool("browser_select", "اختيار قيمة في حكيم", "اختر قيمة من قائمة غير حساسة.",
     { target: z.string().min(1).max(500), value: z.string().min(1).max(1000) }, ({ target, value }) => ({ action: "select", target, value }));
   actionTool("browser_scroll", "تمرير صفحة حكيم", "مرر الصفحة أو عنصرًا مرئيًا بمقدار محدود.",

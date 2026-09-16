@@ -61,4 +61,5 @@ test("MCP endpoint rejects unauthenticated access and advertises governed tools"
   assert.equal(byName.browser_observe.annotations.readOnlyHint, true);
   assert.equal(byName.browser_click.annotations.readOnlyHint, false);
   assert.ok(byName.browser_type.description.includes("ممنوع"));
+  assert.equal(byName.browser_navigate.inputSchema.properties.url.type, "string");
 });

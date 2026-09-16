@@ -22,7 +22,7 @@ require('setOf("status", "ui", "notifications", "screenshot", "browser_observe")
         "P0: browser_observe ليس عملية قراءة محددة")
 require('setOf("action", "launch", "browser_action")' in relay_android,
         "P0: browser_action ليس خلف مسار الموافقة")
-for token in ["dispatchEnvelope", "remoteObserve", "remoteExecute", "result_b64", "sent_at_ms", "pollSignature"]:
+for token in ["dispatchEnvelope", "remoteObserve", "remoteExecute", "remoteSensitivePath", "result_b64", "sent_at_ms", "pollSignature"]:
     require(token in relay_android or token in runtime, f"P0: عقد الهاتف يفتقد {token}")
 require('if (key.isBlank())' in legacy and 'return null' in legacy,
         "P0: القناة القديمة لا تفشل مغلقة عند غياب المفتاح")
@@ -30,7 +30,7 @@ for token in ["aes-256-gcm", "createHmac", "timingSafeEqual", "verifyPhoneResult
     require(token in gateway, f"P0: بوابة MCP تفتقد {token}")
 require('Bearer realm="hakim-browser"' in server and 'readOnlyHint: true' in server and 'readOnlyHint: false' in server,
         "P0: المصادقة أو توصيف أدوات MCP غير مكتمل")
-require("browser_observe" in server and "browser_action" in server and "CAPTCHA" in server,
+require("browser_observe" in server and "browser_action" in server and "CAPTCHA" in server and "isSafeHttpUrl" in server,
         "P0: أدوات المتصفح أو حدودها مفقودة")
 require('"mcpServers": "./.mcp.json"' in plugin and "browser_observe" in skill,
         "P0: حزمة الإضافة لا تورث عقد الاستخدام")

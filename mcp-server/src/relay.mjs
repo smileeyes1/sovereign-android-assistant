@@ -187,7 +187,7 @@ export class RelayClient {
     if (!pending) return false;
     clearTimeout(pending.timer);
     this.pending.delete(verified.requestId);
-    pending.resolve({ request_id: verified.requestId, status: verified.status, ...verified.result });
+    pending.resolve({ ...verified.result, request_id: verified.requestId, status: verified.status });
     return true;
   }
 

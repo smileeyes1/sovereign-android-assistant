@@ -1,0 +1,79 @@
+name: بوابة ربط ChatGPT بمتصفح حكيم
+
+on:
+  push:
+    paths:
+      - 'mcp-server/**'
+      - 'plugins/hakim-browser/**'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimSovereignBrowserRuntime.kt'
+      - 'app/build.gradle'
+      - 'governance/HAKIM_20041_MISSION_STATE.json'
+      - 'scripts/termux-hakim-field-update.sh'
+      - 'tests/verify_chatgpt_mcp_bridge.py'
+      - '.github/workflows/chatgpt-mcp-bridge.yml'
+  pull_request:
+    paths:
+      - 'mcp-server/**'
+      - 'plugins/hakim-browser/**'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimSovereignBrowserRuntime.kt'
+      - 'app/build.gradle'
+      - 'governance/HAKIM_20041_MISSION_STATE.json'
+      - 'scripts/termux-hakim-field-update.sh'
+      - 'tests/verify_chatgpt_mcp_bridge.py'
+      - '.github/workflows/chatgpt-mcp-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: اختبار خادم MCP والتشفير
+        working-directory: mcp-server
+        run: |
+          npm install --ignore-scripts
+          npm test
+      - name: اختبار عقد الهاتف والإضافة
+        run: python3 tests/verify_chatgpt_mcp_bridge.py
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+      - name: بناء تطبيق حكيم
+        run: gradle assembleDebug assembleRelease --stacktrace
+      - name: فحص مسار التوقيع المحلي
+        run: bash -n scripts/termux-hakim-field-update.sh
+      - name: إنشاء عدة التوقيع المحلية بلا أسرار
+        run: |
+          KIT="$RUNNER_TEMP/hakim-20041-local-signing-kit"
+          mkdir -p "$KIT"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$KIT/"
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/lib/apksigner.jar" "$KIT/"
+          cp scripts/termux-hakim-field-update.sh "$KIT/"
+          APK_SHA256="$(sha256sum "$KIT/app-release-unsigned.apk" | awk '{print $1}')"
+          {
+            echo 'package=ps.hakim.stable'
+            echo 'version_code=20041'
+            echo 'version_name=2.0.41-chatgpt-islamic-browser-bridge'
+            echo "source_sha=$GITHUB_SHA"
+            echo "apk_sha256=$APK_SHA256"
+            echo 'status=PRE_FIELD'
+          } > "$KIT/HAKIM-CANDIDATE.properties"
+      - name: حفظ عدة التوقيع المحلية قبل الاختبار الميداني
+        uses: actions/upload-artifact@v7
+        with:
+          name: hakim-20041-local-signing-kit-PRE-FIELD
+          path: ${{ runner.temp }}/hakim-20041-local-signing-kit/*
+          if-no-files-found: error

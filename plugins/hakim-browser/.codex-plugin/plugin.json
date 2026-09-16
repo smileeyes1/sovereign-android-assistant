@@ -1,0 +1,19 @@
+{
+  "name": "hakim-browser",
+  "version": "0.1.0",
+  "description": "تحكم محكوم وآمن في متصفح حكيم من ChatGPT وCodex.",
+  "author": {
+    "name": "Hakim Project"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "متصفح حكيم",
+    "shortDescription": "شاهد متصفح حكيم ونفّذ أفعالًا مأذونة.",
+    "longDescription": "يربط ChatGPT وCodex بمتصفح حكيم عبر MCP مع مصادقة، موافقة هاتف، تحقق بعد الفعل، ومنع للأسرار والتجاوزات.",
+    "developerName": "Hakim Project",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "تحقق من حالة حكيم، شاهد الصفحة، ثم أنجز المطلوب بأقل صلاحية وتحقق بعد كل فعل."
+  },
+  "mcpServers": "./.mcp.json"
+}

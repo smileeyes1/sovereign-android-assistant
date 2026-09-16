@@ -43,8 +43,8 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_observe")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_action")
     private val running = AtomicBoolean(false)
     // الاستماع الشبكي طويل العمر يجب ألا يحجز طابور النتائج/الموافقات.
     private val listenerExecutor = Executors.newSingleThreadExecutor()
@@ -139,10 +139,14 @@ object HakimUnifiedRelay {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val since = prefs.getString("relay_proxy_cursor", "").orEmpty().ifBlank { "10m" }
         return try {
+            val issuedAt = System.currentTimeMillis()
+            val pollSignature = hmacHex(relayKey, "$topic\n$since\n$issuedAt")
             val request = JSONObject()
                 .put("kind", "hc1_poll")
                 .put("topic", topic)
                 .put("since", since)
+                .put("issued_at_ms", issuedAt)
+                .put("signature", pollSignature)
             val conn = URL(resultUrl).openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 25_000
@@ -215,8 +219,11 @@ object HakimUnifiedRelay {
         }
 
         if (READ_ONLY_OPS.contains(op)) {
-            val result = executeEnvelope(context, envelope)
-            sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            dispatchEnvelope(context, envelope) { result ->
+                workerExecutor.execute {
+                    sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+                }
+            }
         } else {
             savePending(context, envelope, resultUrl)
             showApproval(context, requestId, op)
@@ -241,6 +248,13 @@ object HakimUnifiedRelay {
         }.getOrNull()
     }
 
+    private fun hmacHex(relayKey: String, canonical: String): String {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(relayKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+        return mac.doFinal(canonical.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
     private fun validSignature(
         relayKey: String,
         requestId: String,
@@ -250,10 +264,7 @@ object HakimUnifiedRelay {
         signature: String
     ): Boolean {
         val canonical = "$requestId\n$op\n$expiresAt\n$payloadB64"
-        val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(relayKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-        val expected = mac.doFinal(canonical.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val expected = hmacHex(relayKey, canonical)
         return MessageDigest.isEqual(
             expected.toByteArray(Charsets.US_ASCII),
             signature.lowercase().toByteArray(Charsets.US_ASCII)
@@ -329,9 +340,10 @@ object HakimUnifiedRelay {
             sendResult(context, resultUrl, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
-        workerExecutor.execute {
-            val result = executeEnvelope(context.applicationContext, envelope)
-            sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+        dispatchEnvelope(context.applicationContext, envelope) { result ->
+            workerExecutor.execute {
+                sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            }
         }
     }
 
@@ -347,10 +359,18 @@ object HakimUnifiedRelay {
         }.getOrElse { JSONObject() }
     }
 
-    private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
+    private fun dispatchEnvelope(context: Context, envelope: JSONObject, callback: (JSONObject) -> Unit) {
         val op = envelope.optString("op")
         val payload = decodePayload(envelope)
-        return when (op) {
+        when (op) {
+            "browser_observe" -> HakimSovereignBrowserRuntime.remoteObserve(payload, callback)
+            "browser_action" -> HakimSovereignBrowserRuntime.remoteExecute(payload, callback)
+            else -> callback(executeImmediateEnvelope(context, op, payload))
+        }
+    }
+
+    private fun executeImmediateEnvelope(context: Context, op: String, payload: JSONObject): JSONObject =
+        when (op) {
             "status" -> status(context)
             "ui" -> {
                 val service = HakimAccessibilityService.instance
@@ -373,7 +393,6 @@ object HakimUnifiedRelay {
             "launch" -> launch(context, payload)
             else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
         }
-    }
 
     private fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -392,6 +411,11 @@ object HakimUnifiedRelay {
             .put("secure_relay_transport", p.getString("secure_relay_transport", "unknown"))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
+            .put("chatgpt_mcp_protocol", "HAKIM-MCP-2026-09-v1")
+            .put("browser", HakimSovereignBrowserRuntime.status(context))
+            .put("quranic_invariant_kernel", HakimQuranicInvariantKernel.status())
+            .put("quran_sunnah_method", HakimQuranSunnahMethod.status())
+            .put("mission", HakimMissionLedger.status(context))
             .put("accessibility", HakimAccessibilityService.instance != null)
             .put("notification_listener", HakimNotificationListener.isConnected())
             .put("auto_update", AutoUpdater.diagnostics(context))
@@ -436,12 +460,22 @@ object HakimUnifiedRelay {
     }
 
     private fun sendResult(context: Context, resultUrl: String, requestId: String, status: String, result: JSONObject): Boolean {
+        val relayKey = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_RELAY_KEY, "").orEmpty()
+        if (!RELAY_KEY.matches(relayKey) || !REQUEST_ID.matches(requestId)) return false
         return try {
+            val sentAt = System.currentTimeMillis()
+            val resultB64 = Base64.encodeToString(
+                result.toString().toByteArray(Charsets.UTF_8),
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+            val resultSignature = hmacHex(relayKey, "$requestId\n$status\n$sentAt\n$resultB64")
             val payload = JSONObject()
                 .put("request_id", requestId)
                 .put("status", status)
-                .put("received_at_ms", System.currentTimeMillis())
-                .put("result", result)
+                .put("sent_at_ms", sentAt)
+                .put("result_b64", resultB64)
+                .put("signature", resultSignature)
             val conn = URL(resultUrl).openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 20_000

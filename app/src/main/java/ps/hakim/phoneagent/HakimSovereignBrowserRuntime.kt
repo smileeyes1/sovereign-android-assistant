@@ -18,6 +18,8 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import org.json.JSONArray
+import org.json.JSONObject
 import java.lang.ref.WeakReference
 
 /** يربط طبقات ٢٠٠٤٠ بالـWebView القائم دون استبدال MainActivity أو كسر file chooser/WebChromeClient. */
@@ -28,6 +30,7 @@ object HakimSovereignBrowserRuntime {
     private var activityRef: WeakReference<Activity>? = null
     private var webRef: WeakReference<WebView>? = null
     private var ticker: Runnable? = null
+    private val remoteSensitivePath = Regex("(?i)(password|passcode|otp|token|secret|api.?key|كلمة.?المرور|رمز.?التحقق|مفتاح.?سري)")
 
     fun attach(activity: Activity, web: WebView) {
         activityRef = WeakReference(activity); webRef = WeakReference(web)
@@ -171,7 +174,96 @@ object HakimSovereignBrowserRuntime {
         }
     }
 
-    fun status(context: Context): org.json.JSONObject = org.json.JSONObject()
+    fun remoteObserve(payload: JSONObject = JSONObject(), callback: (JSONObject) -> Unit) {
+        val activity = activityRef?.get()
+        val web = webRef?.get()
+        if (activity == null || web == null) {
+            callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+            return
+        }
+        val maxElements = payload.optInt("max_elements", 40).coerceIn(1, 60)
+        web.post {
+            if (activity.isFinishing || activity.isDestroyed || !HakimWebAutomation.isUsable(web)) {
+                callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+                return@post
+            }
+            HakimWebAutomation.snapshot(web) { snapshot ->
+                val nodes = JSONArray()
+                val limit = minOf(snapshot.length(), maxElements + 1)
+                for (i in 0 until limit) snapshot.optJSONObject(i)?.let(nodes::put)
+                val safeUrl = runCatching {
+                    val uri = Uri.parse(web.url.orEmpty())
+                    val path = uri.path.orEmpty().take(1000)
+                    val safePath = if (remoteSensitivePath.containsMatchIn(path)) "/" else path
+                    if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) ""
+                    else "${uri.scheme}://${uri.host}${if (uri.port > 0) ":${uri.port}" else ""}$safePath"
+                }.getOrDefault("")
+                callback(
+                    JSONObject()
+                        .put("ok", true)
+                        .put("url", safeUrl)
+                        .put("title", web.title.orEmpty().take(300))
+                        .put("nodes", nodes)
+                        .put("observed_at_ms", System.currentTimeMillis())
+                        .put("editable_values_exposed", false)
+                )
+            }
+        }
+    }
+
+    fun remoteExecute(payload: JSONObject, callback: (JSONObject) -> Unit) {
+        val activity = activityRef?.get()
+        if (activity == null) {
+            callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+            return
+        }
+        val actionName = payload.optString("action").lowercase().trim()
+        val type = when (actionName) {
+            "navigate" -> HakimSovereignBrowserAgent.ActionType.NAVIGATE
+            "click" -> HakimSovereignBrowserAgent.ActionType.CLICK
+            "type" -> HakimSovereignBrowserAgent.ActionType.TYPE
+            "select" -> HakimSovereignBrowserAgent.ActionType.SELECT
+            "scroll" -> HakimSovereignBrowserAgent.ActionType.SCROLL
+            "back" -> HakimSovereignBrowserAgent.ActionType.BACK
+            "reload" -> HakimSovereignBrowserAgent.ActionType.RELOAD
+            else -> null
+        }
+        if (type == null) {
+            callback(JSONObject().put("ok", false).put("error", "unsupported_browser_action"))
+            return
+        }
+        val action = HakimSovereignBrowserAgent.Action(
+            type = type,
+            target = payload.optString("target").take(500),
+            value = payload.optString("value").take(6000),
+            url = payload.optString("url").take(5000),
+            dx = payload.optInt("dx", 0).coerceIn(-3000, 3000),
+            dy = payload.optInt("dy", 900).coerceIn(-3000, 3000)
+        )
+        activity.runOnUiThread {
+            if (activity.isFinishing || activity.isDestroyed) {
+                callback(JSONObject().put("ok", false).put("error", "hakim_browser_not_visible"))
+                return@runOnUiThread
+            }
+            HakimSovereignBrowserAgent.execute(activity, action) { result ->
+                remoteObserve(JSONObject().put("max_elements", 40)) { observation ->
+                    callback(
+                        JSONObject()
+                            .put("ok", result.success)
+                            .put("action", actionName)
+                            .put("layer", result.layer?.name ?: JSONObject.NULL)
+                            .put("evidence", result.evidence.take(500))
+                            .put("retryable", result.retryable)
+                            .put("needs_approval", result.needsApproval)
+                            .put("needs_credential", result.needsCredential)
+                            .put("observation", observation)
+                    )
+                }
+            }
+        }
+    }
+
+    fun status(context: Context): JSONObject = JSONObject()
         .put("version", VERSION)
         .put("toolbar_injected", webRef?.get() != null)
         .put("tabs", HakimBrowserTabs.status(context))

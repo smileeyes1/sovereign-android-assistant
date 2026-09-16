@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20040
-        versionName '2.0.40-sovereign-browser-agent'
+        versionCode 20041
+        versionName '2.0.41-foreground-stability'
     }
 
     compileOptions {

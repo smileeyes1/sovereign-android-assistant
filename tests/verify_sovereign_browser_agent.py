@@ -25,8 +25,11 @@ identity = text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json")
 
 m = re.search(r"versionCode\s+(\d+)", build)
 require(m and int(m.group(1)) >= 20040, "P0: المتصفح الوكيل يتطلب الإصدار ٢٠٠٤٠ أو أحدث")
-require("2.0.40-sovereign-browser-agent" in build, "P0: اسم إصدار ٢٠٠٤٠ غير متزامن")
-require('"current_candidate_version": 20040' in identity, "P0: هوية مرشح التوقيع ليست ٢٠٠٤٠")
+version_code = int(m.group(1))
+version_name = re.search(r"versionName\s+'([^']+)'", build)
+expected_prefix = f"2.0.{version_code - 20000}-"
+require(version_name and version_name.group(1).startswith(expected_prefix), "P0: اسم الإصدار غير متزامن مع versionCode")
+require(f'"current_candidate_version": {version_code}' in identity, "P0: هوية مرشح التوقيع غير متزامنة مع الإصدار الحالي")
 
 # طبقات التحكم المطلوبة وترتيبها، مع fallback مأذون لا افتراضي.
 for token in ["DOM", "AUTHORIZED_JS", "COORDINATE", "ANDROID_UI", "clickLayered", "coordinateClick", "androidUiFallback"]:
@@ -48,7 +51,7 @@ require("arbitrary_javascript" in agent and '.put("arbitrary_javascript", false)
 # تبويبات وجلسات محلية.
 for token in ["MAX_TABS = 8", "newTab", "switchTo", "close", "CookieManager.getInstance().flush", "single_webview_memory_efficient"]:
     require(token in tabs, f"P0: التبويبات تفتقد {token}")
-require("HakimSovereignBrowserRuntime.attach" in runtime, "P0: المتصفح الفعلي غير مربوط ببيئة ٢٠٠٤٠")
+require("HakimSovereignBrowserRuntime.attach" in runtime, "P0: المتصفح الفعلي غير مربوط ببيئة ٢٠٠٤٠+")
 for token in ["تبويبات", "أدوات", "HakimBrowserTabs", "HakimSovereignToolRegistry", "installEnhancedDownload"]:
     require(token in browser_runtime, f"P0: واجهة التنفيذ الفعلية تفتقد {token}")
 

@@ -1,6 +1,7 @@
 package ps.hakim.phoneagent
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -9,11 +10,16 @@ import android.os.Looper
  * جسر الاستدلال المتقدم متعدد المزودات.
  * التنفيذ المحلي يسبق هذه الطبقة؛ وعند الحاجة للاستدلال المتقدم تمر كل خطة عبر
  * ميزان الحكمة وناقد المداولة محليًا قبل أن تصل إلى منفذ الأفعال.
+ *
+ * قاعدة ثبات الواجهة: تجربة الجلسات الجاهزة تتم بصمت، أما فتح شاشة تسجيل دخول
+ * أو نقل المستخدم من محادثة حكيم فلا يحدث تلقائيًا لمجرد فشل مزود صامت.
  */
 object HakimReasoningBridge {
     private const val PACKAGE = "com.openai.chatgpt"
     private const val MAX_LAUNCH_ATTEMPTS = 8
     private const val MAX_POLL_ATTEMPTS = 45
+    private const val PREFS = "hakim_reasoning_bridge"
+    private const val ALLOW_INTERACTIVE_LOGIN = "allow_interactive_login"
 
     data class Result(
         val available: Boolean,
@@ -22,6 +28,20 @@ object HakimReasoningBridge {
         val reason: String,
         val providerId: String = ""
     )
+
+    /**
+     * لا تُفعّل إلا من فعل مستخدم صريح داخل حكيم. الوضع الافتراضي يحفظ الواجهة
+     * في مكانها ويطلب من المستخدم فتح المزود يدويًا إذا احتاج تسجيل دخول.
+     */
+    fun setInteractiveLoginAllowed(context: Context, allowed: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(ALLOW_INTERACTIVE_LOGIN, allowed)
+            .apply()
+    }
+
+    fun interactiveLoginAllowed(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(ALLOW_INTERACTIVE_LOGIN, false)
 
     fun ask(
         activity: Activity,
@@ -58,7 +78,24 @@ object HakimReasoningBridge {
                 onComplete(Result(true, null, "", "لا يوجد مزود متقدم متاح", ""))
                 return
             }
-            onProgress("يحتاج الاستدلال المتقدم جلسة دخول. سأفتح مزودًا واحدًا فقط ثم أعود إلى حكيم.")
+            if (!interactiveLoginAllowed(activity)) {
+                val detail = failures.takeLast(3).joinToString("؛ ").take(480)
+                onComplete(
+                    Result(
+                        true,
+                        null,
+                        "",
+                        buildString {
+                            append("المزودات المتقدمة تحتاج جلسة دخول أو لم تثبت جاهزيتها؛ بقيت واجهة حكيم مفتوحة ولم أغيّر الشاشة تلقائيًا")
+                            if (detail.isNotBlank()) append(". $detail")
+                            append(". افتح المزود المطلوب من متصفح حكيم وسجّل الدخول عند الحاجة، ثم أعد المحاولة")
+                        },
+                        "local_deterministic"
+                    )
+                )
+                return
+            }
+            onProgress("سمحتَ صراحةً بفتح جلسة الدخول؛ سأفتح مزودًا واحدًا فقط ثم أعود إلى حكيم.")
             HakimWebReasoningBridge.ask(
                 activity = activity,
                 basePrompt = governedPrompt,
@@ -66,6 +103,8 @@ object HakimReasoningBridge {
                 interactiveLogin = true,
                 onProgress = onProgress,
                 onComplete = { web ->
+                    // التفويض التفاعلي للاستدعاء الحالي فقط؛ لا يتحول إلى موافقة دائمة.
+                    setInteractiveLoginAllowed(activity, false)
                     val plan = web.plan
                     if (plan != null) {
                         val audit = HakimDeliberationQuality.audit(plan, goalForAudit)

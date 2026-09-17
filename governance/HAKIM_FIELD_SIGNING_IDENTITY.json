@@ -1,22 +1,22 @@
 {
   "schema_version": 5,
-  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20025__F4_HISTORICAL_ONLY",
+  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20040__F4_HISTORICAL_ONLY",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "known_matching_versions": [20018,20019,20020,20021,20022,20025],
-  "current_field_version": 20025,
-  "current_candidate_version": 20040,
+  "known_matching_versions": [20018,20019,20020,20021,20022,20025,20040],
+  "current_field_version": 20040,
+  "current_candidate_version": 20043,
   "field_evidence": {
-    "observed_at_utc": "2026-09-15T03:50:00Z",
-    "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_PREFLIGHT",
+    "observed_at_utc": "2026-09-17T12:23:29Z",
+    "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_APK_AND_MANIFEST_PREFLIGHT",
     "package": "ps.hakim.stable",
-    "version_code": 20025,
-    "version_name": "2.0.25-multi-provider-sovereign-chat",
+    "version_code": 20040,
+    "version_name": "2.0.40-sovereign-browser-agent",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "06284169af90e89662a64a38262f7783c49216540e01e22b88fb8dd054b2ee7b",
-    "supersedes_direct_field_version": 20022,
-    "claim_scope": "PACKAGE_VERSION_CURRENT_APK_DIGEST_AND_SIGNER_ONLY"
+    "apk_sha256": "63c736782b6371ce605a1862181fb34b6a1d46eec832619912a4ba562a1a2b65",
+    "supersedes_direct_field_version": 20025,
+    "claim_scope": "PACKAGE_VERSION_CURRENT_INSTALLED_BASE_APK_DIGEST_AND_SIGNER_ONLY"
   },
   "historical_previous_lineage": {
     "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
@@ -31,10 +31,10 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "Treat the newest directly observed 20025/D1 ps.hakim.stable installation as the current field lineage. Future in-place updates must preserve package identity, use exactly D1, increase versionCode, pass artifact identity/integrity gates, and preserve app data. Do not uninstall or clear data."
+    "decision": "Treat the newest directly observed 20040/D1 ps.hakim.stable installation as the current field lineage. Future in-place updates must preserve package identity, use exactly D1, increase versionCode, pass artifact identity/integrity gates, and preserve app data. Do not uninstall or clear data."
   },
   "rules": [
-    "Newer direct read-only evidence from the real phone supersedes older checkpoints, including the earlier 20022/D1 direct baseline.",
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20040/D1.",
     "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
     "F4 is historical and must not be used to overwrite the current D1 installation.",
     "The known 4C companion signer must never be accepted for ps.hakim.stable.",

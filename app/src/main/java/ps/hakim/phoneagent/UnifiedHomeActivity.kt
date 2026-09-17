@@ -59,12 +59,27 @@ class UnifiedHomeActivity : Activity() {
             setPadding(8, 0, 8, 14)
         })
 
+        root.addView(button("تحدث مع حكيم المحلي — بدون سحابة") {
+            getSharedPreferences("hakim", MODE_PRIVATE).edit()
+                .putString("last_url", "http://localhost:8790/")
+                .apply()
+            startActivity(Intent(this, MainActivity::class.java))
+        })
+
         root.addView(button("محادثة الوكلاء — ابدأ من هنا") {
             startActivity(Intent(this, HakimAgentsChatActivity::class.java))
         })
 
         root.addView(button("النظام الحاكم والبيانات") {
             startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
+        })
+
+        root.addView(button("اختيار حكيم كشاشة الهاتف الرئيسية") {
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+            } catch (_: Exception) {
+                Toast.makeText(this, "افتح الإعدادات ← التطبيقات الافتراضية ← تطبيق الشاشة الرئيسية واختر حكيم", Toast.LENGTH_LONG).show()
+            }
         })
 
         adbStatus = TextView(this).apply {

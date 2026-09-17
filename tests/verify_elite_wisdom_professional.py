@@ -12,7 +12,6 @@ def require(ok: bool, message: str) -> None:
     if not ok:
         raise SystemExit(message)
 
-
 build = text("app/build.gradle")
 wisdom = text("app/src/main/java/ps/hakim/phoneagent/HakimEliteWisdomEngine.kt")
 deliberation = text("app/src/main/java/ps/hakim/phoneagent/HakimDeliberationQuality.kt")
@@ -32,7 +31,7 @@ version = re.search(r"versionCode\s+(\d+)", build)
 require(version and int(version.group(1)) >= 20035, "P0: الحكمة الاحترافية تراجعت تحت خط 20035")
 version_code = int(version.group(1))
 require("versionName '" in build, "P0: اسم الإصدار مفقود")
-require('"current_field_version": 20025' in identity, "P0: جرى تزوير خط الأساس الميداني بدل تطوير مرشح")
+require('"current_field_version": 20040' in identity, "P0: جرى تزوير خط الأساس الميداني بدل تطوير مرشح")
 require(f'"current_candidate_version": {version_code}' in identity,
         "P0: هوية المرشح لا تتطابق مع versionCode الحالي")
 

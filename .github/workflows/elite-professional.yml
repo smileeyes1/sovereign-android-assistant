@@ -91,7 +91,7 @@ jobs:
           version="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
           test "$version" -ge 20035
           grep -q "applicationId 'ps.hakim.stable'" app/build.gradle
-          grep -q '"current_field_version": 20025' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+          grep -q '"current_field_version": 20040' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
           grep -q "\"current_candidate_version\": $version" governance/HAKIM_FIELD_SIGNING_IDENTITY.json
           echo "version=$version" >> "$GITHUB_OUTPUT"
 

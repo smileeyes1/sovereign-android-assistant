@@ -98,6 +98,12 @@ require('AtomicFile' in result_channel and 'hakim-sovereign-result-outbox.enc' i
         "P0: استعادة صندوق النتائج ليست ذرية/قابلة للتعافي")
 require('MAX_OUTBOX_BYTES' in result_channel and 'outbox_full' in result_channel,
         "P0: صندوق النتائج بلا حد موارد أو تشخيص امتلاء")
+require('@Synchronized\n    private fun flush' in result_channel and '@Synchronized\n    private fun enqueue' in result_channel,
+        "P0: صندوق النتائج قد يفقد عناصر بسبب سباق بين الإضافة والتفريغ")
+require('decrypt_failed' in result_channel and 'else -> false' in result_channel,
+        "P0: صندوق النتائج قد يسقط بيانات تالفة/غير معروفة بصمت")
+require('.put("payload", payload.take(' not in result_channel,
+        "P0: نتيجة كبيرة يمكن أن تُقص بصمت قبل التخزين")
 
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")

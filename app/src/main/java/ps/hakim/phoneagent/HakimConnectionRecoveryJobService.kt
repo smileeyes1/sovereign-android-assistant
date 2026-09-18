@@ -3,10 +3,20 @@ package ps.hakim.phoneagent
 import android.app.job.JobParameters
 import android.app.job.JobService
 import android.os.SystemClock
+import java.util.concurrent.atomic.AtomicBoolean
 
 class HakimConnectionRecoveryJobService : JobService() {
+    companion object {
+        private const val HARD_TIMEOUT_MS = 15_000L
+    }
+
     @Volatile
     private var worker: Thread? = null
+
+    @Volatile
+    private var timeoutGuard: Thread? = null
+
+    private val completion = AtomicBoolean(false)
 
     override fun onStartJob(params: JobParameters?): Boolean {
         val existing = worker
@@ -15,9 +25,12 @@ class HakimConnectionRecoveryJobService : JobService() {
             return false
         }
 
+        completion.set(false)
         val startedElapsed = SystemClock.elapsedRealtime()
         val startedWall = System.currentTimeMillis()
-        val thread = Thread {
+
+        lateinit var thread: Thread
+        thread = Thread {
             var failure: Throwable? = null
             try {
                 runCatching {
@@ -31,7 +44,6 @@ class HakimConnectionRecoveryJobService : JobService() {
 
                 val safeRecovery = HakimCrashShield.shouldSuppressProactiveResume(app)
 
-                // نبضة الصحة لا يجوز أن تحبس JobScheduler بانتظار الشبكة أو حساب البصمة.
                 HakimHealthBeacon.sendAsync(
                     app,
                     if (safeRecovery) "periodic_watchdog_safe_recovery" else "periodic_watchdog"
@@ -41,8 +53,8 @@ class HakimConnectionRecoveryJobService : JobService() {
                 if (!safeRecovery &&
                     HakimResourceGovernor.canRunNonEssentialBackground(app)
                 ) {
-                    HakimConstraintDoctor.run(app, "periodic_watchdog")
-                    if (Thread.currentThread().isInterrupted) return@Thread
+                    // العمل الثانوي لا يجوز أن يحتجز JobScheduler.
+                    HakimConstraintDoctor.runAsync(app, "periodic_watchdog")
                     HakimSelfCheck.runAsync(app)
                 }
             } catch (t: Throwable) {
@@ -50,13 +62,14 @@ class HakimConnectionRecoveryJobService : JobService() {
             } finally {
                 val elapsed = (SystemClock.elapsedRealtime() - startedElapsed).coerceAtLeast(0L)
                 val interrupted = Thread.currentThread().isInterrupted
-                recordState(
-                    if (interrupted) "stopped" else if (failure == null) "finished" else "failed",
-                    elapsed,
-                    failure,
-                    startedWall
-                )
-                if (!interrupted) {
+                if (completion.compareAndSet(false, true)) {
+                    recordState(
+                        if (interrupted) "stopped" else if (failure == null) "finished" else "failed",
+                        elapsed,
+                        failure,
+                        startedWall
+                    )
+                    timeoutGuard?.interrupt()
                     runCatching { jobFinished(params, false) }
                 }
                 if (worker === Thread.currentThread()) worker = null
@@ -65,14 +78,37 @@ class HakimConnectionRecoveryJobService : JobService() {
             name = "HakimConnectionWatchdog"
         }
 
+        val guard = Thread {
+            try {
+                Thread.sleep(HARD_TIMEOUT_MS)
+            } catch (_: InterruptedException) {
+                return@Thread
+            }
+
+            if (completion.compareAndSet(false, true)) {
+                val elapsed = (SystemClock.elapsedRealtime() - startedElapsed).coerceAtLeast(0L)
+                thread.interrupt()
+                recordState("timed_out", elapsed, null, startedWall)
+                runCatching { jobFinished(params, false) }
+            }
+        }.apply {
+            name = "HakimConnectionWatchdogTimeout"
+            priority = Thread.NORM_PRIORITY
+        }
+
         worker = thread
+        timeoutGuard = guard
         thread.start()
+        guard.start()
         return true
     }
 
     override fun onStopJob(params: JobParameters?): Boolean {
+        completion.set(true)
         worker?.interrupt()
+        timeoutGuard?.interrupt()
         worker = null
+        timeoutGuard = null
         recordState("stopped_by_system", 0L, null)
         return true
     }

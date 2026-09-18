@@ -89,6 +89,8 @@ jobs:
         run: python3 tests/verify_innovation_resilience_policy.py
       - name: بوابة نظام الأنظمة والأنظمة المنبثقة
         run: python3 tests/verify_system_of_systems.py
+      - name: بوابة النواة السيادية الواحدة
+        run: python3 tests/verify_one_sovereign_kernel.py
       - name: بوابة شبكة التفوق والأدوات والخدمات
         run: python3 tests/verify_capability_mesh.py
       - name: بوابة الاستقلال السيادي الشامل وقابلية النقل

@@ -18,36 +18,50 @@ class HakimApp : Application() {
         HakimQuranicInvariantKernel.requireInherited("app_start")
         HakimConstitution.install(this)
 
-        // فشل مكوّن مساعد لا يجب أن يسقط واجهة حكيم كلها؛ يسجل محليًا ويُستعاد لاحقًا.
-        HakimCrashShield.guardNonCritical(this, "learning_initialize") { HakimLearning.initialize(this) }
-        HakimCrashShield.guardNonCritical(this, "proactive_initialize") { HakimProactiveEngine.initialize(this) }
-        HakimCrashShield.guardNonCritical(this, "integration_install") { HakimIntegrationFabric.install(this) }
+        // Hooks الواجهة فقط تبقى على الخيط الرئيسي حتى تُسجل قبل إنشاء أول Activity.
+        // لا تنفذ هذه الدوال شبكة أو فحصًا بنيويًا ثقيلًا.
         HakimCrashShield.guardNonCritical(this, "ime_resilience_install") { HakimImeResilience.install(this) }
         HakimCrashShield.guardNonCritical(this, "ui_polish_install") { HakimUiPolish.install(this) }
         HakimCrashShield.guardNonCritical(this, "work_surface_install") { HakimWorkSurface.install(this) }
-        HakimCrashShield.guardNonCritical(this, "restore_mission_state") { restoreActiveMissionState() }
 
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         HakimCrashShield.guardNonCritical(this, "pairing_defaults") { PairingDefaults.ensure(prefs) }
 
-        // لا ننشئ خيط شبكة دائمًا بلا إعداد فعلي؛ وأي فشل هنا لا يغلق المحادثة.
-        HakimCrashShield.guardNonCritical(this, "relay_autostart") {
-            if (HakimUnifiedRelay.isConfigured(this)) HakimUnifiedRelay.start(this)
-        }
-        // القناة الآمنة HC1 مستقلة ولا تحتاج خدمة المتصفح القديمة/WebView.
-        // بعد crash/ANR لا نعيد تشغيل الخدمة الثقيلة تلقائيًا حتى تنتهي نافذة التعافي.
-        if (!safeRecovery) startLegacyBrowserIfPaired(prefs)
+        // كل تهيئة غير حرجة تُنقل خارج main thread حتى لا يسبب بدء Activity أو JobService مهلة ANR.
+        startNonCriticalBootstrap(safeRecovery, prefs)
+    }
 
-        // أرسل تشخيصًا مبكرًا منخفض البيانات قبل أي صيانة مؤجلة.
-        HakimCrashShield.guardNonCritical(this, "startup_health") {
-            HakimHealthBeacon.sendAsync(this, if (safeRecovery) "safe_recovery_start" else "app_start")
-        }
+    private fun startNonCriticalBootstrap(
+        safeRecovery: Boolean,
+        prefs: android.content.SharedPreferences
+    ) {
+        Thread {
+            runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
+            val app = applicationContext
 
-        // الجدولة والصيانة خدمات مساعدة؛ تبقى الواجهة قابلة للاستخدام حتى عند تعطل إحداها.
-        HakimCrashShield.guardNonCritical(this, "connection_resilience_install") { HakimConnectionResilience.install(this) }
-        HakimCrashShield.guardNonCritical(this, "auto_update_schedule") { AutoUpdater.schedule(this) }
-        HakimCrashShield.guardNonCritical(this, "self_check_schedule") { HakimSelfCheck.schedule(this) }
-        HakimCrashShield.guardNonCritical(this, "deferred_maintenance_schedule") { scheduleDeferredMaintenance() }
+            HakimCrashShield.guardNonCritical(app, "learning_initialize") { HakimLearning.initialize(app) }
+            HakimCrashShield.guardNonCritical(app, "proactive_initialize") { HakimProactiveEngine.initialize(app) }
+            HakimCrashShield.guardNonCritical(app, "integration_install") { HakimIntegrationFabric.install(app) }
+            HakimCrashShield.guardNonCritical(app, "restore_mission_state") { restoreActiveMissionState() }
+
+            HakimCrashShield.guardNonCritical(app, "relay_autostart") {
+                if (HakimUnifiedRelay.isConfigured(app)) HakimUnifiedRelay.start(app)
+            }
+            if (!safeRecovery) {
+                HakimCrashShield.guardNonCritical(app, "legacy_browser_autostart") {
+                    startLegacyBrowserIfPaired(prefs)
+                }
+            }
+
+            HakimCrashShield.guardNonCritical(app, "startup_health") {
+                HakimHealthBeacon.sendAsync(app, if (safeRecovery) "safe_recovery_start" else "app_start")
+            }
+
+            HakimCrashShield.guardNonCritical(app, "connection_resilience_install") { HakimConnectionResilience.install(app) }
+            HakimCrashShield.guardNonCritical(app, "auto_update_schedule") { AutoUpdater.schedule(app) }
+            HakimCrashShield.guardNonCritical(app, "self_check_schedule") { HakimSelfCheck.schedule(app) }
+            HakimCrashShield.guardNonCritical(app, "deferred_maintenance_schedule") { scheduleDeferredMaintenance() }
+        }.start()
     }
 
     private fun scheduleDeferredMaintenance() {

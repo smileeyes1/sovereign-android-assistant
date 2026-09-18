@@ -88,7 +88,6 @@ object HakimConnectionResilience {
         val disabled = p.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
             p.getString("result_topic", "").orEmpty().isNotBlank() &&
-            p.getString("auth_key", "").orEmpty().isNotBlank() &&
             p.getString("auth_key", "").orEmpty().isNotBlank()
         val securePaired = HakimUnifiedRelay.isConfigured(app)
         val localPaired = p.getBoolean("local_adb_paired", false)
@@ -175,7 +174,8 @@ object HakimConnectionResilience {
         val app = context.applicationContext
         val p = prefs(app)
         val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
-            p.getString("result_topic", "").orEmpty().isNotBlank()
+            p.getString("result_topic", "").orEmpty().isNotBlank() &&
+            p.getString("auth_key", "").orEmpty().isNotBlank()
         val securePaired = HakimUnifiedRelay.isConfigured(app)
         val localPaired = p.getBoolean("local_adb_paired", false)
         return JSONObject()

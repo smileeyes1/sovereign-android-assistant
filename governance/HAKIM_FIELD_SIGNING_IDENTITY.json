@@ -1,6 +1,6 @@
 {
-  "schema_version": 10,
-  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20054__JOB_BOUNDED_BUT_SELF_RESCHEDULE_BUG",
+  "schema_version": 11,
+  "status": "FIELD_VERIFIED_20055_D1_STABLE__PROFESSIONAL_20056_CANDIDATE",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -16,39 +16,36 @@
     20050,
     20051,
     20052,
-    20054
+    20054,
+    20055
   ],
-  "current_field_version": 20054,
-  "current_candidate_version": 20055,
+  "current_field_version": 20055,
+  "current_candidate_version": 20056,
   "field_evidence": {
-    "observed_at_utc": "2026-09-18T19:03:00Z",
-    "method": "AUTHORIZED_REMOTE_INPLACE_UPDATE_EXACT_BASE_APK_COLD_START_JOB_RUNTIME_AND_DUMPSYS_HISTORY",
+    "observed_at_utc": "2026-09-18T19:38:00Z",
+    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_READ_COLD_START_AND_TWO_FORCED_WATCHDOG_PROBES",
     "package": "ps.hakim.stable",
-    "version_code": 20054,
-    "version_name": "2.0.54-sovereign-browser-agent-hard-bounded-watchdog",
+    "version_code": 20055,
+    "version_name": "2.0.55-sovereign-browser-agent-stable-watchdog-schedule",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "b226abaf382d52ff882a4510d3be345de7cb3f9e00b25317c81ca08d25baff25",
-    "supersedes_direct_field_version": 20052,
-    "claim_scope": "PACKAGE_VERSION_EXACT_APK_D1_IDENTITY; HARD_DEADLINE_WORKS; PERIODIC_JOB_SELF_RESCHEDULE_CAUSES_CANCEL_DISCONNECT_AND_JOB_DISAPPEARANCE",
-    "stability": "FAILED",
+    "apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896",
+    "supersedes_direct_field_version": 20054,
+    "claim_scope": "PACKAGE_VERSION_EXACT_APK_D1_IDENTITY; WATCHDOG_SELF_RESCHEDULE_FIXED; TWO_REPEAT_PROBES_PASS; COLD_START_PASS",
+    "stability": "PASS",
     "stability_evidence": {
-      "installed_local_time": "2026-09-18T22:01:09+03:00",
+      "installed_local_time": "2026-09-18T22:11:58+03:00",
       "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
       "data_dir_preserved": "/data/user/0/ps.hakim.stable",
-      "cold_starts_ms": [
-        6583,
-        9232,
-        7858
-      ],
-      "new_anr_oom_fatal": false,
-      "job_771208_forced_duration_ms": 10658,
-      "job_771208_returned_waiting": true,
-      "later_get_job_state": "unknown",
-      "dumpsys_history": "periodic 771208 repeatedly canceled/disconnected/replaced",
-      "root_cause": "ConstraintDoctor invoked from periodic_watchdog calls HakimConnectionResilience.schedule(app), replacing the same running periodic job",
-      "remaining_gap": "SUPPRESS_SELF_RESCHEDULE_WHEN_CONSTRAINT_DOCTOR_IS_CALLED_FROM_CONNECTION_WATCHDOG",
       "cold_start_status": "OK",
-      "cold_start_total_ms": 6583
+      "cold_start_total_ms": 9123,
+      "repeated_job_771208_durations_ms": [
+        7480,
+        6331
+      ],
+      "repeated_job_771208_final_state": "waiting",
+      "latest_job_history_result": "app called jobFinished",
+      "new_anr_oom_fatal": false,
+      "self_reschedule_loop_observed_in_latest_probes": false
     }
   },
   "historical_previous_lineage": {
@@ -68,10 +65,10 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "Treat 20054/D1 as current installed identity but not stable. Hard deadline fixed unbounded activity, yet the watchdog path asynchronously calls ConstraintDoctor which reschedules the same periodic job, causing cancellation/disconnect and eventual disappearance from get-job-state. Candidate 20055 must preserve the 15s hard deadline and suppress schedule maintenance when ConstraintDoctor is invoked by periodic_watchdog. Professional features remain held."
+    "decision": "20055/D1 is the accepted field baseline. Candidate 20056 adds only the previously qualified professional workspace and verified local Quran UI on top of 20055, with no new Android permissions or dependencies. It must inherit the 15s hard watchdog deadline and self-reschedule suppression, pass 5/5 CI on the exact head, then pass in-place D1 field acceptance before merge."
   },
   "rules": [
-    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20054/D1.",
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20055/D1.",
     "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
     "F4 is historical and must not be used to overwrite the current D1 installation.",
     "The known 4C companion signer must never be accepted for ps.hakim.stable.",
@@ -87,7 +84,9 @@
     "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
     "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires.",
     "A periodic watchdog must have a hard JobScheduler deadline; optional diagnosis, health, or self-check work must continue asynchronously and must not keep the job active past that deadline.",
-    "A periodic watchdog must not reschedule its own JobInfo from work launched by that same watchdog; schedule maintenance is suppressed inside the watchdog execution path."
+    "A periodic watchdog must not reschedule its own JobInfo from work launched by that same watchdog; schedule maintenance is suppressed inside the watchdog execution path.",
+    "Professional UI must not add Android permissions, exported activities, or runtime dependencies without a separately qualified need.",
+    "Professional releases must inherit the 20055 watchdog hard deadline and self-reschedule suppression and prove no regression on the real phone."
   ],
   "superseded_field_failures": [
     {
@@ -118,5 +117,15 @@
       "anr_observed": false,
       "oom_observed": false
     }
-  ]
+  ],
+  "professional_parent_candidate": {
+    "version_code": 20055,
+    "branch": "feature/hakim-stable-watchdog-20055",
+    "pr": 46,
+    "head": "855c5cfb24b20be6ebed14d173dcfe0f46b59d1b",
+    "source_status": "QUALIFIED_5_OF_5_CI",
+    "field_status": "FIELD_ACCEPTED",
+    "signed_apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896"
+  },
+  "professional_candidate_hold": "WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE"
 }

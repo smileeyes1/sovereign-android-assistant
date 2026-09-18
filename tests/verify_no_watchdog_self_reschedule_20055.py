@@ -21,12 +21,16 @@ require("HakimConstraintDoctor.runAsync" in job, "ConstraintDoctor عاد متز
 require("completion.compareAndSet(false, true)" in job, "single completion ضاع")
 
 m=re.search(r"versionCode\s+(\d+)",build)
-require(m and int(m.group(1))==20055,"الإصدار يجب أن يكون ٢٠٠٥٥")
-require(policy["current_field_version"]==20054,"خط الميدان يجب أن يسجل ٢٠٠٥٤")
-require(policy["current_candidate_version"]==20055,"السياسة لا تسجل ٢٠٠٥٥")
-require(policy["field_evidence"]["version_code"]==20054,"دليل الميدان لا يطابق ٢٠٠٥٤")
-require(policy["field_evidence"]["stability_evidence"].get("root_cause","").startswith("ConstraintDoctor"),
-        "سبب self-reschedule غير محفوظ")
+require(m and int(m.group(1))>=20055,"إصلاح self-reschedule يجب ألا يرجع قبل ٢٠٠٥٥")
+candidate=int(m.group(1))
+field=int(policy["current_field_version"])
+require(policy["current_candidate_version"]==candidate,"السياسة لا تطابق المرشح الحالي")
+require(candidate>field,"المرشح يجب أن يزيد عن خط الميدان")
+require(field>=20055,"خط الميدان يجب أن يحفظ ٢٠٠٥٥ المقبول أو أحدث")
+require(policy["field_evidence"]["version_code"]==field,"دليل الميدان لا يطابق current_field_version")
+require(policy["field_evidence"].get("stability")=="PASS","خط الميدان الحالي غير مقبول للاستقرار")
+require(any(x.get("version_code")==20054 for x in policy.get("superseded_field_failures",[])),
+        "فشل self-reschedule في ٢٠٠٥٤ غير محفوظ تاريخياً")
 
 print("HAKIM_20055_NO_WATCHDOG_SELF_RESCHEDULE=PASS")
 print("HAKIM_20055_INHERITS_HARD_DEADLINE=PASS")

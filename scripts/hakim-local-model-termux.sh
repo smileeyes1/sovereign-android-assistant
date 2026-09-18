@@ -1,16 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-# HAKIM 20045 — local advanced reasoning runtime for Android/Termux.
+# HAKIM 20048 — resource-safe local reasoning runtime for Android/Termux.
 # Provider-independent by construction: binds only to 127.0.0.1 and needs no API key.
-# The ~1.28 GB model is NEVER downloaded unless HAKIM_ALLOW_MODEL_DOWNLOAD=YES is set.
+# The ~610 MB reference model is NEVER downloaded unless HAKIM_ALLOW_MODEL_DOWNLOAD=YES is set.
 
 ROOT="${HAKIM_LOCAL_ROOT:-$HOME/.hakim-local}"
 SRC="$ROOT/src/llama.cpp"
 BUILD="$SRC/build"
 BIN="$BUILD/bin/llama-server"
 MODELS="$ROOT/models"
-MODEL="$MODELS/Qwen3-1.7B-Q4_K_M.gguf"
+MODEL="$MODELS/Qwen3-0.6B-Q8_0.gguf"
 LOGS="$ROOT/logs"
 RUN="$ROOT/run"
 PIDFILE="$RUN/llama-server.pid"
@@ -21,10 +21,10 @@ HOST="127.0.0.1"
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
 LLAMA_REF="v0.4.1"
 LLAMA_COMMIT="b29c606"
-MODEL_URL="https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf?download=true"
-MODEL_SHA256="d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5"
-MODEL_APPROX_BYTES="1280000000"
-MODEL_ALIAS="hakim-local-qwen3-1.7b-q4"
+MODEL_URL="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf?download=true"
+MODEL_SHA256="9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
+MODEL_APPROX_BYTES="633495552"
+MODEL_ALIAS="hakim-local-qwen3-0.6b-q8"
 
 mkdir -p "$ROOT" "$MODELS" "$LOGS" "$RUN" "$ROOT/src"
 
@@ -131,8 +131,9 @@ start_server(){
     --alias "$MODEL_ALIAS" \
     --host "$HOST" \
     --port "$PORT" \
-    -c "${HAKIM_LOCAL_CONTEXT:-4096}" \
-    -t "${HAKIM_LOCAL_THREADS:-4}" \
+    -c "${HAKIM_LOCAL_CONTEXT:-2048}" \
+    -t "${HAKIM_LOCAL_THREADS:-2}" \
+    --reasoning off \
     >"$LOGFILE" 2>&1 &
   local p=$!
   printf '%s' "$p" > "$PIDFILE"
@@ -164,7 +165,7 @@ doctor_server(){
   pid_alive && process=true
   if curl -fsS --max-time 2 "http://$HOST:$PORT/v1/models" |
      grep -Fq "$MODEL_ALIAS"; then api=true; fi
-  printf '{"runtime":"HAKIM_LOCAL_20045","loopback_only":true,"host":"%s","port":%s,"source":%s,"binary":%s,"model_verified":%s,"process":%s,"api_ready":%s}\n' \
+  printf '{"runtime":"HAKIM_LOCAL_20048","loopback_only":true,"host":"%s","port":%s,"source":%s,"binary":%s,"model_verified":%s,"process":%s,"api_ready":%s}\n' \
     "$HOST" "$PORT" "$source" "$binary" "$model" "$process" "$api"
   [[ "$api" == true ]]
 }
@@ -191,7 +192,7 @@ status(){
 
 usage(){
   cat <<'EOF'
-حكيم — محرك الاستدلال المحلي ٢٠٠٤٥
+حكيم — محرك الاستدلال المحلي ٢٠٠٤٨
 الاستخدام:
   hakim-local-model-termux.sh install-deps
   hakim-local-model-termux.sh build
@@ -201,7 +202,7 @@ usage(){
   hakim-local-model-termux.sh stop
   hakim-local-model-termux.sh status
 
-تهيئة كاملة مع النموذج (تنزيل ~1.28GB ويتطلب تفويض البيانات صراحة):
+تهيئة كاملة مع النموذج المرجعي الخفيف (تنزيل ~610MB ويتطلب تفويض البيانات صراحة):
   HAKIM_ALLOW_MODEL_DOWNLOAD=YES hakim-local-model-termux.sh bootstrap
 EOF
 }

@@ -113,6 +113,18 @@ object HakimSelfCheck {
         check("السكوت لا يصبح موافقة عبر المبادرة", proactive.optBoolean("silence_not_consent"))
         check("المبادرة لا توسع سرًا أو صلاحية", proactive.optBoolean("no_secret_or_permission_escalation"))
 
+        val localReasoning = HakimLocalReasoningBridge.status(context)
+        check("جسر الاستدلال المحلي محصور بالـ loopback", localReasoning.optBoolean("loopback_only"))
+        check("جسر الاستدلال المحلي يمنع الشبكة الخارجية", localReasoning.optBoolean("external_network_forbidden"))
+        check("الاستدلال المحلي لا يحتاج مفتاح API", !localReasoning.optBoolean("api_key_required"))
+        check("الحتمية للحاكمية لا لخرج النموذج الاحتمالي", localReasoning.optBoolean("deterministic_governance_outside_model") && localReasoning.optBoolean("model_output_probabilistic"))
+        check(
+            "النموذج المحلي المتقدم جاهز",
+            localReasoning.optBoolean("ready_now"),
+            "warn",
+            if (localReasoning.optBoolean("ready_now")) "جاهز داخل الهاتف" else "runtime نموذج محلي غير مثبت/غير متاح الآن"
+        )
+
         val independence = HakimSovereignIndependence.status(context)
         check("الاستقلال السيادي الشامل موجود", independence.optBoolean("sovereign_independence"))
         check("قلب حكيم سيادي", independence.optBoolean("core_sovereign"))
@@ -225,6 +237,7 @@ object HakimSelfCheck {
             .put("human_capability_boundary", capabilityBoundary)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
+            .put("local_reasoning", localReasoning)
             .put("sovereign_independence", independence)
             .put("integration", integration)
             .put("fault_ledger", faultLedger)

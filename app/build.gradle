@@ -18,7 +18,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20052
-        versionName '2.0.52-professional-workspace-quran'
+        versionName '2.0.52-sovereign-browser-agent-professional-workspace-quran'
     }
 
     compileOptions {

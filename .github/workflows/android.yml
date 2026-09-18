@@ -47,6 +47,11 @@ jobs:
         run: |
           python3 tests/verify_termux_local_model_bootstrap.py
           bash -n scripts/hakim-local-model-termux.sh
+      - name: بوابة البيئة السيادية المملوكة للمستخدم ٢٠٠٥٠
+        run: |
+          python3 -m py_compile scripts/hakim-sovereign-runtime.py
+          bash -n scripts/install-hakim-sovereign-runtime-termux.sh
+          python3 tests/verify_sovereign_environment_20050.py
       - name: بوابة توافق Play Protect للتثبيت
         run: python3 tests/verify_play_protect_install_profile.py
       - name: بوابة النواة الحاكمة والتأسيس منخفض العبء

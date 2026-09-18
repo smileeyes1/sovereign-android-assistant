@@ -25,6 +25,7 @@ object HakimIntegrationFabric {
         "intent_context",
         "decision_matrix",
         "one_sovereign_kernel",
+        "sovereign_environment",
         "sovereign_engine",
         "self_leadership",
         "proactive_engine",
@@ -76,6 +77,10 @@ object HakimIntegrationFabric {
         "learning→one_sovereign_kernel",
         "adaptive_learning→one_sovereign_kernel",
         "resource_governor→one_sovereign_kernel",
+        "one_sovereign_kernel→sovereign_environment",
+        "sovereign_environment→mission_ledger",
+        "sovereign_environment→adaptive_learning",
+        "sovereign_environment→connection_resilience",
         "one_sovereign_kernel→sovereign_engine",
         "one_sovereign_kernel→proactive_engine",
         "one_sovereign_kernel→agent_system",
@@ -129,6 +134,7 @@ object HakimIntegrationFabric {
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
         val one = HakimSovereignOneKernel.status(context)
+        val sovereignEnvironment = HakimSovereignEnvironmentBridge.status(context)
         check(governance.optBoolean("quranic_normative_default")) { "الدستور القرآني الحاكم غير مثبت" }
         check(corpus.optBoolean("all_114_surahs_covered")) { "تغطية القرآن كله/السور الـ١١٤ غير مثبتة" }
         check(corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")) { "الفصل بين الوحي والتفسير/الاستنباط غير مثبت" }
@@ -161,6 +167,11 @@ object HakimIntegrationFabric {
         check(one.optBoolean("deterministic_router_for_same_observed_frame")) { "الموجّه السيادي غير حتمي لنفس الحالة المرصودة" }
         check(one.optBoolean("all_external_inputs_untrusted_by_default")) { "مدخل خارجي قد يصبح ثقة افتراضية" }
         check(one.optBoolean("learning_cannot_expand_authority")) { "التعلم قد يوسع السلطة" }
+        check(sovereignEnvironment.optBoolean("loopback_only")) { "البيئة السيادية ليست loopback فقط" }
+        check(sovereignEnvironment.optBoolean("human_user_owns_state")) { "ملكية المستخدم للحالة الدائمة غير مثبتة" }
+        check(sovereignEnvironment.optBoolean("durable_substrate_not_normative_governor")) { "البيئة الدائمة قد تتحول إلى حاكم معياري" }
+        check(sovereignEnvironment.optBoolean("one_sovereign_kernel_remains_governor")) { "النواة الواحدة لم تعد الحاكم الوحيد" }
+        check(sovereignEnvironment.optBoolean("external_providers_are_optional_adapters")) { "مزود خارجي قد يصبح اعتمادًا حاكمًا" }
         check(governance.optBoolean("fail_closed_core_changes")) { "حماية تغييرات القلب غير مفعلة" }
         return structuralStatus(context, scope)
     }
@@ -176,6 +187,7 @@ object HakimIntegrationFabric {
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
         val one = HakimSovereignOneKernel.status(context)
+        val sovereignEnvironment = HakimSovereignEnvironmentBridge.status(context)
         val adaptive = HakimAdaptiveLearning.status(context)
         val proactive = HakimProactiveEngine.status(context)
         val packageOk = context.packageName == "ps.hakim.stable"
@@ -230,6 +242,12 @@ object HakimIntegrationFabric {
             one.optBoolean("all_external_inputs_untrusted_by_default") &&
             one.optBoolean("external_models_are_advisers_not_authority") &&
             one.optBoolean("learning_cannot_expand_authority")
+        val sovereignEnvironmentOk = sovereignEnvironment.optBoolean("loopback_only") &&
+            sovereignEnvironment.optBoolean("human_user_owns_state") &&
+            sovereignEnvironment.optBoolean("durable_substrate_not_normative_governor") &&
+            sovereignEnvironment.optBoolean("one_sovereign_kernel_remains_governor") &&
+            sovereignEnvironment.optBoolean("external_providers_are_optional_adapters") &&
+            !sovereignEnvironment.optBoolean("runtime_network_required")
         val adaptiveOk = adaptive.optBoolean("adaptive_learning") &&
             adaptive.optBoolean("local_only") &&
             !adaptive.optBoolean("can_expand_authority") &&
@@ -241,7 +259,7 @@ object HakimIntegrationFabric {
             proactive.optBoolean("silence_not_consent") &&
             proactive.optBoolean("no_secret_or_permission_escalation")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && methodOk && normativeOk && tawhidAlaOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && methodOk && normativeOk && tawhidAlaOk && humanOk && resourceOk && systemsOk && oneOk && sovereignEnvironmentOk && adaptiveOk && proactiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -256,6 +274,7 @@ object HakimIntegrationFabric {
             .put("resource_governor_integrated", resourceOk)
             .put("system_of_systems_integrated", systemsOk)
             .put("one_sovereign_kernel_integrated", oneOk)
+            .put("sovereign_environment_integrated", sovereignEnvironmentOk)
             .put("adaptive_learning_integrated", adaptiveOk)
             .put("proactive_engine_integrated", proactiveOk)
             .put("quranic_corpus", corpus)
@@ -266,6 +285,7 @@ object HakimIntegrationFabric {
             .put("resource_governor", resources)
             .put("system_of_systems", systems)
             .put("one_sovereign_kernel", one)
+            .put("sovereign_environment", sovereignEnvironment)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
             .put("fail_closed_core_changes", failClosed)
@@ -284,6 +304,7 @@ object HakimIntegrationFabric {
         val recovery = HakimConnectionResilience.status(context)
         val activeMission = HakimMissionLedger.active(context)
         val resources = HakimResourceGovernor.status(context)
+        val sovereignEnvironment = HakimSovereignEnvironmentBridge.status(context)
 
         return JSONObject()
             .put("structural", structuralStatus(context, "runtime"))
@@ -294,6 +315,7 @@ object HakimIntegrationFabric {
             .put("secure_relay_configured", HakimUnifiedRelay.isConfigured(context))
             .put("connection_recovery", recovery)
             .put("resource_governor", resources)
+            .put("sovereign_environment", sovereignEnvironment)
             .put("adaptive_learning", HakimAdaptiveLearning.status(context))
             .put("proactive", HakimProactiveEngine.status(context))
             .put("mission_active", activeMission != null)
@@ -313,6 +335,7 @@ object HakimIntegrationFabric {
             appendLine("الإنسان أولًا جزء من القلب: كرامة المستخدم، أقل عبء تقني، عدم استغلال الطيبة/الرحمة، وعدم اعتبار السكوت موافقة، وحفظ سيادته وقراره الجوهري.")
             appendLine("نظام الأنظمة جزء من القلب: لكل مهمة يُولد تركيب مؤقت من أقل الأنظمة اللازمة، وكل نظام منبثق يرث الحاكمية والسلطة والتحقق والموارد ولا يغير الكود ذاتيًا.")
             appendLine("النواة السيادية الواحدة جزء من القلب: كل إشارة/فكرة/علم/أداة/ميزة/تعلم/تطور تدخل مركز قرار محليًا واحدًا؛ النماذج والخدمات الخارجية مستشارون ووسائل قابلة للاستبدال لا مصادر سلطة.")
+            appendLine("البيئة السيادية المحلية هي طبقة حالة/ذاكرة/طابور وسجل دائمة مملوكة للمستخدم على loopback؛ ليست حاكمًا معياريًا ولا بديلًا عن النواة الواحدة، والمزودات الخارجية Adapters اختيارية فقط.")
             appendLine("حاكم الموارد جزء من القلب: الوضع=${resources.optString("mode", "UNKNOWN")}؛ يحمي سرعة المهمة الحالية ويؤجل الخلفية غير الضرورية دون خفض جودة القرار أو الحاكمية.")
             appendLine("التعلم التكيفي جزء من القلب: محلي، لا يوسع السلطة، لا يغير الكود تلقائيًا، ويعيد ترتيب البدائل الآمنة فقط مع رجوع إلى خط الأساس عند الانحدار.")
             appendLine("المبادرة الذاتية جزء من القلب: تنفذ تلقائيًا كل مكسب آمن منخفض الأثر داخل السلطة، ولا تعتبر الصمت تفويضًا للأثر العالي.")

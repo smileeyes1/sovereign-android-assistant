@@ -17,8 +17,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20049
-        versionName '2.0.49-sovereign-browser-agent-quran-offline'
+        versionCode 20050
+        versionName '2.0.50-sovereign-browser-agent-owned-environment'
     }
 
     compileOptions {

@@ -60,6 +60,7 @@ object HakimHealthBeacon {
             .put("crash_shield", JSONObject(HakimCrashShield.status(app)))
             .put("resources", HakimResourceGovernor.status(app))
             .put("local_reasoning", HakimLocalReasoningBridge.status(app))
+            .put("sovereign_environment", HakimSovereignEnvironmentBridge.status(app))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
             .toString()

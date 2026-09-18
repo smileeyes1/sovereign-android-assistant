@@ -64,9 +64,10 @@ require("assets.srcDir" in build and "prepareBundledQuranAsset" in build and
         "preBuild" in build,
         "P0: أصل القرآن غير مربوط بكل build")
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20049, "P0: الإصدار يجب أن يكون ٢٠٠٤٩")
-require(policy["current_candidate_version"] == 20049,
-        "P0: سياسة التوقيع لا تسجل ٢٠٠٤٩ كمرشح")
+require(m and int(m.group(1)) >= 20049, "P0: عقد القرآن المضمّن يجب ألا يرجع قبل ٢٠٠٤٩")
+candidate = int(m.group(1))
+require(policy["current_candidate_version"] == candidate,
+        "P0: سياسة التوقيع لا تطابق رقم المرشح الحالي")
 require(policy["current_field_version"] == 20040,
         "P0: خط الميدان المباشر تغير بلا دليل جديد")
 

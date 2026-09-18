@@ -17,8 +17,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20050
-        versionName '2.0.50-sovereign-browser-agent-quran-streaming'
+        versionCode 20051
+        versionName '2.0.51-sovereign-browser-agent-startup-nonblocking'
     }
 
     compileOptions {

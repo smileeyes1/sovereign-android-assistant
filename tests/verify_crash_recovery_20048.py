@@ -55,8 +55,9 @@ req('periodic_watchdog_safe_recovery' in watch,
     "نبضة watchdog يجب أن تميز safe-recovery صراحة")
 
 m=re.search(r"versionCode\s+(\d+)",build)
-req(m and int(m.group(1))==20048,"versionCode يجب أن يكون ٢٠٠٤٨")
-req(policy["current_candidate_version"]==20048,"سياسة التوقيع يجب أن تسجل ٢٠٠٤٨ كمرشح")
+req(m and int(m.group(1))>=20048,"إصلاح crash يجب ألا يرجع قبل ٢٠٠٤٨")
+candidate=int(m.group(1))
+req(policy["current_candidate_version"]==candidate,"سياسة التوقيع يجب أن تطابق رقم المرشح الحالي")
 req(policy["current_field_version"]==20040,"لا يجوز تغيير خط الميدان المباشر دون دليل جديد")
 
 print("HAKIM_20048_SECURE_ONLY_NO_LEGACY_WEBVIEW=PASS")

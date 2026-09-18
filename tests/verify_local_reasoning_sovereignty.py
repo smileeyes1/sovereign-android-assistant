@@ -48,6 +48,8 @@ require('https://api.' not in bridge and 'openai.com' not in bridge and 'generat
         "P0: جسر الاستدلال المحلي يحتوي مسار مزود خارجي")
 require('"temperature", 0' in bridge, "P0: الاستدلال المحلي لا يقلل التباين بـ temperature=0")
 require('scheme == "http" || scheme == "https"' in bridge, "P0: فحص مخطط عنوان loopback مفقود")
+require('"/v1/models"' in bridge and 'LOCAL_MODEL_NOT_READY' in bridge,
+        "P0: الاكتشاف المحلي قد يعلن الجاهزية دون إثبات نموذج فعلي")
 require('host == "127.0.0.1" || host == "localhost" || host == "::1"' in bridge,
         "P0: قيد مضيف loopback غير صريح")
 

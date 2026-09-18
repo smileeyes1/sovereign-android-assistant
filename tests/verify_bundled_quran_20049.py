@@ -87,7 +87,7 @@ require("runtime_network_required_for_quran" in bootstrap and
 require("assets.srcDir" in build and "prepareBundledQuranAsset" in build and
         "preBuild" in build,
         "P0: أصل القرآن غير مربوط بكل build")
-m = re.search(r"versionCode\\s+(\\d+)", build)
+m = re.search(r"versionCode\s+(\d+)", build)
 require(m and int(m.group(1)) >= 20049, "P0: الإصدار لا يجوز أن يرجع قبل ٢٠٠٤٩")
 candidate = int(m.group(1))
 require(policy["current_candidate_version"] == candidate,

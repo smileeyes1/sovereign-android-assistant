@@ -38,7 +38,9 @@ object HakimLocalReasoningBridge {
 
     private val defaultCandidates = listOf(
         "http://127.0.0.1:8080/v1/chat/completions",
-        "http://localhost:8080/v1/chat/completions"
+        "http://localhost:8080/v1/chat/completions",
+        "http://127.0.0.1:11434/v1/chat/completions",
+        "http://localhost:11434/v1/chat/completions"
     )
 
     data class Completion(
@@ -84,7 +86,8 @@ object HakimLocalReasoningBridge {
             .take(160)
 
     /**
-     * فحص loopback فقط. أي استجابة HTTP تعني أن خدمة محلية موجودة، حتى إن رفضت HEAD.
+     * اكتشاف OpenAI-compatible محلي فقط.
+     * لا يعتبر المنفذ المفتوح نموذجًا جاهزًا؛ يلزم /v1/models وهوية نموذج فعلية.
      */
     fun probe(context: Context): Boolean {
         val configured = endpoint(context)
@@ -95,21 +98,45 @@ object HakimLocalReasoningBridge {
         for (candidate in candidates) {
             if (!isLoopbackEndpoint(candidate)) continue
             val started = System.currentTimeMillis()
-            val req = Request.Builder().url(candidate).head().build()
-            try {
-                client.newCall(req).execute().use {
-                    val latency = System.currentTimeMillis() - started
-                    rememberReady(context, candidate, latency)
-                    return true
-                }
-            } catch (_: Exception) {
-                // جرّب loopback التالي فقط؛ لا تنتقل إلى عنوان خارجي.
-            }
+            val discovered = discoverModel(candidate) ?: continue
+            val latency = System.currentTimeMillis() - started
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_MODEL, discovered.take(160))
+                .apply()
+            rememberReady(context, candidate, latency)
+            return true
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_LAST_ERROR, "LOCAL_MODEL_NOT_REACHABLE")
+            .putString(KEY_LAST_ERROR, "LOCAL_MODEL_NOT_READY")
             .apply()
         return false
+    }
+
+    private fun discoverModel(chatEndpoint: String): String? {
+        if (!isLoopbackEndpoint(chatEndpoint)) return null
+        val marker = "/v1/chat/completions"
+        if (!chatEndpoint.endsWith(marker)) return null
+        val modelsUrl = chatEndpoint.removeSuffix(marker) + "/v1/models"
+        if (!isLoopbackEndpoint(modelsUrl)) return null
+        val req = Request.Builder()
+            .url(modelsUrl)
+            .header("User-Agent", "HAKIM-Local-Reasoning/1")
+            .get()
+            .build()
+        return try {
+            client.newCall(req).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val raw = response.body?.string().orEmpty()
+                val json = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+                json.optJSONArray("data")
+                    ?.optJSONObject(0)
+                    ?.optString("id")
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun readyNow(context: Context): Boolean {

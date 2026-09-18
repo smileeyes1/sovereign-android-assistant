@@ -27,13 +27,13 @@ require("jobFinished(params, false)" in job, "المهلة لا تغلق JobSche
 require('"coalesced"' in job, "التشغيل المتداخل غير مدمج")
 
 m=re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20054, "الإصدار يجب أن يكون ٢٠٠٥٤")
-require(policy["current_field_version"] == 20052, "خط الميدان يجب أن يسجل ٢٠٠٥٢")
-require(policy["current_candidate_version"] == 20054, "السياسة لا تسجل ٢٠٠٥٤")
-require(policy["field_evidence"]["version_code"] == 20052, "دليل الميدان لا يطابق ٢٠٠٥٢")
-require(policy["field_evidence"].get("stability") == "FAILED", "فشل استقرار ٢٠٠٥٢ غير محفوظ")
-require(policy["field_evidence"]["stability_evidence"].get("repeated_job_771208_again_exceeded_30s") == "active",
-        "الدليل الميداني الذي يبرر ٢٠٠٥٤ غير محفوظ")
+require(m and int(m.group(1)) >= 20054, "إصلاح الحد الصريح يجب ألا يرجع قبل ٢٠٠٥٤")
+candidate=int(m.group(1))
+require(policy["current_field_version"] >= 20054, "خط الميدان أقدم من ٢٠٠٥٤ المثبت")
+require(policy["current_candidate_version"] == candidate, "السياسة لا تطابق المرشح الحالي")
+require(policy["field_evidence"]["version_code"] == policy["current_field_version"], "دليل الميدان لا يطابق current_field_version")
+require(any(x.get("version_code") == 20054 for x in policy.get("superseded_field_failures", [])),
+        "فشل ٢٠٠٥٤ الميداني غير محفوظ")
 
 print("HAKIM_20054_HARD_JOB_DEADLINE=PASS")
 print("HAKIM_20054_SECONDARY_WORK_ASYNC=PASS")

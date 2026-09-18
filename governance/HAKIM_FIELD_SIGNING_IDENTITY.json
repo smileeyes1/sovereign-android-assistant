@@ -1,6 +1,6 @@
 {
-  "schema_version": 7,
-  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20050__STABILITY_FAILED__F4_HISTORICAL_ONLY",
+  "schema_version": 8,
+  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20051__STARTUP_FIXED__WATCHDOG_LONG_RUNNING",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -13,28 +13,40 @@
     20025,
     20040,
     20049,
-    20050
+    20050,
+    20051
   ],
-  "current_field_version": 20050,
-  "current_candidate_version": 20051,
+  "current_field_version": 20051,
+  "current_candidate_version": 20052,
   "field_evidence": {
-    "observed_at_utc": "2026-09-18T17:26:57Z",
-    "method": "AUTHORIZED_REMOTE_DEVICE_IN_PLACE_UPDATE_POST_INSTALL_DUMPSYS_PM_PATH_SHA256_AND_RUNTIME_PROBE",
+    "observed_at_utc": "2026-09-18T17:47:10Z",
+    "method": "AUTHORIZED_REMOTE_DEVICE_IN_PLACE_UPDATE_EXACT_BASE_APK_MATCH_COLD_START_JOB_SCHEDULER_RUNTIME_PROBE",
     "package": "ps.hakim.stable",
-    "version_code": 20050,
-    "version_name": "2.0.50-sovereign-browser-agent-quran-streaming",
+    "version_code": 20051,
+    "version_name": "2.0.51-sovereign-browser-agent-startup-nonblocking",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "87dc4870e4610914fb6701dc354dd49bcc5dca6df3449eed166c053c4b185697",
-    "supersedes_direct_field_version": 20049,
-    "claim_scope": "PACKAGE_VERSION_CURRENT_INSTALLED_BASE_APK_DIGEST_AND_SIGNER_IDENTITY_ONLY; FIELD_STABILITY_FAILED",
-    "stability": "FAILED",
+    "apk_sha256": "ce061bbbef551e399cdda5c797a47d3b4e4f4b53f1d65519d5bce9b2d292acb7",
+    "supersedes_direct_field_version": 20050,
+    "claim_scope": "PACKAGE_VERSION_EXACT_APK_AND_D1_IDENTITY; STARTUP_STABILITY_IMPROVED; BACKGROUND_WATCHDOG_EFFICIENCY_NOT_ACCEPTED",
+    "stability": "PARTIAL_PASS",
     "stability_evidence": {
-      "anr_local_time": "2026-09-18T20:27:26+03:00",
-      "anr_description": "bg anr: No response to onStartJob",
-      "cold_start_probe_local_time": "2026-09-18T20:29:21+03:00",
-      "cold_start_wait_ms": 10053,
-      "cold_start_status": "TIMEOUT",
-      "new_oom_observed_during_probe": false
+      "installed_local_time": "2026-09-18T20:42:22+03:00",
+      "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
+      "data_dir_preserved": "/data/user/0/ps.hakim.stable",
+      "cold_start_local_time": "2026-09-18T20:46:11+03:00",
+      "cold_start_status": "OK",
+      "cold_start_total_ms": 5929,
+      "new_anr_observed_since_20051_install": false,
+      "new_oom_observed_since_20051_install": false,
+      "forced_jobs": [
+        771204,
+        771207,
+        771208
+      ],
+      "job_771204_after_wait": "waiting",
+      "job_771207_after_wait": "waiting",
+      "job_771208_after_over_120s": "active",
+      "remaining_gap": "PERIODIC_CONNECTION_WATCHDOG_CAN_REMAIN_ACTIVE_TOO_LONG"
     }
   },
   "historical_previous_lineage": {
@@ -54,10 +66,10 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "Treat the newest directly observed 20050/D1 ps.hakim.stable installation as the current field lineage identity only. Its stability gate failed due to a new background ANR and a cold-start timeout. Candidate 20051 must preserve package/D1/data and pass explicit cold-start and JobService stability gates before field qualification. Do not uninstall or clear data."
+    "decision": "Treat 20051/D1 as the current directly observed field identity. It fixed the 20050 cold-start/ANR regression in the observed probe, but the periodic connection watchdog remained active for more than two minutes. Candidate 20052 must preserve package/D1/data and make watchdog work non-blocking, coalesced, observable, and promptly finish before field qualification."
   },
   "rules": [
-    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20050/D1.",
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20051/D1.",
     "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
     "F4 is historical and must not be used to overwrite the current D1 installation.",
     "The known 4C companion signer must never be accepted for ps.hakim.stable.",
@@ -69,6 +81,8 @@
     "current_candidate_version is not field-qualified until the exact delivered signed artifact is verified on the real phone.",
     "If a future phone read contradicts this baseline, fail closed and update the baseline only from the newer direct evidence.",
     "Direct package/version/APK/signer evidence establishes field identity only; runtime stability remains a separate gate and is not inherited.",
-    "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance."
+    "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance.",
+    "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
+    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires."
   ]
 }

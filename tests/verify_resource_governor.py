@@ -34,7 +34,7 @@ require("no_large_on_device_model_required" in resource,
 require("TRIM_MEMORY_RUNNING_LOW" in resource and "noteLowMemory" in resource,
         "P0: ضغط ذاكرة أندرويد لا يدخل الحاكم")
 
-require("HakimUnifiedRelay.isConfigured(this)" in app,
+require("HakimUnifiedRelay.isConfigured(app)" in app,
         "P0: التطبيق قد يبدأ قناة شبكة دائمة بلا إعداد")
 require("scheduleDeferredMaintenance" in app and "HakimResourceGovernor.shouldRunStartupMaintenance" in app,
         "P0: اندفاع بدء التطبيق غير محكوم بالموارد")

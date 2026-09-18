@@ -91,6 +91,8 @@ object HakimSovereignOneKernel {
             .put("external_tools_are_replaceable", true)
             .put("no_authority_expansion", true)
             .put("no_silent_high_impact", true)
+            .put("normative_authority_quran_sunnah_only", true)
+            .put("human_owner_hakim_agent", true)
     }
 
     fun frame(
@@ -100,6 +102,8 @@ object HakimSovereignOneKernel {
         sensitive: Boolean = false
     ): Frame {
         HakimQuranicInvariantKernel.requireInherited("one_sovereign_kernel")
+        val normative = HakimNormativeSovereignty.require()
+        check(normative.optBoolean("normative_authority_quran") && normative.optBoolean("normative_authority_authentic_sunnah")) { "المرجعية الشرعية السيادية غير مثبتة" }
         check(context.packageName == "ps.hakim.stable") { "النواة السيادية الواحدة تعمل فقط داخل هوية حكيم الأصلية" }
 
         val now = System.currentTimeMillis()
@@ -156,6 +160,7 @@ object HakimSovereignOneKernel {
             Signal(SignalKind.MISSION, "mission_ledger", "${mission?.phase?.name ?: "IDLE"};failures=$failures", 100, now),
             Signal(SignalKind.POLICY, "decision_matrix", "${decision.mode};score=${decision.score};confidence=${decision.confidence}", decision.confidence, now),
             Signal(SignalKind.POLICY, "quran_sunnah_method", "inherited=true;exact_quran=${quranic.exactQuranTextRequired};exact_source=${religious.exactSourceRequired}", 100, now),
+            Signal(SignalKind.POLICY, "normative_sovereignty", "quran=true;authentic_sunnah=true;other_revelation_sources=false", 100, now),
             Signal(SignalKind.RESOURCE, "resource_governor", resources.optString("mode", "UNKNOWN"), 100, now),
             Signal(SignalKind.MODEL, "local_reasoning", "ready=$localModelReady;loopback=${localModel.optBoolean("loopback_only")}", if (localModelReady) 100 else 70, now),
             Signal(SignalKind.NETWORK, "capability_mesh", "validated=$networkReady", 100, now),
@@ -248,6 +253,7 @@ object HakimSovereignOneKernel {
             .put("learning_cannot_expand_authority", true)
             .put("evolution_cannot_mutate_core_code_silently", true)
             .put("high_impact_requires_gate", true)
+            .put("normative_sovereignty", HakimNormativeSovereignty.status())
             .put("last_fingerprint", p.getString("last_fingerprint", ""))
             .put("last_route", p.getString("last_route", ""))
             .put("last_isolation_mode", p.getString("last_isolation_mode", "UNKNOWN"))
@@ -257,6 +263,7 @@ object HakimSovereignOneKernel {
 
     fun promptContext(context: Context, frame: Frame): String = buildString {
         appendLine("[النواة السيادية الواحدة]")
+        append(HakimNormativeSovereignty.promptContext())
         appendLine("بصمة الحالة=${frame.fingerprint}؛ المسار=${frame.route}؛ نمط العزل=${frame.isolationMode}.")
         appendLine("كل إشارة/فكرة/علم/أداة/ميزة/تعلم/تطور تدخل إطار قرار محليًا؛ لا طبقة خارجية تملك الحاكمية أو توسع السلطة.")
         appendLine("القدرات المفضلة=${frame.preferredCapabilities.joinToString(" ← ")}")

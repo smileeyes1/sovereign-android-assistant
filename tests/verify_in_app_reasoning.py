@@ -34,7 +34,7 @@ require(version is not None and int(version.group(1)) >= 20033,
 
 # الاستقلال عن مزود واحد.
 require("object HakimReasoningProviderRegistry" in providers, "P0: سجل مزودات الاستدلال مفقود")
-for provider in ["CHATGPT_WEB", "GEMINI_WEB", "COPILOT_WEB", "LOCAL_ONLY", "AUTO"]:
+for provider in ["CHATGPT_WEB", "GEMINI_WEB", "COPILOT_WEB", "LOCAL_ONLY", "LOCAL_ADVANCED", "AUTO"]:
     require(provider in providers, f"P0: خيار المزود {provider} مفقود")
 for host in ["chatgpt.com", "gemini.google.com", "copilot.microsoft.com"]:
     require(host in providers, f"P0: مزود الويب {host} غير مسجل")
@@ -53,6 +53,12 @@ require("tryProvider" in bridge and "interactiveFallback" in bridge,
 require("interactiveLogin = false" in bridge and "interactiveLogin = true" in bridge,
         "P0: حكيم قد يفتح نوافذ تسجيل دخول متعددة بدل تجربة الجلسات الصامتة أولًا")
 require("LOCAL_ONLY" in bridge, "P0: المستخدم لا يستطيع فرض الاستدلال المحلي فقط")
+require("HakimLocalReasoningBridge.complete" in bridge,
+        "P0: جسر الاستدلال لا يحاول النموذج المحلي المتقدم فعليًا")
+require(bridge.index("HakimLocalReasoningBridge.complete") < bridge.index("private fun askWeb"),
+        "P0: الاستدلال السحابي يسبق النموذج المحلي في المسار التلقائي")
+require("HakimReasoningProtocol.parse(local.text, request)" in bridge,
+        "P0: الرد المحلي لا يمر ببروتوكول الخطة المقيد")
 
 # محرك الويب عام لكنه يقفل كل جولة على أصل المزود المختار.
 require("object HakimWebReasoningBridge" in web, "P0: جسر الاستدلال داخل حكيم مفقود")

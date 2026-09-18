@@ -87,7 +87,8 @@ object HakimConnectionResilience {
 
         val disabled = p.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
-            p.getString("result_topic", "").orEmpty().isNotBlank()
+            p.getString("result_topic", "").orEmpty().isNotBlank() &&
+            p.getString("auth_key", "").orEmpty().isNotBlank()
         val securePaired = HakimUnifiedRelay.isConfigured(app)
         val localPaired = p.getBoolean("local_adb_paired", false)
         val anyPaired = legacyPaired || securePaired || localPaired
@@ -130,8 +131,9 @@ object HakimConnectionResilience {
             return state(app, "healthy", reason)
         }
 
-        // Secure/local-only installations should still recover without starting the legacy service.
-        if (!legacyPaired) {
+        // Secure/local-only installations recover without ever starting the legacy WebView service.
+        // In safe-recovery after crash/ANR, suppress legacy restart even if stale legacy fields remain.
+        if (!legacyPaired || HakimCrashShield.shouldSuppressProactiveResume(app)) {
             val recoveryState = if (securePaired) "secure_reconnect_requested" else "local_reconnect_requested"
             p.edit()
                 .putString("connection_recovery_state", recoveryState)
@@ -172,7 +174,8 @@ object HakimConnectionResilience {
         val app = context.applicationContext
         val p = prefs(app)
         val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
-            p.getString("result_topic", "").orEmpty().isNotBlank()
+            p.getString("result_topic", "").orEmpty().isNotBlank() &&
+            p.getString("auth_key", "").orEmpty().isNotBlank()
         val securePaired = HakimUnifiedRelay.isConfigured(app)
         val localPaired = p.getBoolean("local_adb_paired", false)
         return JSONObject()

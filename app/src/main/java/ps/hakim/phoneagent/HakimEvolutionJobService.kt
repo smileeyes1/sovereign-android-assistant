@@ -11,6 +11,14 @@ class HakimEvolutionJobService : JobService() {
                     .onFailure { HakimFaultLedger.record(applicationContext, "evolution_thread_priority", it, severity = HakimFaultLedger.Severity.INFO) }
                 val app = applicationContext
                 val resources = HakimResourceGovernor.snapshot(app)
+                if (HakimCrashShield.shouldSuppressProactiveResume(app)) {
+                    getSharedPreferences("hakim_governance", MODE_PRIVATE).edit()
+                        .putString("last_evolution_state", "DEFERRED_CRASH_RECOVERY")
+                        .putLong("last_evolution_at", System.currentTimeMillis())
+                        .apply()
+                    HakimHealthBeacon.sendAsync(app, "evolution_deferred_crash_recovery")
+                    return@Thread
+                }
                 if (resources.mode == HakimResourceGovernor.Mode.PRESSURE) {
                     getSharedPreferences("hakim_governance", MODE_PRIVATE).edit()
                         .putString("last_evolution_state", "DEFERRED_RESOURCE_PRESSURE")

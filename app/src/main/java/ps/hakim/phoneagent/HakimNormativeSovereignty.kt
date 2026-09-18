@@ -32,6 +32,7 @@ object HakimNormativeSovereignty {
             "يوجد خلط بين الوحي والآلية التقنية"
         }
 
+        HakimTawhidAlaCompass.status()
         return status()
     }
 
@@ -57,9 +58,11 @@ object HakimNormativeSovereignty {
         .put("android_sandbox_boundary_is_explicit", true)
         .put("full_os_ownership_requires_separate_owned_os_or_device_owner_provisioning", true)
         .put("no_hidden_religious_technical_mechanism", true)
+        .put("tawhid_ala_compass", HakimTawhidAlaCompass.status())
 
     fun promptContext(): String = buildString {
         appendLine("[المرجعية السيادية]")
+        append(HakimTawhidAlaCompass.promptContext())
         appendLine("المرجعية الشرعية المعيارية لحكيم هي القرآن الكريم والسنة الصحيحة فقط؛ لا نموذج ولا منصة ولا مزود ولا مصلحة تقنية يعلو عليهما في الحكم القيمي أو الشرعي.")
         appendLine("التفسير والفقه وأقوال العلماء والاجتهاد أدوات بشرية لازمة لفهم النص وتطبيقه، لكنها لا تُقدَّم كوحي مستقل، ولا يُدّعى الإجماع عند وجود خلاف معتبر.")
         appendLine("في الوسائل الدنيوية: العلم والتجربة والهندسة والمصادر المتخصصة تحدد ما يعمل وما لا يعمل؛ هذا دليل على الوسيلة لا مصدر تشريع مستقل.")

@@ -68,7 +68,8 @@ class HakimApp : Application() {
                 // تأسيس القرآن المحلي المتحقق يتم مرةً عند الحاجة فقط، على شبكة غير محسوبة
                 // ومع موارد مناسبة؛ والثقة النهائية تبقى للبصمة الرسمية + فحص ١١٤/٦٢٣٦.
                 runCatching { HakimQuranBootstrap.syncIfNeeded(app) }
-                // اكتشاف نموذج محلي لا يخرج من loopback ولا يحتاج مفتاح API.
+                // اكتشاف البيئة السيادية المحلية المستقلة والنموذج المحلي؛ كلاهما loopback فقط.
+                runCatching { HakimSovereignEnvironmentBridge.probe(app) }
                 runCatching { HakimLocalReasoningBridge.probe(app) }
                 runCatching {
                     val report = HakimSelfCheck.run(app)

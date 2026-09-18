@@ -91,7 +91,7 @@ jobs:
           version="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
           test "$version" -ge 20035
           grep -q "applicationId 'ps.hakim.stable'" app/build.gradle
-          grep -q '"current_field_version": 20040' governance/HAKIM_FIELD_SIGNING_IDENTITY.json
+          python3 -c 'import json; p=json.load(open("governance/HAKIM_FIELD_SIGNING_IDENTITY.json", encoding="utf-8")); f=int(p["current_field_version"]); e=p["field_evidence"]; assert f >= 20049; assert e["version_code"] == f; assert e["signer_sha256"] == p["certificate_sha256"]'
           grep -q "\"current_candidate_version\": $version" governance/HAKIM_FIELD_SIGNING_IDENTITY.json
           echo "version=$version" >> "$GITHUB_OUTPUT"
 

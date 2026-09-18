@@ -22,6 +22,13 @@ class HakimEvolutionJobService : JobService() {
                 HakimConstitution.install(app)
                 HakimLearning.initialize(app)
                 HakimProactiveEngine.initialize(app)
+                HakimSovereignOneKernel.recordSignal(
+                    app,
+                    HakimSovereignOneKernel.SignalKind.EVOLUTION,
+                    "evolution_job",
+                    "resource_mode=${resources.mode.name}",
+                    100
+                )
                 HakimLearning.maintenance(app)
 
                 if (resources.mode == HakimResourceGovernor.Mode.CONSERVE) {
@@ -34,6 +41,13 @@ class HakimEvolutionJobService : JobService() {
                 } else {
                     val report = HakimSelfCheck.run(app)
                     HakimLearning.recordHealth(app, report)
+                    HakimSovereignOneKernel.recordSignal(
+                        app,
+                        HakimSovereignOneKernel.SignalKind.HEALTH,
+                        "self_check",
+                        "status=${report.optString("status", "UNKNOWN")};failed=${report.optInt("failed")};warnings=${report.optInt("warnings")}",
+                        if (report.optString("status") == "PASS") 100 else 80
+                    )
                     HakimLearning.consolidateAdaptation(app, report.optString("status", "UNKNOWN"))
                     HakimProactiveEngine.runSafeBackground(
                         app,

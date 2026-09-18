@@ -12,6 +12,7 @@ class HakimApp : Application() {
 
         // يثبت أولًا حتى تكون أي علة لاحقة قابلة للتشخيص محليًا بدل حلقة إغلاق صامتة.
         HakimCrashShield.install(this)
+        val safeRecovery = HakimCrashShield.shouldSuppressProactiveResume(this)
 
         // هذان حاكمان: إذا فشلا لا يجوز تشغيل تنفيذ غير محكوم.
         HakimQuranicInvariantKernel.requireInherited("app_start")
@@ -33,7 +34,14 @@ class HakimApp : Application() {
         HakimCrashShield.guardNonCritical(this, "relay_autostart") {
             if (HakimUnifiedRelay.isConfigured(this)) HakimUnifiedRelay.start(this)
         }
-        startHakimIfPaired(prefs)
+        // القناة الآمنة HC1 مستقلة ولا تحتاج خدمة المتصفح القديمة/WebView.
+        // بعد crash/ANR لا نعيد تشغيل الخدمة الثقيلة تلقائيًا حتى تنتهي نافذة التعافي.
+        if (!safeRecovery) startLegacyBrowserIfPaired(prefs)
+
+        // أرسل تشخيصًا مبكرًا منخفض البيانات قبل أي صيانة مؤجلة.
+        HakimCrashShield.guardNonCritical(this, "startup_health") {
+            HakimHealthBeacon.sendAsync(this, if (safeRecovery) "safe_recovery_start" else "app_start")
+        }
 
         // الجدولة والصيانة خدمات مساعدة؛ تبقى الواجهة قابلة للاستخدام حتى عند تعطل إحداها.
         HakimCrashShield.guardNonCritical(this, "connection_resilience_install") { HakimConnectionResilience.install(this) }
@@ -43,6 +51,7 @@ class HakimApp : Application() {
     }
 
     private fun scheduleDeferredMaintenance() {
+        if (HakimCrashShield.shouldSuppressProactiveResume(this)) return
         if (!HakimResourceGovernor.shouldRunStartupMaintenance(this)) return
         val delay = HakimResourceGovernor.startupDeferralMs(this)
         Handler(Looper.getMainLooper()).postDelayed({
@@ -95,14 +104,12 @@ class HakimApp : Application() {
         )
     }
 
-    private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {
+    private fun startLegacyBrowserIfPaired(prefs: android.content.SharedPreferences) {
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-            prefs.getString("result_topic", "").orEmpty().isNotBlank()
-        val securePaired = !prefs.getString(HakimUnifiedRelay.KEY_TOPIC, "").isNullOrBlank() &&
-            !prefs.getString(HakimUnifiedRelay.KEY_RESULT_URL, "").isNullOrBlank() &&
-            !prefs.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").isNullOrBlank()
-        if (disabled || (!legacyPaired && !securePaired)) return
+            prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
+            prefs.getString("auth_key", "").orEmpty().isNotBlank()
+        if (disabled || !legacyPaired) return
         try {
             val intent = Intent(this, HakimService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)

@@ -40,9 +40,12 @@ require("streaming_import" in corpus,
         "P1: حالة المصدر لا تسجل أن الاستيراد تدفقي")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20050, "P0: الإصدار يجب أن يكون ٢٠٠٥٠")
-require(policy["current_candidate_version"] == 20050,
-        "P0: سياسة التوقيع لا تسجل ٢٠٠٥٠ كمرشح")
+require(m and int(m.group(1)) >= 20050, "P0: إصلاح الاستيراد التدفقّي يجب ألا يرجع قبل ٢٠٠٥٠")
+candidate = int(m.group(1))
+require(policy["current_candidate_version"] == candidate,
+        "P0: سياسة التوقيع لا تطابق المرشح الحالي")
+require(candidate > policy["current_field_version"],
+        "P0: المرشح يجب أن يزيد versionCode عن خط الميدان")
 
 print("HAKIM_QURAN_STREAMING_IMPORT=PASS")
 print("HAKIM_QURAN_OOM_REGRESSION_GUARD=PASS")

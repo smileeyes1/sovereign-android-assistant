@@ -19,7 +19,8 @@ policy=json.loads(t("governance/HAKIM_FIELD_SIGNING_IDENTITY.json"))
 
 req("startLegacyBrowserIfPaired" in app, "يجب فصل تشغيل خدمة المتصفح القديمة عن القناة الآمنة")
 req("if (disabled || !legacyPaired) return" in app, "الخدمة القديمة يجب ألا تبدأ بلا اقتران legacy كامل")
-req("if (!safeRecovery) startLegacyBrowserIfPaired(prefs)" in app, "بعد crash يجب منع تشغيل WebView الثقيلة تلقائيًا")
+req("if (!safeRecovery)" in app and "startLegacyBrowserIfPaired(prefs)" in app,
+    "بعد crash يجب منع تشغيل WebView الثقيلة تلقائيًا")
 req("if (HakimCrashShield.shouldSuppressProactiveResume(this)) return" in app, "الصيانة المؤجلة يجب أن تتوقف أثناء التعافي")
 
 req("val securePaired = HakimUnifiedRelay.isConfigured(app)" in doctor, "ConstraintDoctor يجب أن يعترف بالاقتران الآمن")

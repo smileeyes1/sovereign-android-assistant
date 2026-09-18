@@ -50,9 +50,7 @@ class HakimAgentsChatActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        HakimConstitution.install(this)
-        HakimLearning.initialize(this)
-        HakimProactiveEngine.initialize(this)
+        // Application يثبت الحاكمية مرةً قبل إنشاء الواجهة؛ لا نكرر تهيئات الخلفية على main thread.
         voiceRepliesEnabled = getSharedPreferences("hakim_ui", MODE_PRIVATE).getBoolean("voice_replies", false)
         buildUi()
         if (voiceRepliesEnabled) initializeTtsIfNeeded()

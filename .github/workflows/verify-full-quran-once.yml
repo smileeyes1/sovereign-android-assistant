@@ -1,0 +1,183 @@
+name: تحقق القرآن الكامل الرسمي مرة واحدة
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/verify-full-quran-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-full-quran:
+    runs-on: ubuntu-latest
+    steps:
+      - name: تنزيل حزمة حفص الرسمية
+        run: |
+          set -euo pipefail
+          mkdir -p quran-verify/out
+          curl -fL --retry 5 --retry-delay 3             https://download.qurancomplex.gov.sa/resources_dev/UthmanicHafs_v2-0.zip             -o quran-verify/UthmanicHafs_v2-0.zip
+
+      - name: مطابقة البصمات الرسمية
+        run: |
+          set -euo pipefail
+          cd quran-verify
+          GOT_MD5="$(md5sum UthmanicHafs_v2-0.zip | awk '{print $1}')"
+          GOT_SHA1="$(sha1sum UthmanicHafs_v2-0.zip | awk '{print $1}')"
+          test "$GOT_MD5" = "cf6841aea5b1d1fd70d032b43ff08278"
+          test "$GOT_SHA1" = "36ea5ab0d7ea1702f17ff43f9b50924cccd77ebf"
+          printf '%s  %s\n' "$GOT_MD5" UthmanicHafs_v2-0.zip > out/official.md5
+          printf '%s  %s\n' "$GOT_SHA1" UthmanicHafs_v2-0.zip > out/official.sha1
+
+      - name: قراءة ومسح ١١٤ سورة و٦٢٣٦ آية
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, hashlib, io, json, os, sqlite3, zipfile
+          from collections import defaultdict
+
+          zpath="quran-verify/UthmanicHafs_v2-0.zip"
+          out="quran-verify/out"
+          os.makedirs(out, exist_ok=True)
+
+          def rows_from_json(raw):
+              obj=json.loads(raw.decode("utf-8-sig"))
+              if isinstance(obj, list):
+                  return obj
+              if isinstance(obj, dict):
+                  for k in ("data","ayat","aya","verses","rows"):
+                      if isinstance(obj.get(k), list):
+                          return obj[k]
+              return None
+
+          def rows_from_csv(raw):
+              text=raw.decode("utf-8-sig")
+              sample=text[:8192]
+              try:
+                  dialect=csv.Sniffer().sniff(sample, delimiters=",;\t")
+              except Exception:
+                  dialect=csv.excel
+              return list(csv.DictReader(io.StringIO(text), dialect=dialect))
+
+          candidate=None
+          source_entry=None
+          with zipfile.ZipFile(zpath) as z:
+              names=z.namelist()
+              for name in names:
+                  low=name.lower()
+                  if not low.endswith((".json",".csv")):
+                      continue
+                  raw=z.read(name)
+                  try:
+                      rows=rows_from_json(raw) if low.endswith(".json") else rows_from_csv(raw)
+                  except Exception:
+                      continue
+                  if not rows or not isinstance(rows, list) or not isinstance(rows[0], dict):
+                      continue
+                  keys={str(k).strip().lower() for k in rows[0].keys()}
+                  if {"sura_no","aya_no","aya_text"}.issubset(keys):
+                      candidate=rows
+                      source_entry=name
+                      if len(rows)==6236:
+                          break
+
+          if candidate is None:
+              raise SystemExit("NO_QURAN_DATA_TABLE_FOUND")
+
+          norm=[]
+          for r in candidate:
+              rr={str(k).strip().lower(): v for k,v in r.items()}
+              try:
+                  s=int(str(rr["sura_no"]).strip())
+                  a=int(str(rr["aya_no"]).strip())
+              except Exception:
+                  raise SystemExit("INVALID_SURAH_AYAH_NUMBER")
+              text=str(rr.get("aya_text","")).strip()
+              imlaey=str(rr.get("aya_text_emlaey","")).strip()
+              name_ar=str(rr.get("sura_name_ar","")).strip()
+              if not text:
+                  raise SystemExit(f"EMPTY_AYA_TEXT:{s}:{a}")
+              norm.append((s,a,name_ar,text,imlaey))
+
+          total=len(norm)
+          unique=set((s,a) for s,a,_,_,_ in norm)
+          surahs=sorted(set(s for s,_,_,_,_ in norm))
+          if total != 6236: raise SystemExit(f"AYA_COUNT_MISMATCH:{total}")
+          if len(unique) != 6236: raise SystemExit(f"DUPLICATE_AYAH_KEYS:{len(unique)}")
+          if surahs != list(range(1,115)): raise SystemExit(f"SURAH_RANGE_MISMATCH:{surahs[:3]}...{surahs[-3:]}")
+
+          by=defaultdict(list)
+          for row in norm: by[row[0]].append(row)
+          for s in range(1,115):
+              ayat=sorted(by[s], key=lambda x:x[1])
+              expected=list(range(1,len(ayat)+1))
+              got=[x[1] for x in ayat]
+              if got != expected:
+                  raise SystemExit(f"NON_CONTIGUOUS_AYAH_NUMBERS:{s}")
+
+          if len(by[87]) != 19:
+              raise SystemExit(f"SURAH_AL_ALA_COUNT_MISMATCH:{len(by[87])}")
+
+          h=hashlib.sha256()
+          for s,a,name_ar,text,imlaey in sorted(norm):
+              h.update(f"{s}\t{a}\t{name_ar}\t{text}\t{imlaey}\n".encode("utf-8"))
+          corpus_sha256=h.hexdigest()
+
+          dbpath=os.path.join(out,"hakim-quran-verified.sqlite")
+          conn=sqlite3.connect(dbpath)
+          conn.execute("CREATE TABLE aya (sura_no INTEGER NOT NULL, aya_no INTEGER NOT NULL, sura_name_ar TEXT NOT NULL, aya_text TEXT NOT NULL, aya_text_emlaey TEXT NOT NULL, PRIMARY KEY(sura_no,aya_no))")
+          conn.executemany("INSERT INTO aya VALUES (?,?,?,?,?)", norm)
+          conn.commit()
+          c=conn.execute("SELECT COUNT(*), COUNT(DISTINCT sura_no) FROM aya").fetchone()
+          if c != (6236,114): raise SystemExit(f"SQLITE_VERIFY_FAILED:{c}")
+          ala=conn.execute("SELECT aya_no, aya_text FROM aya WHERE sura_no=87 ORDER BY aya_no").fetchall()
+          if len(ala)!=19: raise SystemExit("SQLITE_ALA_VERIFY_FAILED")
+          conn.close()
+
+          manifest={
+              "source":"King Fahd Glorious Quran Printing Complex",
+              "official_url":"https://download.qurancomplex.gov.sa/resources_dev/UthmanicHafs_v2-0.zip",
+              "official_md5":"cf6841aea5b1d1fd70d032b43ff08278",
+              "official_sha1":"36ea5ab0d7ea1702f17ff43f9b50924cccd77ebf",
+              "archive_entry_used":source_entry,
+              "scanned_every_row":True,
+              "ayah_count":6236,
+              "unique_ayah_keys":6236,
+              "surah_count":114,
+              "surah_range":[1,114],
+              "surah_al_ala_number":87,
+              "surah_al_ala_ayah_count":19,
+              "corpus_canonical_sha256":corpus_sha256,
+              "reading_mode":"deterministic_full_row_scan_not_human_recitation",
+              "tafsir_claimed":False,
+              "spiritual_memorization_claimed":False,
+              "verification":"PASS"
+          }
+          with open(os.path.join(out,"full-quran-verification.json"),"w",encoding="utf-8") as f:
+              json.dump(manifest,f,ensure_ascii=False,indent=2)
+
+          with open(os.path.join(out,"surah-87-al-ala.sha256"),"w",encoding="utf-8") as f:
+              ah=hashlib.sha256()
+              for a,text in ala:
+                  ah.update(f"87\t{a}\t{text}\n".encode("utf-8"))
+              f.write(ah.hexdigest()+"\n")
+
+          print("FULL_QURAN_114_6236_SCAN=PASS")
+          print("SURAH_AL_ALA_19_AYAT=PASS")
+          print("CORPUS_CANONICAL_SHA256="+corpus_sha256)
+          PY
+
+      - name: حفظ المصدر الرسمي والدليل
+        run: |
+          set -euo pipefail
+          cp quran-verify/UthmanicHafs_v2-0.zip quran-verify/out/
+
+      - name: رفع أثر التحقق
+        uses: actions/upload-artifact@v7
+        with:
+          name: hakim-quran-official-verified-114-6236
+          path: quran-verify/out/
+          if-no-files-found: error
+          retention-days: 90

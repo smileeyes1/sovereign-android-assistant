@@ -61,6 +61,18 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".HakimProfessionalHubActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".HakimQuranActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".CommandCenterActivity"
             android:exported="true"
             android:launchMode="singleTop"

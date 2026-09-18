@@ -42,12 +42,13 @@ require('name = "HakimHealthBeacon"' in health,
         "خيط الصحة غير قابل للتشخيص بالاسم")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20052,
-        "الإصدار يجب أن يكون ٢٠٠٥٢")
+require(m and int(m.group(1)) >= 20052,
+        "إصلاح watchdog يجب ألا يرجع قبل ٢٠٠٥٢")
+candidate = int(m.group(1))
 require(policy["current_field_version"] == 20051,
         "خط الميدان يجب أن يسجل ٢٠٠٥١ المثبت فعليًا")
-require(policy["current_candidate_version"] == 20052,
-        "سياسة التوقيع لا تسجل ٢٠٠٥٢ كمرشح")
+require(policy["current_candidate_version"] == candidate,
+        "سياسة التوقيع لا تطابق المرشح الحالي")
 require(policy["field_evidence"]["version_code"] == 20051,
         "دليل الميدان لا يطابق ٢٠٠٥١")
 e = policy["field_evidence"].get("stability_evidence", {})

@@ -60,7 +60,7 @@ require("HakimVerifiedQuranCorpus.importOfficialArchive" in quran_bootstrap,
         "P0: الملف المنزل لا يمر عبر التحقق الرسمي الكامل")
 
 # الاستئناف التلقائي في الواجهة يمر مجددًا بالمصفوفة ويستبعد الحالات المحمية.
-require("foregroundOpportunity" in proactive and "HakimDecisionMatrix.evaluate" in proactive, "P0: الاستئناف التلقائي لا يعاد تصنيفه")
+require("foregroundOpportunity" in proactive and "HakimSovereignOneKernel.frame" in proactive, "P0: الاستئناف التلقائي لا يعاد تصنيفه عبر النواة الواحدة")
 for phase in ["WAITING_APPROVAL", "WAITING_CREDENTIAL", "WAITING_TRUST", "CANCELLED", "BLOCKED"]:
     require(phase in proactive, f"P0: الاستئناف التلقائي لا يحمي حالة {phase}")
 require("maybeResumeProactively" in chat and "HakimProactiveEngine.foregroundOpportunity" in chat, "P0: الواجهة لا تستأنف المهمة الآمنة تلقائيًا")

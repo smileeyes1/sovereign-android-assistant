@@ -18,6 +18,7 @@ verified = text("app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.
 source = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt")
 framework = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 workflow = text(".github/workflows/android.yml")
 
@@ -61,10 +62,10 @@ require("whole_quran_corpus_requires_verified_source" in framework,
         "P0: حالة الإطار لا تكشف أن الاستقراء الشامل يحتاج مصدرًا متحققًا")
 require("لا تعتبر الاستقراء الشامل مكتملًا من سياسة التغطية وحدها" in framework,
         "P0: قد يُدعى شمول السور من السياسة دون corpus نصي متحقق")
-require("quranic.exactQuranTextRequired && !localQuranReady" in sovereign,
-        "P0: المحرك السيادي لا يحول غياب corpus المتحقق إلى بحث/إعادة تخطيط")
-require('forceResearch -> "research_then_replan"' in sovereign,
-        "P0: بوابة المصدر لا تغيّر مسار التنفيذ فعليًا عند غياب النص المتحقق")
+require("quranic.exactQuranTextRequired && !localQuranReady" in one and "HakimSovereignOneKernel.frame" in sovereign,
+        "P0: النواة الواحدة لا تحول غياب corpus المتحقق إلى بحث/إعادة تخطيط")
+require('forceResearch -> "research_then_replan"' in one,
+        "P0: بوابة المصدر لا تغيّر مسار التنفيذ داخل النواة الواحدة عند غياب النص المتحقق")
 
 # المسح الفعلي: يمر على النص كله، وحد النتائج لا يختصر المرور.
 require("fun fullCorpusScan" in verified,

@@ -14,6 +14,7 @@ def require(cond: bool, msg: str) -> None:
 
 sos = text("app/src/main/java/ps/hakim/phoneagent/HakimSystemOfSystems.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
 workflow = text(".github/workflows/android.yml")
@@ -73,7 +74,7 @@ for phrase in [
 ]:
     require(phrase in sos, f"P0: بروتوكول حكيم ناقص في نظام الأنظمة: {phrase}")
 
-require("HakimSystemOfSystems.compose(context, goal)" in sovereign, "P0: المحرك السيادي لا يكوّن نظام المهمة")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimSystemOfSystems.compose(context, cleanGoal)" in one, "P0: نظام المهمة لا يتكوّن داخل النواة السيادية الواحدة")
 require("HakimSystemOfSystems.promptContext(context, goal)" in sovereign, "P0: نظام الأنظمة لا يدخل سياق القرار")
 require('put("system_of_systems", HakimSystemOfSystems.status(context))' in sovereign, "P0: حالة نظام الأنظمة غير ظاهرة")
 require("و؟→و؟→و؟→لِمَ؟→و؟→و؟→اعتمد→أصلح→أكمل→هَيّا" in sovereign,

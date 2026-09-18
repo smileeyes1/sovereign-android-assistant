@@ -17,6 +17,7 @@ quranic = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicFramework.kt")
 constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
 decision = text("app/src/main/java/ps/hakim/phoneagent/HakimDecisionMatrix.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 lead = text("app/src/main/java/ps/hakim/phoneagent/HakimSelfLeadershipController.kt")
 agents = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentSystem.kt")
 auto = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
@@ -53,8 +54,8 @@ require("HakimQuranicFramework.status()" in constitution and "QURAN-FIRST" in co
         "P0: الدستور منفصل عن الإطار القرآني")
 require("HakimQuranicFramework.assess" in decision and "normativeIntegrity" in decision,
         "P0: مصفوفة القرار لا ترث الميزان القرآني")
-require("HakimQuranicFramework.assess" in sovereign and "HakimQuranicFramework.promptContext" in sovereign,
-        "P0: المحرك السيادي لا يرث الإطار القرآني")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimQuranicFramework.assess" in one and "HakimQuranicFramework.promptContext" in sovereign,
+        "P0: المحرك السيادي لا يرث الإطار القرآني عبر النواة الواحدة")
 require("اعرض الغاية والأثر على الميزان القرآني" in sovereign,
         "P0: دورة التنفيذ السيادي لا تمر صراحة على الميزان القرآني")
 

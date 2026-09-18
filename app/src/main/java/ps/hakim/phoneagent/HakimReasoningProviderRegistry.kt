@@ -10,7 +10,7 @@ import org.json.JSONObject
  * قلب حكيم لا يتبع مزودًا خارجيًا واحدًا؛ المحلي أولًا، والاستدلال المتقدم أداة قابلة للاستبدال.
  */
 object HakimReasoningProviderRegistry {
-    enum class Class { LOCAL_DETERMINISTIC, EXTERNAL_ADVANCED, MANUAL_EXTERNAL }
+    enum class Class { LOCAL_DETERMINISTIC, LOCAL_ADVANCED, EXTERNAL_ADVANCED, MANUAL_EXTERNAL }
 
     data class Provider(
         val id: String,
@@ -51,6 +51,7 @@ object HakimReasoningProviderRegistry {
     const val GEMINI_WEB = "hakim_web_gemini"
     const val COPILOT_WEB = "hakim_web_copilot"
     const val LOCAL_ONLY = "local_only"
+    const val LOCAL_ADVANCED = "hakim_local_advanced"
 
     private val knownWebProviders = listOf(
         WebProviderSpec(
@@ -108,6 +109,20 @@ object HakimReasoningProviderRegistry {
                 true,
                 false,
                 "يفهم وينفذ الإجراءات المحلية الآمنة والقواعد والسياق دون مزود خارجي؛ لا يُدّعى أنه يعادل نموذجًا لغويًا متقدمًا"
+            ),
+            Provider(
+                LOCAL_ADVANCED,
+                "النموذج المحلي المتقدم",
+                Class.LOCAL_ADVANCED,
+                "Local loopback",
+                true,
+                HakimLocalReasoningBridge.readyNow(context),
+                selected == AUTO || selected == LOCAL_ADVANCED,
+                false,
+                if (HakimLocalReasoningBridge.readyNow(context))
+                    "نموذج محلي جاهز داخل الهاتف عبر loopback فقط"
+                else
+                    "المسار موجود لكنه يحتاج runtime نموذج محلي؛ لا تُرسل البيانات إلى مزود خارجي تلقائيًا"
             )
         ) + external + listOf(
             Provider(
@@ -139,18 +154,19 @@ object HakimReasoningProviderRegistry {
 
     fun preferredProviderId(context: Context): String {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PREFERRED, AUTO).orEmpty()
-        return if (raw == AUTO || raw == LOCAL_ONLY || knownWebProviders.any { it.id == raw }) raw else AUTO
+        return if (raw == AUTO || raw == LOCAL_ONLY || raw == LOCAL_ADVANCED || knownWebProviders.any { it.id == raw }) raw else AUTO
     }
 
     fun setPreferredProvider(context: Context, id: String): Boolean {
-        if (id != AUTO && id != LOCAL_ONLY && knownWebProviders.none { it.id == id }) return false
+        if (id != AUTO && id != LOCAL_ONLY && id != LOCAL_ADVANCED && knownWebProviders.none { it.id == id }) return false
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(PREFERRED, id).apply()
         return true
     }
 
     fun preferredTitle(context: Context): String = when (val id = preferredProviderId(context)) {
         AUTO -> "تلقائي — أفضل مزود متاح"
-        LOCAL_ONLY -> "محلي فقط"
+        LOCAL_ONLY -> "محلي حتمي فقط"
+        LOCAL_ADVANCED -> "نموذج محلي متقدم فقط"
         else -> webProvider(id)?.title ?: "تلقائي — أفضل مزود متاح"
     }
 
@@ -159,7 +175,7 @@ object HakimReasoningProviderRegistry {
      */
     fun orderedWebProviders(context: Context): List<WebProviderSpec> {
         val preferred = preferredProviderId(context)
-        if (preferred == LOCAL_ONLY) return emptyList()
+        if (preferred == LOCAL_ONLY || preferred == LOCAL_ADVANCED) return emptyList()
         if (preferred != AUTO) return listOfNotNull(webProvider(preferred))
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return knownWebProviders.sortedWith(
@@ -214,13 +230,21 @@ object HakimReasoningProviderRegistry {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(CUSTOM_URL, null)?.trim()?.takeIf { it.startsWith("https://") }
 
-    fun advancedReady(context: Context): Boolean =
-        preferredProviderId(context) != LOCAL_ONLY && hasNetwork(context)
+    fun advancedReady(context: Context): Boolean {
+        val preferred = preferredProviderId(context)
+        val localReady = HakimLocalReasoningBridge.readyNow(context)
+        return when (preferred) {
+            LOCAL_ONLY -> false
+            LOCAL_ADVANCED -> localReady
+            AUTO -> localReady || hasNetwork(context)
+            else -> hasNetwork(context)
+        }
+    }
 
     fun promptContext(context: Context): String = buildString {
         appendLine("[استقلال مزود الاستدلال]")
         appendLine("القلب الحاكم والتنفيذ المحلي لا يعتمدان على مزود ذكاء خارجي واحد. المحلي أولًا، والاستدلال المتقدم أداة قابلة للفقد والاستبدال، لا مصدر سلطة.")
-        appendLine("الاختيار الحالي=${preferredTitle(context)}. في الوضع التلقائي يبدل حكيم بين ChatGPT وGemini وCopilot بحسب الجاهزية والنجاح الفعلي، ويضع المزود المتكرر فشله في تهدئة مؤقتة.")
+        appendLine("الاختيار الحالي=${preferredTitle(context)}. في الوضع التلقائي يبدأ حكيم بالنموذج المحلي المتقدم إن كان جاهزًا، ثم يبدل بين المزودات الخارجية بحسب الجاهزية والنجاح الفعلي؛ ولا يجعل أي مزود خارجي شرطًا للقلب.")
         providers(context).forEach { p ->
             appendLine("• ${p.title}: ${if (p.readyNow) "جاهز/قابل للمحاولة" else if (p.available) "موجود/غير جاهز" else "غير مهيأ"} — ${p.reason}")
         }
@@ -238,6 +262,7 @@ object HakimReasoningProviderRegistry {
         .put("advanced_reasoning_ready_now", advancedReady(context))
         .put("advanced_model_equivalence_offline_not_claimed", true)
         .put("single_external_provider_is_not_governor", true)
+        .put("local_advanced_reasoning", HakimLocalReasoningBridge.status(context))
         .put("providers", JSONArray(providers(context).map { it.toJson() }))
 
     private fun hasNetwork(context: Context): Boolean = runCatching {

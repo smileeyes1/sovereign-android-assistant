@@ -38,6 +38,7 @@ object HakimSovereignIndependence {
         val mesh = HakimCapabilityMesh.discover(app).associateBy { it.id }
         val portability = HakimSovereignPortability.status(app)
         val quran = HakimVerifiedQuranCorpus.status(app)
+        val localReasoning = HakimLocalReasoningBridge.status(app)
 
         return listOf(
             DomainState(
@@ -79,12 +80,19 @@ object HakimSovereignIndependence {
             ),
             DomainState(
                 Domain.REASONING,
-                sovereign = provider.optBoolean("core_runtime_vendor_independent"),
+                sovereign = provider.optBoolean("core_runtime_vendor_independent") &&
+                    localReasoning.optBoolean("loopback_only") &&
+                    localReasoning.optBoolean("external_network_forbidden"),
                 readyNow = provider.optBoolean("advanced_reasoning_ready_now"),
-                externalDependency = true,
-                reason = if (provider.optBoolean("advanced_reasoning_ready_now"))
-                    "القلب والتنفيذ المحليان مستقلان؛ الاستدلال المتقدم متاح كخدمة خارجية قابلة للفقد والاستبدال"
-                else "الاستدلال المتقدم غير جاهز؛ يستمر القلب المحلي دون ادعاء تكافؤ نموذج متقدم"
+                externalDependency = !localReasoning.optBoolean("ready_now"),
+                reason = when {
+                    localReasoning.optBoolean("ready_now") ->
+                        "الاستدلال المتقدم يعمل محليًا داخل الهاتف فقط؛ المزودات الخارجية أصبحت بدائل اختيارية"
+                    provider.optBoolean("advanced_reasoning_ready_now") ->
+                        "القلب مستقل والاستدلال المتقدم متاح خارجيًا كبديل مؤقت؛ النموذج المحلي غير جاهز بعد"
+                    else ->
+                        "القلب الحتمي المحلي مستمر، لكن نموذجًا لغويًا متقدمًا محليًا أو خارجيًا غير جاهز الآن"
+                }
             ),
             DomainState(
                 Domain.EXECUTION,
@@ -161,6 +169,7 @@ object HakimSovereignIndependence {
             .put("resource_sovereignty", HakimResourceSovereigntyPolicy.status())
             .put("domains", JSONArray(states.map { it.toJson() }))
             .put("provider_registry", HakimReasoningProviderRegistry.status(context))
+            .put("local_reasoning", HakimLocalReasoningBridge.status(context))
             .put("portability", HakimSovereignPortability.status(context))
             .put("verified_quran_corpus", HakimVerifiedQuranCorpus.status(context))
     }

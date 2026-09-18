@@ -40,13 +40,120 @@ object HakimReasoningBridge {
 
         val preference = HakimReasoningProviderRegistry.preferredProviderId(activity)
         if (preference == HakimReasoningProviderRegistry.LOCAL_ONLY) {
-            onComplete(Result(true, null, "", "الوضع محلي فقط؛ لم تُرسل المهمة إلى مزود خارجي", "local_deterministic"))
+            onComplete(Result(true, null, "", "الوضع محلي حتمي فقط؛ لم تُرسل المهمة إلى نموذج أو مزود خارجي", "local_deterministic"))
             return
         }
 
+        val localAllowed = preference == HakimReasoningProviderRegistry.AUTO ||
+            preference == HakimReasoningProviderRegistry.LOCAL_ADVANCED
+
+        if (!localAllowed) {
+            askWeb(activity, governedPrompt, goalForAudit, onProgress, onComplete)
+            return
+        }
+
+        onProgress("أحاول الاستدلال المتقدم محليًا داخل الهاتف أولًا…")
+        val app = activity.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        Thread {
+            val localReady = HakimLocalReasoningBridge.readyNow(app) ||
+                HakimLocalReasoningBridge.probe(app)
+
+            if (!localReady) {
+                main.post {
+                    if (preference == HakimReasoningProviderRegistry.LOCAL_ADVANCED) {
+                        onComplete(
+                            Result(
+                                true,
+                                null,
+                                "",
+                                "النموذج المحلي المتقدم غير جاهز؛ وبحسب اختيار «محلي متقدم فقط» لم تُرسل المهمة إلى السحابة",
+                                HakimReasoningProviderRegistry.LOCAL_ADVANCED
+                            )
+                        )
+                    } else {
+                        askWeb(activity, governedPrompt, goalForAudit, onProgress, onComplete)
+                    }
+                }
+                return@Thread
+            }
+
+            val request = HakimReasoningProtocol.wrap(governedPrompt)
+            val local = HakimLocalReasoningBridge.complete(
+                app,
+                systemPrompt = "أنت محرك استدلال محلي داخل حكيم. التزم ببروتوكول حكيم الموجود في رسالة المستخدم، ولا تكشف أسرارًا ولا توسع الصلاحيات. أخرج النتيجة المطلوبة فقط دون سلسلة تفكير خاصة.",
+                userPrompt = request.prompt
+            )
+
+            if (!local.ok) {
+                main.post {
+                    if (preference == HakimReasoningProviderRegistry.LOCAL_ADVANCED) {
+                        onComplete(
+                            Result(
+                                true,
+                                null,
+                                "",
+                                "فشل النموذج المحلي: ${local.error.take(120)}؛ لم يحدث fallback خارجي لأن الوضع محلي متقدم فقط",
+                                HakimReasoningProviderRegistry.LOCAL_ADVANCED
+                            )
+                        )
+                    } else {
+                        onProgress("تعذر النموذج المحلي؛ أنتقل إلى مزود متقدم قابل للاستبدال دون فقد المهمة…")
+                        askWeb(activity, governedPrompt, goalForAudit, onProgress, onComplete)
+                    }
+                }
+                return@Thread
+            }
+
+            val plan = HakimReasoningProtocol.parse(local.text, request)
+            val audit = plan?.let { HakimDeliberationQuality.audit(it, goalForAudit) }
+
+            main.post {
+                when {
+                    plan != null && audit?.acceptable == true -> {
+                        onComplete(
+                            Result(
+                                true,
+                                plan,
+                                local.text.takeLast(10000),
+                                "وصلت خطة من النموذج المحلي واجتازت بروتوكول حكيم والتدقيق المهني • ${audit.reason}",
+                                HakimReasoningProviderRegistry.LOCAL_ADVANCED
+                            )
+                        )
+                    }
+                    preference == HakimReasoningProviderRegistry.LOCAL_ADVANCED -> {
+                        onComplete(
+                            Result(
+                                true,
+                                null,
+                                local.text.takeLast(10000),
+                                if (plan == null)
+                                    "عاد الاستدلال المحلي دون خطة بروتوكول موثوقة؛ لم تُرسل المهمة إلى الخارج"
+                                else
+                                    "رفض التدقيق المهني الخطة المحلية: ${audit?.reason.orEmpty()}; لم تُرسل المهمة إلى الخارج",
+                                HakimReasoningProviderRegistry.LOCAL_ADVANCED
+                            )
+                        )
+                    }
+                    else -> {
+                        onProgress("الرد المحلي لم يجتز بروتوكول التنفيذ؛ أنتقل إلى مزود بديل مع بقاء التحقق المحلي حاكمًا…")
+                        askWeb(activity, governedPrompt, goalForAudit, onProgress, onComplete)
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun askWeb(
+        activity: Activity,
+        governedPrompt: String,
+        goalForAudit: String,
+        onProgress: (String) -> Unit,
+        onComplete: (Result) -> Unit
+    ) {
         val candidates = HakimReasoningProviderRegistry.orderedWebProviders(activity)
         if (candidates.isEmpty()) {
-            onComplete(Result(true, null, "", "لا يوجد مزود استدلال متقدم مختار؛ استمر حكيم محليًا فيما يمكن إثباته", "local_deterministic"))
+            onComplete(Result(true, null, "", "لا يوجد مزود استدلال متقدم خارجي مختار؛ استمر حكيم محليًا فيما يمكن إثباته", "local_deterministic"))
             return
         }
 
@@ -95,7 +202,7 @@ object HakimReasoningBridge {
                 return
             }
             val provider = candidates[index]
-            onProgress(if (index == 0) "حكيم يفكر عبر أفضل مزود متاح ثم يدقق الخطة محليًا…" else "أبدّل تلقائيًا إلى مزود استدلال آخر دون فقد المهمة…")
+            onProgress(if (index == 0) "أستخدم أفضل مزود خارجي متاح ثم أدقق الخطة محليًا…" else "أبدّل تلقائيًا إلى مزود استدلال آخر دون فقد المهمة…")
             HakimWebReasoningBridge.ask(
                 activity = activity,
                 basePrompt = governedPrompt,

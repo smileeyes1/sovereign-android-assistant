@@ -22,6 +22,7 @@ object HakimIntegrationFabric {
         "constitution",
         "intent_context",
         "decision_matrix",
+        "one_sovereign_kernel",
         "sovereign_engine",
         "self_leadership",
         "proactive_engine",
@@ -60,6 +61,15 @@ object HakimIntegrationFabric {
         "constitution→intent_context",
         "intent_context→decision_matrix",
         "intent_context→system_of_systems",
+        "decision_matrix→one_sovereign_kernel",
+        "system_of_systems→one_sovereign_kernel",
+        "capability_registry→one_sovereign_kernel",
+        "learning→one_sovereign_kernel",
+        "adaptive_learning→one_sovereign_kernel",
+        "resource_governor→one_sovereign_kernel",
+        "one_sovereign_kernel→sovereign_engine",
+        "one_sovereign_kernel→proactive_engine",
+        "one_sovereign_kernel→agent_system",
         "decision_matrix→sovereign_engine",
         "system_of_systems→sovereign_engine",
         "system_of_systems→agent_system",
@@ -107,6 +117,7 @@ object HakimIntegrationFabric {
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
+        val one = HakimSovereignOneKernel.status(context)
         check(governance.optBoolean("quranic_normative_default")) { "الدستور القرآني الحاكم غير مثبت" }
         check(corpus.optBoolean("all_114_surahs_covered")) { "تغطية القرآن كله/السور الـ١١٤ غير مثبتة" }
         check(corpus.optBoolean("revelation_distinct_from_tafsir_and_inference")) { "الفصل بين الوحي والتفسير/الاستنباط غير مثبت" }
@@ -123,6 +134,12 @@ object HakimIntegrationFabric {
         check(systems.optBoolean("derived_systems_inherit_quran_sunnah")) { "الأنظمة المنبثقة لا ترث القرآن والهدي النبوي" }
         check(systems.optBoolean("derived_systems_cannot_expand_authority")) { "نظام منبثق قد يوسع السلطة" }
         check(systems.optBoolean("derived_systems_cannot_mutate_code")) { "نظام منبثق قد يغير الكود ذاتيًا" }
+        check(one.optBoolean("one_sovereign_kernel")) { "النواة السيادية الواحدة غير مثبتة" }
+        check(one.optBoolean("single_local_control_plane")) { "القرار موزع على أكثر من مركز حاكم" }
+        check(one.optBoolean("signal_bus_local_only")) { "ناقل الإشارات السيادي ليس محليًا" }
+        check(one.optBoolean("deterministic_router_for_same_observed_frame")) { "الموجّه السيادي غير حتمي لنفس الحالة المرصودة" }
+        check(one.optBoolean("all_external_inputs_untrusted_by_default")) { "مدخل خارجي قد يصبح ثقة افتراضية" }
+        check(one.optBoolean("learning_cannot_expand_authority")) { "التعلم قد يوسع السلطة" }
         check(governance.optBoolean("fail_closed_core_changes")) { "حماية تغييرات القلب غير مفعلة" }
         return structuralStatus(context, scope)
     }
@@ -135,6 +152,7 @@ object HakimIntegrationFabric {
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
+        val one = HakimSovereignOneKernel.status(context)
         val adaptive = HakimAdaptiveLearning.status(context)
         val proactive = HakimProactiveEngine.status(context)
         val packageOk = context.packageName == "ps.hakim.stable"
@@ -166,6 +184,13 @@ object HakimIntegrationFabric {
             systems.optBoolean("derived_systems_inherit_resource_governor") &&
             systems.optBoolean("derived_systems_cannot_expand_authority") &&
             systems.optBoolean("derived_systems_cannot_mutate_code")
+        val oneOk = one.optBoolean("one_sovereign_kernel") &&
+            one.optBoolean("single_local_control_plane") &&
+            one.optBoolean("signal_bus_local_only") &&
+            one.optBoolean("deterministic_router_for_same_observed_frame") &&
+            one.optBoolean("all_external_inputs_untrusted_by_default") &&
+            one.optBoolean("external_models_are_advisers_not_authority") &&
+            one.optBoolean("learning_cannot_expand_authority")
         val adaptiveOk = adaptive.optBoolean("adaptive_learning") &&
             adaptive.optBoolean("local_only") &&
             !adaptive.optBoolean("can_expand_authority") &&
@@ -177,7 +202,7 @@ object HakimIntegrationFabric {
             proactive.optBoolean("silence_not_consent") &&
             proactive.optBoolean("no_secret_or_permission_escalation")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && methodOk && humanOk && resourceOk && systemsOk && adaptiveOk && proactiveOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && methodOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -189,6 +214,7 @@ object HakimIntegrationFabric {
             .put("human_first_integrated", humanOk)
             .put("resource_governor_integrated", resourceOk)
             .put("system_of_systems_integrated", systemsOk)
+            .put("one_sovereign_kernel_integrated", oneOk)
             .put("adaptive_learning_integrated", adaptiveOk)
             .put("proactive_engine_integrated", proactiveOk)
             .put("quranic_corpus", corpus)
@@ -196,6 +222,7 @@ object HakimIntegrationFabric {
             .put("human_first", human)
             .put("resource_governor", resources)
             .put("system_of_systems", systems)
+            .put("one_sovereign_kernel", one)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
             .put("fail_closed_core_changes", failClosed)
@@ -242,6 +269,7 @@ object HakimIntegrationFabric {
             appendLine("القرآن كله/السور الـ١١٤ جزء من القلب الحاكم، ومعه منهج القرآن والهدي النبوي الصحيح: القرآن مصدر الهداية والقيم والحدود الشرعية، والسنة الصحيحة بيان وهدي وقدوة؛ مع فصل الوحي عن التفسير والفقه والسيرة والاجتهاد والدليل التجريبي.")
             appendLine("الإنسان أولًا جزء من القلب: كرامة المستخدم، أقل عبء تقني، عدم استغلال الطيبة/الرحمة، وعدم اعتبار السكوت موافقة، وحفظ سيادته وقراره الجوهري.")
             appendLine("نظام الأنظمة جزء من القلب: لكل مهمة يُولد تركيب مؤقت من أقل الأنظمة اللازمة، وكل نظام منبثق يرث الحاكمية والسلطة والتحقق والموارد ولا يغير الكود ذاتيًا.")
+            appendLine("النواة السيادية الواحدة جزء من القلب: كل إشارة/فكرة/علم/أداة/ميزة/تعلم/تطور تدخل مركز قرار محليًا واحدًا؛ النماذج والخدمات الخارجية مستشارون ووسائل قابلة للاستبدال لا مصادر سلطة.")
             appendLine("حاكم الموارد جزء من القلب: الوضع=${resources.optString("mode", "UNKNOWN")}؛ يحمي سرعة المهمة الحالية ويؤجل الخلفية غير الضرورية دون خفض جودة القرار أو الحاكمية.")
             appendLine("التعلم التكيفي جزء من القلب: محلي، لا يوسع السلطة، لا يغير الكود تلقائيًا، ويعيد ترتيب البدائل الآمنة فقط مع رجوع إلى خط الأساس عند الانحدار.")
             appendLine("المبادرة الذاتية جزء من القلب: تنفذ تلقائيًا كل مكسب آمن منخفض الأثر داخل السلطة، ولا تعتبر الصمت تفويضًا للأثر العالي.")

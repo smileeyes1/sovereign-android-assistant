@@ -14,6 +14,9 @@ object HakimSovereignEngine {
         val quranic: HakimQuranicFramework.Assessment,
         val religious: HakimReligiousIntegrity.Assessment,
         val shubuhat: HakimHalalShubuhatGuard.Decision?,
+        val kernelFingerprint: String,
+        val isolationMode: String,
+        val preferredCapabilities: List<String>,
         val failureBudgetRemaining: Int,
         val route: String,
         val shouldResearchFirst: Boolean,
@@ -35,47 +38,52 @@ object HakimSovereignEngine {
         HakimLearning.initialize(context)
         HakimProactiveEngine.initialize(context)
         val mission = HakimMissionLedger.beginOrResume(context, goal)
-        val decision = HakimDecisionMatrix.evaluate(goal, highImpact, sensitive)
-        val quranic = HakimQuranicFramework.assess(goal)
-        val religious = HakimReligiousIntegrity.assess(goal)
-        val shubuhat = HakimHalalShubuhatGuard.assessTask(goal, highImpact)
-        HakimQuranSunnahMethod.assess(goal)
-        HakimSystemOfSystems.compose(context, goal)
+        val one = HakimSovereignOneKernel.frame(context, goal, highImpact, sensitive)
+        val decision = one.decision
+        val quranic = one.quranic
+        val religious = one.religious
+        val shubuhat = one.shubuhat
         HakimHumanCapabilityBoundary.assess(goal)
+
+        // النواة الواحدة هي مصدر المسار. نعيد حساب شرط البحث هنا كـ invariant فقط
+        // حتى يفشل النظام مغلقًا إذا انحرفت النواة عن العقود القديمة المثبتة.
         val failures = mission.failures
-        val blockedByFailures = failures >= HARD_FAILURE_LIMIT
-        val cancelledOrBlocked = mission.phase == HakimMissionLedger.Phase.CANCELLED ||
-            mission.phase == HakimMissionLedger.Phase.BLOCKED
         val localQuranReady = HakimVerifiedQuranCorpus.isReady(context)
-        val forceResearch = failures >= MAX_CONSECUTIVE_FAILURES ||
+        val expectedResearch = failures >= MAX_CONSECUTIVE_FAILURES ||
             decision.mode == HakimDecisionMatrix.Mode.RESEARCH_FIRST ||
             (quranic.exactQuranTextRequired && !localQuranReady) ||
             religious.exactSourceRequired ||
             shubuhat?.gate == HakimHalalShubuhatGuard.Gate.VERIFY_FIRST ||
             shubuhat?.gate == HakimHalalShubuhatGuard.Gate.ABSTAIN
-        val blocked = cancelledOrBlocked || blockedByFailures || decision.mode == HakimDecisionMatrix.Mode.BLOCK
-        val approval = !blocked && decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE
-        val route = when {
-            mission.phase == HakimMissionLedger.Phase.CANCELLED -> "cancelled"
-            blocked -> "blocked"
-            forceResearch -> "research_then_replan"
-            decision.mode == HakimDecisionMatrix.Mode.APPROVAL_GATE -> "prepare_then_approval"
-            decision.mode == HakimDecisionMatrix.Mode.AUTO -> "local_first"
-            else -> "local_verify_then_reason"
+        check(one.shouldResearchFirst == expectedResearch) { "انحراف بين النواة السيادية وعقد إعادة البحث" }
+        check(one.failureBudgetRemaining == (HARD_FAILURE_LIMIT - failures).coerceAtLeast(0)) {
+            "انحراف ميزانية الفشل في النواة السيادية"
         }
+
+        val route = one.route
         HakimAdaptiveLearning.noteMissionRoute(context, mission.id, route)
-        HakimMissionLedger.progress(context, HakimMissionLedger.Phase.PLAN, "المسار=$route؛ القرار=${decision.mode}")
+        HakimSovereignOneKernel.recordSignal(
+            context,
+            HakimSovereignOneKernel.SignalKind.MISSION,
+            "sovereign_engine",
+            "route=$route;decision=${decision.mode};isolation=${one.isolationMode}",
+            decision.confidence
+        )
+        HakimMissionLedger.progress(context, HakimMissionLedger.Phase.PLAN, "المسار=$route؛ القرار=${decision.mode}؛ النواة=${one.fingerprint.take(12)}")
         return Assessment(
             mission = HakimMissionLedger.active(context) ?: mission,
             decision = decision,
             quranic = quranic,
             religious = religious,
             shubuhat = shubuhat,
-            failureBudgetRemaining = (HARD_FAILURE_LIMIT - failures).coerceAtLeast(0),
+            kernelFingerprint = one.fingerprint,
+            isolationMode = one.isolationMode,
+            preferredCapabilities = one.preferredCapabilities,
+            failureBudgetRemaining = one.failureBudgetRemaining,
             route = route,
-            shouldResearchFirst = forceResearch,
-            needsApproval = approval,
-            blocked = blocked
+            shouldResearchFirst = one.shouldResearchFirst,
+            needsApproval = one.needsApproval,
+            blocked = one.blocked
         )
     }
 
@@ -96,6 +104,8 @@ object HakimSovereignEngine {
         return buildString {
             appendLine("[المحرك السيادي لحكيم]")
             appendLine("مهمة واحدة نشطة فقط WIP=1. المرحلة=${a.mission.phase}، المسار=${a.route}، ميزانية الفشل المتبقية=${a.failureBudgetRemaining}.")
+            appendLine("النواة الواحدة=${a.kernelFingerprint}؛ نمط العزل=${a.isolationMode}؛ القدرات=${a.preferredCapabilities.joinToString(" ← ")}.")
+            appendLine("كل الإشارات والأفكار والأدوات والعلوم والسياسات والتعلم والتطور تعود إلى نواة قرار محلية واحدة؛ الخارج مصدر/وسيلة لا حاكم.")
             append(HakimQuranicFramework.promptContext(goal))
             append(HakimQuranSunnahMethod.promptContext(goal))
             append(HakimQuestionOperator.promptContext())
@@ -193,6 +203,7 @@ object HakimSovereignEngine {
 
     fun status(context: Context): JSONObject = JSONObject()
         .put("sovereign_engine", true)
+        .put("one_sovereign_kernel", HakimSovereignOneKernel.status(context))
         .put("wip_one", true)
         .put("closed_loop", true)
         .put("failure_replan_threshold", MAX_CONSECUTIVE_FAILURES)

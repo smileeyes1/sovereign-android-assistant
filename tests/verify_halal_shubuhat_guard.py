@@ -13,6 +13,7 @@ guard = text("app/src/main/java/ps/hakim/phoneagent/HakimHalalShubuhatGuard.kt")
 religious = text("app/src/main/java/ps/hakim/phoneagent/HakimReligiousIntegrity.kt")
 constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 deliberation = text("app/src/main/java/ps/hakim/phoneagent/HakimDeliberationQuality.kt")
 readiness = text("app/src/main/java/ps/hakim/phoneagent/HakimProfessionalReadiness.kt")
 relay = text("app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt")
@@ -45,10 +46,10 @@ for token in [
     "high_impact_shubuhat_abstain_until_verified"
 ]:
     require(token in constitution, f"P0: الدستور لا يثبت {token}")
-require("HakimHalalShubuhatGuard.assessTask" in sovereign,
-        "P0: المسار السيادي لا يفحص الشبهات")
-require("research_then_replan" in sovereign and "Gate.ABSTAIN" in sovereign,
-        "P0: الشبهة لا تفرض بحثًا/إعادة تخطيط")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimHalalShubuhatGuard.assessTask" in one,
+        "P0: المسار السيادي لا يفحص الشبهات عبر النواة الواحدة")
+require("research_then_replan" in one and "Gate.ABSTAIN" in one,
+        "P0: الشبهة لا تفرض بحثًا/إعادة تخطيط داخل النواة الواحدة")
 require("مسألة حلال/حرام أو شبهة انتقلت إلى التنفيذ بلا دليل شرعي مسجل" in deliberation,
         "P0: المداولة قد تسمح بتنفيذ شبهة بلا دليل")
 require("HakimHalalShubuhatGuard.promptContext" in deliberation,

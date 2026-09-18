@@ -65,6 +65,7 @@ object HakimCapabilityMesh {
         val tts = canResolve(app, Intent(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA))
 
         return listOf(
+            Node("local_advanced_reasoning", "الاستدلال المتقدم المحلي", Family.REASONING, true, HakimLocalReasoningBridge.readyNow(app), true, false, "AUTO_VERIFY", "FREE_LOCAL", 96, 100, 80, 92, 38, if (HakimLocalReasoningBridge.readyNow(app)) "نموذج محلي جاهز داخل الهاتف" else "المسار محلي وموجود؛ runtime النموذج غير مثبت الآن"),
             Node("in_app_reasoning", "الاستدلال داخل حكيم", Family.REASONING, true, net.validated, true, true, "AUTO_VERIFY", "INCLUDED_SESSION", 90, 82, 82, 78, 46, if (net.validated) "جاهز عبر جلسة حكيم الداخلية" else "ينتظر اتصالًا موثوقًا"),
             Node("hakim_browser", "متصفح حكيم", Family.WEB, true, visibleBrowser, true, true, "AUTO_VERIFY", "FREE", 88, 86, 84, 84, 34, if (visibleBrowser) "حاضر الآن" else "يمكن فتحه عند الحاجة"),
             Node("web_services_gateway", "بوابة خدمات الويب", Family.WEB, true, net.validated, true, true, "TRUST", "FREE_OR_EXISTING_SESSION", 82, 74, 76, 80, 36, "تستخدم الجلسات الموجودة دون حفظ أسرار خام أو اشتراك مدفوع تلقائي"),

@@ -113,6 +113,18 @@ object HakimSelfCheck {
         check("السكوت لا يصبح موافقة عبر المبادرة", proactive.optBoolean("silence_not_consent"))
         check("المبادرة لا توسع سرًا أو صلاحية", proactive.optBoolean("no_secret_or_permission_escalation"))
 
+        val localReasoning = HakimLocalReasoningBridge.status(context)
+        check("جسر الاستدلال المحلي محصور بالـ loopback", localReasoning.optBoolean("loopback_only"))
+        check("جسر الاستدلال المحلي يمنع الشبكة الخارجية", localReasoning.optBoolean("external_network_forbidden"))
+        check("الاستدلال المحلي لا يحتاج مفتاح API", !localReasoning.optBoolean("api_key_required"))
+        check("الحتمية للحاكمية لا لخرج النموذج الاحتمالي", localReasoning.optBoolean("deterministic_governance_outside_model") && localReasoning.optBoolean("model_output_probabilistic"))
+        check(
+            "النموذج المحلي المتقدم جاهز",
+            localReasoning.optBoolean("ready_now"),
+            "warn",
+            if (localReasoning.optBoolean("ready_now")) "جاهز داخل الهاتف" else "runtime نموذج محلي غير مثبت/غير متاح الآن"
+        )
+
         val independence = HakimSovereignIndependence.status(context)
         check("الاستقلال السيادي الشامل موجود", independence.optBoolean("sovereign_independence"))
         check("قلب حكيم سيادي", independence.optBoolean("core_sovereign"))
@@ -127,6 +139,15 @@ object HakimSelfCheck {
         check("النسخة السيادية تستبعد الأسرار", portability.optBoolean("secrets_excluded"))
         check("النسخة السيادية تستبعد مفتاح التوقيع", portability.optBoolean("signing_private_key_excluded"))
 
+        val oneKernel = HakimSovereignOneKernel.status(context)
+        check("النواة السيادية الواحدة موجودة", oneKernel.optBoolean("one_sovereign_kernel"), "fail")
+        check("مركز القرار المحلي واحد", oneKernel.optBoolean("single_local_control_plane"), "fail")
+        check("ناقل الإشارات محلي فقط", oneKernel.optBoolean("signal_bus_local_only"), "fail")
+        check("الموجّه حتمي لنفس الحالة المرصودة", oneKernel.optBoolean("deterministic_router_for_same_observed_frame"), "fail")
+        check("المدخلات الخارجية غير موثوقة افتراضيًا", oneKernel.optBoolean("all_external_inputs_untrusted_by_default"), "fail")
+        check("النماذج الخارجية مستشارون لا سلطة", oneKernel.optBoolean("external_models_are_advisers_not_authority"), "fail")
+        check("التعلم لا يوسع السلطة", oneKernel.optBoolean("learning_cannot_expand_authority"), "fail")
+
         val integration = HakimIntegrationFabric.status(context)
         val structural = integration.optJSONObject("structural") ?: JSONObject()
         val runtime = integration.optJSONObject("runtime") ?: JSONObject()
@@ -134,6 +155,7 @@ object HakimSelfCheck {
         check("لا توجد طبقة حرجة معزولة", structural.optBoolean("no_isolated_critical_layer"), "fail")
         check("الجذر القرآني موروث داخل نسيج التكامل", structural.optBoolean("quranic_root_inherited"), "fail")
         check("الإنسان أولًا مدمج في نسيج التكامل", structural.optBoolean("human_first_integrated"), "fail")
+        check("النواة الواحدة مدمجة في نسيج التكامل", structural.optBoolean("one_sovereign_kernel_integrated"), "fail")
         check("التعلم التكيفي مدمج في نسيج التكامل", structural.optBoolean("adaptive_learning_integrated"), "fail")
         check("المبادرة الذاتية مدمجة في نسيج التكامل", structural.optBoolean("proactive_engine_integrated"), "fail")
         check(
@@ -225,6 +247,8 @@ object HakimSelfCheck {
             .put("human_capability_boundary", capabilityBoundary)
             .put("adaptive_learning", adaptive)
             .put("proactive", proactive)
+            .put("local_reasoning", localReasoning)
+            .put("one_sovereign_kernel", oneKernel)
             .put("sovereign_independence", independence)
             .put("integration", integration)
             .put("fault_ledger", faultLedger)

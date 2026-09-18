@@ -1,5 +1,5 @@
 {
-  "schema_version": 8,
+  "schema_version": 9,
   "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20051__STARTUP_FIXED__WATCHDOG_LONG_RUNNING",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
@@ -17,7 +17,7 @@
     20051
   ],
   "current_field_version": 20051,
-  "current_candidate_version": 20052,
+  "current_candidate_version": 20053,
   "field_evidence": {
     "observed_at_utc": "2026-09-18T17:47:10Z",
     "method": "AUTHORIZED_REMOTE_DEVICE_IN_PLACE_UPDATE_EXACT_BASE_APK_MATCH_COLD_START_JOB_SCHEDULER_RUNTIME_PROBE",
@@ -83,7 +83,8 @@
     "Direct package/version/APK/signer evidence establishes field identity only; runtime stability remains a separate gate and is not inherited.",
     "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance.",
     "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
-    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires."
+    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires.",
+    "Professional feature releases must inherit the bounded-watchdog guarantees from 20052 and remain held until the prerequisite field stability gate is accepted."
   ],
   "superseded_field_failures": [
     {
@@ -95,5 +96,16 @@
       "anr_description": "bg anr: No response to onStartJob",
       "cold_start_wait_ms": 10053
     }
-  ]
+  ],
+  "professional_parent_candidate": {
+    "version_code": 20052,
+    "branch": "feature/hakim-bounded-watchdog-20052",
+    "pr": 42,
+    "head": "89a07d60dceae7993055815c667cafa2710f9ef0",
+    "source_status": "QUALIFIED_5_OF_5_CI",
+    "artifact_digest_sha256": "8bc90212a0bc913b48e0b3caba54fe983ce2fa2d09b6dd45541f210d783424d0",
+    "unsigned_release_sha256": "bdbbc60c2f5599eedb864a09cab3f7905a9954c34c18f1b9eee79b78dc37c4ce",
+    "field_status": "NOT_SIGNED_NOT_INSTALLED"
+  },
+  "professional_candidate_hold": "WAIT_20052_FIELD_ACCEPTANCE"
 }

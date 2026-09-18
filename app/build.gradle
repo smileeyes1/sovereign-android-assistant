@@ -5,14 +5,20 @@ plugins {
 
 android {
     namespace 'ps.hakim.phoneagent'
+
+    sourceSets {
+        main {
+            assets.srcDir "$buildDir/generated/quranAssets"
+        }
+    }
     compileSdk 35
 
     defaultConfig {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20048
-        versionName '2.0.48-sovereign-browser-agent-crash-recovery'
+        versionCode 20049
+        versionName '2.0.49-sovereign-browser-agent-quran-offline'
     }
 
     compileOptions {
@@ -30,4 +36,14 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'
+}
+
+
+tasks.register('prepareBundledQuranAsset', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'bash', rootProject.file('scripts/prepare-bundled-quran.sh').absolutePath
+}
+
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('prepareBundledQuranAsset')
 }

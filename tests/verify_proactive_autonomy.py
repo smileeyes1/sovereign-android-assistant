@@ -67,13 +67,13 @@ require("maybeResumeProactively" in chat and "HakimProactiveEngine.foregroundOpp
 require("plan.needsApproval" in chat and "plan.sensitiveInputDetected" in chat, "P0: الاستئناف التلقائي لا يعيد تطبيق بوابات الأثر/الأسرار")
 
 # بدء التطبيق: نحافظ على الفورية لكن بلا اندفاع يزاحم الواجهة على هاتف محدود الموارد.
-require("HakimProactiveEngine.initialize(this)" in app, "P0: المبادرة لا تبدأ مع التطبيق")
+require("HakimProactiveEngine.initialize(app)" in app, "P0: المبادرة لا تبدأ ضمن bootstrap التطبيق")
 require("scheduleDeferredMaintenance" in app and "HakimResourceGovernor.shouldRunStartupMaintenance" in app,
         "P0: صيانة بدء التطبيق غير مؤجلة/غير محكومة بالموارد")
 require('runSafeBackground(app, "app_start_deferred")' in app,
         "P0: لا توجد دورة مبادرة مؤجلة بعد بدء التطبيق")
-require("AutoUpdater.schedule(this)" in app,
-        "P0: مسار التحديث الدوري لا يثبت فور بدء التطبيق")
+require("AutoUpdater.schedule(app)" in app,
+        "P0: مسار التحديث الدوري لا يثبت ضمن bootstrap التطبيق")
 require("HakimResourceGovernor.canUseRealtimeBackgroundNetwork(app)" in app and "AutoUpdater.startRealtimeListener(app)" in app,
         "P0: التحديث الفوري لا يُستعاد عندما تسمح الموارد")
 require("THREAD_PRIORITY_BACKGROUND" in app,

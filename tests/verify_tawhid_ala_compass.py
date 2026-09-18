@@ -73,9 +73,10 @@ require("سورة الأعلى ليست خوارزمية تقنية" in selfchec
         "P0: الفحص الذاتي لا يمنع الخلط التقني بسورة الأعلى")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20047, "P0: المرشح يجب أن يكون ٢٠٠٤٧")
-require(policy["current_candidate_version"] == 20047,
-        "P0: سياسة التوقيع لا تسجل ٢٠٠٤٧ كمرشح")
+require(m and int(m.group(1)) >= 20047, "P0: المرشح يجب ألا يرجع قبل ٢٠٠٤٧")
+candidate = int(m.group(1))
+require(policy["current_candidate_version"] == candidate,
+        "P0: سياسة التوقيع لا تطابق رقم المرشح الحالي")
 require(policy["current_field_version"] == 20040,
         "P0: تم تغيير خط الميدان بلا دليل مباشر")
 

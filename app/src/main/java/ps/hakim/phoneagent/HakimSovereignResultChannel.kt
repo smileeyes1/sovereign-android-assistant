@@ -39,8 +39,8 @@ object HakimSovereignResultChannel {
     private const val PREFS = "hakim"
     private const val KEY_ALIAS = "hakim_sovereign_result_outbox_v1"
     private const val FILE_NAME = "hakim-sovereign-result-outbox.enc"
-    private const val MAX_OUTBOX_BYTES = 16L * 1024L * 1024L
-    private const val MAX_ENTRY_CHARS = 1_500_000
+    private const val MAX_OUTBOX_BYTES = 64L * 1024L * 1024L
+    private const val MAX_ENTRY_CHARS = 8_000_000
     private const val MAX_FLUSH_PER_RUN = 12
     private const val RESULT_TOPIC = "result_topic"
     private const val AUTH_KEY = "auth_key"
@@ -86,8 +86,8 @@ object HakimSovereignResultChannel {
                 .put("kind", "relay_result")
                 .put("queued_at_ms", System.currentTimeMillis())
                 .put("request_id", requestId)
-                .put("result_url", resultUrl.take(2048))
-                .put("payload", payload.take(MAX_ENTRY_CHARS))
+                .put("result_url", resultUrl)
+                .put("payload", payload)
         )
         recordResultState(app, if (queued) "queued_local_encrypted" else "outbox_full", "encrypted_outbox")
         return false
@@ -127,9 +127,9 @@ object HakimSovereignResultChannel {
                 .put("kind", "health")
                 .put("queued_at_ms", now)
                 .put("request_id", requestId)
-                .put("result_url", resultUrl.take(2048))
-                .put("secure_body", secureBody.take(MAX_ENTRY_CHARS))
-                .put("legacy_data", healthPayload.take(MAX_ENTRY_CHARS))
+                .put("result_url", resultUrl)
+                .put("secure_body", secureBody)
+                .put("legacy_data", healthPayload)
         )
         recordHealthState(
             app,
@@ -273,21 +273,31 @@ object HakimSovereignResultChannel {
         }
     }
 
+    @Synchronized
     private fun flush(context: Context) {
         val file = File(context.filesDir, FILE_NAME)
         if (!file.exists()) return
         val lines = runCatching { file.readLines(Charsets.UTF_8) }.getOrElse { return }
         if (lines.isEmpty()) return
 
+        val decoded = mutableListOf<JSONObject>()
+        for (line in lines) {
+            val plain = decryptLine(line)
+            val item = plain?.let { runCatching { JSONObject(it) }.getOrNull() }
+            if (item == null) {
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putString("sovereign_outbox_state", "decrypt_failed")
+                    .apply()
+                return
+            }
+            decoded += item
+        }
+
         val remaining = mutableListOf<JSONObject>()
         var attempted = 0
         var delivered = 0
 
-        for (line in lines) {
-            val plain = decryptLine(line)
-            val item = plain?.let { runCatching { JSONObject(it) }.getOrNull() }
-            if (item == null) continue
-
+        for (item in decoded) {
             if (attempted >= MAX_FLUSH_PER_RUN) {
                 remaining += item
                 continue
@@ -310,7 +320,7 @@ object HakimSovereignResultChannel {
                     item.optString("legacy_data")
                 ) != null
 
-                else -> true
+                else -> false
             }
 
             if (ok) delivered++ else remaining += item

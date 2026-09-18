@@ -41,14 +41,22 @@ object HakimQuranBootstrap {
 
         val snapshot = HakimResourceGovernor.snapshot(app)
         if (snapshot.mode == HakimResourceGovernor.Mode.PRESSURE || snapshot.powerSave) {
-            return Result(false, true, "أُجّل جلب قاعدة القرآن لحماية موارد الهاتف")
+            return Result(false, true, "أُجّل تثبيت قاعدة القرآن لحماية موارد الهاتف")
         }
+
+        // المسار السيادي الأول: corpus مضمّن ومثبت البصمة داخل APK، بلا شبكة وقت التشغيل.
+        val bundled = HakimVerifiedQuranCorpus.installBundledMirrorIfNeeded(app)
+        if (bundled.success && HakimVerifiedQuranCorpus.isReady(app)) {
+            return Result(true, false, bundled.message)
+        }
+
+        // الشبكة ليست شرطًا لوجود القرآن؛ تستخدم فقط لمحاولة ترقية المصدر إلى الأرشيف الرسمي.
         if (snapshot.meteredNetwork) {
-            return Result(false, true, "أُجّل الجلب التلقائي لتجنب استهلاك شبكة محسوبة؛ الاستيراد اليدوي يبقى متاحًا")
+            return Result(false, true, "القرآن المضمّن غير متاح/مرفوض، وأُجّل جلب الأرشيف الرسمي لتجنب شبكة محسوبة")
         }
         val cm = app.getSystemService(ConnectivityManager::class.java)
         if (cm?.activeNetwork == null) {
-            return Result(false, true, "لا توجد شبكة متاحة الآن؛ سيبقى حكيم محليًا ويعيد المحاولة لاحقًا")
+            return Result(false, true, "القرآن المضمّن غير متاح/مرفوض ولا توجد شبكة للأرشيف الرسمي؛ بقي النظام fail-closed")
         }
 
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -148,6 +156,9 @@ object HakimQuranBootstrap {
             .put("autonomous_verified_quran_bootstrap", true)
             .put("ready", HakimVerifiedQuranCorpus.isReady(app))
             .put("official_hash_is_authority_not_url", true)
+            .put("bundled_verified_quran_precedes_network", true)
+            .put("runtime_network_required_for_quran", false)
+            .put("official_network_path_is_optional_upgrade", true)
             .put("all_114_surahs_required", true)
             .put("expected_ayah_count", 6236)
             .put("metered_background_download_forbidden", true)

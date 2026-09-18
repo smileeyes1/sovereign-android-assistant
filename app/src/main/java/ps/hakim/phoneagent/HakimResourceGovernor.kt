@@ -70,9 +70,10 @@ object HakimResourceGovernor {
         val moderateThermal = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermal >= PowerManager.THERMAL_STATUS_MODERATE
         val criticalBattery = capacity in 0..14 && !charging
         val lowBattery = capacity in 15..29 && !charging
+        val safeRecovery = HakimCrashShield.shouldSuppressProactiveResume(app)
 
         val mode = when {
-            mem.lowMemory || ratio < 0.12 || severeThermal || criticalBattery || recentPressure -> Mode.PRESSURE
+            safeRecovery || mem.lowMemory || ratio < 0.12 || severeThermal || criticalBattery || recentPressure -> Mode.PRESSURE
             powerSave || ratio < 0.20 || moderateThermal || lowBattery -> Mode.CONSERVE
             charging && capacity >= 50 && ratio >= 0.35 && !moderateThermal -> Mode.PERFORMANCE
             else -> Mode.BALANCED
@@ -162,6 +163,7 @@ object HakimResourceGovernor {
             .put("interactive", s.interactive)
             .put("metered_network", s.meteredNetwork)
             .put("reason", s.reason)
+            .put("safe_recovery_active", HakimCrashShield.shouldSuppressProactiveResume(context))
             .put("quality_and_governance_never_downgraded", true)
             .put("only_nonessential_background_is_throttled", true)
             .put("no_large_on_device_model_required", true)

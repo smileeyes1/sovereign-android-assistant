@@ -69,18 +69,21 @@ require("HakimProactiveEngine.initialize(this)" not in activity,
 require("HakimConstitution.install(this)" not in activity,
         "Activity تعيد تثبيت الدستور بعد أن ثبته Application")
 
-m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20051, "الإصدار يجب أن يكون ٢٠٠٥١")
-require(policy["current_field_version"] == 20050,
-        "خط الميدان يجب أن يسجل ٢٠٠٥٠ المثبت فعليًا")
-require(policy["current_candidate_version"] == 20051,
-        "سياسة التوقيع لا تسجل ٢٠٠٥١ كمرشح")
-require(policy["field_evidence"]["version_code"] == 20050,
-        "دليل الميدان لا يطابق ٢٠٠٥٠")
-require(policy["field_evidence"].get("stability") == "FAILED",
-        "فشل استقرار ٢٠٠٥٠ غير محفوظ")
-require(policy["field_evidence"].get("stability_evidence", {}).get("cold_start_wait_ms", 0) >= 10000,
-        "دليل مهلة التشغيل البارد غير محفوظ")
+m = re.search(r"versionCode\\s+(\\d+)", build)
+require(m and int(m.group(1)) >= 20051, "إصلاح البدء غير الحاجب يجب ألا يرجع قبل ٢٠٠٥١")
+candidate = int(m.group(1))
+require(policy["current_field_version"] >= 20051,
+        "خط الميدان يجب أن يتضمن ٢٠٠٥١ المثبت فعليًا أو أحدث")
+require(policy["current_candidate_version"] == candidate,
+        "سياسة التوقيع لا تطابق المرشح الحالي")
+require(policy["field_evidence"]["version_code"] == policy["current_field_version"],
+        "دليل الميدان لا يطابق current_field_version")
+failures = policy.get("historical_field_failures", [])
+f20050 = next((x for x in failures if x.get("version_code") == 20050), None)
+require(f20050 is not None and f20050.get("stability") == "FAILED",
+        "فشل استقرار ٢٠٠٥٠ غير محفوظ تاريخيًا")
+require(f20050.get("evidence", {}).get("cold_start_wait_ms", 0) >= 10000,
+        "دليل مهلة ٢٠٠٥٠ غير محفوظ")
 
 print("HAKIM_20051_NONBLOCKING_APP_START=PASS")
 print("HAKIM_20051_ACTIVITY_DUPLICATE_INIT_REMOVED=PASS")

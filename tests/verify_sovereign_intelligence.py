@@ -21,6 +21,7 @@ decision = text("app/src/main/java/ps/hakim/phoneagent/HakimDecisionMatrix.kt")
 religious = text("app/src/main/java/ps/hakim/phoneagent/HakimReligiousIntegrity.kt")
 mission = text("app/src/main/java/ps/hakim/phoneagent/HakimMissionLedger.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 autonomous = text("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousExecutor.kt")
 protocol = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningProtocol.kt")
 chat = text("app/src/main/java/ps/hakim/phoneagent/HakimAgentsChatActivity.kt")
@@ -66,12 +67,12 @@ require("quranic.exactQuranTextRequired || sig.normativeIntegrity < 45" in decis
 require("السلامة المعيارية بوابة لا تعوضها نقاط المنفعة" in decision,
         "P0: المصفوفة قد تسمح للمنفعة بتجاوز الحاجة للتحقق الشرعي")
 require("القيود الحاكمة بوابات لا أوزان تعويضية" in decision, "P0: المصفوفة قد تعوض خطرًا حاكمًا بنقاط منفعة")
-require("HakimDecisionMatrix.evaluate" in sovereign, "P0: المحرك السيادي لا يقيّم مصفوفة القرار")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimDecisionMatrix.evaluate" in one, "P0: مصفوفة القرار لا تمر عبر النواة السيادية الواحدة")
 require("HakimDecisionMatrix.promptContext" in sovereign, "P0: المحرك السيادي لا يمرر تفسير المصفوفة")
 require("HakimSovereignEngine.promptContext" in agents, "P0: الوكيل القائد لا يرث قرار المحرك السيادي")
 
-require("HakimQuranicFramework.assess" in sovereign and "HakimQuranicFramework.promptContext" in sovereign,
-        "P0: المحرك السيادي لا يستدعي الإطار القرآني")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimQuranicFramework.assess" in one and "HakimQuranicFramework.promptContext" in sovereign,
+        "P0: الإطار القرآني لا يدخل القرار عبر النواة الواحدة")
 require("quranic.exactQuranTextRequired" in sovereign,
         "P0: طلب نص قرآني دقيق لا يفرض البحث/التحقق قبل الجزم")
 require("اعرض الغاية والأثر على الميزان القرآني" in sovereign,
@@ -85,7 +86,7 @@ require("الخلاف المعتبر" in religious, "P0: احترام الخلا
 require("لا تنقل آية أو حديثًا" in religious, "P0: بوابة التثبت من النص الشرعي مفقودة")
 require("الحروف المقطعة" in religious and "قوى تقنية" in religious, "P0: حاجز عدم تحويل القرآن إلى خوارزميات/قوى تقنية مفقود")
 require("RELIGIOUS" in agents, "P0: وكيل النزاهة الشرعية غير موجود في منظومة القائد")
-require("HakimReligiousIntegrity.assess" in sovereign and "HakimReligiousIntegrity.promptContext" in sovereign, "P0: المحرك السيادي لا يستدعي النزاهة الشرعية")
+require("HakimReligiousIntegrity.assess" in one and "HakimReligiousIntegrity.promptContext" in sovereign, "P0: النزاهة الشرعية لا تدخل القرار عبر النواة الواحدة")
 require("HakimSovereignEngine.assess" in agents, "P0: القائد لا يرث تقييم النزاهة الشرعية من المحرك السيادي")
 
 # حاكم الهدي النبوي: توقير + تحقق + اتباع + بركة مشروعة بلا ادعاء تقني.

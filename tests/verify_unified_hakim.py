@@ -86,10 +86,14 @@ require('HakimSovereignResultChannel.flushAsync(app)' in resilience,
         "P0: صندوق النتائج المشفر لا يعاد تفريغه عند التعافي")
 require('AndroidKeyStore' in result_channel and 'AES/GCM/NoPadding' in result_channel,
         "P0: صندوق النتائج المحلي ليس مشفرًا بمفتاح AndroidKeyStore")
-require('secure_webhook' in result_channel and 'legacy_ntfy' in result_channel and 'encrypted_local_outbox' in result_channel,
-        "P0: تدرج النتائج السيادي (Webhook/مباشر/محلي) غير مكتمل")
-require(result_channel.index('postJson(resultUrl, payload)') < result_channel.index('postLegacyNtfy(context, requestId, payload)'),
+require('secure_webhook' in result_channel and 'encrypted_ntfy' in result_channel and 'encrypted_local_outbox' in result_channel,
+        "P0: تدرج النتائج السيادي (Webhook/مباشر مشفر/محلي) غير مكتمل")
+require(result_channel.index('postJson(resultUrl, payload)') < result_channel.index('postEncryptedNtfy(context, payload)'),
         "P0: قناة النتائج غيّرت أولوية المسار المثبت بدل إضافة مسار تعافٍ")
+require('DIRECT_PREFIX = "HR1."' in result_channel and 'DIRECT_AAD = "HAKIM-RESULT-v1"' in result_channel,
+        "P0: بروتوكول النتائج المباشر المشفر غير مثبت الهوية")
+require('postLegacyNtfy(context, requestId, payload)' not in result_channel,
+        "P0: نتيجة HC1 الحساسة قد تهبط إلى ناقل قديم غير مشفر")
 require('AtomicFile' in result_channel and 'hakim-sovereign-result-outbox.enc' in result_channel,
         "P0: استعادة صندوق النتائج ليست ذرية/قابلة للتعافي")
 require('MAX_OUTBOX_BYTES' in result_channel and 'outbox_full' in result_channel,

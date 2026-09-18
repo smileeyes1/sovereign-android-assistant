@@ -72,8 +72,10 @@ require("suppressProactiveResumeFor" in crash,
 
 require("HakimCrashShield.install(this)" in app,
         "P0: حارس التعطل لا يسبق تهيئة المكونات")
-require(app.find("HakimCrashShield.install(this)") < app.find("HakimLearning.initialize(this)"),
-        "P0: حارس التعطل يثبت بعد مكونات قد تنهار")
+require(app.find("HakimCrashShield.install(this)") < app.find("startNonCriticalBootstrap(safeRecovery, prefs)"),
+        "P0: حارس التعطل يجب أن يثبت قبل إطلاق التهيئة الخلفية")
+require("HakimLearning.initialize(app)" in app,
+        "P0: تهيئة التعلم ضاعت بدل نقلها إلى bootstrap الخلفي")
 for token in [
     "getHistoricalProcessExitReasons",
     "ApplicationExitInfo.REASON_CRASH",

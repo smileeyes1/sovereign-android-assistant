@@ -11,10 +11,12 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 object HakimHealthBeacon {
+    private val asyncInFlight = AtomicBoolean(false)
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
@@ -24,8 +26,25 @@ object HakimHealthBeacon {
 
     fun sendAsync(context: Context, reason: String) {
         val app = context.applicationContext
+        if (!asyncInFlight.compareAndSet(false, true)) {
+            app.getSharedPreferences("hakim", Context.MODE_PRIVATE).edit()
+                .putLong("health_beacon_coalesced_at", System.currentTimeMillis())
+                .apply()
+            return
+        }
+
         Thread {
-            try { sendNow(app, reason) } catch (_: Exception) {}
+            runCatching {
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            }
+            try {
+                sendNow(app, reason)
+            } catch (_: Exception) {
+            } finally {
+                asyncInFlight.set(false)
+            }
+        }.apply {
+            name = "HakimHealthBeacon"
         }.start()
     }
 

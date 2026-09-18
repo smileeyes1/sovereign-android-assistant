@@ -83,6 +83,10 @@ jobs:
         run: python3 tests/verify_quranic_corpus_coverage.py
       - name: بوابة القرآن المحلي المتحقق من المصدر الرسمي
         run: python3 tests/verify_verified_quran_corpus.py
+      - name: بوابة القرآن المضمّن المحلي ٢٠٠٤٩
+        run: |
+          python3 tests/verify_bundled_quran_20049.py
+          bash scripts/prepare-bundled-quran.sh
       - name: بوابة الإنسان أولًا والكرامة والرحمة
         run: python3 tests/verify_human_first_policy.py
       - name: بوابة حماية القلب الجسدي والاتصال الصحي اللاسلكي

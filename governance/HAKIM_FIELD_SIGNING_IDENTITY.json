@@ -84,5 +84,16 @@
     "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance.",
     "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
     "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires."
+  ],
+  "superseded_field_failures": [
+    {
+      "version_code": 20050,
+      "version_name": "2.0.50-sovereign-browser-agent-quran-streaming",
+      "apk_sha256": "87dc4870e4610914fb6701dc354dd49bcc5dca6df3449eed166c053c4b185697",
+      "observed_local_time": "2026-09-18T20:27:26+03:00",
+      "failure": "ANR_AND_COLD_START_TIMEOUT",
+      "anr_description": "bg anr: No response to onStartJob",
+      "cold_start_wait_ms": 10053
+    }
   ]
 }

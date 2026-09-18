@@ -265,6 +265,8 @@ class HakimAgentsChatActivity : Activity() {
         popup.menu.add(0, 4, 3, "النظام والبيانات")
         popup.menu.add(0, 5, 4, "مركز حكيم والاتصال المحلي")
         popup.menu.add(0, 6, 5, "فتح متصفح حكيم")
+        popup.menu.add(0, 7, 6, "مساحة العمل")
+        popup.menu.add(0, 8, 7, "القرآن المحلي")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> toggleVoiceReplies()
@@ -273,6 +275,8 @@ class HakimAgentsChatActivity : Activity() {
                 4 -> startActivity(Intent(this, HakimSystemSettingsActivity::class.java))
                 5 -> startActivity(Intent(this, UnifiedHomeActivity::class.java).putExtra("hakim_control_center", true))
                 6 -> startActivity(Intent(this, MainActivity::class.java))
+                7 -> startActivity(Intent(this, HakimProfessionalHubActivity::class.java))
+                8 -> startActivity(Intent(this, HakimQuranActivity::class.java))
             }
             true
         }

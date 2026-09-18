@@ -46,6 +46,13 @@ object HakimProactiveEngine {
         HakimQuranicInvariantKernel.requireInherited("proactive_background")
         HakimIntegrationFabric.requireCore(app, "proactive_background")
         initialize(app)
+        HakimSovereignOneKernel.recordSignal(
+            app,
+            HakimSovereignOneKernel.SignalKind.EVOLUTION,
+            "proactive_background",
+            "reason=${reason.take(60)};health=${healthStatus?.take(40) ?: "UNKNOWN"}",
+            90
+        )
 
         val actions = JSONArray()
         if (!isEnabled(app)) return report(app, reason, "DISABLED_BY_USER", actions)
@@ -155,8 +162,10 @@ object HakimProactiveEngine {
                 )) return null
             if (mission.failures >= 3) return null
 
-            val decision = HakimDecisionMatrix.evaluate(mission.goal)
+            val one = HakimSovereignOneKernel.frame(context, mission.goal)
+            val decision = one.decision
             if (decision.mode != HakimDecisionMatrix.Mode.AUTO && decision.mode != HakimDecisionMatrix.Mode.AUTO_VERIFY) return null
+            if (one.blocked || one.needsApproval || one.shouldResearchFirst) return null
 
             val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val now = System.currentTimeMillis()
@@ -183,6 +192,7 @@ object HakimProactiveEngine {
         val mission = HakimMissionLedger.active(context)
         return JSONObject()
             .put("proactive_engine", true)
+            .put("one_sovereign_kernel_integrated", true)
             .put("enabled", p.getBoolean("enabled", true))
             .put("beneficial_safe_actions_auto", true)
             .put("background_safe_maintenance", true)

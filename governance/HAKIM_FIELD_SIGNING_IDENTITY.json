@@ -46,7 +46,9 @@
       "later_get_job_state": "unknown",
       "dumpsys_history": "periodic 771208 repeatedly canceled/disconnected/replaced",
       "root_cause": "ConstraintDoctor invoked from periodic_watchdog calls HakimConnectionResilience.schedule(app), replacing the same running periodic job",
-      "remaining_gap": "SUPPRESS_SELF_RESCHEDULE_WHEN_CONSTRAINT_DOCTOR_IS_CALLED_FROM_CONNECTION_WATCHDOG"
+      "remaining_gap": "SUPPRESS_SELF_RESCHEDULE_WHEN_CONSTRAINT_DOCTOR_IS_CALLED_FROM_CONNECTION_WATCHDOG",
+      "cold_start_status": "OK",
+      "cold_start_total_ms": 6583
     }
   },
   "historical_previous_lineage": {

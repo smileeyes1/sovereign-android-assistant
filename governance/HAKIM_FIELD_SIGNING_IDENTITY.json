@@ -1,6 +1,6 @@
 {
-  "schema_version": 8,
-  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20051__STARTUP_FIXED__WATCHDOG_LONG_RUNNING",
+  "schema_version": 9,
+  "status": "CURRENT_D1_FIELD_LINEAGE_PROVEN_ON_PHONE_20052__WATCHDOG_STILL_LONG_RUNNING",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -14,39 +14,37 @@
     20040,
     20049,
     20050,
-    20051
+    20051,
+    20052
   ],
-  "current_field_version": 20051,
-  "current_candidate_version": 20052,
+  "current_field_version": 20052,
+  "current_candidate_version": 20054,
   "field_evidence": {
-    "observed_at_utc": "2026-09-18T17:47:10Z",
-    "method": "AUTHORIZED_REMOTE_DEVICE_IN_PLACE_UPDATE_EXACT_BASE_APK_MATCH_COLD_START_JOB_SCHEDULER_RUNTIME_PROBE",
+    "observed_at_utc": "2026-09-18T18:53:00Z",
+    "method": "AUTHORIZED_REMOTE_INPLACE_UPDATE_EXACT_BASE_APK_MATCH_COLD_START_JOB_SCHEDULER_RUNTIME_PROBE",
     "package": "ps.hakim.stable",
-    "version_code": 20051,
-    "version_name": "2.0.51-sovereign-browser-agent-startup-nonblocking",
+    "version_code": 20052,
+    "version_name": "2.0.52-sovereign-browser-agent-bounded-watchdog",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "ce061bbbef551e399cdda5c797a47d3b4e4f4b53f1d65519d5bce9b2d292acb7",
-    "supersedes_direct_field_version": 20050,
-    "claim_scope": "PACKAGE_VERSION_EXACT_APK_AND_D1_IDENTITY; STARTUP_STABILITY_IMPROVED; BACKGROUND_WATCHDOG_EFFICIENCY_NOT_ACCEPTED",
-    "stability": "PARTIAL_PASS",
+    "apk_sha256": "7a26a01ef667c3ba237d31a6842c0c3e02e280aee7e74d90decb067e8ca7ad7b",
+    "supersedes_direct_field_version": 20051,
+    "claim_scope": "PACKAGE_VERSION_EXACT_APK_AND_D1_IDENTITY; NO_NEW_ANR_OOM_FATAL; WATCHDOG_JOB_STILL_TOO_LONG",
+    "stability": "FAILED",
     "stability_evidence": {
-      "installed_local_time": "2026-09-18T20:42:22+03:00",
+      "installed_local_time": "2026-09-18T21:50:45+03:00",
       "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
       "data_dir_preserved": "/data/user/0/ps.hakim.stable",
-      "cold_start_local_time": "2026-09-18T20:46:11+03:00",
+      "cold_start_local_time": "2026-09-18T21:51:04+03:00",
       "cold_start_status": "OK",
-      "cold_start_total_ms": 5929,
-      "new_anr_observed_since_20051_install": false,
-      "new_oom_observed_since_20051_install": false,
-      "forced_jobs": [
-        771204,
-        771207,
-        771208
-      ],
-      "job_771204_after_wait": "waiting",
-      "job_771207_after_wait": "waiting",
-      "job_771208_after_over_120s": "active",
-      "remaining_gap": "PERIODIC_CONNECTION_WATCHDOG_CAN_REMAIN_ACTIVE_TOO_LONG"
+      "cold_start_total_ms": 5785,
+      "warm_start_wait_ms": 12,
+      "new_anr_observed_since_20052_install": false,
+      "new_oom_observed_since_20052_install": false,
+      "new_fatal_observed_since_20052_install": false,
+      "job_771208_after_over_30s": "active",
+      "job_771208_later_observed_waiting_once": true,
+      "repeated_job_771208_again_exceeded_30s": "active",
+      "remaining_gap": "JOB_SCHEDULER_NEEDS_HARD_DEADLINE_AND_SECONDARY_WORK_MUST_NOT_HOLD_WORKER"
     }
   },
   "historical_previous_lineage": {
@@ -66,10 +64,10 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "Treat 20051/D1 as the current directly observed field identity. It fixed the 20050 cold-start/ANR regression in the observed probe, but the periodic connection watchdog remained active for more than two minutes. Candidate 20052 must preserve package/D1/data and make watchdog work non-blocking, coalesced, observable, and promptly finish before field qualification."
+    "decision": "Treat 20052/D1 as the current installed field identity but not field-stable: repeated forced Job 771208 remained active beyond 30 seconds. Candidate 20054 must preserve package/D1/data, make ConstraintDoctor asynchronous, enforce a 15s JobScheduler hard deadline with single completion, and prevent overlapping watchdog accumulation. 20053 professional features remain held until stability is accepted."
   },
   "rules": [
-    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20051/D1.",
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20052/D1.",
     "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
     "F4 is historical and must not be used to overwrite the current D1 installation.",
     "The known 4C companion signer must never be accepted for ps.hakim.stable.",
@@ -83,7 +81,8 @@
     "Direct package/version/APK/signer evidence establishes field identity only; runtime stability remains a separate gate and is not inherited.",
     "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance.",
     "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
-    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires."
+    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires.",
+    "A periodic watchdog must have a hard JobScheduler deadline; optional diagnosis, health, or self-check work must continue asynchronously and must not keep the job active past that deadline."
   ],
   "superseded_field_failures": [
     {
@@ -94,6 +93,15 @@
       "failure": "ANR_AND_COLD_START_TIMEOUT",
       "anr_description": "bg anr: No response to onStartJob",
       "cold_start_wait_ms": 10053
+    },
+    {
+      "version_code": 20052,
+      "version_name": "2.0.52-sovereign-browser-agent-bounded-watchdog",
+      "apk_sha256": "7a26a01ef667c3ba237d31a6842c0c3e02e280aee7e74d90decb067e8ca7ad7b",
+      "observed_local_time": "2026-09-18T21:52:09+03:00",
+      "failure": "WATCHDOG_JOB_REPEATEDLY_ACTIVE_OVER_30S",
+      "anr_observed": false,
+      "oom_observed": false
     }
   ]
 }

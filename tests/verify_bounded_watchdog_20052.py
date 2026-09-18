@@ -42,19 +42,19 @@ require('name = "HakimHealthBeacon"' in health,
         "خيط الصحة غير قابل للتشخيص بالاسم")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20052,
-        "الإصدار يجب أن يكون ٢٠٠٥٢")
-require(policy["current_field_version"] == 20051,
-        "خط الميدان يجب أن يسجل ٢٠٠٥١ المثبت فعليًا")
-require(policy["current_candidate_version"] == 20052,
-        "سياسة التوقيع لا تسجل ٢٠٠٥٢ كمرشح")
-require(policy["field_evidence"]["version_code"] == 20051,
-        "دليل الميدان لا يطابق ٢٠٠٥١")
-e = policy["field_evidence"].get("stability_evidence", {})
-require(e.get("job_771208_after_over_120s") == "active",
-        "سبب إنشاء ٢٠٠٥٢ غير محفوظ كدليل")
+require(m and int(m.group(1)) >= 20052,
+        "إصلاح watchdog يجب ألا يرجع قبل ٢٠٠٥٢")
+candidate = int(m.group(1))
+require(policy["current_field_version"] >= 20052,
+        "خط الميدان أقدم من ٢٠٠٥٢ المثبت فعليًا")
+require(policy["current_candidate_version"] == candidate,
+        "سياسة التوقيع لا تطابق المرشح الحالي")
+require(policy["field_evidence"]["version_code"] == policy["current_field_version"],
+        "دليل الميدان لا يطابق current_field_version")
 require(policy.get("superseded_field_failures", [{}])[0].get("version_code") == 20050,
         "فشل ٢٠٠٥٠ التاريخي ضاع من سجل الانحدار")
+require(any(x.get("version_code") == 20052 for x in policy.get("superseded_field_failures", [])),
+        "فشل ٢٠٠٥٢ الميداني غير محفوظ")
 
 print("HAKIM_20052_BOUNDED_WATCHDOG=PASS")
 print("HAKIM_20052_HEALTH_BEACON_COALESCING=PASS")

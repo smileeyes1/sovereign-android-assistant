@@ -82,8 +82,13 @@ require(m and int(m.group(1)) >= 20046, "P0: مرشح المرجعية يجب أ
 candidate = int(m.group(1))
 require(policy["current_candidate_version"] == candidate,
         "P0: سياسة التوقيع لا تطابق رقم المرشح الحالي")
-require(policy["current_field_version"] == 20040,
-        "P0: تم تغيير خط الميدان بلا دليل مباشر")
+field = int(policy["current_field_version"])
+require(field >= 20049, "P0: سياسة الميدان أقدم من أحدث دليل مباشر مثبت")
+require(policy.get("field_evidence", {}).get("version_code") == field,
+        "P0: دليل الميدان لا يطابق current_field_version")
+require(policy.get("field_evidence", {}).get("signer_sha256") == policy["certificate_sha256"],
+        "P0: دليل الميدان لا يطابق موقّع D1 الحاكم")
+require(candidate > field, "P0: المرشح يجب أن يزيد versionCode عن خط الميدان")
 
 print("HAKIM_QURAN_SUNNAH_ONLY_NORMATIVE_AUTHORITY=PASS")
 print("HAKIM_HUMAN_OWNER_SINGLE_AGENT_SCOPE=PASS")

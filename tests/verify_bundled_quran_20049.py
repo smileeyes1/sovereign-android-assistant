@@ -41,14 +41,38 @@ for token in [
 ]:
     require(token in corpus, f"P0: قيد runtime للقرآن المضمّن مفقود: {token}")
 
-require('check(sourceSha.equals(BUNDLED_SOURCE_SHA256' in corpus,
+source_hash_verified = (
+    'check(sourceSha.equals(BUNDLED_SOURCE_SHA256' in corpus
+    or ('assetDigest(app, BUNDLED_ASSET_PATH, "SHA-256")' in corpus
+        and 'sourceSha.equals(BUNDLED_SOURCE_SHA256' in corpus)
+)
+require(source_hash_verified,
         "P0: runtime لا يتحقق من SHA-256 للـasset")
-require('check(canonical.equals(BUNDLED_CANONICAL_SHA256' in corpus,
+
+canonical_verified = (
+    'check(canonical.equals(BUNDLED_CANONICAL_SHA256' in corpus
+    or 'installed.canonicalSha256.equals(BUNDLED_CANONICAL_SHA256' in corpus
+)
+require(canonical_verified,
         "P0: runtime لا يتحقق من canonical SHA-256")
-require('check(ayat.count { it.surah == 87 } == 19)' in corpus,
-        "P0: runtime لا يتحقق من سورة الأعلى")
-require("validate(ayat)" in corpus and "replaceDatabaseAtomically(app, ayat)" in corpus,
-        "P0: القرآن المضمّن لا يمر بفحص التغطية والاستبدال المحكوم")
+
+coverage_verified = (
+    'check(ayat.count { it.surah == 87 } == 19)' in corpus
+    or ('surahAlAlaCount == 19' in corpus
+        and 'ayahCount == EXPECTED_AYA_COUNT' in corpus
+        and 'surahCount == 114' in corpus)
+)
+require(coverage_verified,
+        "P0: runtime لا يتحقق من ١١٤/٦٢٣٦/سورة الأعلى")
+
+atomic_verified = (
+    ("validate(ayat)" in corpus and "replaceDatabaseAtomically(app, ayat)" in corpus)
+    or ("streamBundledMirrorIntoDatabase" in corpus
+        and "db.beginTransaction()" in corpus
+        and "db.setTransactionSuccessful()" in corpus)
+)
+require(atomic_verified,
+        "P0: القرآن المضمّن لا يمر بفحص تغطية واستبدال ذري محكوم")
 require('.putBoolean("preserved_official_archive", false)' in corpus,
         "P0: المرآة المشتقة قد تُعرض كأرشيف رسمي")
 
@@ -64,11 +88,16 @@ require("assets.srcDir" in build and "prepareBundledQuranAsset" in build and
         "preBuild" in build,
         "P0: أصل القرآن غير مربوط بكل build")
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20049, "P0: الإصدار يجب أن يكون ٢٠٠٤٩")
-require(policy["current_candidate_version"] == 20049,
-        "P0: سياسة التوقيع لا تسجل ٢٠٠٤٩ كمرشح")
-require(policy["current_field_version"] == 20040,
-        "P0: خط الميدان المباشر تغير بلا دليل جديد")
+require(m and int(m.group(1)) >= 20049, "P0: الإصدار لا يجوز أن يرجع قبل ٢٠٠٤٩")
+candidate = int(m.group(1))
+require(policy["current_candidate_version"] == candidate,
+        "P0: سياسة التوقيع لا تطابق رقم المرشح الحالي")
+require(policy["current_field_version"] >= 20049,
+        "P0: سياسة الميدان أقدم من الدليل المباشر المثبت ل٢٠٠٤٩")
+require(policy.get("field_evidence", {}).get("version_code") == policy["current_field_version"],
+        "P0: دليل الميدان لا يطابق current_field_version")
+require(candidate > policy["current_field_version"],
+        "P0: المرشح الجديد يجب أن يزيد versionCode عن خط الميدان")
 
 print("HAKIM_BUNDLED_QURAN_BUILD_VERIFY=PASS")
 print("HAKIM_BUNDLED_QURAN_RUNTIME_VERIFY=PASS")

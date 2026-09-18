@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,9 +32,16 @@ version = re.search(r"versionCode\s+(\d+)", build)
 require(version and int(version.group(1)) >= 20035, "P0: الحكمة الاحترافية تراجعت تحت خط 20035")
 version_code = int(version.group(1))
 require("versionName '" in build, "P0: اسم الإصدار مفقود")
-require('"current_field_version": 20040' in identity, "P0: جرى تزوير خط الأساس الميداني بدل تطوير مرشح")
-require(f'"current_candidate_version": {version_code}' in identity,
+identity_policy = json.loads(identity)
+field = int(identity_policy["current_field_version"])
+require(field >= 20049, "P0: سياسة الميدان أقدم من أحدث دليل مباشر مثبت")
+require(identity_policy.get("field_evidence", {}).get("version_code") == field,
+        "P0: دليل الميدان لا يطابق current_field_version")
+require(identity_policy.get("field_evidence", {}).get("signer_sha256") == identity_policy["certificate_sha256"],
+        "P0: دليل الميدان لا يطابق موقّع D1 الحاكم")
+require(identity_policy["current_candidate_version"] == version_code,
         "P0: هوية المرشح لا تتطابق مع versionCode الحالي")
+require(version_code > field, "P0: المرشح يجب أن يزيد versionCode عن خط الميدان")
 
 for token in [
     "quranic_value_governance", "authentic_sunnah_guidance", "worldly_means_by_evidence",

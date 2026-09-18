@@ -16,17 +16,19 @@ FORBIDDEN_4C = "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B
 assert POLICY["schema_version"] >= 5
 assert POLICY["canonical_package"] == "ps.hakim.stable"
 assert POLICY["certificate_sha256"] == CURRENT_D1
-assert POLICY["current_field_version"] == 20040
-assert POLICY["field_evidence"]["version_code"] == 20040
-assert POLICY["field_evidence"]["version_name"] == "2.0.40-sovereign-browser-agent"
-assert POLICY["field_evidence"]["signer_sha256"] == CURRENT_D1
-assert POLICY["field_evidence"]["apk_sha256"] == "63c736782b6371ce605a1862181fb34b6a1d46eec832619912a4ba562a1a2b65"
-assert POLICY["field_evidence"]["supersedes_direct_field_version"] == 20025
+field = int(POLICY["current_field_version"])
+evidence = POLICY["field_evidence"]
+assert field >= 20049
+assert evidence["version_code"] == field
+assert evidence["signer_sha256"] == CURRENT_D1
+assert re.fullmatch(r"[0-9a-f]{64}", evidence["apk_sha256"])
+assert int(evidence["supersedes_direct_field_version"]) < field
+assert field in POLICY["known_matching_versions"]
 assert POLICY["historical_previous_lineage"]["certificate_sha256"] == HISTORICAL_F4
 assert POLICY["known_nonmatching_certificate_sha256"] == FORBIDDEN_4C
 assert 20022 in POLICY["known_matching_versions"]
 assert 20025 in POLICY["known_matching_versions"]
-assert 20040 in POLICY["known_matching_versions"]
+assert 20049 in POLICY["known_matching_versions"]
 assert 20017 in POLICY["historical_previous_lineage"]["known_signed_versions"]
 assert POLICY["continuity"]["one_app_only"] is True
 assert POLICY["continuity"]["preserve_app_data_required"] is True

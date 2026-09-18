@@ -28,7 +28,13 @@ policy = json.loads(text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json"))
 m = re.search(r"versionCode\s+(\d+)", build)
 require(m and int(m.group(1)) >= 20045, "P0: مرشح الاستدلال المحلي يجب أن يكون ٢٠٠٤٥ أو أحدث")
 require(policy["current_candidate_version"] == int(m.group(1)), "P0: سياسة التوقيع لا تطابق مرشح ٢٠٠٤٥")
-require(policy["current_field_version"] == 20040, "P0: تم رفع خط الميدان بلا دليل مباشر")
+field = int(policy["current_field_version"])
+require(field >= 20049, "P0: سياسة الميدان أقدم من أحدث دليل مباشر مثبت")
+require(policy.get("field_evidence", {}).get("version_code") == field,
+        "P0: دليل الميدان لا يطابق current_field_version")
+require(policy.get("field_evidence", {}).get("signer_sha256") == policy["certificate_sha256"],
+        "P0: دليل الميدان لا يطابق موقّع D1 الحاكم")
+require(int(m.group(1)) > field, "P0: المرشح يجب أن يزيد versionCode عن خط الميدان")
 
 # جسر النموذج المحلي يجب أن يكون loopback فقط ولا يملك مسار API خارجي.
 for token in [

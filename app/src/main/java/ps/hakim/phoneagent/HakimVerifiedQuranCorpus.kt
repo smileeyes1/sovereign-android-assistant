@@ -32,6 +32,12 @@ object HakimVerifiedQuranCorpus {
     private const val BACKUP_ARCHIVE_NAME = "hakim-quran-official-source.bak"
     private const val MAX_OFFICIAL_ARCHIVE_BYTES = 32L * 1024L * 1024L
 
+    private const val BUNDLED_ASSET_PATH = "quran/hafsData_v2-0.json"
+    private const val BUNDLED_SOURCE_ID = "QURAN_META_KFQC_DERIVED_PINNED"
+    private const val BUNDLED_SOURCE_COMMIT = "a5dd4a46dc6f7830a4303e89c3b4b3a15a213ac9"
+    private const val BUNDLED_SOURCE_SHA256 = "d2960b3217962e7e4252abdcece67bea3d6b48271e4cd3af45bbbb2dd5c872ca"
+    private const val BUNDLED_CANONICAL_SHA256 = "c1a2d34f901cfb233cbff8c57c770b76b810cbe51eccab69629529318ea82186"
+
     data class SourceSpec(
         val id: String,
         val title: String,
@@ -119,6 +125,59 @@ object HakimVerifiedQuranCorpus {
             update = "13.0"
         )
     )
+
+    /**
+     * يثبت corpus حفص المضمّن عندما لا توجد قاعدة متحققة.
+     * هذا المصدر مرآة مشتقة مثبتة commit+SHA-256 وليس الأرشيف الرسمي نفسه.
+     * لا شبكة مطلوبة وقت التشغيل، ولا يُعتمد شيء قبل فحص البصمة والبنية ١١٤/٦٢٣٦.
+     */
+    fun installBundledMirrorIfNeeded(context: Context): ImportResult {
+        HakimQuranicInvariantKernel.requireInherited("verified_quran_bundled_import")
+        val app = context.applicationContext
+        if (isReady(app)) {
+            return ImportResult(true, "قاعدة القرآن المحلية متحققة بالفعل", app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("source_id", "").orEmpty(), EXPECTED_AYA_COUNT)
+        }
+        return try {
+            val raw = app.assets.open(BUNDLED_ASSET_PATH).use { it.readBytes() }
+            val sourceSha = MessageDigest.getInstance("SHA-256").digest(raw).hex()
+            check(sourceSha.equals(BUNDLED_SOURCE_SHA256, ignoreCase = true)) {
+                "بصمة corpus القرآن المضمّن لا تطابق المصدر المثبت"
+            }
+            val ayat = readBundledMirrorJson(raw)
+            validate(ayat)
+            val canonical = canonicalDigest(ayat)
+            check(canonical.equals(BUNDLED_CANONICAL_SHA256, ignoreCase = true)) {
+                "البصمة القانونية للنص القرآني المضمّن غير مطابقة"
+            }
+            check(ayat.count { it.surah == 87 } == 19) { "عدد آيات سورة الأعلى غير مطابق" }
+
+            replaceDatabaseAtomically(app, ayat)
+            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("verified", true)
+                .putString("source_id", BUNDLED_SOURCE_ID)
+                .putString("source_title", "حفص — مرآة مشتقة مثبتة من بيانات مجمع الملك فهد")
+                .putString("source_update", BUNDLED_SOURCE_COMMIT)
+                .putString("source_trust", "PINNED_KFQC_DERIVED_MIRROR")
+                .putString("sha256", sourceSha)
+                .putString("canonical_sha256", canonical)
+                .putBoolean("preserved_official_archive", false)
+                .putLong("preserved_archive_bytes", 0L)
+                .putInt("ayah_count", ayat.size)
+                .putInt("surah_count", ayat.map { it.surah }.distinct().size)
+                .putLong("verified_at", System.currentTimeMillis())
+                .apply()
+            HakimFaultLedger.resolve(app, "quran_bundled_corpus", "verified:${BUNDLED_SOURCE_ID}:${ayat.size}")
+            ImportResult(
+                true,
+                "تم تثبيت القرآن المحلي المضمّن بعد تحقق SHA-256 وفحص السور الـ١١٤ والآيات الـ٦٢٣٦. المصدر مرآة مشتقة مثبتة وليس الأرشيف الرسمي نفسه.",
+                BUNDLED_SOURCE_ID,
+                ayat.size
+            )
+        } catch (t: Throwable) {
+            HakimFaultLedger.record(app, "quran_bundled_corpus", t, severity = HakimFaultLedger.Severity.MATERIAL)
+            ImportResult(false, "تعذر اعتماد القرآن المضمّن؛ بقي حكيم fail-closed: ${t.message.orEmpty().take(160)}")
+        }
+    }
 
     fun importOfficialArchive(context: Context, uri: Uri): ImportResult {
         HakimQuranicInvariantKernel.requireInherited("verified_quran_import")
@@ -305,6 +364,12 @@ object HakimVerifiedQuranCorpus {
             .put("source_id", p.getString("source_id", ""))
             .put("source_title", p.getString("source_title", ""))
             .put("source_update", p.getString("source_update", ""))
+            .put("source_trust", p.getString("source_trust", if (sourceKnown) "OFFICIAL_ARCHIVE_HASH_VERIFIED" else ""))
+            .put("bundled_quran_asset_path", BUNDLED_ASSET_PATH)
+            .put("bundled_quran_source_sha256", BUNDLED_SOURCE_SHA256)
+            .put("bundled_quran_canonical_sha256", BUNDLED_CANONICAL_SHA256)
+            .put("bundled_quran_runtime_network_required", false)
+            .put("official_archive_and_pinned_mirror_are_distinct", true)
             .put("ayah_count", p.getInt("ayah_count", 0))
             .put("surah_count", p.getInt("surah_count", 0))
             .put("verified_at", p.getLong("verified_at", 0L))
@@ -374,6 +439,40 @@ object HakimVerifiedQuranCorpus {
             return null
         }
         return file to source
+    }
+
+    private fun readBundledMirrorJson(raw: ByteArray): List<Ayah> {
+        val text = raw.toString(Charsets.UTF_8).removePrefix("\uFEFF").trim()
+        val rows = if (text.startsWith("[")) {
+            JSONArray(text)
+        } else {
+            val root = JSONObject(text)
+            val key = listOf("data", "ayat", "aya", "verses", "rows").firstOrNull { root.optJSONArray(it) != null }
+                ?: error("بنية corpus المضمّن غير معروفة")
+            root.getJSONArray(key)
+        }
+
+        val out = ArrayList<Ayah>(EXPECTED_AYA_COUNT)
+        for (i in 0 until rows.length()) {
+            val row = rows.getJSONObject(i)
+            val surah = row.opt("sura_no")?.toString()?.trim()?.toIntOrNull() ?: continue
+            val ayah = row.opt("aya_no")?.toString()?.trim()?.toIntOrNull() ?: continue
+            val name = row.opt("sura_name_ar")?.toString()?.trim().orEmpty()
+            val quranText = row.opt("aya_text")?.toString()?.trim().orEmpty()
+            val imlaey = row.opt("aya_text_emlaey")?.toString()?.trim().orEmpty()
+            if (surah !in 1..114 || ayah <= 0 || quranText.isBlank()) continue
+            out += Ayah(surah, ayah, name, quranText, imlaey)
+        }
+        return out
+    }
+
+    private fun canonicalDigest(ayat: List<Ayah>): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        ayat.sortedWith(compareBy<Ayah> { it.surah }.thenBy { it.ayah }).forEach { a ->
+            val line = "${a.surah}\t${a.ayah}\t${a.surahNameAr}\t${a.text}\t${a.imlaey}\n"
+            digest.update(line.toByteArray(Charsets.UTF_8))
+        }
+        return digest.digest().hex()
     }
 
     private fun readCsvFromOfficialArchive(file: File): List<Ayah> {

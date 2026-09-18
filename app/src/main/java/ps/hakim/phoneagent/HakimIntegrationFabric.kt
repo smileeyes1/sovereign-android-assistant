@@ -17,6 +17,7 @@ object HakimIntegrationFabric {
         "quranic_corpus_114",
         "quran_sunnah_method",
         "normative_sovereignty",
+        "tawhid_ala_compass",
         "human_first_policy",
         "resource_governor",
         "system_of_systems",
@@ -46,6 +47,9 @@ object HakimIntegrationFabric {
         "quranic_kernel→quran_sunnah_method",
         "quranic_corpus_114→quran_sunnah_method",
         "quran_sunnah_method→normative_sovereignty",
+        "normative_sovereignty→tawhid_ala_compass",
+        "tawhid_ala_compass→one_sovereign_kernel",
+        "tawhid_ala_compass→sovereign_engine",
         "normative_sovereignty→constitution",
         "normative_sovereignty→one_sovereign_kernel",
         "normative_sovereignty→sovereign_engine",
@@ -120,6 +124,7 @@ object HakimIntegrationFabric {
         val corpus = HakimQuranicCorpusPolicy.status()
         val method = HakimQuranSunnahMethod.status()
         val normative = HakimNormativeSovereignty.require()
+        val tawhidAla = HakimTawhidAlaCompass.require()
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
@@ -136,6 +141,10 @@ object HakimIntegrationFabric {
         check(normative.optBoolean("human_user_is_owner_of_intent_data_and_authorized_decision")) { "ملكية الإنسان للمقصد والبيانات غير مثبتة" }
         check(normative.optBoolean("hakim_is_single_authorized_agent_inside_its_scope")) { "حكيم ليس الوكيل الوحيد داخل نطاقه" }
         check(normative.optBoolean("hakim_does_not_claim_ownership_of_android_or_hardware")) { "يوجد ادعاء ملكية للنظام أو العتاد" }
+        check(tawhidAla.optBoolean("la_ilaha_illa_allah_tawhid")) { "التوحيد غير مثبت في البوصلة" }
+        check(tawhidAla.optBoolean("muhammad_is_messenger_of_allah")) { "الرسالة غير مثبتة في البوصلة" }
+        check(tawhidAla.optBoolean("surah_al_ala_special_compass")) { "سورة الأعلى غير مثبتة كبوصلة قيمية" }
+        check(tawhidAla.optBoolean("surah_al_ala_not_technical_algorithm")) { "سورة الأعلى قد تُحوّل إلى آلية تقنية" }
         check(human.optBoolean("human_first")) { "سياسة الإنسان أولًا غير مثبتة" }
         check(human.optBoolean("dignity_is_hard_constraint")) { "كرامة المستخدم ليست قيدًا حاكمًا" }
         check(human.optBoolean("silence_is_not_consent")) { "السكوت قد يفسر كموافقة" }
@@ -162,6 +171,7 @@ object HakimIntegrationFabric {
         val corpus = HakimQuranicCorpusPolicy.status()
         val method = HakimQuranSunnahMethod.status()
         val normative = HakimNormativeSovereignty.status()
+        val tawhidAla = HakimTawhidAlaCompass.status()
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
@@ -187,6 +197,13 @@ object HakimIntegrationFabric {
             normative.optBoolean("human_user_is_owner_of_intent_data_and_authorized_decision") &&
             normative.optBoolean("hakim_is_single_authorized_agent_inside_its_scope") &&
             normative.optBoolean("hakim_does_not_claim_ownership_of_android_or_hardware")
+        val tawhidAlaOk = tawhidAla.optBoolean("la_ilaha_illa_allah_tawhid") &&
+            tawhidAla.optBoolean("muhammad_is_messenger_of_allah") &&
+            tawhidAla.optBoolean("muhammad_is_seal_of_prophets") &&
+            tawhidAla.optBoolean("surah_al_ala_special_compass") &&
+            tawhidAla.optBoolean("surah_al_ala_exact_text_requires_verified_corpus") &&
+            tawhidAla.optBoolean("surah_al_ala_not_technical_algorithm") &&
+            tawhidAla.optBoolean("spiritual_state_not_measurable_by_software")
         val humanOk = human.optBoolean("human_first") &&
             human.optBoolean("dignity_is_hard_constraint") &&
             human.optBoolean("zero_technical_burden_default") &&
@@ -224,7 +241,7 @@ object HakimIntegrationFabric {
             proactive.optBoolean("silence_not_consent") &&
             proactive.optBoolean("no_secret_or_permission_escalation")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && methodOk && normativeOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && methodOk && normativeOk && tawhidAlaOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -234,6 +251,7 @@ object HakimIntegrationFabric {
             .put("quranic_corpus_114_integrated", corpusOk)
             .put("quran_sunnah_method_integrated", methodOk)
             .put("normative_sovereignty_integrated", normativeOk)
+            .put("tawhid_ala_compass_integrated", tawhidAlaOk)
             .put("human_first_integrated", humanOk)
             .put("resource_governor_integrated", resourceOk)
             .put("system_of_systems_integrated", systemsOk)
@@ -242,6 +260,7 @@ object HakimIntegrationFabric {
             .put("proactive_engine_integrated", proactiveOk)
             .put("quranic_corpus", corpus)
             .put("normative_sovereignty", normative)
+            .put("tawhid_ala_compass", tawhidAla)
             .put("quran_sunnah_method", method)
             .put("human_first", human)
             .put("resource_governor", resources)

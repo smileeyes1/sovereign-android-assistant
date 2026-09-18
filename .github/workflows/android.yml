@@ -71,6 +71,8 @@ jobs:
         run: python3 tests/verify_quran_sunnah_method.py
       - name: بوابة المرجعية والملكية السيادية
         run: python3 tests/verify_normative_sovereignty.py
+      - name: بوابة التوحيد والرسالة وسورة الأعلى
+        run: python3 tests/verify_tawhid_ala_compass.py
       - name: بوابة الاستخلاف والحكمة وهدي الأنبياء
         run: python3 tests/verify_istikhlaaf_governance.py
       - name: بوابة صمود قناة HC1 والناقل الاحتياطي

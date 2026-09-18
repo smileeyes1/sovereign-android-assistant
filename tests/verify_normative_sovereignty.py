@@ -78,9 +78,10 @@ require("لا مصدر وحي معياري ثالث" in selfcheck,
         "P0: الفحص الذاتي لا يمنع المرجع الثالث")
 
 m = re.search(r"versionCode\s+(\d+)", build)
-require(m and int(m.group(1)) == 20046, "P0: مرشح المرجعية يجب أن يكون ٢٠٠٤٦")
-require(policy["current_candidate_version"] == 20046,
-        "P0: سياسة التوقيع لا تسجل ٢٠٠٤٦ كمرشح")
+require(m and int(m.group(1)) >= 20046, "P0: مرشح المرجعية يجب ألا يرجع قبل ٢٠٠٤٦")
+candidate = int(m.group(1))
+require(policy["current_candidate_version"] == candidate,
+        "P0: سياسة التوقيع لا تطابق رقم المرشح الحالي")
 require(policy["current_field_version"] == 20040,
         "P0: تم تغيير خط الميدان بلا دليل مباشر")
 

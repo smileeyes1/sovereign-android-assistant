@@ -103,6 +103,7 @@ object HakimSovereignOneKernel {
     ): Frame {
         HakimQuranicInvariantKernel.requireInherited("one_sovereign_kernel")
         val normative = HakimNormativeSovereignty.require()
+        val tawhidAla = HakimTawhidAlaCompass.require()
         check(normative.optBoolean("normative_authority_quran") && normative.optBoolean("normative_authority_authentic_sunnah")) { "المرجعية الشرعية السيادية غير مثبتة" }
         check(context.packageName == "ps.hakim.stable") { "النواة السيادية الواحدة تعمل فقط داخل هوية حكيم الأصلية" }
 
@@ -161,6 +162,7 @@ object HakimSovereignOneKernel {
             Signal(SignalKind.POLICY, "decision_matrix", "${decision.mode};score=${decision.score};confidence=${decision.confidence}", decision.confidence, now),
             Signal(SignalKind.POLICY, "quran_sunnah_method", "inherited=true;exact_quran=${quranic.exactQuranTextRequired};exact_source=${religious.exactSourceRequired}", 100, now),
             Signal(SignalKind.POLICY, "normative_sovereignty", "quran=true;authentic_sunnah=true;other_revelation_sources=false", 100, now),
+            Signal(SignalKind.POLICY, "tawhid_ala", "tawhid=true;risalah=true;surah87=true;technical_mystification=false", 100, now),
             Signal(SignalKind.RESOURCE, "resource_governor", resources.optString("mode", "UNKNOWN"), 100, now),
             Signal(SignalKind.MODEL, "local_reasoning", "ready=$localModelReady;loopback=${localModel.optBoolean("loopback_only")}", if (localModelReady) 100 else 70, now),
             Signal(SignalKind.NETWORK, "capability_mesh", "validated=$networkReady", 100, now),
@@ -254,6 +256,7 @@ object HakimSovereignOneKernel {
             .put("evolution_cannot_mutate_core_code_silently", true)
             .put("high_impact_requires_gate", true)
             .put("normative_sovereignty", HakimNormativeSovereignty.status())
+            .put("tawhid_ala_compass", HakimTawhidAlaCompass.status())
             .put("last_fingerprint", p.getString("last_fingerprint", ""))
             .put("last_route", p.getString("last_route", ""))
             .put("last_isolation_mode", p.getString("last_isolation_mode", "UNKNOWN"))
@@ -264,6 +267,7 @@ object HakimSovereignOneKernel {
     fun promptContext(context: Context, frame: Frame): String = buildString {
         appendLine("[النواة السيادية الواحدة]")
         append(HakimNormativeSovereignty.promptContext())
+        append(HakimTawhidAlaCompass.promptContext())
         appendLine("بصمة الحالة=${frame.fingerprint}؛ المسار=${frame.route}؛ نمط العزل=${frame.isolationMode}.")
         appendLine("كل إشارة/فكرة/علم/أداة/ميزة/تعلم/تطور تدخل إطار قرار محليًا؛ لا طبقة خارجية تملك الحاكمية أو توسع السلطة.")
         appendLine("القدرات المفضلة=${frame.preferredCapabilities.joinToString(" ← ")}")

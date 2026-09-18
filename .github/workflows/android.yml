@@ -43,6 +43,10 @@ jobs:
         run: python3 tests/verify_in_app_reasoning.py
       - name: بوابة الاستدلال المحلي السيادي
         run: python3 tests/verify_local_reasoning_sovereignty.py
+      - name: بوابة Bootstrap النموذج المحلي للهاتف
+        run: |
+          python3 tests/verify_termux_local_model_bootstrap.py
+          bash -n scripts/hakim-local-model-termux.sh
       - name: بوابة توافق Play Protect للتثبيت
         run: python3 tests/verify_play_protect_install_profile.py
       - name: بوابة النواة الحاكمة والتأسيس منخفض العبء

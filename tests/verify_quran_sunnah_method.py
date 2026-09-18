@@ -16,6 +16,7 @@ method = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranSunnahMethod.kt")
 quran_corpus = text("app/src/main/java/ps/hakim/phoneagent/HakimQuranicCorpusPolicy.kt")
 prophetic = text("app/src/main/java/ps/hakim/phoneagent/HakimPropheticKnowledgePolicy.kt")
 sovereign = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignEngine.kt")
+one = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignOneKernel.kt")
 integration = text("app/src/main/java/ps/hakim/phoneagent/HakimIntegrationFabric.kt")
 governance = text("app/src/main/java/ps/hakim/phoneagent/HakimGovernanceStore.kt")
 
@@ -67,7 +68,7 @@ require('put("completeness_claim_fail_closed", true)' in prophetic, "P0: ادع�
 require("لا تدّع أن السنة أو السيرة «مكتملة محليًا»" in prophetic, "P0: منع ادعاء اكتمال السنة محليًا مفقود")
 require("صحيحا البخاري ومسلم" in prophetic, "P0: مرجعا الصحيحين غير مثبتين في سلم التحقق")
 
-require("HakimQuranSunnahMethod.assess(goal)" in sovereign, "P0: المحرك السيادي لا يمر على منهج القرآن والسنة")
+require("HakimSovereignOneKernel.frame" in sovereign and "HakimQuranSunnahMethod.assess(cleanGoal)" in one, "P0: المحرك السيادي لا يمر على منهج القرآن والسنة عبر النواة الواحدة")
 require("HakimQuranSunnahMethod.promptContext(goal)" in sovereign, "P0: منهج القرآن والسنة لا يدخل سياق القرار")
 require('put("quran_sunnah_method", HakimQuranSunnahMethod.status())' in sovereign, "P0: حالة المنهج غير ظاهرة في المحرك السيادي")
 require("افحص الهدي النبوي الصحيح ذي الصلة" in sovereign, "P0: الهدي النبوي غير موجود في سلسلة الاستقلالية")

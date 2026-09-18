@@ -1,0 +1,35 @@
+name: بوابة سلامة ملفات القرآن المرشحة
+
+on:
+  push:
+    branches: [ feature/hakim-governance-editor ]
+    paths:
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranCandidateIntegrity.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt'
+      - 'scripts/audit-quran-docx-candidate.py'
+      - 'tests/verify_quran_candidate_integrity.py'
+      - '.github/workflows/quran-candidate-integrity.yml'
+  pull_request:
+    paths:
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranCandidateIntegrity.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimQuranicSourceAuthority.kt'
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimVerifiedQuranCorpus.kt'
+      - 'scripts/audit-quran-docx-candidate.py'
+      - 'tests/verify_quran_candidate_integrity.py'
+      - '.github/workflows/quran-candidate-integrity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quran-candidate-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب المشروع
+        uses: actions/checkout@v7
+      - name: تحقق حجر ملفات القرآن الخارجية وعدم اعتماد العد وحده
+        run: python3 tests/verify_quran_candidate_integrity.py
+      - name: تحقق صياغة أداة DOCX
+        run: python3 -m py_compile scripts/audit-quran-docx-candidate.py

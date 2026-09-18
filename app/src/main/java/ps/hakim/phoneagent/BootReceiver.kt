@@ -12,19 +12,35 @@ class BootReceiver : BroadcastReceiver() {
 
         HakimConstitution.install(context)
         HakimLearning.initialize(context)
+        HakimProactiveEngine.initialize(context)
         AutoUpdater.schedule(context)
         HakimSelfCheck.schedule(context)
         HakimConnectionResilience.install(context)
-        AutoUpdater.checkAsync(context)
-        HakimSelfCheck.runAsync(context)
-        HakimLocalPairing.reconnectAsync(context)
+
+        val resources = HakimResourceGovernor.snapshot(context)
+        if (resources.mode != HakimResourceGovernor.Mode.PRESSURE) {
+            if (HakimResourceGovernor.canUseRealtimeBackgroundNetwork(context)) {
+                AutoUpdater.startRealtimeListener(context)
+                AutoUpdater.checkAsync(context)
+            }
+            HakimSelfCheck.runAsync(context)
+        }
 
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
-        val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+
+        // HC1 هو مسار التحكم الموحد الحالي. لا يجوز ربط استعادته بعد الإقلاع
+        // بوجود إعدادات القناة القديمة؛ وإلا يصبح حكيم صامتًا حتى فتح التطبيق يدويًا.
+        if (!disabled && HakimUnifiedRelay.isConfigured(context)) {
+            HakimUnifiedRelay.start(context)
+        }
+
+        val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
-        if (disabled || !paired) return
+        val localPaired = prefs.getBoolean("local_adb_paired", false)
+        if (!disabled && localPaired) HakimLocalPairing.reconnectAsync(context)
+        if (disabled || !legacyPaired) return
 
         try {
             val service = Intent(context, HakimService::class.java)

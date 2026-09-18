@@ -41,6 +41,8 @@ jobs:
         run: python3 tests/verify_work_surface.py
       - name: بوابة الاستدلال داخل واجهة حكيم
         run: python3 tests/verify_in_app_reasoning.py
+      - name: بوابة الاستدلال المحلي السيادي
+        run: python3 tests/verify_local_reasoning_sovereignty.py
       - name: بوابة توافق Play Protect للتثبيت
         run: python3 tests/verify_play_protect_install_profile.py
       - name: بوابة النواة الحاكمة والتأسيس منخفض العبء

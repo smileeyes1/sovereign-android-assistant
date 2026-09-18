@@ -390,6 +390,7 @@ object HakimUnifiedRelay {
             .put("secure_relay", isConfigured(context))
             .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
             .put("secure_relay_transport", p.getString("secure_relay_transport", "unknown"))
+            .put("sovereign_result_channel", HakimSovereignResultChannel.status(context))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
             .put("accessibility", HakimAccessibilityService.instance != null)
@@ -436,34 +437,7 @@ object HakimUnifiedRelay {
     }
 
     private fun sendResult(context: Context, resultUrl: String, requestId: String, status: String, result: JSONObject): Boolean {
-        return try {
-            val payload = JSONObject()
-                .put("request_id", requestId)
-                .put("status", status)
-                .put("received_at_ms", System.currentTimeMillis())
-                .put("result", result)
-            val conn = URL(resultUrl).openConnection() as HttpURLConnection
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 20_000
-            conn.requestMethod = "POST"
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
-            val ok = conn.responseCode in 200..299
-            runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
-            conn.disconnect()
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putLong("secure_relay_last_result_at", System.currentTimeMillis())
-                .putString("secure_relay_last_result_state", if (ok) "sent" else "http_error")
-                .apply()
-            ok
-        } catch (e: Exception) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putString("secure_relay_last_result_state", "failed")
-                .putString("secure_relay_last_result_error", e.javaClass.simpleName)
-                .apply()
-            false
-        }
+        return HakimSovereignResultChannel.sendResult(context, resultUrl, requestId, status, result)
     }
 
     private fun ensureApprovalChannel(context: Context) {

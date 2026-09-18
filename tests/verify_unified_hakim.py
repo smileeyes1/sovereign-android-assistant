@@ -29,6 +29,7 @@ mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 resilience = text("app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt")
 health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
+result_channel = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignResultChannel.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version = re.search(r"versionCode\s+(\d+)", build)
@@ -76,15 +77,33 @@ require('if (localPaired) HakimLocalPairing.reconnectAsync(app)' in resilience,
 require('secure_reconnect_requested' in resilience and 'secure_relay_state' in resilience,
         "P0: تشخيص استعادة HC1 غير قابل للرصد")
 
-# نبضة الصحة يجب أن تستخدم نتيجة HC1 أولًا، ثم تحتفظ بالقناة القديمة كمسار توافق فقط.
-require('HakimUnifiedRelay.KEY_RESULT_URL' in health and 'HakimUnifiedRelay.KEY_RELAY_KEY' in health,
-        "P0: نبضة الصحة لا تستخدم إعداد HC1")
-require('secure_webhook' in health and 'legacy_ntfy' in health,
-        "P0: ترتيب مسارات نبضة الصحة غير قابل للرصد")
-require(health.index('secure_webhook') < health.index('legacy_ntfy'),
-        "P0: نبضة الصحة لا تفضّل HC1 على الناقل القديم")
-require('secure_failed_no_legacy' in health,
-        "P0: فشل HC1 بلا ناقل قديم غير ظاهر تشخيصيًا")
+# النتائج والنبضات يجب ألا تتوقف بفشل مزود واحد: Webhook ثم قناة مباشرة ثم صندوق محلي مشفر.
+require('HakimSovereignResultChannel.sendResult' in relay,
+        "P0: نتائج HC1 لا تمر عبر قناة النتائج السيادية")
+require('HakimSovereignResultChannel.sendHealth' in health,
+        "P0: نبضة الصحة لا تمر عبر قناة النتائج السيادية")
+require('HakimSovereignResultChannel.flushAsync(app)' in resilience,
+        "P0: صندوق النتائج المشفر لا يعاد تفريغه عند التعافي")
+require('AndroidKeyStore' in result_channel and 'AES/GCM/NoPadding' in result_channel,
+        "P0: صندوق النتائج المحلي ليس مشفرًا بمفتاح AndroidKeyStore")
+require('secure_webhook' in result_channel and 'encrypted_ntfy' in result_channel and 'encrypted_local_outbox' in result_channel,
+        "P0: تدرج النتائج السيادي (Webhook/مباشر مشفر/محلي) غير مكتمل")
+require(result_channel.index('postJson(resultUrl, payload)') < result_channel.index('postEncryptedNtfy(context, payload)'),
+        "P0: قناة النتائج غيّرت أولوية المسار المثبت بدل إضافة مسار تعافٍ")
+require('DIRECT_PREFIX = "HR1."' in result_channel and 'DIRECT_AAD = "HAKIM-RESULT-v1"' in result_channel,
+        "P0: بروتوكول النتائج المباشر المشفر غير مثبت الهوية")
+require('postLegacyNtfy(context, requestId, payload)' not in result_channel,
+        "P0: نتيجة HC1 الحساسة قد تهبط إلى ناقل قديم غير مشفر")
+require('AtomicFile' in result_channel and 'hakim-sovereign-result-outbox.enc' in result_channel,
+        "P0: استعادة صندوق النتائج ليست ذرية/قابلة للتعافي")
+require('MAX_OUTBOX_BYTES' in result_channel and 'outbox_full' in result_channel,
+        "P0: صندوق النتائج بلا حد موارد أو تشخيص امتلاء")
+require('@Synchronized\n    private fun flush' in result_channel and '@Synchronized\n    private fun enqueue' in result_channel,
+        "P0: صندوق النتائج قد يفقد عناصر بسبب سباق بين الإضافة والتفريغ")
+require('decrypt_failed' in result_channel and 'else -> false' in result_channel,
+        "P0: صندوق النتائج قد يسقط بيانات تالفة/غير معروفة بصمت")
+require('.put("payload", payload.take(' not in result_channel,
+        "P0: نتيجة كبيرة يمكن أن تُقص بصمت قبل التخزين")
 
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
@@ -99,7 +118,7 @@ require('تأسيس ADB المحلي' in home and 'مركز القيادة' in h
 require('مركز حكيم والاتصال المحلي' in chat, "P0: واجهة المحادثة لا تصل إلى مركز الاتصال المحلي")
 require('object HakimCapabilityMesh' in mesh and 'rank(context' in mesh, "P0: شبكة التفوق/الأدوات غير مدمجة")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot, resilience, health])
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, chat, mesh, boot, resilience, health, result_channel])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

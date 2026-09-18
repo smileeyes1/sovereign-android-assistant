@@ -61,81 +61,14 @@ object HakimHealthBeacon {
             .put("reason", reason.take(80))
             .toString()
 
-        // HC1 result webhook is the primary health path. It is independent from the legacy result topic.
+        // المسار الآمن الحالي يبقى أولًا، ثم قناة النتائج المباشرة، ثم صندوق محلي مشفر.
         val secureUrl = prefs.getString(HakimUnifiedRelay.KEY_RESULT_URL, "").orEmpty().trim()
         val secureKey = prefs.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").orEmpty().trim()
-        if (secureUrl.startsWith("https://") && secureKey.isNotBlank()) {
-            val requestId = "health-$now"
-            val signature = hmacHex(secureKey, "$requestId\nhealth\n$payload")
-            val wrapper = JSONObject()
-                .put("request_id", requestId)
-                .put("status", "health")
-                .put("received_at_ms", now)
-                .put("result", JSONObject(payload))
-                .put("sig", signature)
-            if (postJson(secureUrl, wrapper.toString())) {
-                prefs.edit()
-                    .putString("last_health_beacon_state", "sent")
-                    .putString("last_health_beacon_transport", "secure_webhook")
-                    .putLong("last_health_beacon_at", now)
-                    .putString("installed_apk_sha256", installedApkSha256)
-                    .remove("last_health_beacon_error")
-                    .apply()
-                return true
-            }
-            prefs.edit()
-                .putString("last_health_beacon_state", "secure_failed_fallback")
-                .putString("last_health_beacon_transport", "secure_webhook")
-                .apply()
-        }
-
-        // Compatibility fallback only: older installations may still have the signed ntfy result channel.
-        val topic = prefs.getString("result_topic", "").orEmpty().trim()
-        val key = prefs.getString("auth_key", "").orEmpty().trim()
-        if (topic.isBlank() || key.isBlank()) {
-            prefs.edit()
-                .putString("last_health_beacon_state", if (secureUrl.isBlank()) "missing_pairing_or_auth" else "secure_failed_no_legacy")
-                .putString("last_health_beacon_transport", if (secureUrl.isBlank()) "none" else "secure_webhook")
-                .putLong("last_health_beacon_at", now)
-                .putString("installed_apk_sha256", installedApkSha256)
-                .apply()
-            return false
-        }
-
-        val requestId = "health-$now"
-        val wrapper = JSONObject()
-            .put("request_id", requestId)
-            .put("chunk", 1)
-            .put("total", 1)
-            .put("data", payload)
-            .put("sig", hmacHex(key, "$requestId\n1\n1\n$payload"))
-
-        val req = Request.Builder()
-            .url("https://ntfy.sh/$topic")
-            .header("User-Agent", "HAKIM-Health-Beacon/3")
-            .post(wrapper.toString().toRequestBody("text/plain; charset=utf-8".toMediaType()))
-            .build()
-
-        return try {
-            client.newCall(req).execute().use { response ->
-                val ok = response.isSuccessful
-                prefs.edit()
-                    .putString("last_health_beacon_state", if (ok) "sent" else "http_${response.code}")
-                    .putString("last_health_beacon_transport", "legacy_ntfy")
-                    .putLong("last_health_beacon_at", now)
-                    .putString("installed_apk_sha256", installedApkSha256)
-                    .apply()
-                ok
-            }
-        } catch (e: Exception) {
-            prefs.edit()
-                .putString("last_health_beacon_state", "failed")
-                .putString("last_health_beacon_transport", "legacy_ntfy")
-                .putString("last_health_beacon_error", e.message.orEmpty().take(300))
-                .putLong("last_health_beacon_at", now)
-                .apply()
-            false
-        }
+        val sent = HakimSovereignResultChannel.sendHealth(app, secureUrl, secureKey, payload)
+        prefs.edit()
+            .putString("installed_apk_sha256", installedApkSha256)
+            .apply()
+        return sent
     }
 
     private fun postJson(url: String, body: String): Boolean {

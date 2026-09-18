@@ -102,6 +102,9 @@ object HakimConnectionResilience {
             return state(app, "unpaired", reason)
         }
 
+        // أي نتيجة حُفظت محليًا أثناء انقطاع مزود أو الشبكة تُعاد تلقائيًا.
+        HakimSovereignResultChannel.flushAsync(app)
+
         // HC1 is independently recoverable and must never depend on legacy topics.
         if (securePaired) HakimUnifiedRelay.start(app)
 

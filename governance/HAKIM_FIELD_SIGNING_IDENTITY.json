@@ -4,9 +4,17 @@
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "known_matching_versions": [20018,20019,20020,20021,20022,20025,20040],
+  "known_matching_versions": [
+    20018,
+    20019,
+    20020,
+    20021,
+    20022,
+    20025,
+    20040
+  ],
   "current_field_version": 20040,
-  "current_candidate_version": 20043,
+  "current_candidate_version": 20044,
   "field_evidence": {
     "observed_at_utc": "2026-09-17T12:23:29Z",
     "method": "AUTHORIZED_REMOTE_DEVICE_READ_ONLY_APK_AND_MANIFEST_PREFLIGHT",
@@ -20,7 +28,11 @@
   },
   "historical_previous_lineage": {
     "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
-    "known_signed_versions": [20013,20016,20017],
+    "known_signed_versions": [
+      20013,
+      20016,
+      20017
+    ],
     "status": "SUPERSEDED_BY_NEWER_DIRECT_FIELD_EVIDENCE_20025_D1"
   },
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",

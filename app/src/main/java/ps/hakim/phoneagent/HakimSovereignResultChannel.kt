@@ -14,6 +14,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -42,6 +44,10 @@ object HakimSovereignResultChannel {
     private const val MAX_FLUSH_PER_RUN = 12
     private const val RESULT_TOPIC = "result_topic"
     private const val AUTH_KEY = "auth_key"
+    private const val DIRECT_PREFIX = "HR1."
+    private const val DIRECT_AAD = "HAKIM-RESULT-v1"
+    private const val DIRECT_NONCE_BYTES = 12
+    private const val DIRECT_TAG_BITS = 128
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -167,7 +173,7 @@ object HakimSovereignResultChannel {
         payload: String
     ): String? {
         if (postJson(resultUrl, payload)) return "secure_webhook"
-        if (postLegacyNtfy(context, requestId, payload)) return "legacy_ntfy"
+        if (postEncryptedNtfy(context, payload)) return "encrypted_ntfy"
         return null
     }
 
@@ -179,6 +185,7 @@ object HakimSovereignResultChannel {
         legacyData: String
     ): String? {
         if (secureBody.isNotBlank() && postJson(resultUrl, secureBody)) return "secure_webhook"
+        if (postEncryptedNtfy(context, legacyData)) return "encrypted_ntfy"
         if (postLegacyNtfy(context, requestId, legacyData)) return "legacy_ntfy"
         return null
     }
@@ -189,6 +196,48 @@ object HakimSovereignResultChannel {
             .url(url)
             .header("User-Agent", "HAKIM-Sovereign-Result/1")
             .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        return try {
+            client.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun postEncryptedNtfy(context: Context, data: String): Boolean {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val preferredResultTopic = p.getString(RESULT_TOPIC, "").orEmpty().trim()
+        val relayTopic = p.getString(HakimUnifiedRelay.KEY_TOPIC, "").orEmpty().trim()
+        val topic = preferredResultTopic.ifBlank { relayTopic }
+        val relayKey = p.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").orEmpty().trim()
+        if (topic.isBlank() || relayKey.isBlank()) return false
+        if (!topic.matches(Regex("^[A-Za-z0-9_-]{8,160}$"))) return false
+
+        val carrier = runCatching {
+            val keyMaterial = "$DIRECT_AAD\u0000$relayKey".toByteArray(Charsets.UTF_8)
+            val aesKey = MessageDigest.getInstance("SHA-256").digest(keyMaterial)
+            val nonce = ByteArray(DIRECT_NONCE_BYTES).also { SecureRandom().nextBytes(it) }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.ENCRYPT_MODE,
+                SecretKeySpec(aesKey, "AES"),
+                GCMParameterSpec(DIRECT_TAG_BITS, nonce)
+            )
+            cipher.updateAAD(DIRECT_AAD.toByteArray(Charsets.UTF_8))
+            val encrypted = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+            val packed = ByteArray(nonce.size + encrypted.size)
+            System.arraycopy(nonce, 0, packed, 0, nonce.size)
+            System.arraycopy(encrypted, 0, packed, nonce.size, encrypted.size)
+            DIRECT_PREFIX + Base64.encodeToString(
+                packed,
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+        }.getOrNull() ?: return false
+
+        val req = Request.Builder()
+            .url("https://ntfy.sh/$topic")
+            .header("User-Agent", "HAKIM-Sovereign-Result/1")
+            .post(carrier.toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .build()
         return try {
             client.newCall(req).execute().use { it.isSuccessful }

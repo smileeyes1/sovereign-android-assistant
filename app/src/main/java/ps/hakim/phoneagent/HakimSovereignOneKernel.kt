@@ -152,20 +152,20 @@ object HakimSovereignOneKernel {
         }
 
         val signals = listOf(
-            Signal(SignalKind.USER_INTENT, "goal", "hash:\${sha256(cleanGoal)}", 100, now),
-            Signal(SignalKind.MISSION, "mission_ledger", "\${mission?.phase?.name ?: "IDLE"};failures=\$failures", 100, now),
-            Signal(SignalKind.POLICY, "decision_matrix", "\${decision.mode};score=\${decision.score};confidence=\${decision.confidence}", decision.confidence, now),
-            Signal(SignalKind.POLICY, "quran_sunnah_method", "inherited=true;exact_quran=\${quranic.exactQuranTextRequired};exact_source=\${religious.exactSourceRequired}", 100, now),
+            Signal(SignalKind.USER_INTENT, "goal", "hash:${sha256(cleanGoal)}", 100, now),
+            Signal(SignalKind.MISSION, "mission_ledger", "${mission?.phase?.name ?: "IDLE"};failures=$failures", 100, now),
+            Signal(SignalKind.POLICY, "decision_matrix", "${decision.mode};score=${decision.score};confidence=${decision.confidence}", decision.confidence, now),
+            Signal(SignalKind.POLICY, "quran_sunnah_method", "inherited=true;exact_quran=${quranic.exactQuranTextRequired};exact_source=${religious.exactSourceRequired}", 100, now),
             Signal(SignalKind.RESOURCE, "resource_governor", resources.optString("mode", "UNKNOWN"), 100, now),
-            Signal(SignalKind.MODEL, "local_reasoning", "ready=\$localModelReady;loopback=\${localModel.optBoolean("loopback_only")}", if (localModelReady) 100 else 70, now),
-            Signal(SignalKind.NETWORK, "capability_mesh", "validated=\$networkReady", 100, now),
+            Signal(SignalKind.MODEL, "local_reasoning", "ready=$localModelReady;loopback=${localModel.optBoolean("loopback_only")}", if (localModelReady) 100 else 70, now),
+            Signal(SignalKind.NETWORK, "capability_mesh", "validated=$networkReady", 100, now),
             Signal(SignalKind.TOOL, "capability_mesh", capabilities.joinToString(",") { it.node.id }.take(MAX_SIGNAL_VALUE), 90, now),
-            Signal(SignalKind.FEATURE, "system_of_systems", "units=\${systems.units.size};mode=\${systems.executionMode}", 95, now),
+            Signal(SignalKind.FEATURE, "system_of_systems", "units=${systems.units.size};mode=${systems.executionMode}", 95, now),
             Signal(SignalKind.SCIENCE, "scientific_engineering_kernel", "evidence_and_experiment_govern_worldly_means=true", 100, now),
             Signal(SignalKind.LEARNING, "adaptive_learning", adaptive.optString("last_adaptation_decision", "COLLECTING_EVIDENCE"), 90, now),
-            Signal(SignalKind.FAILURE, "fault_ledger", "repeated_material_fault=\${faults.optBoolean("repeated_material_fault")}", 100, now),
+            Signal(SignalKind.FAILURE, "fault_ledger", "repeated_material_fault=${faults.optBoolean("repeated_material_fault")}", 100, now),
             Signal(SignalKind.RECOVERY, "connection_resilience", recovery.optString("state", "UNKNOWN"), 90, now),
-            Signal(SignalKind.IDEA, "derived_system", "preferred=\${systems.preferredCapabilities.joinToString(",")}".take(MAX_SIGNAL_VALUE), 85, now)
+            Signal(SignalKind.IDEA, "derived_system", "preferred=${systems.preferredCapabilities.joinToString(",")}".take(MAX_SIGNAL_VALUE), 85, now)
         )
 
         val goalHash = sha256(cleanGoal)
@@ -257,9 +257,9 @@ object HakimSovereignOneKernel {
 
     fun promptContext(context: Context, frame: Frame): String = buildString {
         appendLine("[النواة السيادية الواحدة]")
-        appendLine("بصمة الحالة=\${frame.fingerprint}؛ المسار=\${frame.route}؛ نمط العزل=\${frame.isolationMode}.")
+        appendLine("بصمة الحالة=${frame.fingerprint}؛ المسار=${frame.route}؛ نمط العزل=${frame.isolationMode}.")
         appendLine("كل إشارة/فكرة/علم/أداة/ميزة/تعلم/تطور تدخل إطار قرار محليًا؛ لا طبقة خارجية تملك الحاكمية أو توسع السلطة.")
-        appendLine("القدرات المفضلة=\${frame.preferredCapabilities.joinToString(" ← ")}")
+        appendLine("القدرات المفضلة=${frame.preferredCapabilities.joinToString(" ← ")}")
         appendLine("الحتمية تخص السياسة والبوابات والاختيار والتحقق لنفس الحالة المرصودة؛ النماذج الاحتمالية أدوات اقتراح فقط.")
         appendLine("التعلم يعيد ترتيب البدائل الآمنة المثبتة ولا يغير الدستور أو الحقوق أو الصلاحيات. التطور يمر باختبار وانحدار وLAST_VERIFIED_BASELINE.")
         appendLine("أغلق المهمة فقط عندما يتحقق الأثر ومعيار القبول ويُسجل الدليل؛ وإلا فالحالة NOT_PROVEN أو BLOCKED بحسب الواقع.")

@@ -21,6 +21,7 @@ mesh = text("app/src/main/java/ps/hakim/phoneagent/HakimCapabilityMesh.kt")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 independence = text("app/src/main/java/ps/hakim/phoneagent/HakimSovereignIndependence.kt")
 selfcheck = text("app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt")
+reasoning_bridge = text("app/src/main/java/ps/hakim/phoneagent/HakimReasoningBridge.kt")
 netsec = text("app/src/main/res/xml/network_security_config.xml")
 policy = json.loads(text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json"))
 
@@ -76,6 +77,21 @@ require('جسر الاستدلال المحلي محصور بالـ loopback' in
         "P0: الفحص الذاتي لا يحرس سيادة عنوان النموذج المحلي")
 require('الحتمية للحاكمية لا لخرج النموذج الاحتمالي' in selfcheck,
         "P0: الفحص الذاتي يخلط حتمية السياسة باحتمالية النموذج")
+require('HakimLocalReasoningBridge.complete' in reasoning_bridge,
+        "P0: النموذج المحلي مسجل لكنه لا يحمل طلب الاستدلال الفعلي")
+require('HakimReasoningProtocol.wrap(governedPrompt)' in reasoning_bridge and
+        'HakimReasoningProtocol.parse(local.text, request)' in reasoning_bridge,
+        "P0: خرج النموذج المحلي يتجاوز بروتوكول حكيم المقيد")
+require('HakimDeliberationQuality.audit(it, goalForAudit)' in reasoning_bridge,
+        "P0: الخطة المحلية لا تمر بالتدقيق المهني قبل التنفيذ")
+require('Thread {' in reasoning_bridge and 'Handler(Looper.getMainLooper())' in reasoning_bridge,
+        "P0: استدعاء النموذج المحلي قد يحجب واجهة الهاتف")
+require(reasoning_bridge.index('HakimLocalReasoningBridge.complete') < reasoning_bridge.index('private fun askWeb'),
+        "P0: المسار الخارجي يسبق محاولة الاستدلال المحلي")
+require('preference == HakimReasoningProviderRegistry.LOCAL_ADVANCED' in reasoning_bridge and
+        'لم تُرسل المهمة إلى السحابة' in reasoning_bridge and
+        'لم يحدث fallback خارجي' in reasoning_bridge,
+        "P0: وضع «محلي متقدم فقط» قد يسقط إلى مزود خارجي")
 
 print("HAKIM_LOCAL_ADVANCED_REASONING_SOVEREIGNTY=PASS")
 print("HAKIM_LOOPBACK_ONLY_MODEL_GATE=PASS")

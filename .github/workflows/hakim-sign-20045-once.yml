@@ -1,0 +1,85 @@
+name: توقيع حكيم ٢٠٠٤٥ مرة واحدة بهوية D1
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/hakim-sign-20045-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sign-20045-d1:
+    if: contains(github.event.head_commit.message, '[D1 SIGN 20045]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب مرشح ٢٠٠٤٥ المثبت بالبصمة
+        uses: actions/checkout@v7
+        with:
+          ref: 910bbaf8654775b2c9fd8fd5645c907a0c37c89f
+
+      - name: تحقق هوية المرشح قبل البناء
+        run: |
+          set -euo pipefail
+          grep -q "applicationId 'ps.hakim.stable'" app/build.gradle
+          grep -q "versionCode 20045" app/build.gradle
+          python3 tests/verify_signing_continuity_policy.py
+          python3 tests/verify_one_sovereign_kernel.py
+
+      - name: إعداد Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: إعداد Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+          cache-provider: basic
+
+      - name: بناء Release غير الموقع
+        run: gradle assembleRelease --stacktrace
+
+      - name: توقيع D1 والتحقق الصارم
+        id: sign
+        env:
+          HAKIM_FIELD_KEYSTORE_B64: ${{ secrets.HAKIM_FIELD_KEYSTORE_B64 }}
+          HAKIM_FIELD_KEYSTORE_PASSWORD: ${{ secrets.HAKIM_FIELD_KEYSTORE_PASSWORD }}
+          HAKIM_FIELD_KEY_ALIAS: ${{ secrets.HAKIM_FIELD_KEY_ALIAS }}
+          HAKIM_FIELD_KEY_PASSWORD: ${{ secrets.HAKIM_FIELD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${HAKIM_FIELD_KEYSTORE_B64:-}" || -z "${HAKIM_FIELD_KEYSTORE_PASSWORD:-}" || -z "${HAKIM_FIELD_KEY_ALIAS:-}" || -z "${HAKIM_FIELD_KEY_PASSWORD:-}" ]]; then
+            echo "D1_SIGN=FAIL reason=field_signing_secret_missing" >&2
+            exit 2
+          fi
+
+          printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/hakim-field.jks"
+          APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
+          AAPT_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/aapt"
+          SRC="app/build/outputs/apk/release/app-release-unsigned.apk"
+          OUT="app/build/outputs/apk/release/hakim-field-20045-D1.apk"
+
+          "$APKSIGNER_BIN" sign             --ks "$RUNNER_TEMP/hakim-field.jks"             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS"             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD             --key-pass env:HAKIM_FIELD_KEY_PASSWORD             --out "$OUT"             "$SRC"
+
+          APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh "$OUT"
+
+          BADGING="$("$AAPT_BIN" dump badging "$OUT" | head -n1)"
+          echo "$BADGING"
+          grep -q "package: name='ps.hakim.stable'" <<<"$BADGING"
+          grep -q "versionCode='20045'" <<<"$BADGING"
+
+          SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+          echo "APK_SHA256=$SHA"
+          echo "apk_sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "D1_SIGN=PASS"
+
+      - name: حفظ APK الموقّع فقط
+        uses: actions/upload-artifact@v7
+        with:
+          name: hakim-field-20045-D1
+          path: ${{ steps.sign.outputs.apk_path }}
+          if-no-files-found: error

@@ -5,6 +5,8 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.net.Uri
+import android.util.JsonReader
+import android.util.JsonToken
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -126,32 +128,42 @@ object HakimVerifiedQuranCorpus {
         )
     )
 
+    private data class StreamingInstallResult(
+        val ayahCount: Int,
+        val surahCount: Int,
+        val surahAlAlaCount: Int,
+        val canonicalSha256: String
+    )
+
     /**
-     * يثبت corpus حفص المضمّن عندما لا توجد قاعدة متحققة.
-     * هذا المصدر مرآة مشتقة مثبتة commit+SHA-256 وليس الأرشيف الرسمي نفسه.
-     * لا شبكة مطلوبة وقت التشغيل، ولا يُعتمد شيء قبل فحص البصمة والبنية ١١٤/٦٢٣٦.
+     * يثبت corpus حفص المضمّن بذاكرة ثابتة تقريبًا: فحص SHA-256 تدفقي ثم
+     * JsonReader سجلًا سجلًا إلى SQLite داخل transaction. لا String ضخم ولا JSONArray ولا List لآيات القرآن.
      */
     fun installBundledMirrorIfNeeded(context: Context): ImportResult {
         HakimQuranicInvariantKernel.requireInherited("verified_quran_bundled_import")
         val app = context.applicationContext
         if (isReady(app)) {
-            return ImportResult(true, "قاعدة القرآن المحلية متحققة بالفعل", app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("source_id", "").orEmpty(), EXPECTED_AYA_COUNT)
+            return ImportResult(
+                true,
+                "قاعدة القرآن المحلية متحققة بالفعل",
+                app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("source_id", "").orEmpty(),
+                EXPECTED_AYA_COUNT
+            )
         }
         return try {
-            val raw = app.assets.open(BUNDLED_ASSET_PATH).use { it.readBytes() }
-            val sourceSha = MessageDigest.getInstance("SHA-256").digest(raw).hex()
+            val sourceSha = assetDigest(app, BUNDLED_ASSET_PATH, "SHA-256")
             check(sourceSha.equals(BUNDLED_SOURCE_SHA256, ignoreCase = true)) {
                 "بصمة corpus القرآن المضمّن لا تطابق المصدر المثبت"
             }
-            val ayat = readBundledMirrorJson(raw)
-            validate(ayat)
-            val canonical = canonicalDigest(ayat)
-            check(canonical.equals(BUNDLED_CANONICAL_SHA256, ignoreCase = true)) {
+
+            val installed = streamBundledMirrorIntoDatabase(app)
+            check(installed.ayahCount == EXPECTED_AYA_COUNT) { "عدد الآيات المضمّنة غير مطابق" }
+            check(installed.surahCount == 114) { "عدد السور المضمّنة غير مطابق" }
+            check(installed.surahAlAlaCount == 19) { "عدد آيات سورة الأعلى غير مطابق" }
+            check(installed.canonicalSha256.equals(BUNDLED_CANONICAL_SHA256, ignoreCase = true)) {
                 "البصمة القانونية للنص القرآني المضمّن غير مطابقة"
             }
-            check(ayat.count { it.surah == 87 } == 19) { "عدد آيات سورة الأعلى غير مطابق" }
 
-            replaceDatabaseAtomically(app, ayat)
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean("verified", true)
                 .putString("source_id", BUNDLED_SOURCE_ID)
@@ -159,19 +171,25 @@ object HakimVerifiedQuranCorpus {
                 .putString("source_update", BUNDLED_SOURCE_COMMIT)
                 .putString("source_trust", "PINNED_KFQC_DERIVED_MIRROR")
                 .putString("sha256", sourceSha)
-                .putString("canonical_sha256", canonical)
+                .putString("canonical_sha256", installed.canonicalSha256)
                 .putBoolean("preserved_official_archive", false)
                 .putLong("preserved_archive_bytes", 0L)
-                .putInt("ayah_count", ayat.size)
-                .putInt("surah_count", ayat.map { it.surah }.distinct().size)
+                .putInt("ayah_count", installed.ayahCount)
+                .putInt("surah_count", installed.surahCount)
+                .putBoolean("streaming_import", true)
                 .putLong("verified_at", System.currentTimeMillis())
                 .apply()
-            HakimFaultLedger.resolve(app, "quran_bundled_corpus", "verified:${BUNDLED_SOURCE_ID}:${ayat.size}")
+
+            HakimFaultLedger.resolve(
+                app,
+                "quran_bundled_corpus",
+                "verified_streaming:${BUNDLED_SOURCE_ID}:${installed.ayahCount}"
+            )
             ImportResult(
                 true,
-                "تم تثبيت القرآن المحلي المضمّن بعد تحقق SHA-256 وفحص السور الـ١١٤ والآيات الـ٦٢٣٦. المصدر مرآة مشتقة مثبتة وليس الأرشيف الرسمي نفسه.",
+                "تم تثبيت القرآن المحلي المضمّن بتدفق منخفض الذاكرة بعد تحقق SHA-256 وفحص السور الـ١١٤ والآيات الـ٦٢٣٦. المصدر مرآة مشتقة مثبتة وليس الأرشيف الرسمي نفسه.",
                 BUNDLED_SOURCE_ID,
-                ayat.size
+                installed.ayahCount
             )
         } catch (t: Throwable) {
             HakimFaultLedger.record(app, "quran_bundled_corpus", t, severity = HakimFaultLedger.Severity.MATERIAL)
@@ -441,38 +459,135 @@ object HakimVerifiedQuranCorpus {
         return file to source
     }
 
-    private fun readBundledMirrorJson(raw: ByteArray): List<Ayah> {
-        val text = raw.toString(Charsets.UTF_8).removePrefix("\uFEFF").trim()
-        val rows = if (text.startsWith("[")) {
-            JSONArray(text)
-        } else {
-            val root = JSONObject(text)
-            val key = listOf("data", "ayat", "aya", "verses", "rows").firstOrNull { root.optJSONArray(it) != null }
-                ?: error("بنية corpus المضمّن غير معروفة")
-            root.getJSONArray(key)
-        }
-
-        val out = ArrayList<Ayah>(EXPECTED_AYA_COUNT)
-        for (i in 0 until rows.length()) {
-            val row = rows.getJSONObject(i)
-            val surah = row.opt("sura_no")?.toString()?.trim()?.toIntOrNull() ?: continue
-            val ayah = row.opt("aya_no")?.toString()?.trim()?.toIntOrNull() ?: continue
-            val name = row.opt("sura_name_ar")?.toString()?.trim().orEmpty()
-            val quranText = row.opt("aya_text")?.toString()?.trim().orEmpty()
-            val imlaey = row.opt("aya_text_emlaey")?.toString()?.trim().orEmpty()
-            if (surah !in 1..114 || ayah <= 0 || quranText.isBlank()) continue
-            out += Ayah(surah, ayah, name, quranText, imlaey)
-        }
-        return out
-    }
-
-    private fun canonicalDigest(ayat: List<Ayah>): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        ayat.sortedWith(compareBy<Ayah> { it.surah }.thenBy { it.ayah }).forEach { a ->
-            val line = "${a.surah}\t${a.ayah}\t${a.surahNameAr}\t${a.text}\t${a.imlaey}\n"
-            digest.update(line.toByteArray(Charsets.UTF_8))
+    private fun assetDigest(context: Context, path: String, algorithm: String): String {
+        val digest = MessageDigest.getInstance(algorithm)
+        context.assets.open(path).use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buffer)
+                if (n <= 0) break
+                digest.update(buffer, 0, n)
+            }
         }
         return digest.digest().hex()
+    }
+
+    private fun streamBundledMirrorIntoDatabase(context: Context): StreamingInstallResult {
+        val db = Db(context).writableDatabase
+        val canonical = MessageDigest.getInstance("SHA-256")
+        var ayahCount = 0
+        var surahCount = 0
+        var alAlaCount = 0
+        var lastSurah = 0
+        var lastAyah = 0
+
+        fun consume(a: Ayah) {
+            check(a.surah in 1..114 && a.ayah > 0 && a.text.isNotBlank()) { "سجل آية غير صالح" }
+            if (ayahCount == 0) {
+                check(a.surah == 1 && a.ayah == 1) { "بداية corpus غير صحيحة" }
+                surahCount = 1
+            } else if (a.surah == lastSurah) {
+                check(a.ayah == lastAyah + 1) { "تسلسل الآيات غير متصل في السورة ${a.surah}" }
+            } else {
+                check(a.surah == lastSurah + 1 && a.ayah == 1) { "تسلسل السور غير متصل" }
+                surahCount++
+            }
+
+            val values = ContentValues()
+            values.put("sura_no", a.surah)
+            values.put("aya_no", a.ayah)
+            values.put("sura_name_ar", a.surahNameAr)
+            values.put("aya_text", a.text)
+            values.put("aya_text_emlaey", a.imlaey)
+            check(db.insertOrThrow("aya", null, values) != -1L)
+
+            canonical.update(
+                "${a.surah}\t${a.ayah}\t${a.surahNameAr}\t${a.text}\t${a.imlaey}\n"
+                    .toByteArray(Charsets.UTF_8)
+            )
+            ayahCount++
+            if (a.surah == 87) alAlaCount++
+            lastSurah = a.surah
+            lastAyah = a.ayah
+        }
+
+        db.beginTransaction()
+        try {
+            db.delete("aya", null, null)
+            context.assets.open(BUNDLED_ASSET_PATH).use { input ->
+                JsonReader(InputStreamReader(input, Charsets.UTF_8)).use { reader ->
+                    reader.isLenient = false
+                    when (reader.peek()) {
+                        JsonToken.BEGIN_ARRAY -> readBundledArray(reader, ::consume)
+                        JsonToken.BEGIN_OBJECT -> {
+                            var found = false
+                            reader.beginObject()
+                            while (reader.hasNext()) {
+                                val name = reader.nextName()
+                                if (name in setOf("data", "ayat", "aya", "verses", "rows") &&
+                                    reader.peek() == JsonToken.BEGIN_ARRAY
+                                ) {
+                                    check(!found) { "يوجد أكثر من مصفوفة corpus في الأصل المضمّن" }
+                                    readBundledArray(reader, ::consume)
+                                    found = true
+                                } else {
+                                    reader.skipValue()
+                                }
+                            }
+                            reader.endObject()
+                            check(found) { "بنية corpus المضمّن غير معروفة" }
+                        }
+                        else -> error("جذر corpus المضمّن ليس JSON صالحًا متوقعًا")
+                    }
+                }
+            }
+
+            check(ayahCount == EXPECTED_AYA_COUNT) { "عدد الآيات غير مطابق: $ayahCount" }
+            check(surahCount == 114 && lastSurah == 114) { "التغطية لا تشمل السور الـ١١٤ كاملة" }
+            check(alAlaCount == 19) { "عدد آيات سورة الأعلى غير مطابق" }
+            val canonicalSha = canonical.digest().hex()
+            check(canonicalSha.equals(BUNDLED_CANONICAL_SHA256, ignoreCase = true)) {
+                "البصمة القانونية للنص القرآني المضمّن غير مطابقة"
+            }
+
+            db.setTransactionSuccessful()
+            return StreamingInstallResult(ayahCount, surahCount, alAlaCount, canonicalSha)
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun readBundledArray(reader: JsonReader, consume: (Ayah) -> Unit) {
+        reader.beginArray()
+        while (reader.hasNext()) {
+            reader.beginObject()
+            var surah = -1
+            var ayah = -1
+            var name = ""
+            var text = ""
+            var imlaey = ""
+            while (reader.hasNext()) {
+                when (reader.nextName()) {
+                    "sura_no" -> surah = nextScalar(reader).toIntOrNull() ?: -1
+                    "aya_no" -> ayah = nextScalar(reader).toIntOrNull() ?: -1
+                    "sura_name_ar" -> name = nextScalar(reader)
+                    "aya_text" -> text = nextScalar(reader)
+                    "aya_text_emlaey" -> imlaey = nextScalar(reader)
+                    else -> reader.skipValue()
+                }
+            }
+            reader.endObject()
+            check(surah in 1..114 && ayah > 0 && text.isNotBlank()) { "صف قرآن مضمّن غير صالح" }
+            consume(Ayah(surah, ayah, name.trim(), text.trim(), imlaey.trim()))
+        }
+        reader.endArray()
+    }
+
+    private fun nextScalar(reader: JsonReader): String = when (reader.peek()) {
+        JsonToken.STRING, JsonToken.NUMBER -> reader.nextString().trim()
+        JsonToken.BOOLEAN -> reader.nextBoolean().toString()
+        JsonToken.NULL -> { reader.nextNull(); "" }
+        else -> { reader.skipValue(); "" }
     }
 
     private fun readCsvFromOfficialArchive(file: File): List<Ayah> {

@@ -14,7 +14,7 @@ import android.os.Bundle
  * بعد CRASH/ANR حديث يمنع الاستئناف الاستباقي مؤقتًا كي لا يتحول الخطأ إلى حلقة إغلاق.
  */
 object HakimCrashShield {
-    const val VERSION = "CRASH-SHIELD-2026-09-15-v2"
+    const val VERSION = "CRASH-SHIELD-2026-09-18-v3"
     private const val PREFS = "hakim_crash_shield"
     private const val PROACTIVE_PREFS = "hakim_proactive"
     private const val SAFE_RECOVERY_MS = 30L * 60L * 1000L
@@ -144,7 +144,11 @@ object HakimCrashShield {
             "records_user_text_or_credentials" to false,
             "safe_recovery_active" to shouldSuppressProactiveResume(context),
             "last_exit_reason" to p.getInt("last_exit_reason", -1),
+            "last_seen_exit_timestamp" to p.getLong("last_seen_exit_timestamp", 0L),
+            "last_crash_or_anr_at" to p.getLong("last_crash_or_anr_at", 0L),
             "last_recorded_failure_at" to p.getLong("last_recorded_failure_at", 0L),
+            "last_recorded_failure_label" to p.getString("last_recorded_failure_label", "").orEmpty(),
+            "last_recorded_failure_type" to p.getString("last_recorded_failure_type", "").orEmpty(),
             "last_suppression_reason" to p.getString("last_suppression_reason", "").orEmpty()
         )
     }

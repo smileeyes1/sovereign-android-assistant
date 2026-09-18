@@ -91,6 +91,8 @@ object HakimSovereignOneKernel {
             .put("external_tools_are_replaceable", true)
             .put("no_authority_expansion", true)
             .put("no_silent_high_impact", true)
+            .put("durable_state_substrate_is_local", true)
+            .put("durable_substrate_is_not_normative_governor", true)
             .put("normative_authority_quran_sunnah_only", true)
             .put("human_owner_hakim_agent", true)
     }
@@ -118,6 +120,7 @@ object HakimSovereignOneKernel {
         val systems = HakimSystemOfSystems.compose(context, cleanGoal)
         val resources = HakimResourceGovernor.status(context)
         val localModel = HakimLocalReasoningBridge.status(context)
+        val sovereignEnv = HakimSovereignEnvironmentBridge.status(context)
         val adaptive = HakimAdaptiveLearning.status(context)
         val faults = HakimFaultLedger.status(context)
         val recovery = HakimConnectionResilience.status(context)
@@ -149,8 +152,10 @@ object HakimSovereignOneKernel {
         }
 
         val localModelReady = localModel.optBoolean("ready_now")
+        val sovereignEnvReady = sovereignEnv.optBoolean("ready_now")
         val networkReady = capabilities.any { it.node.id == "validated_network" && it.node.readyNow }
         val isolationMode = when {
+            sovereignEnvReady && localModelReady -> "LOCAL_SOVEREIGN_ENVIRONMENT"
             localModelReady -> "LOCAL_SOVEREIGN"
             !networkReady -> "LOCAL_CORE_DEGRADED_NO_ADVANCED_MODEL"
             else -> "LOCAL_CORE_EXTERNAL_OPTIONAL"
@@ -165,6 +170,7 @@ object HakimSovereignOneKernel {
             Signal(SignalKind.POLICY, "tawhid_ala", "tawhid=true;risalah=true;surah87=true;technical_mystification=false", 100, now),
             Signal(SignalKind.RESOURCE, "resource_governor", resources.optString("mode", "UNKNOWN"), 100, now),
             Signal(SignalKind.MODEL, "local_reasoning", "ready=$localModelReady;loopback=${localModel.optBoolean("loopback_only")}", if (localModelReady) 100 else 70, now),
+            Signal(SignalKind.TOOL, "sovereign_environment", "ready=$sovereignEnvReady;substrate=true;governor=false", if (sovereignEnvReady) 100 else 70, now),
             Signal(SignalKind.NETWORK, "capability_mesh", "validated=$networkReady", 100, now),
             Signal(SignalKind.TOOL, "capability_mesh", capabilities.joinToString(",") { it.node.id }.take(MAX_SIGNAL_VALUE), 90, now),
             Signal(SignalKind.FEATURE, "system_of_systems", "units=${systems.units.size};mode=${systems.executionMode}", 95, now),

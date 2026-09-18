@@ -16,6 +16,7 @@ object HakimIntegrationFabric {
         "quranic_kernel",
         "quranic_corpus_114",
         "quran_sunnah_method",
+        "normative_sovereignty",
         "human_first_policy",
         "resource_governor",
         "system_of_systems",
@@ -44,6 +45,10 @@ object HakimIntegrationFabric {
         "quranic_kernel→quranic_corpus_114",
         "quranic_kernel→quran_sunnah_method",
         "quranic_corpus_114→quran_sunnah_method",
+        "quran_sunnah_method→normative_sovereignty",
+        "normative_sovereignty→constitution",
+        "normative_sovereignty→one_sovereign_kernel",
+        "normative_sovereignty→sovereign_engine",
         "quran_sunnah_method→constitution",
         "quran_sunnah_method→system_of_systems",
         "quran_sunnah_method→sovereign_engine",
@@ -114,6 +119,7 @@ object HakimIntegrationFabric {
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
         val method = HakimQuranSunnahMethod.status()
+        val normative = HakimNormativeSovereignty.require()
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
@@ -124,6 +130,12 @@ object HakimIntegrationFabric {
         check(method.optBoolean("quran_is_highest_normative_source")) { "القرآن ليس مثبتًا كمصدر معياري أعلى" }
         check(method.optBoolean("authentic_sunnah_is_authoritative_explanation_and_guidance")) { "الهدي النبوي الصحيح غير مثبت في القلب" }
         check(method.optBoolean("worldly_facts_and_means_require_domain_evidence")) { "الفصل بين الوحي والدليل الدنيوي غير مثبت" }
+        check(normative.optBoolean("normative_authority_quran")) { "القرآن غير مثبت كمرجعية معيارية سيادية" }
+        check(normative.optBoolean("normative_authority_authentic_sunnah")) { "السنة الصحيحة غير مثبتة كمرجعية معيارية سيادية" }
+        check(!normative.optBoolean("other_normative_revelation_sources")) { "يوجد مصدر وحي معياري ثالث غير مصرح به" }
+        check(normative.optBoolean("human_user_is_owner_of_intent_data_and_authorized_decision")) { "ملكية الإنسان للمقصد والبيانات غير مثبتة" }
+        check(normative.optBoolean("hakim_is_single_authorized_agent_inside_its_scope")) { "حكيم ليس الوكيل الوحيد داخل نطاقه" }
+        check(normative.optBoolean("hakim_does_not_claim_ownership_of_android_or_hardware")) { "يوجد ادعاء ملكية للنظام أو العتاد" }
         check(human.optBoolean("human_first")) { "سياسة الإنسان أولًا غير مثبتة" }
         check(human.optBoolean("dignity_is_hard_constraint")) { "كرامة المستخدم ليست قيدًا حاكمًا" }
         check(human.optBoolean("silence_is_not_consent")) { "السكوت قد يفسر كموافقة" }
@@ -149,6 +161,7 @@ object HakimIntegrationFabric {
         val governance = HakimConstitution.status(context)
         val corpus = HakimQuranicCorpusPolicy.status()
         val method = HakimQuranSunnahMethod.status()
+        val normative = HakimNormativeSovereignty.status()
         val human = HakimHumanFirstPolicy.status()
         val resources = HakimResourceGovernor.status(context)
         val systems = HakimSystemOfSystems.status(context)
@@ -165,6 +178,15 @@ object HakimIntegrationFabric {
             method.optBoolean("exact_attribution_requires_verification") &&
             method.optBoolean("worldly_facts_and_means_require_domain_evidence") &&
             method.optBoolean("no_religious_technical_mystification")
+        val normativeOk = normative.optBoolean("normative_authority_quran") &&
+            normative.optBoolean("normative_authority_authentic_sunnah") &&
+            !normative.optBoolean("other_normative_revelation_sources") &&
+            normative.optBoolean("tafsir_is_human_interpretive_aid_not_revelation") &&
+            normative.optBoolean("fiqh_is_human_juristic_understanding_not_revelation") &&
+            normative.optBoolean("worldly_science_is_evidence_for_means_not_revelation") &&
+            normative.optBoolean("human_user_is_owner_of_intent_data_and_authorized_decision") &&
+            normative.optBoolean("hakim_is_single_authorized_agent_inside_its_scope") &&
+            normative.optBoolean("hakim_does_not_claim_ownership_of_android_or_hardware")
         val humanOk = human.optBoolean("human_first") &&
             human.optBoolean("dignity_is_hard_constraint") &&
             human.optBoolean("zero_technical_burden_default") &&
@@ -202,7 +224,7 @@ object HakimIntegrationFabric {
             proactive.optBoolean("silence_not_consent") &&
             proactive.optBoolean("no_secret_or_permission_escalation")
         val failClosed = governance.optBoolean("fail_closed_core_changes")
-        val ok = packageOk && quranicOk && corpusOk && methodOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
+        val ok = packageOk && quranicOk && corpusOk && methodOk && normativeOk && humanOk && resourceOk && systemsOk && oneOk && adaptiveOk && proactiveOk && failClosed
         return JSONObject()
             .put("version", VERSION)
             .put("scope", scope.take(120))
@@ -211,6 +233,7 @@ object HakimIntegrationFabric {
             .put("quranic_root_inherited", quranicOk)
             .put("quranic_corpus_114_integrated", corpusOk)
             .put("quran_sunnah_method_integrated", methodOk)
+            .put("normative_sovereignty_integrated", normativeOk)
             .put("human_first_integrated", humanOk)
             .put("resource_governor_integrated", resourceOk)
             .put("system_of_systems_integrated", systemsOk)
@@ -218,6 +241,7 @@ object HakimIntegrationFabric {
             .put("adaptive_learning_integrated", adaptiveOk)
             .put("proactive_engine_integrated", proactiveOk)
             .put("quranic_corpus", corpus)
+            .put("normative_sovereignty", normative)
             .put("quran_sunnah_method", method)
             .put("human_first", human)
             .put("resource_governor", resources)

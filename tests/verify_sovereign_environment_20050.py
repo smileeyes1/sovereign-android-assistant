@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory() as td:
         except urllib.error.HTTPError as e:
             req(e.code==401,"P0 unauthenticated status did not return 401")
 
-        token=(state/"token").read_text().strip()
+        token=(state/"access.key").read_text().strip()
         req(len(token)>=32,"P0 runtime token too short")
         headers={"X-Hakim-Token":token,"Content-Type":"application/json"}
         rq=urllib.request.Request(base+"/v1/status",headers=headers)

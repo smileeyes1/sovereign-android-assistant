@@ -30,9 +30,16 @@ object HakimConstraintDoctor {
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
-        AutoUpdater.schedule(app)
-        HakimSelfCheck.schedule(app)
-        HakimConnectionResilience.schedule(app)
+        val invokedByConnectionWatchdog = reason == "periodic_watchdog" || reason.startsWith("periodic_watchdog_")
+        if (!invokedByConnectionWatchdog) {
+            AutoUpdater.schedule(app)
+            HakimSelfCheck.schedule(app)
+            HakimConnectionResilience.schedule(app)
+        } else {
+            prefs.edit()
+                .putLong("constraint_doctor_watchdog_schedule_suppressed_at", System.currentTimeMillis())
+                .apply()
+        }
 
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&

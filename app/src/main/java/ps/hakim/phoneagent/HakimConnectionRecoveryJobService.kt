@@ -9,8 +9,9 @@ class HakimConnectionRecoveryJobService : JobService() {
             try {
                 val app = applicationContext
                 HakimConnectionResilience.recover(app, "periodic_watchdog")
-                HakimHealthBeacon.sendNow(app, "periodic_watchdog")
-                if (!HakimCrashShield.shouldSuppressProactiveResume(app) &&
+                val safeRecovery = HakimCrashShield.shouldSuppressProactiveResume(app)
+                HakimHealthBeacon.sendNow(app, if (safeRecovery) "periodic_watchdog_safe_recovery" else "periodic_watchdog")
+                if (!safeRecovery &&
                     HakimResourceGovernor.canRunNonEssentialBackground(app)
                 ) {
                     HakimConstraintDoctor.run(app, "periodic_watchdog")

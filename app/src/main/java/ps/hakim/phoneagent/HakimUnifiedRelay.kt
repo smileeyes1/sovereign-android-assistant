@@ -46,7 +46,9 @@ object HakimUnifiedRelay {
     private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot")
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch")
     private val running = AtomicBoolean(false)
-    private val executor = Executors.newSingleThreadExecutor()
+    // الاستماع الشبكي طويل العمر يجب ألا يحجز طابور النتائج/الموافقات.
+    private val listenerExecutor = Executors.newSingleThreadExecutor()
+    private val workerExecutor = Executors.newSingleThreadExecutor()
 
     fun configure(context: Context, topic: String?, resultUrl: String?, relayKey: String?): Boolean {
         if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return false
@@ -71,7 +73,7 @@ object HakimUnifiedRelay {
         val app = context.applicationContext
         if (!running.compareAndSet(false, true)) return
         ensureApprovalChannel(app)
-        executor.execute { loop(app) }
+        listenerExecutor.execute { loop(app) }
     }
 
     private fun loop(context: Context) {
@@ -94,7 +96,11 @@ object HakimUnifiedRelay {
                 conn.inputStream.use { input ->
                     BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { reader ->
                         retryMs = 2_000L
-                        prefs.edit().putString("secure_relay_state", "connected").putLong("secure_relay_seen_at", System.currentTimeMillis()).apply()
+                        prefs.edit()
+                            .putString("secure_relay_state", "connected")
+                            .putString("secure_relay_transport", "direct_ntfy")
+                            .putLong("secure_relay_seen_at", System.currentTimeMillis())
+                            .apply()
                         while (running.get()) {
                             val line = reader.readLine() ?: break
                             handleNtfyLine(context, line, resultUrl, relayKey)
@@ -103,10 +109,83 @@ object HakimUnifiedRelay {
                 }
                 conn.disconnect()
             } catch (e: Exception) {
-                prefs.edit().putString("secure_relay_state", "recovering").putString("secure_relay_error", e.javaClass.simpleName).apply()
-                sleep(retryMs)
-                retryMs = (retryMs * 2).coerceAtMost(60_000L)
+                prefs.edit()
+                    .putString("secure_relay_state", "recovering")
+                    .putString("secure_relay_error", e.javaClass.simpleName)
+                    .apply()
+                // إذا حجبت الشبكة ntfy، استخدم صندوق النتائج الخاص كوكيل poll.
+                // التشفير/HMAC والتحقق من الانتهاء/الإعادة تبقى كلها داخل الهاتف.
+                val proxyOk = pollViaResultWebhook(context, resultUrl, topic, relayKey)
+                if (proxyOk) {
+                    prefs.edit()
+                        .putString("secure_relay_state", "connected")
+                        .putString("secure_relay_transport", "result_webhook_proxy")
+                        .putLong("secure_relay_seen_at", System.currentTimeMillis())
+                        .remove("secure_relay_error")
+                        .apply()
+                    retryMs = 2_000L
+                    sleep(5_000L)
+                } else {
+                    sleep(retryMs)
+                    retryMs = (retryMs * 2).coerceAtMost(60_000L)
+                }
             }
+        }
+    }
+
+    private fun pollViaResultWebhook(context: Context, resultUrl: String, topic: String, relayKey: String): Boolean {
+        if (!resultUrl.startsWith("https://")) return false
+        if (!Regex("^hakim-cmd-[A-Za-z0-9_-]{20,100}$").matches(topic)) return false
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val since = prefs.getString("relay_proxy_cursor", "").orEmpty().ifBlank { "10m" }
+        return try {
+            val request = JSONObject()
+                .put("kind", "hc1_poll")
+                .put("topic", topic)
+                .put("since", since)
+            val conn = URL(resultUrl).openConnection() as HttpURLConnection
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 25_000
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.setRequestProperty("Accept", "application/x-ndjson, text/plain")
+            conn.outputStream.use { it.write(request.toString().toByteArray(Charsets.UTF_8)) }
+            val ok = conn.responseCode in 200..299
+            if (!ok) {
+                runCatching { conn.errorStream?.close() }
+                conn.disconnect()
+                return false
+            }
+            var sawAnyNonBlankLine = false
+            var sawValidNtfyEvent = false
+            var sawInvalidLine = false
+            conn.inputStream.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).useLines { lines ->
+                    lines.forEach { line ->
+                        if (line.isBlank()) return@forEach
+                        sawAnyNonBlankLine = true
+                        val event = runCatching { JSONObject(line) }.getOrNull()
+                        if (event == null || !event.has("event")) {
+                            sawInvalidLine = true
+                            return@forEach
+                        }
+                        sawValidNtfyEvent = true
+                        if (event.optString("event") == "message") {
+                            val id = event.optString("id").trim()
+                            if (id.matches(Regex("^[A-Za-z0-9_-]{4,64}$"))) {
+                                prefs.edit().putString("relay_proxy_cursor", id).apply()
+                            }
+                            handleNtfyLine(context, line, resultUrl, relayKey)
+                        }
+                    }
+                }
+            }
+            conn.disconnect()
+            // جسم فارغ يعني لا رسائل جديدة؛ أما رد نصي قديم مثل «تم» فيُرفض.
+            !sawInvalidLine && (!sawAnyNonBlankLine || sawValidNtfyEvent)
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -250,7 +329,7 @@ object HakimUnifiedRelay {
             sendResult(context, resultUrl, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
-        executor.execute {
+        workerExecutor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
@@ -310,6 +389,8 @@ object HakimUnifiedRelay {
             .put("single_app", true)
             .put("secure_relay", isConfigured(context))
             .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
+            .put("secure_relay_transport", p.getString("secure_relay_transport", "unknown"))
+            .put("sovereign_result_channel", HakimSovereignResultChannel.status(context))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
             .put("accessibility", HakimAccessibilityService.instance != null)
@@ -317,6 +398,13 @@ object HakimUnifiedRelay {
             .put("auto_update", AutoUpdater.diagnostics(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
+            .put("professional_readiness", HakimProfessionalReadiness.status(context))
+            .put("execution_transaction", HakimExecutionTransaction.status(context))
+            .put("question_operator", HakimQuestionOperator.status())
+            .put("adaptive_nstar", HakimAdaptiveNStarLoop.status())
+            .put("scientific_engineering", HakimScientificEngineeringKernel.status())
+            .put("personal_sovereignty", HakimPersonalSovereignty.status(context))
+            .put("halal_shubuhat_guard", HakimHalalShubuhatGuard.status())
     }
 
     private fun launch(context: Context, payload: JSONObject): JSONObject {
@@ -338,7 +426,7 @@ object HakimUnifiedRelay {
 
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        workerExecutor.execute {
             val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val url = p.getString(KEY_RESULT_URL, "").orEmpty()
             if (url.isBlank()) return@execute
@@ -349,34 +437,7 @@ object HakimUnifiedRelay {
     }
 
     private fun sendResult(context: Context, resultUrl: String, requestId: String, status: String, result: JSONObject): Boolean {
-        return try {
-            val payload = JSONObject()
-                .put("request_id", requestId)
-                .put("status", status)
-                .put("received_at_ms", System.currentTimeMillis())
-                .put("result", result)
-            val conn = URL(resultUrl).openConnection() as HttpURLConnection
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 20_000
-            conn.requestMethod = "POST"
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
-            val ok = conn.responseCode in 200..299
-            runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
-            conn.disconnect()
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putLong("secure_relay_last_result_at", System.currentTimeMillis())
-                .putString("secure_relay_last_result_state", if (ok) "sent" else "http_error")
-                .apply()
-            ok
-        } catch (e: Exception) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putString("secure_relay_last_result_state", "failed")
-                .putString("secure_relay_last_result_error", e.javaClass.simpleName)
-                .apply()
-            false
-        }
+        return HakimSovereignResultChannel.sendResult(context, resultUrl, requestId, status, result)
     }
 
     private fun ensureApprovalChannel(context: Context) {

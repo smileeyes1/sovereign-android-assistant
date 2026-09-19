@@ -204,7 +204,8 @@ class HakimService : Service() {
 
     private fun isPaired(): Boolean =
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-        prefs.getString("result_topic", "").orEmpty().isNotBlank()
+        prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
+        authKey().isNotBlank()
 
     private fun authKey(): String = prefs.getString("auth_key", "").orEmpty().trim()
 
@@ -267,7 +268,8 @@ class HakimService : Service() {
     private fun decodeCommandMessage(rawMessage: String): JSONObject? {
         val key = authKey()
         if (key.isBlank()) {
-            return try { JSONObject(rawMessage) } catch (_: Exception) { null }
+            prefs.edit().putString("last_auth_error", "legacy_channel_missing_auth_key").apply()
+            return null
         }
         return try {
             val envelope = JSONObject(rawMessage)

@@ -1,6 +1,6 @@
 {
-  "schema_version": 14,
-  "status": "FIELD_IDENTITY_20058_D1__TRANSHIBER_JOB_PROXY__20059_CANDIDATE",
+  "schema_version": 15,
+  "status": "FIELD_IDENTITY_20059_D1__BOOT_AUTOSTART_BLOCKED__20060_CANDIDATE",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -20,42 +20,44 @@
     20055,
     20056,
     20057,
-    20058
+    20058,
+    20059
   ],
-  "current_field_version": 20058,
-  "current_candidate_version": 20059,
+  "current_field_version": 20059,
+  "current_candidate_version": 20060,
   "field_evidence": {
-    "observed_at_utc": "2026-09-19T07:47:35Z",
-    "method": "AUTHORIZED_REMOTE_EXACT_APK_THREE_COLD_STARTS_LOGCAT_KNOWN_FAILURE_JOB_CANCEL_AND_OEM_TRACE",
+    "observed_at_utc": "2026-09-19T08:10:30Z",
+    "method": "AUTHORIZED_REMOTE_EXACT_APK_COLD_START_FOREGROUND_SERVICE_KNOWN_JOB_FAILURE_TWO_CYCLE_RECOVERY_REAL_REBOOT_TERMUX_BOOT_PROOF",
     "package": "ps.hakim.stable",
-    "version_code": 20058,
-    "version_name": "2.0.58-sovereign-browser-agent-professional-selfheal-quran-db",
+    "version_code": 20059,
+    "version_name": "2.0.59-sovereign-browser-agent-foreground-continuity",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "7b25c38c3f9873a84dcb98a3352121fc6dd70ceaec21c15b1eb15cb74bfe1416",
-    "supersedes_direct_field_version": 20057,
-    "claim_scope": "IDENTITY_D1_EXACT_APK; DATA_PRESERVED; 3_COLD_START_PASS; SQLITE_LEAK_NOT_OBSERVED; OEM_TRANSHIBER_CANCELS_JOB_771208",
+    "apk_sha256": "bb46e5798f2e24f8c48db06b551b17d48391a65cb3c5817d3d1cfab07b09c5a3",
+    "supersedes_direct_field_version": 20058,
+    "claim_scope": "IDENTITY_D1_EXACT_APK; DATA_PRESERVED; COLD_START_PASS; FGS_PASS; JOB_CANCEL_SELFHEAL_T70_T145_PASS; SQLITE_LEAK_0; FATAL_ANR_0; REAL_REBOOT_AUTOSTART_FAIL",
     "stability": "FAILED",
     "stability_evidence": {
-      "installed_local_time": "2026-09-19T10:43:10+03:00",
+      "installed_local_time": "2026-09-19T11:01:21+03:00",
       "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
       "data_dir_preserved": "/data/user/0/ps.hakim.stable",
-      "strict_cold_starts_ms": [
-        7545,
-        7699,
-        6446
-      ],
-      "new_anr_oom_fatal_in_cold_probes": false,
-      "quran_sqlite_leak_warnings_observed": 0,
-      "known_failure_injection": "cmd jobscheduler cancel ps.hakim.stable 771208",
-      "job_771208_final_state_after_recovery_window": "absent",
-      "oem_trace": [
-        "TranJobSchedulerServiceExtImpl.proxyJobs",
-        "TranHiber.handleProxyForFrozen",
-        "JobSchedulerService.cancelJobImplLocked"
-      ],
-      "required_fix": "Keep Hakim in a user-visible foreground continuity service and retain the idempotent 60s schedule heartbeat; no root, verifier bypass, or protection disabling.",
       "cold_start_status": "OK",
-      "cold_start_total_ms": 7699
+      "cold_start_total_ms": 7438,
+      "foreground_service_observed": true,
+      "foreground_service_id": 31,
+      "known_failure_injection": "cmd jobscheduler cancel ps.hakim.stable 771208 while Hakim remained backgrounded",
+      "job_771208_immediate_after_cancel": "absent",
+      "job_771208_after_70s": "active ready",
+      "job_771208_after_145s": "ready",
+      "same_pid_survived_background_recovery": 8161,
+      "quran_sqlite_leak_warnings_observed": 0,
+      "fatal_or_anr_observed": 0,
+      "real_reboot_performed": true,
+      "post_reboot_boot_id": "db22ee73-afba-4157-bde4-3b3d44027144",
+      "post_reboot_hakim_pid": "absent",
+      "post_reboot_adbd_state": "stopped",
+      "termux_boot_restored": true,
+      "termux_watchdog_v2_state": "waiting_user_wake",
+      "required_fix": "Preserve 20059 foreground continuity and add an explicit user-initiated hakim://open handoff from Termux when TECNO suppresses zero-touch boot autostart. Do not bypass Android protections."
     }
   },
   "historical_previous_lineage": {
@@ -75,7 +77,7 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "20055 remains the last fully field-verified baseline. 20058 is the currently installed D1 identity; its exact APK preserved data and passed three cold starts with no new SQLite leak or ANR, but TECNO/Transsion TranHiber still proxies/cancels Job 771208 after backgrounding. Candidate 20059 keeps the 20058 DB and idempotent scheduler fixes and adds a lightweight user-visible foreground continuity service that performs no WebView or new network work and requires no new permission."
+    "decision": "20055 remains the last fully field-verified baseline. 20059 is the installed D1 identity and proves foreground continuity plus two-cycle recovery of Job 771208 with no new SQLite leak or ANR. A real TECNO reboot still did not auto-start Hakim and also stopped adbd. Candidate 20060 therefore preserves 20059 and adds a bounded, user-initiated Termux boot handoff via hakim://open, while zero-touch boot remains dependent on the OEM Auto-start/background policy."
   },
   "rules": [
     "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20055/D1.",
@@ -101,7 +103,10 @@
     "Quran SQLite access must reuse one process-lifetime application-scoped SQLiteOpenHelper; per-query helpers that rely on GC for close are forbidden.",
     "Recovery scheduling must self-heal if OEM removes Job 771208 while the app process is alive, using only idempotent checks; self-healing must not replace a correct existing generation.",
     "On TECNO/Transsion, field acceptance requires continuity to survive OEM job proxy/cancel behavior; JobScheduler presence alone is not a sufficient continuity primitive.",
-    "The foreground continuity service must be exported=false, START_STICKY, user-visible, and must not create WebView, new remote transport, root flow, or disable Android protections."
+    "The foreground continuity service must be exported=false, START_STICKY, user-visible, and must not create WebView, new remote transport, root flow, or disable Android protections.",
+    "A runtime foreground-service success does not establish reboot autostart; real reboot is a separate acceptance gate.",
+    "When the OEM suppresses BOOT_COMPLETED or background app launch, recovery must respect Android protections and use a visible user-initiated handoff rather than root, hidden launch bypass, or verifier disabling.",
+    "Termux boot fallback must key state to the current boot_id and must never inherit a previous-boot wake success."
   ],
   "superseded_field_failures": [
     {
@@ -171,6 +176,19 @@
       "sqlite_leak_warnings_observed": 0,
       "anr_observed": false,
       "oom_observed": false
+    },
+    {
+      "version_code": 20059,
+      "version_name": "2.0.59-sovereign-browser-agent-foreground-continuity",
+      "apk_sha256": "bb46e5798f2e24f8c48db06b551b17d48391a65cb3c5817d3d1cfab07b09c5a3",
+      "observed_local_time": "2026-09-19T11:10:30+03:00",
+      "failure": "REAL_REBOOT_DID_NOT_AUTOSTART_HAKIM_ON_TECNO",
+      "foreground_runtime_recovery": "PASS",
+      "job_771208_t70": "active ready",
+      "job_771208_t145": "ready",
+      "sqlite_leak_warnings_observed": 0,
+      "anr_observed": false,
+      "oom_observed": false
     }
   ],
   "professional_parent_candidate": {
@@ -182,6 +200,6 @@
     "field_status": "FIELD_ACCEPTED",
     "signed_apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896"
   },
-  "professional_candidate_hold": "WAIT_20059_SOURCE_AND_FIELD_ACCEPTANCE",
+  "professional_candidate_hold": "WAIT_20060_SOURCE_AND_FIELD_ACCEPTANCE",
   "last_verified_field_version": 20055
 }

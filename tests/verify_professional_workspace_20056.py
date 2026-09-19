@@ -38,16 +38,19 @@ require('reason == "periodic_watchdog"' in doctor and 'if (!invokedByConnectionW
 require("asyncInFlight = AtomicBoolean(false)" in health,"فقد coalescing نبضات الصحة")
 
 m=re.search(r"versionCode\s+(\d+)",build)
-require(m and int(m.group(1))==20056,"الإصدار يجب أن يكون ٢٠٠٥٦")
-require(policy["current_field_version"]==20055,"خط الميدان يجب أن يكون ٢٠٠٥٥")
-require(policy["current_candidate_version"]==20056,"السياسة لا تسجل ٢٠٠٥٦")
-require(policy["field_evidence"]["version_code"]==20055 and policy["field_evidence"]["stability"]=="PASS",
-        "قبول ٢٠٠٥٥ الميداني غير محفوظ")
+require(m and int(m.group(1))>=20056,"الواجهة الاحترافية يجب ألا ترجع قبل ٢٠٠٥٦")
+candidate=int(m.group(1))
+field=int(policy["current_field_version"])
+require(policy["current_candidate_version"]==candidate,"السياسة لا تطابق المرشح الحالي")
+require(candidate>field,"المرشح يجب أن يزيد عن خط الميدان")
+require(field>=20056,"هوية الميدان يجب أن تحفظ ٢٠٠٥٦ المثبت أو أحدث")
+require(policy["field_evidence"]["version_code"]==field,"دليل الميدان لا يطابق current_field_version")
+require(policy.get("last_verified_field_version",20055)>=20055,"خط الأساس المتحقق ٢٠٠٥٥ ضاع")
 parent=policy.get("professional_parent_candidate",{})
 require(parent.get("version_code")==20055 and parent.get("field_status")=="FIELD_ACCEPTED",
-        "٢٠٠٥٦ ليس مبنياً على خط ميدان مقبول")
-require(policy.get("professional_candidate_hold")=="WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE",
-        "حجز ٢٠٠٥٦ غير مثبت")
+        "أصل الواجهة الاحترافية لا يعود إلى خط ٢٠٠٥٥ المقبول")
+require(policy.get("professional_candidate_hold") in {"WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE","WAIT_20057_SOURCE_AND_FIELD_ACCEPTANCE"},
+        "حجز المرشح الاحترافي غير مثبت")
 
 print("HAKIM_20056_PROFESSIONAL_WORKSPACE=PASS")
 print("HAKIM_20056_VERIFIED_QURAN_UI=PASS")

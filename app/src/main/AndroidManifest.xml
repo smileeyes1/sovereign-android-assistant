@@ -120,6 +120,11 @@
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />
 
+        <service
+            android:name=".HakimContinuityService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
+
         <!--
           ملف التثبيت الافتراضي لا يعلن AccessibilityService أو NotificationListener.
           الأتمتة الافتراضية تستخدم متصفح حكيم وADB المحلي المصرح بدل طلب وصول شامل

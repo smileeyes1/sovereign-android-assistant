@@ -5,7 +5,7 @@ STATE="$BASE/state.env"
 LOG="$BASE/resilience.log"
 mkdir -p "$BASE"; chmod 700 "$BASE" 2>/dev/null || true
 log(){ printf "%s %s\n" "$(date -Iseconds)" "$*" >>"$LOG"; }
-EP="$(python3 -c 'import json,os; p=os.path.expanduser("~/.hakim/adb/self-state.json");\ntry: print(json.load(open(p)).get("endpoint",""))\nexcept Exception: print("")')"
+EP="$(python3 -c 'import json,os; p=os.path.expanduser(\"~/.hakim/adb/self-state.json\"); print(json.load(open(p)).get(\"endpoint\",\"\") if os.path.isfile(p) else \"\")' 2>/dev/null)"
 if ! command -v adb >/dev/null 2>&1; then echo "HAKIM_RESILIENCE=BLOCKED reason=adb_missing"; exit 20; fi
 if [ -z "$EP" ] || ! adb -s "$EP" get-state >/dev/null 2>&1; then echo "HAKIM_RESILIENCE=BLOCKED reason=self_adb_offline"; exit 21; fi
 read_monitor(){ adb -s "$EP" shell settings get global settings_enable_monitor_phantom_procs 2>/dev/null | tr -d "\r"; }

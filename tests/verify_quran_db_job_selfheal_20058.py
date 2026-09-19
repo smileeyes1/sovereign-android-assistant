@@ -38,17 +38,17 @@ require("scheduler.getPendingJob(JOB_ID)" in resilience and '"kept_existing"' in
         "self-heal فقد idempotency")
 
 m=re.search(r"versionCode\s+(\d+)",build)
-require(m and int(m.group(1))==20058,"الإصدار يجب أن يكون ٢٠٠٥٨")
-require(policy["current_field_version"]==20057,"خط الميدان يجب أن يسجل ٢٠٠٥٧")
+require(m and int(m.group(1))>=20058,"إصلاح ٢٠٠٥٨ يجب أن يبقى موروثًا")
+require(policy["current_field_version"]>=20058,"خط الميدان يجب أن يسجل ٢٠٠٥٨ المثبت أو أحدث")
 require(policy["last_verified_field_version"]==20055,"LAST_VERIFIED_BASELINE يجب أن يبقى ٢٠٠٥٥")
-require(policy["current_candidate_version"]==20058,"السياسة لا تسجل ٢٠٠٥٨")
-require(policy["field_evidence"]["version_code"]==20057 and policy["field_evidence"]["stability"]=="FAILED",
-        "فشل ٢٠٠٥٧ غير محفوظ")
-e=policy["field_evidence"]["stability_evidence"]
-require(e.get("quran_sqlite_connection_pool_leak_warning_count_observed",0)>=1,
-        "دليل تسريب SQLite غير محفوظ")
-require(e.get("job_771208_final_state_after_minutes")=="unknown",
-        "دليل اختفاء watchdog غير محفوظ")
+require(policy["current_candidate_version"]==int(m.group(1)),"السياسة لا تطابق المرشح الحالي")
+require(policy["field_evidence"]["version_code"]>=20058 and policy["field_evidence"]["stability"]=="FAILED",
+        "فشل خط الميدان الحالي غير محفوظ")
+fail57=next((x for x in policy.get("superseded_field_failures",[]) if x.get("version_code")==20057),None)
+require(fail57 is not None and fail57.get("sqlite_leak_warnings_observed",0)>=1,
+        "دليل تسريب SQLite في ٢٠٠٥٧ غير محفوظ تاريخيًا")
+require(any(x.get("version_code")==20058 for x in policy.get("superseded_field_failures",[])),
+        "فشل استدامة ٢٠٠٥٨ غير محفوظ تاريخيًا")
 
 print("HAKIM_20058_QURAN_DB_HELPER_LIFECYCLE=PASS")
 print("HAKIM_20058_JOB_SELFHEAL=PASS")

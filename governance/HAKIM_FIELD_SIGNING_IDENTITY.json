@@ -52,7 +52,9 @@
         "later app called jobFinished"
       ],
       "source_root_cause": "HakimConnectionResilience.schedule() unconditionally called JobScheduler.schedule() on the same JOB_ID; proactive/constraint maintenance can call schedule while watchdog is already pending/running, replacing it.",
-      "required_fix": "Make schedule() idempotent using a schedule generation and keep an already-correct pending/running JobInfo unchanged."
+      "required_fix": "Make schedule() idempotent using a schedule generation and keep an already-correct pending/running JobInfo unchanged.",
+      "cold_start_status": "OK",
+      "cold_start_total_ms": 6895
     }
   },
   "historical_previous_lineage": {

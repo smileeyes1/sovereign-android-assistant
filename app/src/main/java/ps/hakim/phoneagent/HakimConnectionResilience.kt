@@ -12,6 +12,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PersistableBundle
 import org.json.JSONObject
 
@@ -22,18 +24,21 @@ object HakimConnectionResilience {
     private const val NOTIFICATION_ID = 29
 
     @Volatile private var callbackInstalled = false
+    @Volatile private var scheduleHeartbeatInstalled = false
 
     fun install(context: Context) {
         val app = context.applicationContext
         HakimQuranicInvariantKernel.requireInherited("connection_resilience_install")
         HakimIntegrationFabric.requireCore(app, "connection_resilience_install")
         schedule(app)
+        installScheduleHeartbeat(app)
         installNetworkCallback(app)
         recover(app, "install")
     }
 
-    private const val SCHEDULE_GENERATION = 20057
+    private const val SCHEDULE_GENERATION = 20058
     private const val EXTRA_SCHEDULE_GENERATION = "hakim_recovery_schedule_generation"
+    private const val SCHEDULE_HEARTBEAT_MS = 60_000L
 
     /**
      * جدولة idempotent: لا نستبدل JobInfo صحيحة موجودة، لأن schedule() على نفس JOB_ID
@@ -88,6 +93,24 @@ object HakimConnectionResilience {
     }
 
     @Synchronized
+    private fun installScheduleHeartbeat(context: Context) {
+        if (scheduleHeartbeatInstalled) return
+        val app = context.applicationContext
+        val handler = Handler(Looper.getMainLooper())
+        val task = object : Runnable {
+            override fun run() {
+                runCatching { schedule(app) }
+                prefs(app).edit()
+                    .putLong("last_recovery_schedule_heartbeat_at", System.currentTimeMillis())
+                    .apply()
+                handler.postDelayed(this, SCHEDULE_HEARTBEAT_MS)
+            }
+        }
+        scheduleHeartbeatInstalled = true
+        handler.postDelayed(task, SCHEDULE_HEARTBEAT_MS)
+    }
+
+    @Synchronized
     private fun installNetworkCallback(context: Context) {
         if (callbackInstalled) return
         try {
@@ -95,11 +118,13 @@ object HakimConnectionResilience {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     prefs(context).edit().putLong("last_network_available_at", System.currentTimeMillis()).apply()
+                    schedule(context)
                     recover(context, "network_available")
                 }
 
                 override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                     if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                        schedule(context)
                         recover(context, "network_capabilities")
                     }
                 }
@@ -121,6 +146,7 @@ object HakimConnectionResilience {
         val app = context.applicationContext
         HakimQuranicInvariantKernel.requireInherited("connection_resilience_recover")
         HakimIntegrationFabric.requireCore(app, "connection_resilience_recover")
+        schedule(app)
         val p = prefs(app)
         PairingDefaults.ensure(p)
 

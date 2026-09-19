@@ -13,7 +13,8 @@ proactive=text("app/src/main/java/ps/hakim/phoneagent/HakimProactiveEngine.kt")
 build=text("app/build.gradle")
 policy=json.loads(text("governance/HAKIM_FIELD_SIGNING_IDENTITY.json"))
 
-require("SCHEDULE_GENERATION = 20057" in resilience,"جيل الجدولة ليس ٢٠٠٥٧")
+gen=re.search(r"SCHEDULE_GENERATION\s*=\s*(\d+)",resilience)
+require(gen and int(gen.group(1))>=20057,"إصلاح الجدولة idempotent يجب ألا يرجع قبل ٢٠٠٥٧")
 require('EXTRA_SCHEDULE_GENERATION = "hakim_recovery_schedule_generation"' in resilience,
         "مفتاح جيل الجدولة مفقود")
 require("scheduler.getPendingJob(JOB_ID)" in resilience,"الجدولة لا تفحص JobInfo الموجودة")
@@ -34,14 +35,16 @@ require("HakimConstraintDoctor.run(app, \"proactive_" in proactive,
         "المسار المتوازي الذي كشف العلة اختفى بدل تحصين schedule() جذريًا")
 
 m=re.search(r"versionCode\s+(\d+)",build)
-require(m and int(m.group(1))==20057,"الإصدار يجب أن يكون ٢٠٠٥٧")
-require(policy["current_field_version"]==20056,"خط الميدان يجب أن يسجل ٢٠٠٥٦ المثبت")
-require(policy["last_verified_field_version"]==20055,"LAST_VERIFIED_BASELINE يجب أن يبقى ٢٠٠٥٥ حتى قبول ٢٠٠٥٧")
-require(policy["current_candidate_version"]==20057,"السياسة لا تسجل ٢٠٠٥٧")
-require(policy["field_evidence"]["version_code"]==20056 and policy["field_evidence"]["stability"]=="FAILED",
-        "فشل ٢٠٠٥٦ الميداني غير محفوظ")
-require(any(x.get("version_code")==20056 for x in policy.get("superseded_field_failures",[])),
-        "فشل ٢٠٠٥٦ غير محفوظ تاريخيًا")
+require(m and int(m.group(1))>=20057,"إصلاح الجدولة idempotent يجب ألا يرجع قبل ٢٠٠٥٧")
+candidate=int(m.group(1))
+field=int(policy["current_field_version"])
+require(policy["current_candidate_version"]==candidate,"السياسة لا تطابق المرشح الحالي")
+require(candidate>field,"المرشح يجب أن يزيد عن خط الميدان")
+require(field>=20057,"خط الميدان يجب أن يحفظ ٢٠٠٥٧ المثبت أو أحدث")
+require(policy["field_evidence"]["version_code"]==field,"دليل الميدان لا يطابق current_field_version")
+require(policy.get("last_verified_field_version",0)>=20055,"LAST_VERIFIED_BASELINE ٢٠٠٥٥ غير محفوظ")
+require(any(x.get("version_code")==20057 for x in policy.get("superseded_field_failures",[])),
+        "فشل ٢٠٠٥٧ الميداني غير محفوظ")
 
 print("HAKIM_20057_IDEMPOTENT_RECOVERY_SCHEDULE=PASS")
 print("HAKIM_20057_INHERITS_PROFESSIONAL_UI=PASS")

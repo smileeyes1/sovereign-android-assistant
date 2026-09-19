@@ -40,6 +40,20 @@ object HakimVerifiedQuranCorpus {
     private const val BUNDLED_SOURCE_SHA256 = "d2960b3217962e7e4252abdcece67bea3d6b48271e4cd3af45bbbb2dd5c872ca"
     private const val BUNDLED_CANONICAL_SHA256 = "c1a2d34f901cfb233cbff8c57c770b76b810cbe51eccab69629529318ea82186"
 
+    @Volatile private var sharedDbHelper: Db? = null
+
+    /**
+     * SQLiteOpenHelper واحد لكل عملية. إبقاء helper المملوك للتطبيق حيًا مقصود؛
+     * إنشاء Helper جديد لكل query وتركه للـGC كان يسرّب SQLiteConnectionPool.
+     */
+    private fun database(context: Context): Db {
+        val existing = sharedDbHelper
+        if (existing != null) return existing
+        return synchronized(this) {
+            sharedDbHelper ?: Db(context.applicationContext).also { sharedDbHelper = it }
+        }
+    }
+
     data class SourceSpec(
         val id: String,
         val title: String,
@@ -289,7 +303,7 @@ object HakimVerifiedQuranCorpus {
 
     fun ayah(context: Context, surah: Int, ayah: Int): Ayah? {
         if (!isReady(context) || surah !in 1..114 || ayah <= 0) return null
-        return Db(context.applicationContext).readableDatabase.rawQuery(
+        return database(context.applicationContext).readableDatabase.rawQuery(
             "SELECT sura_name_ar, aya_text, aya_text_emlaey FROM aya WHERE sura_no=? AND aya_no=? LIMIT 1",
             arrayOf(surah.toString(), ayah.toString())
         ).use { c ->
@@ -314,7 +328,7 @@ object HakimVerifiedQuranCorpus {
         val visitedSurahs = HashSet<Int>(114)
         var scanned = 0
 
-        Db(app).readableDatabase.rawQuery(
+        database(app).readableDatabase.rawQuery(
             "SELECT sura_no, aya_no, sura_name_ar, aya_text, aya_text_emlaey FROM aya ORDER BY sura_no, aya_no",
             null
         ).use { c ->
@@ -354,7 +368,7 @@ object HakimVerifiedQuranCorpus {
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.getBoolean("verified", false) || p.getInt("ayah_count", 0) != EXPECTED_AYA_COUNT || p.getInt("surah_count", 0) != 114) return false
         return runCatching {
-            Db(app).readableDatabase.rawQuery("SELECT COUNT(*), COUNT(DISTINCT sura_no) FROM aya", null).use { c ->
+            database(app).readableDatabase.rawQuery("SELECT COUNT(*), COUNT(DISTINCT sura_no) FROM aya", null).use { c ->
                 c.moveToFirst() && c.getInt(0) == EXPECTED_AYA_COUNT && c.getInt(1) == 114
             }
         }.getOrDefault(false)
@@ -473,7 +487,7 @@ object HakimVerifiedQuranCorpus {
     }
 
     private fun streamBundledMirrorIntoDatabase(context: Context): StreamingInstallResult {
-        val db = Db(context).writableDatabase
+        val db = database(context).writableDatabase
         val canonical = MessageDigest.getInstance("SHA-256")
         var ayahCount = 0
         var surahCount = 0
@@ -672,7 +686,7 @@ object HakimVerifiedQuranCorpus {
     }
 
     private fun replaceDatabaseAtomically(context: Context, ayat: List<Ayah>) {
-        val db = Db(context).writableDatabase
+        val db = database(context).writableDatabase
         db.beginTransaction()
         try {
             db.delete("aya", null, null)

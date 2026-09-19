@@ -75,7 +75,7 @@ jobs:
         run: python3 tests/verify_tawhid_ala_compass.py
       - name: بوابة تعافي crash ومنع WebView القديمة للقناة الآمنة
         run: python3 tests/verify_crash_recovery_20048.py
-      - name: بوابة انحدار الاستقرار والاحتراف حتى ٢٠٠٥٧
+      - name: بوابة انحدار الاستقرار والاحتراف حتى ٢٠٠٥٨
         run: |
           python3 tests/verify_quran_streaming_20050.py
           python3 tests/verify_startup_nonblocking_20051.py
@@ -85,6 +85,7 @@ jobs:
           python3 tests/verify_professional_workspace_20056.py
           python3 tests/verify_professional_security_surface_20056.py
           python3 tests/verify_idempotent_recovery_schedule_20057.py
+          python3 tests/verify_quran_db_job_selfheal_20058.py
       - name: بوابة الاستخلاف والحكمة وهدي الأنبياء
         run: python3 tests/verify_istikhlaaf_governance.py
       - name: بوابة صمود قناة HC1 والناقل الاحتياطي

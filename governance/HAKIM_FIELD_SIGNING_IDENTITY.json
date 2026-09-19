@@ -1,6 +1,6 @@
 {
-  "schema_version": 12,
-  "status": "FIELD_IDENTITY_20056_D1__WATCHDOG_RESCHEDULE_REGRESSION__20057_CANDIDATE",
+  "schema_version": 13,
+  "status": "FIELD_IDENTITY_20057_D1__DB_LEAK_JOB_SELFHEAL_GAP__20058_CANDIDATE",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -18,43 +18,44 @@
     20052,
     20054,
     20055,
-    20056
+    20056,
+    20057
   ],
-  "current_field_version": 20056,
-  "current_candidate_version": 20057,
+  "current_field_version": 20057,
+  "current_candidate_version": 20058,
   "field_evidence": {
-    "observed_at_utc": "2026-09-19T02:32:00Z",
-    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_PLUS_STRICT_COLD_START_AND_JOB_SCHEDULER_HISTORY",
+    "observed_at_utc": "2026-09-19T02:50:48Z",
+    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_COLD_START_JOB_STATE_LOGCAT_AND_BACKGROUND_POLICY_READS",
     "package": "ps.hakim.stable",
-    "version_code": 20056,
-    "version_name": "2.0.56-sovereign-browser-agent-professional-workspace-quran-stable",
+    "version_code": 20057,
+    "version_name": "2.0.57-sovereign-browser-agent-professional-idempotent-watchdog",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "4ee0c6eb0f719b3d26b69a9d8c61eb7dc8448ce76947c96af82077a45ad8878e",
-    "supersedes_direct_field_version": 20055,
-    "claim_scope": "IDENTITY_AND_PROFESSIONAL_UI_PRESENT; STRICT_COLD_START_PASS; WATCHDOG_SCHEDULE_REPLACEMENT_REGRESSION",
+    "apk_sha256": "af75289b504e604a1c5545ec7625184276780950b0ffd852ccb55ac31928c96a",
+    "supersedes_direct_field_version": 20056,
+    "claim_scope": "IDENTITY_D1_EXACT_APK; IDEMPOTENT_SCHEDULE_SOURCE_PRESENT; COLD_START_PASS; JOB_DISAPPEARED_AND_QURAN_DB_HELPERS_LEAKED",
     "stability": "FAILED",
     "stability_evidence": {
+      "installed_local_time": "2026-09-19T05:46:41+03:00",
       "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
       "data_dir_preserved": "/data/user/0/ps.hakim.stable",
-      "strict_cold_starts_ms": [
-        6895,
-        6975,
-        6930
-      ],
-      "new_anr_oom_fatal_during_cold_probes": false,
-      "startup_schedule_created_after_launcher_seconds": 3,
-      "automatic_job_remained_active_over_25s": true,
-      "later_job_state": "unknown",
-      "jobscheduler_history": [
-        "START-P 771208",
-        "START-P 771208 followed by STOP-P canceled",
-        "later START-P followed by STOP-P canceled",
-        "later app called jobFinished"
-      ],
-      "source_root_cause": "HakimConnectionResilience.schedule() unconditionally called JobScheduler.schedule() on the same JOB_ID; proactive/constraint maintenance can call schedule while watchdog is already pending/running, replacing it.",
-      "required_fix": "Make schedule() idempotent using a schedule generation and keep an already-correct pending/running JobInfo unchanged.",
       "cold_start_status": "OK",
-      "cold_start_total_ms": 6895
+      "cold_start_total_ms": 5225,
+      "new_anr_oom_fatal_in_cold_probe": false,
+      "job_771208_initial_state": "active",
+      "job_771208_later_state": "ready",
+      "job_771208_final_state_after_minutes": "unknown",
+      "jobscheduler_history_observed": [
+        "START-P 771208",
+        "STOP-P cancelled while waiting for bind",
+        "STOP-P data_cleared",
+        "later job missing"
+      ],
+      "quran_sqlite_connection_pool_leak_warning_count_observed": 76,
+      "quran_db_leak_message": "SQLiteConnection object for hakim_verified_quran.db was leaked",
+      "device_idle_whitelisted": true,
+      "background_appops_default": "allow",
+      "standby_bucket": 5,
+      "required_fix": "Use one process-lifetime Quran SQLiteOpenHelper and make the idempotent recovery schedule self-heal when OEM removes Job 771208."
     }
   },
   "historical_previous_lineage": {
@@ -74,7 +75,7 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "20055 remains the last field-verified baseline. 20056 is the currently installed D1 identity and retains the professional workspace/Quran UI, but is not field-stable because repeated schedule() calls can replace Job 771208. Candidate 20057 preserves all 20056 professional features and makes recovery scheduling idempotent with a generation marker. No uninstall/clear-data/package/signer change."
+    "decision": "20055 remains the last fully field-verified baseline. 20057 is the currently installed D1 identity and proves the idempotent scheduling source change, but is not field-stable because TECNO/OEM removed Job 771208 while the process remained alive and repeated Quran status/scan calls leaked SQLiteOpenHelper connection pools. Candidate 20058 keeps every 20057 professional feature, adds a process-lifetime Quran DB helper, and adds cheap idempotent schedule self-healing on recovery/network/heartbeat without new permissions or dependencies."
   },
   "rules": [
     "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20055/D1.",
@@ -96,7 +97,9 @@
     "A periodic watchdog must not reschedule its own JobInfo from work launched by that same watchdog; schedule maintenance is suppressed inside the watchdog execution path.",
     "Professional UI must not add Android permissions, exported activities, or runtime dependencies without a separately qualified need.",
     "Professional releases must inherit the 20055 watchdog hard deadline and self-reschedule suppression and prove no regression on the real phone.",
-    "Recovery schedule() must be idempotent: if the same generation of Job 771208 already exists for the correct service, keep it unchanged; do not replace a pending or running JobInfo."
+    "Recovery schedule() must be idempotent: if the same generation of Job 771208 already exists for the correct service, keep it unchanged; do not replace a pending or running JobInfo.",
+    "Quran SQLite access must reuse one process-lifetime application-scoped SQLiteOpenHelper; per-query helpers that rely on GC for close are forbidden.",
+    "Recovery scheduling must self-heal if OEM removes Job 771208 while the app process is alive, using only idempotent checks; self-healing must not replace a correct existing generation."
   ],
   "superseded_field_failures": [
     {
@@ -140,6 +143,17 @@
       ],
       "anr_observed": false,
       "oom_observed": false
+    },
+    {
+      "version_code": 20057,
+      "version_name": "2.0.57-sovereign-browser-agent-professional-idempotent-watchdog",
+      "apk_sha256": "af75289b504e604a1c5545ec7625184276780950b0ffd852ccb55ac31928c96a",
+      "observed_local_time": "2026-09-19T05:49:11+03:00",
+      "failure": "JOB_REMOVED_BY_OEM_WHILE_PROCESS_ALIVE_AND_QURAN_SQLITE_HELPER_LEAKS",
+      "cold_start_ms": 5225,
+      "sqlite_leak_warnings_observed": 76,
+      "anr_observed": false,
+      "oom_observed": false
     }
   ],
   "professional_parent_candidate": {
@@ -151,6 +165,6 @@
     "field_status": "FIELD_ACCEPTED",
     "signed_apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896"
   },
-  "professional_candidate_hold": "WAIT_20057_SOURCE_AND_FIELD_ACCEPTANCE",
+  "professional_candidate_hold": "WAIT_20058_SOURCE_AND_FIELD_ACCEPTANCE",
   "last_verified_field_version": 20055
 }

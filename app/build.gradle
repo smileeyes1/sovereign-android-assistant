@@ -17,8 +17,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20057
-        versionName '2.0.57-sovereign-browser-agent-professional-idempotent-watchdog'
+        versionCode 20058
+        versionName '2.0.58-sovereign-browser-agent-professional-selfheal-quran-db'
     }
 
     compileOptions {

@@ -49,7 +49,7 @@ require(policy.get("last_verified_field_version",20055)>=20055,"خط الأسا�
 parent=policy.get("professional_parent_candidate",{})
 require(parent.get("version_code")==20055 and parent.get("field_status")=="FIELD_ACCEPTED",
         "أصل الواجهة الاحترافية لا يعود إلى خط ٢٠٠٥٥ المقبول")
-require(policy.get("professional_candidate_hold") in {"WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE","WAIT_20057_SOURCE_AND_FIELD_ACCEPTANCE"},
+require(policy.get("professional_candidate_hold") in {"WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE","WAIT_20057_SOURCE_AND_FIELD_ACCEPTANCE","WAIT_20058_SOURCE_AND_FIELD_ACCEPTANCE"},
         "حجز المرشح الاحترافي غير مثبت")
 
 print("HAKIM_20056_PROFESSIONAL_WORKSPACE=PASS")

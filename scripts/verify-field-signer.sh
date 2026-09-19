@@ -13,13 +13,13 @@ fi
 EXPECTED="$(python3 - "$POLICY" <<'PY'
 import json,sys
 with open(sys.argv[1], encoding='utf-8') as f:
-    print(json.load(f)['certificate_sha256'].upper())
+    print(json.load(f)['certificate_sha256'].replace(':','').upper())
 PY
 )"
 FORBIDDEN="$(python3 - "$POLICY" <<'PY'
 import json,sys
 with open(sys.argv[1], encoding='utf-8') as f:
-    print(json.load(f)['known_nonmatching_certificate_sha256'].upper())
+    print(json.load(f)['known_nonmatching_certificate_sha256'].replace(':','').upper())
 PY
 )"
 
@@ -35,24 +35,28 @@ if ! CERT_OUTPUT="$(LC_ALL=C "$APKSIGNER_BIN" verify --verbose --print-certs "$A
 fi
 
 mapfile -t ACTUAL_CERTS < <(
-  printf '%s\n' "$CERT_OUTPUT" | python3 -c '
-import re, sys
-text = sys.stdin.read()
-for digest in re.findall(r"certificate\s+SHA-256\s+digest\s*:\s*([0-9A-Fa-f:]{64,95})", text, flags=re.I):
-    value = re.sub(r"[^0-9A-Fa-f]", "", digest).upper()
-    if len(value) == 64:
-        print(value)
-'
+  printf '%s\n' "$CERT_OUTPUT" |
+    python3 -c 'import sys,re
+text=sys.stdin.read()
+seen=[]
+patterns=[
+ r"Signer\s*#?\d*\s*certificate\s*SHA-256\s*digest:\s*([0-9A-Fa-f:]{64,95})",
+ r"certificate\s*SHA-256\s*digest:\s*([0-9A-Fa-f:]{64,95})",
+]
+for pat in patterns:
+    for raw in re.findall(pat,text,re.I):
+        d=re.sub(r"[^0-9A-Fa-f]","",raw).upper()
+        if len(d)==64 and d not in seen:
+            seen.append(d)
+for d in seen:
+    print(d)'
 )
 
-EXPECTED="${EXPECTED//:/}"
-FORBIDDEN="${FORBIDDEN//:/}"
-
 if [[ ${#ACTUAL_CERTS[@]} -ne 1 ]]; then
-  echo "SIGNER_GUARD=FAIL reason=certificate_unreadable_or_missing" >&2
+  echo "SIGNER_GUARD=FAIL reason=certificate_unreadable_or_multiple" >&2
   exit 3
 fi
-ACTUAL="${ACTUAL_CERTS[0]//:/}"
+ACTUAL="${ACTUAL_CERTS[0]}"
 if [[ "$ACTUAL" == "$FORBIDDEN" ]]; then
   echo "SIGNER_GUARD=FAIL reason=known_companion_signer_rejected" >&2
   exit 4

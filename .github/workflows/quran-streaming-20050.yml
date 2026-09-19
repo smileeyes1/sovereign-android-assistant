@@ -1,0 +1,39 @@
+name: حكيم ٢٠٠٥٠ — منع نفاد الذاكرة في القرآن
+
+on:
+  push:
+    branches: [ feature/hakim-quran-streaming-20050 ]
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/verify_quran_streaming_20050.py'
+      - 'scripts/prepare-bundled-quran.sh'
+      - 'governance/**'
+      - 'app/build.gradle'
+      - '.github/workflows/quran-streaming-20050.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  quran-streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: بوابة القراءة التدفقية للقرآن
+        run: |
+          python3 tests/verify_quran_streaming_20050.py
+          python3 tests/verify_bundled_quran_20049.py
+          bash scripts/prepare-bundled-quran.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+          cache-provider: basic
+      - name: بناء Debug وRelease
+        run: gradle assembleDebug assembleRelease --stacktrace
+      - name: Android Lint
+        run: gradle lint --stacktrace

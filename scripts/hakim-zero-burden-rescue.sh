@@ -9,11 +9,13 @@ chmod 700 "$OMEGA" "$ADB_DIR" "$LOG_DIR" 2>/dev/null || true
 
 ADB_LOG="$LOG_DIR/hakim-adb-rescue.log"
 RDC_LOG="$LOG_DIR/remote-desktop-commander.log"
+RDC_PREV_LOG="$LOG_DIR/remote-desktop-commander.prev.log"
 CORE="$ADB_DIR/hakim-adb-core.sh"
 CORE_COMMIT="b7f87cc4a0a620e5ca7ff4c582c758295355db26"
 CORE_URL="https://raw.githubusercontent.com/smileeyes1/sovereign-android-assistant/$CORE_COMMIT/scripts/termux-hakim-adb-bootstrap.sh"
 SEED_ENDPOINT="192.168.1.11:40409"
 RDC_VERSION="0.2.48"
+RDC_PATTERN='@wonderwhy-er/desktop-commander.*remote'
 
 say() { printf '%s\n' "$*"; }
 
@@ -34,15 +36,71 @@ install_adb_core() {
   return 0
 }
 
-start_remote_maintenance() {
-  if pgrep -f '@wonderwhy-er/desktop-commander.*remote' >/dev/null 2>&1; then
-    return 0
+stop_stale_remote_maintenance() {
+  local pids i
+  pids="$(pgrep -f "$RDC_PATTERN" 2>/dev/null || true)"
+  [ -n "$pids" ] || return 0
+  printf '%s\n' "$(date -Iseconds) HAKIM_RDC_RESTART reason=rescue_refresh pids=$(printf '%s' "$pids" | tr '\n' ',')" >>"$RDC_LOG"
+  kill $pids 2>/dev/null || true
+  for i in 1 2 3 4 5; do
+    pgrep -f "$RDC_PATTERN" >/dev/null 2>&1 || return 0
+    sleep 1
+  done
+  pids="$(pgrep -f "$RDC_PATTERN" 2>/dev/null || true)"
+  [ -z "$pids" ] || kill -9 $pids 2>/dev/null || true
+  sleep 1
+}
+
+fresh_remote_log() {
+  if [ -s "$RDC_LOG" ]; then
+    tail -n 200 "$RDC_LOG" >"$RDC_PREV_LOG.tmp" 2>/dev/null || true
+    mv -f "$RDC_PREV_LOG.tmp" "$RDC_PREV_LOG" 2>/dev/null || true
+    chmod 600 "$RDC_PREV_LOG" 2>/dev/null || true
   fi
+  : >"$RDC_LOG"
+  chmod 600 "$RDC_LOG" 2>/dev/null || true
+}
+
+show_fresh_pairing_instructions() {
+  say 'REMOTE_MAINTENANCE=PAIRING_REQUIRED'
+  say 'حكيم: يلزم تحقق جهاز جديد. استخدم الرمز الظاهر أدناه فقط؛ الرمز القديم المنتهي لا يُستخدم.'
+  grep -E 'https://mcp\.desktopcommander\.app/device/verify|Enter this code|^[[:space:]]*[A-Z0-9]{4}-[A-Z0-9]{4}[[:space:]]*$|Code expires' "$RDC_LOG" 2>/dev/null | tail -n 8 || true
+}
+
+start_remote_maintenance() {
+  # مسار rescue ينعش النقل نفسه؛ وجود PID أو اشتراك قناة جزئي ليس دليل اتصال.
+  # نجاح المحاولة يُستنتج من سجل جديد خاص بهذه المحاولة ومن الحالة النهائية Device ready فقط.
+  # لا نحذف هوية الجهاز أو الرموز المحفوظة. إذا احتاج المزود تحققًا جديدًا نعرض الرمز الحديث محليًا.
+  stop_stale_remote_maintenance
+  fresh_remote_log
+  printf '%s\n' "$(date -Iseconds) HAKIM_RDC_START version=$RDC_VERSION" >>"$RDC_LOG"
   nohup npx --yes "@wonderwhy-er/desktop-commander@$RDC_VERSION" remote >>"$RDC_LOG" 2>&1 </dev/null &
-  printf '%s\n' "$!" > "$OMEGA/remote-desktop-commander.pid"
+  local pid="$!" i
+  printf '%s\n' "$pid" > "$OMEGA/remote-desktop-commander.pid"
   chmod 600 "$OMEGA/remote-desktop-commander.pid" 2>/dev/null || true
-  sleep 4
-  pgrep -f '@wonderwhy-er/desktop-commander.*remote' >/dev/null 2>&1
+
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if grep -Fq 'Device ready' "$RDC_LOG" 2>/dev/null; then
+      say 'REMOTE_MAINTENANCE=ONLINE'
+      return 0
+    fi
+    if grep -Eq 'Please complete authentication|Enter this code when prompted|Code expires in [0-9]+ minutes' "$RDC_LOG" 2>/dev/null; then
+      show_fresh_pairing_instructions
+      return 2
+    fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+  done
+
+  if ! kill -0 "$pid" 2>/dev/null && ! pgrep -f "$RDC_PATTERN" >/dev/null 2>&1; then
+    say 'REMOTE_MAINTENANCE=FAILED'
+    tail -n 8 "$RDC_LOG" 2>/dev/null | sed -E 's#https?://[^[:space:]]+#[رابط]#g' || true
+    return 1
+  fi
+
+  say 'REMOTE_MAINTENANCE=WAITING_UNPROVEN'
+  say 'حكيم: العملية تعمل لكن الاتصال البعيد لم يصل إلى Device ready؛ لن يُعلن نجاحًا وهميًا.'
+  return 3
 }
 
 recover_adb() {
@@ -59,18 +117,29 @@ main() {
 
   RDC=FAIL
   ADB=FAIL
-  start_remote_maintenance && RDC=STARTED || true
+  start_remote_maintenance
+  rdc_rc=$?
+  case "$rdc_rc" in
+    0) RDC=ONLINE ;;
+    2) RDC=PAIRING_REQUIRED ;;
+    3) RDC=WAITING_UNPROVEN ;;
+    *) RDC=FAIL ;;
+  esac
   recover_adb && ADB=PASS || true
 
-  say "REMOTE_MAINTENANCE=$RDC"
+  say "REMOTE_MAINTENANCE_STATE=$RDC"
   say "ADB_LOCAL=$ADB"
 
-  if [ "$RDC" = STARTED ] || [ "$ADB" = PASS ]; then
+  if [ "$RDC" = ONLINE ] || [ "$ADB" = PASS ]; then
     say 'RESCUE=READY'
     exit 0
   fi
+  if [ "$RDC" = PAIRING_REQUIRED ]; then
+    say 'RESCUE=LOCAL_VERIFY_NEEDED'
+    exit 3
+  fi
 
-  # لا نعيد الاقتران تلقائيا ولا نلغي أي بيانات. إن بقيت القناتان مغلقتين، الموافقة المحلية لأندرويد هي المانع الوحيد.
+  # لا نلغي أي بيانات أو نمنح صلاحيات خفية. إن بقيت القناتان مغلقتين، الموافقة المحلية لأندرويد هي المانع الوحيد.
   say 'RESCUE=LOCAL_ANDROID_APPROVAL_NEEDED'
   exit 2
 }

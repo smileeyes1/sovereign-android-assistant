@@ -42,6 +42,8 @@ class HakimPairingActivity : Activity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service) else startService(service)
             } catch (_: Exception) {}
             HakimUnifiedRelay.sendPairingAckAsync(applicationContext)
+            // نبضة مستقلة عن خيط الاستماع تثبت الاقتران حتى لو كان ناقل الأوامر محجوبًا.
+            HakimHealthBeacon.sendAsync(applicationContext, "pairing_success")
             Toast.makeText(this, "تم ربط حكيم بالقناة المشفّرة", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(this, "تعذر اعتماد رابط الاقتران — لم تُحفظ إعدادات ناقصة", Toast.LENGTH_LONG).show()

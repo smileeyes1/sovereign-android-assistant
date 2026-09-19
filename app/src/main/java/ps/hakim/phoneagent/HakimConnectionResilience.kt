@@ -12,6 +12,9 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.PersistableBundle
 import org.json.JSONObject
 
 object HakimConnectionResilience {
@@ -21,29 +24,90 @@ object HakimConnectionResilience {
     private const val NOTIFICATION_ID = 29
 
     @Volatile private var callbackInstalled = false
+    @Volatile private var scheduleHeartbeatInstalled = false
 
     fun install(context: Context) {
         val app = context.applicationContext
+        HakimQuranicInvariantKernel.requireInherited("connection_resilience_install")
+        HakimIntegrationFabric.requireCore(app, "connection_resilience_install")
         schedule(app)
+        installScheduleHeartbeat(app)
         installNetworkCallback(app)
         recover(app, "install")
     }
 
+    private const val SCHEDULE_GENERATION = 20058
+    private const val EXTRA_SCHEDULE_GENERATION = "hakim_recovery_schedule_generation"
+    private const val SCHEDULE_HEARTBEAT_MS = 60_000L
+
+    /**
+     * جدولة idempotent: لا نستبدل JobInfo صحيحة موجودة، لأن schedule() على نفس JOB_ID
+     * أثناء التشغيل يلغي الـJob الجارية ويعيد إنشاءها. يتغير الجيل فقط عندما نريد
+     * ترقية عقد الجدولة عمدًا في إصدار لاحق.
+     */
     fun schedule(context: Context) {
+        val app = context.applicationContext
+        val p = prefs(app)
         try {
-            val scheduler = context.getSystemService(JobScheduler::class.java)
-            val info = JobInfo.Builder(
-                JOB_ID,
-                ComponentName(context, HakimConnectionRecoveryJobService::class.java)
-            )
+            val scheduler = app.getSystemService(JobScheduler::class.java)
+            val component = ComponentName(app, HakimConnectionRecoveryJobService::class.java)
+            val existing = scheduler.getPendingJob(JOB_ID)
+            val existingGeneration = existing?.extras?.getInt(EXTRA_SCHEDULE_GENERATION, -1) ?: -1
+
+            if (existing != null &&
+                existing.service == component &&
+                existingGeneration == SCHEDULE_GENERATION
+            ) {
+                p.edit()
+                    .putLong("last_recovery_schedule_kept_at", System.currentTimeMillis())
+                    .putInt("last_recovery_schedule_generation", SCHEDULE_GENERATION)
+                    .putString("last_recovery_schedule_action", "kept_existing")
+                    .remove("last_recovery_schedule_error")
+                    .apply()
+                return
+            }
+
+            val extras = PersistableBundle().apply {
+                putInt(EXTRA_SCHEDULE_GENERATION, SCHEDULE_GENERATION)
+            }
+            val info = JobInfo.Builder(JOB_ID, component)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setPersisted(true)
                 .setPeriodic(PERIOD_MS)
+                .setExtras(extras)
                 .build()
-            scheduler.schedule(info)
+            val result = scheduler.schedule(info)
+            p.edit()
+                .putLong("last_recovery_schedule_changed_at", System.currentTimeMillis())
+                .putInt("last_recovery_schedule_generation", SCHEDULE_GENERATION)
+                .putInt("last_recovery_schedule_result", result)
+                .putString(
+                    "last_recovery_schedule_action",
+                    if (existing == null) "created" else "upgraded_generation"
+                )
+                .remove("last_recovery_schedule_error")
+                .apply()
         } catch (e: Exception) {
-            prefs(context).edit().putString("last_recovery_schedule_error", safe(e.message)).apply()
+            p.edit().putString("last_recovery_schedule_error", safe(e.message)).apply()
         }
+    }
+
+    @Synchronized
+    private fun installScheduleHeartbeat(context: Context) {
+        if (scheduleHeartbeatInstalled) return
+        val app = context.applicationContext
+        val handler = Handler(Looper.getMainLooper())
+        val task = object : Runnable {
+            override fun run() {
+                runCatching { schedule(app) }
+                prefs(app).edit()
+                    .putLong("last_recovery_schedule_heartbeat_at", System.currentTimeMillis())
+                    .apply()
+                handler.postDelayed(this, SCHEDULE_HEARTBEAT_MS)
+            }
+        }
+        scheduleHeartbeatInstalled = true
+        handler.postDelayed(task, SCHEDULE_HEARTBEAT_MS)
     }
 
     @Synchronized
@@ -54,11 +118,13 @@ object HakimConnectionResilience {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     prefs(context).edit().putLong("last_network_available_at", System.currentTimeMillis()).apply()
+                    schedule(context)
                     recover(context, "network_available")
                 }
 
                 override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                     if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                        schedule(context)
                         recover(context, "network_capabilities")
                     }
                 }
@@ -78,30 +144,70 @@ object HakimConnectionResilience {
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
+        HakimQuranicInvariantKernel.requireInherited("connection_resilience_recover")
+        HakimIntegrationFabric.requireCore(app, "connection_resilience_recover")
+        schedule(app)
         val p = prefs(app)
         PairingDefaults.ensure(p)
 
         val disabled = p.getBoolean("pairing_disabled_by_user", false)
-        val paired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
-            p.getString("result_topic", "").orEmpty().isNotBlank()
+        val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
+            p.getString("result_topic", "").orEmpty().isNotBlank() &&
+            p.getString("auth_key", "").orEmpty().isNotBlank()
+        val securePaired = HakimUnifiedRelay.isConfigured(app)
+        val localPaired = p.getBoolean("local_adb_paired", false)
+        val anyPaired = legacyPaired || securePaired || localPaired
         val now = System.currentTimeMillis()
 
         if (disabled) {
             p.edit().putString("connection_recovery_state", "disabled_by_user").apply()
             return state(app, "disabled_by_user", reason)
         }
-        if (!paired) {
+        if (!anyPaired) {
             p.edit().putString("connection_recovery_state", "unpaired").apply()
             return state(app, "unpaired", reason)
         }
 
-        if (HakimService.running && HakimService.connected) {
+        // أي نتيجة حُفظت محليًا أثناء انقطاع مزود أو الشبكة تُعاد تلقائيًا.
+        HakimSovereignResultChannel.flushAsync(app)
+
+        // HC1 is independently recoverable and must never depend on legacy topics.
+        if (securePaired) HakimUnifiedRelay.start(app)
+
+        // Local ADB is an independent maintenance path; reconnect opportunistically.
+        if (localPaired) HakimLocalPairing.reconnectAsync(app)
+
+        val secureState = p.getString("secure_relay_state", "unknown").orEmpty()
+        val legacyHealthy = legacyPaired && HakimService.running && HakimService.connected
+        val secureHealthy = securePaired && secureState == "connected"
+
+        if (legacyHealthy || secureHealthy) {
+            val transport = when {
+                legacyHealthy && secureHealthy -> "secure+legacy"
+                secureHealthy -> "secure"
+                else -> "legacy"
+            }
             p.edit()
                 .putString("connection_recovery_state", "healthy")
+                .putString("connection_recovery_transport", transport)
                 .putLong("last_recovery_ok_at", now)
                 .remove("last_recovery_error")
                 .apply()
             return state(app, "healthy", reason)
+        }
+
+        // Secure/local-only installations recover without ever starting the legacy WebView service.
+        // In safe-recovery after crash/ANR, suppress legacy restart even if stale legacy fields remain.
+        if (!legacyPaired || HakimCrashShield.shouldSuppressProactiveResume(app)) {
+            val recoveryState = if (securePaired) "secure_reconnect_requested" else "local_reconnect_requested"
+            p.edit()
+                .putString("connection_recovery_state", recoveryState)
+                .putString("connection_recovery_transport", if (securePaired) "secure" else "local")
+                .putString("last_recovery_reason", reason.take(80))
+                .putLong("last_recovery_attempt_at", now)
+                .remove("last_recovery_error")
+                .apply()
+            return state(app, recoveryState, reason)
         }
 
         return try {
@@ -110,6 +216,7 @@ object HakimConnectionResilience {
             else app.startService(intent)
             p.edit()
                 .putString("connection_recovery_state", "restart_requested")
+                .putString("connection_recovery_transport", if (securePaired) "secure+legacy" else "legacy")
                 .putString("last_recovery_reason", reason.take(80))
                 .putLong("last_recovery_attempt_at", now)
                 .remove("last_recovery_error")
@@ -129,9 +236,21 @@ object HakimConnectionResilience {
     }
 
     fun status(context: Context): JSONObject {
-        val p = prefs(context)
+        val app = context.applicationContext
+        val p = prefs(app)
+        val legacyPaired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
+            p.getString("result_topic", "").orEmpty().isNotBlank() &&
+            p.getString("auth_key", "").orEmpty().isNotBlank()
+        val securePaired = HakimUnifiedRelay.isConfigured(app)
+        val localPaired = p.getBoolean("local_adb_paired", false)
         return JSONObject()
+            .put("integration_aware", true)
             .put("state", p.getString("connection_recovery_state", "unknown"))
+            .put("transport", p.getString("connection_recovery_transport", ""))
+            .put("legacy_paired", legacyPaired)
+            .put("secure_paired", securePaired)
+            .put("local_paired", localPaired)
+            .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
             .put("last_connected_at", p.getLong("last_connected_at", 0L))

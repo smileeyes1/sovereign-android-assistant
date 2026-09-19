@@ -1,4 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 set -u
 
 STATE_DIR="$HOME/.omega/adb"
@@ -170,6 +172,8 @@ WRAP
 
   cat > "$BOOT_DIR/hakim-adb-reconnect" <<'BOOT'
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 sleep 8
 "$PREFIX/bin/hakim-adb" connect >/dev/null 2>&1 || true
 BOOT
@@ -178,11 +182,15 @@ BOOT
   if [ -f "$HOME/.bashrc" ]; then
     grep -q 'HAKIM_ADB_AUTORECONNECT' "$HOME/.bashrc" || cat >> "$HOME/.bashrc" <<'RC'
 # HAKIM_ADB_AUTORECONNECT
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 ( "$PREFIX/bin/hakim-adb" connect >/dev/null 2>&1 || true ) &
 RC
   else
     cat > "$HOME/.bashrc" <<'RC'
 # HAKIM_ADB_AUTORECONNECT
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 ( "$PREFIX/bin/hakim-adb" connect >/dev/null 2>&1 || true ) &
 RC
   fi

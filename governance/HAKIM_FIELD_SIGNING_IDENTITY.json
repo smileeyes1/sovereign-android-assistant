@@ -1,19 +1,170 @@
 {
-  "schema_version": 1,
-  "status": "FIELD_LINEAGE_IDENTITY_PINNED_PRIVATE_KEY_RECOVERY_PENDING",
+  "schema_version": 13,
+  "status": "FIELD_IDENTITY_20057_D1__DB_LEAK_JOB_SELFHEAL_GAP__20058_CANDIDATE",
   "canonical_package": "ps.hakim.stable",
-  "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+  "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "public_key": "RSA-3072",
-  "signature_algorithm": "SHA384withRSA",
-  "valid_from_utc": "2026-09-11T16:44:32Z",
-  "known_matching_versions": [20013, 20016],
+  "known_matching_versions": [
+    20018,
+    20019,
+    20020,
+    20021,
+    20022,
+    20025,
+    20040,
+    20049,
+    20050,
+    20051,
+    20052,
+    20054,
+    20055,
+    20056,
+    20057
+  ],
+  "current_field_version": 20057,
+  "current_candidate_version": 20058,
+  "field_evidence": {
+    "observed_at_utc": "2026-09-19T02:50:48Z",
+    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_COLD_START_JOB_STATE_LOGCAT_AND_BACKGROUND_POLICY_READS",
+    "package": "ps.hakim.stable",
+    "version_code": 20057,
+    "version_name": "2.0.57-sovereign-browser-agent-professional-idempotent-watchdog",
+    "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "apk_sha256": "af75289b504e604a1c5545ec7625184276780950b0ffd852ccb55ac31928c96a",
+    "supersedes_direct_field_version": 20056,
+    "claim_scope": "IDENTITY_D1_EXACT_APK; IDEMPOTENT_SCHEDULE_SOURCE_PRESENT; COLD_START_PASS; JOB_DISAPPEARED_AND_QURAN_DB_HELPERS_LEAKED",
+    "stability": "FAILED",
+    "stability_evidence": {
+      "installed_local_time": "2026-09-19T05:46:41+03:00",
+      "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
+      "data_dir_preserved": "/data/user/0/ps.hakim.stable",
+      "cold_start_status": "OK",
+      "cold_start_total_ms": 5225,
+      "new_anr_oom_fatal_in_cold_probe": false,
+      "job_771208_initial_state": "active",
+      "job_771208_later_state": "ready",
+      "job_771208_final_state_after_minutes": "unknown",
+      "jobscheduler_history_observed": [
+        "START-P 771208",
+        "STOP-P cancelled while waiting for bind",
+        "STOP-P data_cleared",
+        "later job missing"
+      ],
+      "quran_sqlite_connection_pool_leak_warning_count_observed": 76,
+      "quran_db_leak_message": "SQLiteConnection object for hakim_verified_quran.db was leaked",
+      "device_idle_whitelisted": true,
+      "background_appops_default": "allow",
+      "standby_bucket": 5,
+      "required_fix": "Use one process-lifetime Quran SQLiteOpenHelper and make the idempotent recovery schedule self-heal when OEM removes Job 771208."
+    }
+  },
+  "historical_previous_lineage": {
+    "certificate_sha256": "F4:2D:71:B0:30:8A:54:3E:25:30:99:C0:23:01:BF:DB:FE:FA:45:F8:75:5B:12:AB:22:A3:C9:03:30:5E:44:2E",
+    "known_signed_versions": [
+      20013,
+      20016,
+      20017
+    ],
+    "status": "SUPERSEDED_BY_NEWER_DIRECT_FIELD_EVIDENCE_20025_D1"
+  },
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
+  "continuity": {
+    "one_app_only": true,
+    "preserve_app_data_required": true,
+    "uninstall_or_clear_data_forbidden": true,
+    "inplace_update_requires_exact_current_signer": true,
+    "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
+    "unknown_source_permission_not_required_by_policy": true,
+    "decision": "20055 remains the last fully field-verified baseline. 20057 is the currently installed D1 identity and proves the idempotent scheduling source change, but is not field-stable because TECNO/OEM removed Job 771208 while the process remained alive and repeated Quran status/scan calls leaked SQLiteOpenHelper connection pools. Candidate 20058 keeps every 20057 professional feature, adds a process-lifetime Quran DB helper, and adds cheap idempotent schedule self-healing on recovery/network/heartbeat without new permissions or dependencies."
+  },
   "rules": [
-    "Do not release an in-place ps.hakim.stable update unless its signer exactly matches certificate_sha256.",
-    "Do not use the known nonmatching Companion signer for ps.hakim.stable.",
-    "Do not store private signing material in this public repository.",
-    "Do not uninstall or clear the field app as a signing workaround without an explicit migration decision and state-preservation evidence.",
-    "Build or CI success alone does not establish physical-phone field installation."
-  ]
+    "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20055/D1.",
+    "Any in-place update for the current phone must be signed exactly by certificate_sha256 (D1).",
+    "F4 is historical and must not be used to overwrite the current D1 installation.",
+    "The known 4C companion signer must never be accepted for ps.hakim.stable.",
+    "Do not uninstall the current app or clear its data as part of routine updating.",
+    "Do not require or encourage Android unknown-source installation permission as a standing capability.",
+    "Do not store private signing material or pairing secrets in this public repository.",
+    "Maintain exactly one user-facing Hakim Android app: ps.hakim.stable.",
+    "Build or CI success alone does not establish physical-phone field qualification.",
+    "current_candidate_version is not field-qualified until the exact delivered signed artifact is verified on the real phone.",
+    "If a future phone read contradicts this baseline, fail closed and update the baseline only from the newer direct evidence.",
+    "Direct package/version/APK/signer evidence establishes field identity only; runtime stability remains a separate gate and is not inherited.",
+    "A field version may be current by identity while failing stability; identity evidence must never be promoted to runtime acceptance.",
+    "Background jobs must not hold JobScheduler on optional network telemetry; nonessential health transmission must be asynchronous and coalesced.",
+    "A candidate with no ANR may still fail acceptance if a periodic job remains active materially longer than its bounded local work requires.",
+    "A periodic watchdog must have a hard JobScheduler deadline; optional diagnosis, health, or self-check work must continue asynchronously and must not keep the job active past that deadline.",
+    "A periodic watchdog must not reschedule its own JobInfo from work launched by that same watchdog; schedule maintenance is suppressed inside the watchdog execution path.",
+    "Professional UI must not add Android permissions, exported activities, or runtime dependencies without a separately qualified need.",
+    "Professional releases must inherit the 20055 watchdog hard deadline and self-reschedule suppression and prove no regression on the real phone.",
+    "Recovery schedule() must be idempotent: if the same generation of Job 771208 already exists for the correct service, keep it unchanged; do not replace a pending or running JobInfo.",
+    "Quran SQLite access must reuse one process-lifetime application-scoped SQLiteOpenHelper; per-query helpers that rely on GC for close are forbidden.",
+    "Recovery scheduling must self-heal if OEM removes Job 771208 while the app process is alive, using only idempotent checks; self-healing must not replace a correct existing generation."
+  ],
+  "superseded_field_failures": [
+    {
+      "version_code": 20050,
+      "version_name": "2.0.50-sovereign-browser-agent-quran-streaming",
+      "apk_sha256": "87dc4870e4610914fb6701dc354dd49bcc5dca6df3449eed166c053c4b185697",
+      "observed_local_time": "2026-09-18T20:27:26+03:00",
+      "failure": "ANR_AND_COLD_START_TIMEOUT",
+      "anr_description": "bg anr: No response to onStartJob",
+      "cold_start_wait_ms": 10053
+    },
+    {
+      "version_code": 20052,
+      "version_name": "2.0.52-sovereign-browser-agent-bounded-watchdog",
+      "apk_sha256": "7a26a01ef667c3ba237d31a6842c0c3e02e280aee7e74d90decb067e8ca7ad7b",
+      "observed_local_time": "2026-09-18T21:52:09+03:00",
+      "failure": "WATCHDOG_JOB_REPEATEDLY_ACTIVE_OVER_30S",
+      "anr_observed": false,
+      "oom_observed": false
+    },
+    {
+      "version_code": 20054,
+      "version_name": "2.0.54-sovereign-browser-agent-hard-bounded-watchdog",
+      "apk_sha256": "b226abaf382d52ff882a4510d3be345de7cb3f9e00b25317c81ca08d25baff25",
+      "observed_local_time": "2026-09-18T22:02:21+03:00",
+      "failure": "WATCHDOG_SELF_RESCHEDULE_CANCELS_OR_REPLACES_PERIODIC_JOB",
+      "job_duration_ms": 10658,
+      "anr_observed": false,
+      "oom_observed": false
+    },
+    {
+      "version_code": 20056,
+      "version_name": "2.0.56-sovereign-browser-agent-professional-workspace-quran-stable",
+      "apk_sha256": "4ee0c6eb0f719b3d26b69a9d8c61eb7dc8448ce76947c96af82077a45ad8878e",
+      "observed_local_time": "2026-09-19T05:30:00+03:00",
+      "failure": "JOB_771208_REPLACED_BY_NON_IDEMPOTENT_SCHEDULE_CALLS",
+      "strict_cold_starts_ms": [
+        6895,
+        6975,
+        6930
+      ],
+      "anr_observed": false,
+      "oom_observed": false
+    },
+    {
+      "version_code": 20057,
+      "version_name": "2.0.57-sovereign-browser-agent-professional-idempotent-watchdog",
+      "apk_sha256": "af75289b504e604a1c5545ec7625184276780950b0ffd852ccb55ac31928c96a",
+      "observed_local_time": "2026-09-19T05:49:11+03:00",
+      "failure": "JOB_REMOVED_BY_OEM_WHILE_PROCESS_ALIVE_AND_QURAN_SQLITE_HELPER_LEAKS",
+      "cold_start_ms": 5225,
+      "sqlite_leak_warnings_observed": 76,
+      "anr_observed": false,
+      "oom_observed": false
+    }
+  ],
+  "professional_parent_candidate": {
+    "version_code": 20055,
+    "branch": "feature/hakim-stable-watchdog-20055",
+    "pr": 46,
+    "head": "855c5cfb24b20be6ebed14d173dcfe0f46b59d1b",
+    "source_status": "QUALIFIED_5_OF_5_CI",
+    "field_status": "FIELD_ACCEPTED",
+    "signed_apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896"
+  },
+  "professional_candidate_hold": "WAIT_20058_SOURCE_AND_FIELD_ACCEPTANCE",
+  "last_verified_field_version": 20055
 }

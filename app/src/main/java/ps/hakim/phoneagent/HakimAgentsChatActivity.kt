@@ -64,6 +64,7 @@ class HakimAgentsChatActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        HakimContinuityService.ensure(this)
         uiHandler.postDelayed({ maybeResumeProactively() }, 650L)
     }
 

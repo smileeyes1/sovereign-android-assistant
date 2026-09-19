@@ -39,6 +39,7 @@ jobs:
           bash -n scripts/verify-field-signer.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh
+          bash -n scripts/hakim-termux-resilience.sh
       - name: إعداد جافا
         uses: actions/setup-java@v4
         with:

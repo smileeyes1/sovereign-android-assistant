@@ -32,7 +32,8 @@ expected_dependencies={
 actual_dependencies={line.strip() for line in build.splitlines()
     if line.strip().startswith(("implementation ","api ","runtimeOnly ","compileOnly ","kapt ","annotationProcessor "))}
 require(actual_dependencies==expected_dependencies,"تغيرت اعتماديات ٢٠٠٥٦")
-require("versionCode 20056" in build,"بوابة الأمن ليست ل٢٠٠٥٦")
+m=re.search(r"versionCode\s+(\d+)",build)
+require(m and int(m.group(1))>=20056,"بوابة الأمن لا تغطي خط الاحتراف ٢٠٠٥٦ فأعلى")
 print("HAKIM_20056_PERMISSION_SURFACE=PASS")
 print("HAKIM_20056_PRIVATE_ACTIVITIES=PASS")
 print("HAKIM_20056_DEPENDENCY_SURFACE=PASS")

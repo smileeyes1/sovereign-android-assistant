@@ -17,8 +17,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20056
-        versionName '2.0.56-sovereign-browser-agent-professional-workspace-quran-stable'
+        versionCode 20057
+        versionName '2.0.57-sovereign-browser-agent-professional-idempotent-watchdog'
     }
 
     compileOptions {

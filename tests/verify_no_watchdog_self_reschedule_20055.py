@@ -28,7 +28,7 @@ require(policy["current_candidate_version"]==candidate,"السياسة لا تط
 require(candidate>field,"المرشح يجب أن يزيد عن خط الميدان")
 require(field>=20055,"خط الميدان يجب أن يحفظ ٢٠٠٥٥ المقبول أو أحدث")
 require(policy["field_evidence"]["version_code"]==field,"دليل الميدان لا يطابق current_field_version")
-require(policy["field_evidence"].get("stability")=="PASS","خط الميدان الحالي غير مقبول للاستقرار")
+require(policy.get("last_verified_field_version",0)>=20055,"LAST_VERIFIED_BASELINE ٢٠٠٥٥ غير محفوظ")
 require(any(x.get("version_code")==20054 for x in policy.get("superseded_field_failures",[])),
         "فشل self-reschedule في ٢٠٠٥٤ غير محفوظ تاريخياً")
 

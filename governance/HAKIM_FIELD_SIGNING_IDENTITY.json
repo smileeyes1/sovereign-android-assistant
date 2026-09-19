@@ -1,6 +1,6 @@
 {
-  "schema_version": 11,
-  "status": "FIELD_VERIFIED_20055_D1_STABLE__PROFESSIONAL_20056_CANDIDATE",
+  "schema_version": 12,
+  "status": "FIELD_IDENTITY_20056_D1__WATCHDOG_RESCHEDULE_REGRESSION__20057_CANDIDATE",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
@@ -17,35 +17,44 @@
     20051,
     20052,
     20054,
-    20055
+    20055,
+    20056
   ],
-  "current_field_version": 20055,
-  "current_candidate_version": 20056,
+  "current_field_version": 20056,
+  "current_candidate_version": 20057,
   "field_evidence": {
-    "observed_at_utc": "2026-09-18T19:38:00Z",
-    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_READ_COLD_START_AND_TWO_FORCED_WATCHDOG_PROBES",
+    "observed_at_utc": "2026-09-19T02:32:00Z",
+    "method": "AUTHORIZED_REMOTE_EXACT_BASE_APK_PLUS_STRICT_COLD_START_AND_JOB_SCHEDULER_HISTORY",
     "package": "ps.hakim.stable",
-    "version_code": 20055,
-    "version_name": "2.0.55-sovereign-browser-agent-stable-watchdog-schedule",
+    "version_code": 20056,
+    "version_name": "2.0.56-sovereign-browser-agent-professional-workspace-quran-stable",
     "signer_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
-    "apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896",
-    "supersedes_direct_field_version": 20054,
-    "claim_scope": "PACKAGE_VERSION_EXACT_APK_D1_IDENTITY; WATCHDOG_SELF_RESCHEDULE_FIXED; TWO_REPEAT_PROBES_PASS; COLD_START_PASS",
-    "stability": "PASS",
+    "apk_sha256": "4ee0c6eb0f719b3d26b69a9d8c61eb7dc8448ce76947c96af82077a45ad8878e",
+    "supersedes_direct_field_version": 20055,
+    "claim_scope": "IDENTITY_AND_PROFESSIONAL_UI_PRESENT; STRICT_COLD_START_PASS; WATCHDOG_SCHEDULE_REPLACEMENT_REGRESSION",
+    "stability": "FAILED",
     "stability_evidence": {
-      "installed_local_time": "2026-09-18T22:11:58+03:00",
       "first_install_time_preserved": "2026-09-14T23:01:29+03:00",
       "data_dir_preserved": "/data/user/0/ps.hakim.stable",
-      "cold_start_status": "OK",
-      "cold_start_total_ms": 9123,
-      "repeated_job_771208_durations_ms": [
-        7480,
-        6331
+      "strict_cold_starts_ms": [
+        6895,
+        6975,
+        6930
       ],
-      "repeated_job_771208_final_state": "waiting",
-      "latest_job_history_result": "app called jobFinished",
-      "new_anr_oom_fatal": false,
-      "self_reschedule_loop_observed_in_latest_probes": false
+      "new_anr_oom_fatal_during_cold_probes": false,
+      "startup_schedule_created_after_launcher_seconds": 3,
+      "automatic_job_remained_active_over_25s": true,
+      "later_job_state": "unknown",
+      "jobscheduler_history": [
+        "START-P 771208",
+        "START-P 771208 followed by STOP-P canceled",
+        "later START-P followed by STOP-P canceled",
+        "later app called jobFinished"
+      ],
+      "source_root_cause": "HakimConnectionResilience.schedule() unconditionally called JobScheduler.schedule() on the same JOB_ID; proactive/constraint maintenance can call schedule while watchdog is already pending/running, replacing it.",
+      "required_fix": "Make schedule() idempotent using a schedule generation and keep an already-correct pending/running JobInfo unchanged.",
+      "cold_start_status": "OK",
+      "cold_start_total_ms": 6895
     }
   },
   "historical_previous_lineage": {
@@ -65,7 +74,7 @@
     "inplace_update_requires_exact_current_signer": true,
     "current_lineage_inplace_update_allowed_when_all_gates_pass": true,
     "unknown_source_permission_not_required_by_policy": true,
-    "decision": "20055/D1 is the accepted field baseline. Candidate 20056 adds only the previously qualified professional workspace and verified local Quran UI on top of 20055, with no new Android permissions or dependencies. It must inherit the 15s hard watchdog deadline and self-reschedule suppression, pass 5/5 CI on the exact head, then pass in-place D1 field acceptance before merge."
+    "decision": "20055 remains the last field-verified baseline. 20056 is the currently installed D1 identity and retains the professional workspace/Quran UI, but is not field-stable because repeated schedule() calls can replace Job 771208. Candidate 20057 preserves all 20056 professional features and makes recovery scheduling idempotent with a generation marker. No uninstall/clear-data/package/signer change."
   },
   "rules": [
     "Newer direct read-only evidence from the real phone supersedes older checkpoints; the current direct baseline is 20055/D1.",
@@ -86,7 +95,8 @@
     "A periodic watchdog must have a hard JobScheduler deadline; optional diagnosis, health, or self-check work must continue asynchronously and must not keep the job active past that deadline.",
     "A periodic watchdog must not reschedule its own JobInfo from work launched by that same watchdog; schedule maintenance is suppressed inside the watchdog execution path.",
     "Professional UI must not add Android permissions, exported activities, or runtime dependencies without a separately qualified need.",
-    "Professional releases must inherit the 20055 watchdog hard deadline and self-reschedule suppression and prove no regression on the real phone."
+    "Professional releases must inherit the 20055 watchdog hard deadline and self-reschedule suppression and prove no regression on the real phone.",
+    "Recovery schedule() must be idempotent: if the same generation of Job 771208 already exists for the correct service, keep it unchanged; do not replace a pending or running JobInfo."
   ],
   "superseded_field_failures": [
     {
@@ -116,6 +126,20 @@
       "job_duration_ms": 10658,
       "anr_observed": false,
       "oom_observed": false
+    },
+    {
+      "version_code": 20056,
+      "version_name": "2.0.56-sovereign-browser-agent-professional-workspace-quran-stable",
+      "apk_sha256": "4ee0c6eb0f719b3d26b69a9d8c61eb7dc8448ce76947c96af82077a45ad8878e",
+      "observed_local_time": "2026-09-19T05:30:00+03:00",
+      "failure": "JOB_771208_REPLACED_BY_NON_IDEMPOTENT_SCHEDULE_CALLS",
+      "strict_cold_starts_ms": [
+        6895,
+        6975,
+        6930
+      ],
+      "anr_observed": false,
+      "oom_observed": false
     }
   ],
   "professional_parent_candidate": {
@@ -127,5 +151,6 @@
     "field_status": "FIELD_ACCEPTED",
     "signed_apk_sha256": "17f21f455ba7dd79e862f752fc647de4797be7675d99683317f9e0e43b284896"
   },
-  "professional_candidate_hold": "WAIT_20056_SOURCE_AND_FIELD_ACCEPTANCE"
+  "professional_candidate_hold": "WAIT_20057_SOURCE_AND_FIELD_ACCEPTANCE",
+  "last_verified_field_version": 20055
 }

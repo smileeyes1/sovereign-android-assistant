@@ -12,6 +12,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.PersistableBundle
 import org.json.JSONObject
 
 object HakimConnectionResilience {
@@ -31,20 +32,58 @@ object HakimConnectionResilience {
         recover(app, "install")
     }
 
+    private const val SCHEDULE_GENERATION = 20057
+    private const val EXTRA_SCHEDULE_GENERATION = "hakim_recovery_schedule_generation"
+
+    /**
+     * جدولة idempotent: لا نستبدل JobInfo صحيحة موجودة، لأن schedule() على نفس JOB_ID
+     * أثناء التشغيل يلغي الـJob الجارية ويعيد إنشاءها. يتغير الجيل فقط عندما نريد
+     * ترقية عقد الجدولة عمدًا في إصدار لاحق.
+     */
     fun schedule(context: Context) {
+        val app = context.applicationContext
+        val p = prefs(app)
         try {
-            val scheduler = context.getSystemService(JobScheduler::class.java)
-            val info = JobInfo.Builder(
-                JOB_ID,
-                ComponentName(context, HakimConnectionRecoveryJobService::class.java)
-            )
+            val scheduler = app.getSystemService(JobScheduler::class.java)
+            val component = ComponentName(app, HakimConnectionRecoveryJobService::class.java)
+            val existing = scheduler.getPendingJob(JOB_ID)
+            val existingGeneration = existing?.extras?.getInt(EXTRA_SCHEDULE_GENERATION, -1) ?: -1
+
+            if (existing != null &&
+                existing.service == component &&
+                existingGeneration == SCHEDULE_GENERATION
+            ) {
+                p.edit()
+                    .putLong("last_recovery_schedule_kept_at", System.currentTimeMillis())
+                    .putInt("last_recovery_schedule_generation", SCHEDULE_GENERATION)
+                    .putString("last_recovery_schedule_action", "kept_existing")
+                    .remove("last_recovery_schedule_error")
+                    .apply()
+                return
+            }
+
+            val extras = PersistableBundle().apply {
+                putInt(EXTRA_SCHEDULE_GENERATION, SCHEDULE_GENERATION)
+            }
+            val info = JobInfo.Builder(JOB_ID, component)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setPersisted(true)
                 .setPeriodic(PERIOD_MS)
+                .setExtras(extras)
                 .build()
-            scheduler.schedule(info)
+            val result = scheduler.schedule(info)
+            p.edit()
+                .putLong("last_recovery_schedule_changed_at", System.currentTimeMillis())
+                .putInt("last_recovery_schedule_generation", SCHEDULE_GENERATION)
+                .putInt("last_recovery_schedule_result", result)
+                .putString(
+                    "last_recovery_schedule_action",
+                    if (existing == null) "created" else "upgraded_generation"
+                )
+                .remove("last_recovery_schedule_error")
+                .apply()
         } catch (e: Exception) {
-            prefs(context).edit().putString("last_recovery_schedule_error", safe(e.message)).apply()
+            p.edit().putString("last_recovery_schedule_error", safe(e.message)).apply()
         }
     }
 

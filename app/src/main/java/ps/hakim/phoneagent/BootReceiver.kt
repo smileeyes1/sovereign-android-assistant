@@ -16,6 +16,7 @@ class BootReceiver : BroadcastReceiver() {
         AutoUpdater.schedule(context)
         HakimSelfCheck.schedule(context)
         HakimConnectionResilience.install(context)
+        HakimContinuityService.ensure(context)
 
         val resources = HakimResourceGovernor.snapshot(context)
         if (resources.mode != HakimResourceGovernor.Mode.PRESSURE) {

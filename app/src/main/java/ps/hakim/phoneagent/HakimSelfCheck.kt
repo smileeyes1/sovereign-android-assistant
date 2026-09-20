@@ -74,6 +74,19 @@ object HakimSelfCheck {
         check("الفجوة المادية تمنع إغلاق النية", intent.optBoolean("material_gap_blocks_complete"))
         check("بوابة الأفعال عالية الأثر فعالة", intent.optBoolean("high_impact_gate"))
 
+        val capability = HakimCapabilityKernel.status(context)
+        check("نواة القدرات فعالة", capability.optBoolean("capability_kernel"))
+        check("القدرات المجهولة مرفوضة", capability.optBoolean("unknown_capability_denied"))
+        check("النواة تفشل مغلقة", capability.optBoolean("fail_closed"))
+
+        val continuity = HakimValueContinuityEngine.status(context)
+        check("التحكم بالقيمة مغلق الحلقة", continuity.optBoolean("closed_loop_value_control"))
+        check("الاستمرارية ليست دورانًا مشغولًا", continuity.optBoolean("continuity_is_not_busy_loop"))
+        check("القيمة الحدية الموجبة شرط للاستمرار", continuity.optBoolean("positive_marginal_value_required"))
+        check("منع الدوران فعال", continuity.optBoolean("anti_loop"))
+        check("الحالة قابلة للحفظ والاستئناف", continuity.optBoolean("checkpoint_resume"))
+        check("آخر خط أساس مثبت محمي", continuity.optBoolean("verified_baseline_protected"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -130,6 +143,8 @@ object HakimSelfCheck {
             .put("checks", checks)
             .put("governance", governance)
             .put("intent", intent)
+            .put("capability_kernel", capability)
+            .put("value_continuity", continuity)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

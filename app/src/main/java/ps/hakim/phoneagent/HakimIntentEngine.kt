@@ -5,6 +5,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object HakimIntentEngine {
+    private val TOL_TOKEN = Regex("(?<![\\p{L}\\p{N}_])تول★?(?![\\p{L}\\p{N}_])")
+    private const val TOL_CONTRACT = "قاعدة تول★: المقصد وسياقه المرتبط فقط؛ استعد آخر نجاح مثبت، ثم تثبت وخطط ونفذ واختبر الأثر وأصلح أو غير المسار وأعد الاختبار واحفظ النجاح وواصل حتى معيار القبول. الاستمرار فقط مع قيمة صافية موجبة. لا توسع المقصد أو الصلاحيات أو الكلفة أو البيانات أو المخاطر بسبب تول. الحساس وغير القابل للعكس والصلاحية الجديدة خلف بوابة موافقة. لا نجاح بلا دليل من موضع الأثر. النجاح المثبت خط أساس محمي. المقصد للمستخدم، الكيفية لحكيم داخل المأذون، والأثر المثبت هو الحكم."
+
     data class IntentPlan(
         val raw: String,
         val intent: String,
@@ -29,7 +32,10 @@ object HakimIntentEngine {
 
     fun resolve(context: Context, raw: String): IntentPlan {
         val text = raw.trim()
-        val s = text.lowercase()
+        val tolActive = TOL_TOKEN.containsMatchIn(text)
+        val scopedText = if (tolActive) TOL_TOKEN.replace(text, " ").replace(Regex("\\s+"), " ").trim() else text
+        val effectiveText = if (scopedText.isNotBlank()) scopedText else text
+        val s = effectiveText.lowercase()
 
         val highImpact = listOf(
             "ادفع", "شراء", "اشتر", "احذف", "احذف الحساب", "تحويل مالي", "حوّل المال", "كلمة المرور",
@@ -74,7 +80,7 @@ object HakimIntentEngine {
         val plan = IntentPlan(
             raw = text,
             intent = intent,
-            goal = inferGoal(text),
+            goal = inferGoal(effectiveText),
             route = route,
             highImpact = highImpact,
             needsUserGate = highImpact,
@@ -87,6 +93,7 @@ object HakimIntentEngine {
             .putString("last_plan", plan.asJson().toString())
             .putLong("last_plan_at", System.currentTimeMillis())
             .putString("depth_policy", plan.depthPolicy)
+            .putBoolean("tol_active", tolActive)
             .apply()
         return plan
     }
@@ -95,7 +102,9 @@ object HakimIntentEngine {
         val plan = resolve(context, raw)
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            val tolActive = TOL_TOKEN.containsMatchIn(raw)
             appendLine("[محرك النية]")
+            if (tolActive) { appendLine("[تول★]"); appendLine(TOL_CONTRACT) }
             appendLine("النية: ${plan.intent}")
             appendLine("الغاية: ${plan.goal}")
             appendLine("المسار المبدئي: ${plan.route}")
@@ -120,6 +129,10 @@ object HakimIntentEngine {
             .put("safe_auto_continue", true)
             .put("material_gap_blocks_complete", true)
             .put("high_impact_gate", true)
+            .put("tol_contract_available", true)
+            .put("tol_active", p.getBoolean("tol_active", false))
+            .put("tol_scope_limited", true)
+            .put("tol_does_not_expand_authority", true)
             .put("last_plan", p.getString("last_plan", ""))
             .put("last_plan_at", p.getLong("last_plan_at", 0L))
     }

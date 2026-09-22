@@ -5,8 +5,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object HakimIntentEngine {
-    private val TOL_TOKEN = Regex("(?<![\\p{L}\\p{N}_])تول★?(?![\\p{L}\\p{N}_])")
-    private const val TOL_CONTRACT = "قاعدة تول★: المقصد وسياقه المرتبط فقط؛ استعد آخر نجاح مثبت، ثم تثبت وخطط ونفذ واختبر الأثر وأصلح أو غير المسار وأعد الاختبار واحفظ النجاح وواصل حتى معيار القبول. الاستمرار فقط مع قيمة صافية موجبة. لا توسع المقصد أو الصلاحيات أو الكلفة أو البيانات أو المخاطر بسبب تول. الحساس وغير القابل للعكس والصلاحية الجديدة خلف بوابة موافقة. لا نجاح بلا دليل من موضع الأثر. النجاح المثبت خط أساس محمي. المقصد للمستخدم، الكيفية لحكيم داخل المأذون، والأثر المثبت هو الحكم."
+    private val TOL_TOKEN = Regex("(?<![\\p{L}\\p{N}_])تول★?(?![\\p{L}\\p{N}_])")\n    private val ALL_TOKEN = Regex("كل\\s*شي[ءئ]★?")
+    private const val ALL_CONTRACT = "قاعدة كل شيء★: داخل المقصد والتفويض فقط: و؟ ثم و؟ ثم و؟ ثم لِمَ؟ ثم و؟ ثم و؟؛ اكتشف وتحقق وخطط ونفذ واختبر الأثر وانقد وأصلح وغيّر الوسيلة وأعد الاختبار وأكمل واعتمد واحفظ وثبت واحم من الانحدار واستأنف حتى الأثر المثبت. بعد كل مرحلة اسأل ذاتيًا ماذا أيضًا يلزم لتحقيق المقصد أو حمايته أو تحسينه ماديًا، ونفذ كل فعل مأذون ذي قيمة موجبة. لا نجاح بلا أثر، لا WAIT بلا شرط استئناف، لا GATE بلا دليل، ولا توسع للصلاحية أو الخطر أو البيانات أو الكلفة."\n    private const val TOL_CONTRACT = "قاعدة تول★: المقصد وسياقه المرتبط فقط؛ استعد آخر نجاح مثبت، ثم تثبت وخطط ونفذ واختبر الأثر وأصلح أو غير المسار وأعد الاختبار واحفظ النجاح وواصل حتى معيار القبول. الاستمرار فقط مع قيمة صافية موجبة. لا توسع المقصد أو الصلاحيات أو الكلفة أو البيانات أو المخاطر بسبب تول. الحساس وغير القابل للعكس والصلاحية الجديدة خلف بوابة موافقة. لا نجاح بلا دليل من موضع الأثر. النجاح المثبت خط أساس محمي. المقصد للمستخدم، الكيفية لحكيم داخل المأذون، والأثر المثبت هو الحكم."
 
     data class IntentPlan(
         val raw: String,
@@ -32,7 +32,7 @@ object HakimIntentEngine {
 
     fun resolve(context: Context, raw: String): IntentPlan {
         val text = raw.trim()
-        val tolActive = TOL_TOKEN.containsMatchIn(text)
+        val tolActive = TOL_TOKEN.containsMatchIn(text)\n        val allActive = ALL_TOKEN.containsMatchIn(text)
         val scopedText = if (tolActive) TOL_TOKEN.replace(text, " ").replace(Regex("\\s+"), " ").trim() else text
         val effectiveText = if (scopedText.isNotBlank()) scopedText else text
         val s = effectiveText.lowercase()
@@ -93,7 +93,7 @@ object HakimIntentEngine {
             .putString("last_plan", plan.asJson().toString())
             .putLong("last_plan_at", System.currentTimeMillis())
             .putString("depth_policy", plan.depthPolicy)
-            .putBoolean("tol_active", tolActive)
+            .putBoolean("tol_active", tolActive)\n            .putBoolean("all_things_active", allActive)
             .apply()
         return plan
     }
@@ -102,9 +102,9 @@ object HakimIntentEngine {
         val plan = resolve(context, raw)
         return buildString {
             append(HakimConstitution.promptPrefix(context))
-            val tolActive = TOL_TOKEN.containsMatchIn(raw)
+            val tolActive = TOL_TOKEN.containsMatchIn(raw)\n            val allActive = ALL_TOKEN.containsMatchIn(raw)
             appendLine("[محرك النية]")
-            if (tolActive) { appendLine("[تول★]"); appendLine(TOL_CONTRACT) }
+            if (tolActive) { appendLine("[تول★]"); appendLine(TOL_CONTRACT) }\n            if (allActive) { appendLine("[كل شيء★]"); appendLine(ALL_CONTRACT) }
             appendLine("النية: ${plan.intent}")
             appendLine("الغاية: ${plan.goal}")
             appendLine("المسار المبدئي: ${plan.route}")
@@ -129,7 +129,7 @@ object HakimIntentEngine {
             .put("safe_auto_continue", true)
             .put("material_gap_blocks_complete", true)
             .put("high_impact_gate", true)
-            .put("tol_contract_available", true)
+            .put("tol_contract_available", true)\n            .put("all_things_contract_available", true)\n            .put("all_things_active", p.getBoolean("all_things_active", false))\n            .put("all_things_scope_limited", true)
             .put("tol_active", p.getBoolean("tol_active", false))
             .put("tol_scope_limited", true)
             .put("tol_does_not_expand_authority", true)

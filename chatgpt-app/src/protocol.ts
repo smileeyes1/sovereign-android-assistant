@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 
 export const CARRIER_PREFIX = "HC1.";
 export const CARRIER_AAD = "HAKIM-CARRIER-v1";
+export const RESULT_PREFIX = "HR1.";
+export const RESULT_AAD = "HAKIM-RESULT-v1";
 export const ALLOWED_OPS = ["status","ui","notifications","screenshot","action","launch"] as const;
 export type HakimOp = typeof ALLOWED_OPS[number];
 
@@ -54,15 +56,42 @@ export function makeEnvelope(relayKey: string, op: HakimOp, payload: unknown, tt
   return {request_id: requestId, op, expires_at_ms: expiresAt, payload_b64: payloadB64, signature};
 }
 
-export function encryptCarrier(relayKey: string, envelope: object): string {
+function aesSeal(prefix: string, aad: string, secret: string, payload: unknown): string {
   const nonce = crypto.randomBytes(12);
-  const key = crypto.createHash("sha256").update(CARRIER_AAD + "\0" + relayKey, "utf8").digest();
+  const key = crypto.createHash("sha256").update(aad + "\0" + secret, "utf8").digest();
   const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
-  cipher.setAAD(Buffer.from(CARRIER_AAD, "utf8"));
-  const body = Buffer.from(JSON.stringify(envelope), "utf8");
+  cipher.setAAD(Buffer.from(aad, "utf8"));
+  const body = Buffer.from(JSON.stringify(payload), "utf8");
   const ciphertext = Buffer.concat([cipher.update(body), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return CARRIER_PREFIX + b64u(Buffer.concat([nonce, ciphertext, tag]));
+  return prefix + b64u(Buffer.concat([nonce, ciphertext, tag]));
+}
+
+function aesOpen(prefix: string, aad: string, secret: string, carrier: string): unknown {
+  if (!carrier.startsWith(prefix)) throw new Error("invalid_carrier_prefix");
+  const packed = fromB64u(carrier.slice(prefix.length));
+  if (packed.length < 28) throw new Error("invalid_carrier_length");
+  const nonce = packed.subarray(0,12);
+  const tag = packed.subarray(packed.length-16);
+  const ciphertext = packed.subarray(12,packed.length-16);
+  const key = crypto.createHash("sha256").update(aad + "\0" + secret, "utf8").digest();
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, nonce);
+  decipher.setAAD(Buffer.from(aad, "utf8"));
+  decipher.setAuthTag(tag);
+  const raw = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+  return JSON.parse(raw);
+}
+
+export function encryptCarrier(relayKey: string, envelope: object): string {
+  return aesSeal(CARRIER_PREFIX, CARRIER_AAD, relayKey, envelope);
+}
+
+export function encryptResult(callbackSecret: string, payload: unknown): string {
+  return aesSeal(RESULT_PREFIX, RESULT_AAD, callbackSecret, payload);
+}
+
+export function decryptResult(callbackSecret: string, carrier: string): unknown {
+  return aesOpen(RESULT_PREFIX, RESULT_AAD, callbackSecret, carrier);
 }
 
 export function pairingUrl(origin: string, c: DeviceCredential): string {

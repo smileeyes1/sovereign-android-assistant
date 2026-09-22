@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { CARRIER_AAD, createDeviceCredential, decodeBearer, encodeBearer, encryptCarrier, makeEnvelope, pairingUrl } from "../src/protocol.js";
+import { CARRIER_AAD, createDeviceCredential, decodeBearer, decryptResult, encodeBearer, encryptCarrier, encryptResult, makeEnvelope, pairingUrl } from "../src/protocol.js";
 
 test("bearer round trip",()=>{
   const c=createDeviceCredential();
@@ -40,4 +40,21 @@ test("carrier decrypts with Android-compatible AES-GCM layout",()=>{
   d.setAuthTag(tag);
   const raw=Buffer.concat([d.update(ciphertext),d.final()]).toString("utf8");
   assert.deepEqual(JSON.parse(raw),e);
+});
+
+test("results are encrypted end-to-end on the public carrier",()=>{
+  const c=createDeviceCredential();
+  const payload={request_id:"chatgpt-12345678",status:"ok",result:{secret:"not-public"}};
+  const carrier=encryptResult(c.callbackSecret,payload);
+  assert.match(carrier,/^HR1\./);
+  assert.equal(carrier.includes("not-public"),false);
+  assert.deepEqual(decryptResult(c.callbackSecret,carrier),payload);
+});
+
+test("tampered result carrier fails closed",()=>{
+  const c=createDeviceCredential();
+  const carrier=encryptResult(c.callbackSecret,{request_id:"chatgpt-12345678"});
+  const tail=carrier.at(-1)!;
+  const tampered=carrier.slice(0,-1)+(tail==="A"?"B":"A");
+  assert.throws(()=>decryptResult(c.callbackSecret,tampered));
 });

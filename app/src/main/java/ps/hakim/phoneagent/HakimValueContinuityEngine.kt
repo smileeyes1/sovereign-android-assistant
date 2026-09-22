@@ -60,6 +60,27 @@ object HakimValueContinuityEngine {
             .apply()
     }
 
+    fun resumePending(context: Context): JSONObject {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val goalId = p.getString("goal_id", "").orEmpty()
+        val state = p.getString("checkpoint_state", "").orEmpty()
+        val condition = p.getString("resume_condition", "").orEmpty()
+        if (goalId.isBlank() || state.isBlank()) {
+            return JSONObject().put("resumed", false).put("reason", "no_checkpoint")
+        }
+        p.edit()
+            .putLong("resume_attempt_at", System.currentTimeMillis())
+            .putString("last_mode", Mode.VERIFY.name)
+            .putString("last_reason", "checkpoint_recovered_verify_before_continue")
+            .apply()
+        return JSONObject()
+            .put("resumed", true)
+            .put("goal_id", goalId)
+            .put("checkpoint_state", state)
+            .put("resume_condition", condition)
+            .put("mode", Mode.VERIFY.name)
+    }
+
     fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return JSONObject()
@@ -69,6 +90,8 @@ object HakimValueContinuityEngine {
             .put("anti_loop", true)
             .put("checkpoint_resume", true)
             .put("verified_baseline_protected", true)
+            .put("autonomous_resume", true)
+            .put("resume_requires_verify", true)
             .put("last_mode", p.getString("last_mode", ""))
             .put("last_reason", p.getString("last_reason", ""))
             .put("last_net_value", p.getString("last_net_value", ""))

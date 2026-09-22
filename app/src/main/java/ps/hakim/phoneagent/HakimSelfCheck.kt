@@ -96,6 +96,10 @@ object HakimSelfCheck {
         check("الانتظار قابل للاستئناف", supervisor.optBoolean("wait_must_be_resumable"))
         check("البوابة الوهمية ممنوعة", supervisor.optBoolean("hypothetical_gate_forbidden"))
 
+        val executor = HakimGoalExecutor.heartbeat(context)
+        check("منفذ المقصد موجود", executor.optBoolean("executor"))
+        check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -155,6 +159,7 @@ object HakimSelfCheck {
             .put("capability_kernel", capability)
             .put("value_continuity", continuity)
             .put("goal_supervisor", supervisor)
+            .put("goal_executor", executor)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

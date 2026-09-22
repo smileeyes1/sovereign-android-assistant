@@ -44,6 +44,7 @@ jobs:
           python3 tests/verify_autonomous_resume_policy.py
           python3 tests/verify_religious_integrity_policy.py
           python3 tests/verify_no_premature_stop_policy.py
+          python3 tests/verify_no_hypothetical_gate_policy.py
           python3 tests/verify_version_monotonicity.py
           bash -n scripts/verify-field-signer.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh

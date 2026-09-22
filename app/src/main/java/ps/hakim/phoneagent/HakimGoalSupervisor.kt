@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 object HakimGoalSupervisor {
-    private const val PREFS = "hakim_goal_supervisor"
+    private const val PREFS = "hakim_goal_supervisor"\n    private const val MAX_SAME_FAILURES = 2
     enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }
     enum class Recovery { RETRY_CHANGED, REROUTE, WAIT_RESUMABLE, PROVEN_GATE }
     enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
@@ -40,7 +40,7 @@ object HakimGoalSupervisor {
 
     fun toolFailed(context: Context, evidence: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("failure_evidence", evidence.take(4000)).putString("state", State.DIAGNOSE.name)
+            .putString("failure_evidence", evidence.take(4000)).putString("state", next.name)
             .putBoolean("effect_verified", false).putLong("updated_at", System.currentTimeMillis()).apply()
     }
 
@@ -80,7 +80,7 @@ object HakimGoalSupervisor {
         val next = when {
             effect -> State.EFFECT_VERIFIED
             gate -> State.PROVEN_GATE
-            current == State.DIAGNOSE.name -> State.REROUTE
+            current == State.DIAGNOSE.name -> State.REROUTE\n            current == State.WAIT.name -> State.WAIT\n            current == State.REROUTE.name -> State.REROUTE
             else -> State.EXECUTE
         }
         p.edit().putString("state", next.name).putLong("resume_at", System.currentTimeMillis()).apply()
@@ -96,7 +96,7 @@ object HakimGoalSupervisor {
         return JSONObject().put("goal_is_unit_of_closure", true).put("tool_success_is_not_goal_success", true)
             .put("hypothetical_gate_forbidden", true).put("failure_requires_reroute", true)
             .put("resume_after_restart", true).put("no_normal_stop_state", true)
-            .put("failure_of_means_never_closes_goal", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
+            .put("failure_of_means_never_closes_goal", true).put("same_failure_forces_reroute", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
             .put("goal_id", p.getString("goal_id", "")).put("effect_verified", p.getBoolean("effect_verified", false))
             .put("gate_proven", p.getBoolean("gate_proven", false))
     }

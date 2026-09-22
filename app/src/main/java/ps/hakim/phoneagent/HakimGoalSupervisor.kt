@@ -40,7 +40,13 @@ object HakimGoalSupervisor {
     }
 
     fun toolFailed(context: Context, evidence: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val fingerprint = evidence.trim().take(500)
+        val previous = p.getString("failure_fingerprint", "").orEmpty()
+        val count = if (previous == fingerprint) p.getInt("same_failure_count", 0) + 1 else 1
+        val next = if (count >= MAX_SAME_FAILURES) State.REROUTE else State.DIAGNOSE
+        p.edit()
+            .putString("failure_fingerprint", fingerprint).putInt("same_failure_count", count)
             .putString("failure_evidence", evidence.take(4000)).putString("state", next.name)
             .putBoolean("effect_verified", false).putLong("updated_at", System.currentTimeMillis()).apply()
     }

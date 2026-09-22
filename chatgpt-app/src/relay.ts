@@ -37,3 +37,28 @@ export async function pollResult(c:DeviceCredential,requestId:string,timeoutMs=8
   }
   return null;
 }
+
+export async function pollPairAck(c:DeviceCredential,timeoutMs=10_000):Promise<boolean>{
+  const deadline=Date.now()+timeoutMs;
+  while(Date.now()<deadline){
+    const u=new URL("https://ntfy.sh/"+encodeURIComponent(c.resultTopic)+"/json");
+    u.searchParams.set("poll","1");
+    u.searchParams.set("since","10m");
+    const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});
+    if(response.ok){
+      const body=await response.text();
+      for(const line of body.split("\n")){
+        if(!line.trim()) continue;
+        try{
+          const evt=JSON.parse(line);
+          const msg=decryptResult(c.relayKey,String(evt.message??"")) as {
+            status?:unknown,result?:{event?:unknown,secure_relay?:unknown}
+          };
+          if(msg?.status==="paired"&&msg?.result?.event==="paired"&&msg?.result?.secure_relay===true) return true;
+        }catch{}
+      }
+    }
+    await new Promise(r=>setTimeout(r,700));
+  }
+  return false;
+}

@@ -5,10 +5,14 @@ on:
     branches: [feature/chatgpt-account-native-bridge]
     paths:
       - "chatgpt-app/**"
+      - "Dockerfile"
+      - "railway.toml"
       - ".github/workflows/chatgpt-bridge-ci.yml"
   pull_request:
     paths:
       - "chatgpt-app/**"
+      - "Dockerfile"
+      - "railway.toml"
       - ".github/workflows/chatgpt-bridge-ci.yml"
 
 jobs:
@@ -25,3 +29,6 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
+      - name: Build Railway Docker image
+        working-directory: .
+        run: docker build -t hakim-chatgpt-bridge:test -f Dockerfile .

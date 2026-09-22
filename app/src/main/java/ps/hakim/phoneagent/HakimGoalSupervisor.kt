@@ -5,7 +5,8 @@ import org.json.JSONObject
 
 object HakimGoalSupervisor {
     private const val PREFS = "hakim_goal_supervisor"
-    enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }\n    enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
+    enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }
+    enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
 
     fun begin(context: Context, goalId: String, acceptance: String, baseline: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -16,11 +17,15 @@ object HakimGoalSupervisor {
         HakimValueContinuityEngine.checkpoint(context, goalId, "supervisor:EXECUTE", "continue_until_effect_or_proven_gate", baseline)
     }
 
-    fun recordEvidence(context: Context, stage: String, evidence: String, effectVerified: Boolean = false) {\n        val known = EvidenceStage.entries.any { it.name == stage }\n        require(known) { "unknown_evidence_stage" }\n        if (effectVerified) require(stage == EvidenceStage.UI_OBSERVED.name || stage == EvidenceStage.USER_CONFIRMED.name || stage == EvidenceStage.OS_INSTALLED.name) { "effect_requires_observed_evidence" }
+    fun recordEvidence(context: Context, stage: String, evidence: String, effectVerified: Boolean = false) {
+        val known = EvidenceStage.entries.any { it.name == stage }
+        require(known) { "unknown_evidence_stage" }
+        if (effectVerified) require(stage == EvidenceStage.UI_OBSERVED.name || stage == EvidenceStage.USER_CONFIRMED.name || stage == EvidenceStage.OS_INSTALLED.name) { "effect_requires_observed_evidence" }
         val next = if (effectVerified) State.EFFECT_VERIFIED else State.VERIFY_EFFECT
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("evidence_stage", stage.take(120)).putString("evidence", evidence.take(4000))
-            .putBoolean("effect_verified", effectVerified).putString("state", next.name)\n            .putLong("evidence_at", System.currentTimeMillis())
+            .putBoolean("effect_verified", effectVerified).putString("state", next.name)
+            .putLong("evidence_at", System.currentTimeMillis())
             .putLong("updated_at", System.currentTimeMillis()).apply()
     }
 

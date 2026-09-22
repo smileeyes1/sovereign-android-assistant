@@ -1,5 +1,5 @@
 import type { DeviceCredential, HakimOp } from "./protocol.js";
-import { encryptCarrier, makeEnvelope } from "./protocol.js";
+import { decryptResult, encryptCarrier, encryptResult, makeEnvelope } from "./protocol.js";
 
 export async function publishCommand(c: DeviceCredential, op: HakimOp, payload: unknown) {
   const envelope = makeEnvelope(c.relayKey, op, payload);
@@ -27,8 +27,8 @@ export async function pollResult(c: DeviceCredential, requestId: string, timeout
         if (!line.trim()) continue;
         try {
           const evt = JSON.parse(line);
-          const msg = JSON.parse(evt.message ?? "{}");
-          if (msg.request_id === requestId) return msg;
+          const msg = decryptResult(c.callbackSecret, String(evt.message ?? ""));
+          if (typeof msg === "object" && msg !== null && "request_id" in msg && (msg as {request_id?:unknown}).request_id === requestId) return msg;
         } catch {}
       }
     }
@@ -37,11 +37,12 @@ export async function pollResult(c: DeviceCredential, requestId: string, timeout
   return null;
 }
 
-export async function publishResult(resultTopic: string, payload: unknown) {
+export async function publishResult(resultTopic: string, callbackSecret: string, payload: unknown) {
+  const carrier = encryptResult(callbackSecret, payload);
   const response = await fetch("https://ntfy.sh/" + encodeURIComponent(resultTopic), {
     method:"POST",
-    headers:{"Content-Type":"application/json; charset=utf-8"},
-    body:JSON.stringify(payload),
+    headers:{"Content-Type":"text/plain; charset=utf-8"},
+    body:carrier,
     signal:AbortSignal.timeout(10_000)
   });
   if (!response.ok) throw new Error("result_publish_failed");

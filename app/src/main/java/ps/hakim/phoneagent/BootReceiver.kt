@@ -14,6 +14,7 @@ class BootReceiver : BroadcastReceiver() {
         HakimLearning.initialize(context)
         HakimValueContinuityEngine.resumePending(context)
         HakimGoalSupervisor.resume(context)
+        HakimGoalExecutor.tick(context)
         AutoUpdater.schedule(context)
         HakimSelfCheck.schedule(context)
         HakimConnectionResilience.install(context)

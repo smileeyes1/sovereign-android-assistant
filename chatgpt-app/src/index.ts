@@ -25,7 +25,7 @@ app.post("/relay/result/:topic/:secret",async(req,res)=>{
   const {topic,secret}=req.params;
   if(!/^[A-Za-z0-9_-]{20,120}$/.test(topic)||!/^[A-Za-z0-9_-]{32,100}$/.test(secret)) return res.status(404).end();
   const body=typeof req.body==="string"?JSON.parse(req.body):req.body;
-  await publishResult(topic,body);
+  await publishResult(topic,secret,body);
   res.json({ok:true});
 });
 

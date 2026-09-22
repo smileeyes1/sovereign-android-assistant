@@ -5,7 +5,8 @@ import org.json.JSONObject
 
 object HakimGoalSupervisor {
     private const val PREFS = "hakim_goal_supervisor"
-    enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }\n    enum class Recovery { RETRY_CHANGED, REROUTE, WAIT_RESUMABLE, PROVEN_GATE }
+    enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }
+    enum class Recovery { RETRY_CHANGED, REROUTE, WAIT_RESUMABLE, PROVEN_GATE }
     enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
 
     fun begin(context: Context, goalId: String, acceptance: String, baseline: String) {
@@ -43,7 +44,27 @@ object HakimGoalSupervisor {
             .putBoolean("effect_verified", false).putLong("updated_at", System.currentTimeMillis()).apply()
     }
 
-    fun recover(context: Context, mode: Recovery, evidence: String, resumeCondition: String = ""): State {\n        require(evidence.isNotBlank()) { "recovery_requires_evidence" }\n        if (mode == Recovery.PROVEN_GATE) {\n            require(resumeCondition.isNotBlank()) { "gate_requires_resume_condition" }\n            proveGate(context, evidence, true)\n            return State.PROVEN_GATE\n        }\n        val next = when (mode) {\n            Recovery.RETRY_CHANGED -> State.EXECUTE\n            Recovery.REROUTE -> State.REROUTE\n            Recovery.WAIT_RESUMABLE -> State.WAIT\n            Recovery.PROVEN_GATE -> State.PROVEN_GATE\n        }\n        require(mode != Recovery.WAIT_RESUMABLE || resumeCondition.isNotBlank()) { "wait_requires_resume_condition" }\n        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()\n            .putString("state", next.name).putString("recovery_evidence", evidence.take(4000))\n            .putString("resume_condition", resumeCondition.take(1000)).putLong("updated_at", System.currentTimeMillis()).apply()\n        return next\n    }\n\n    fun reroute(context: Context, route: String) {
+    fun recover(context: Context, mode: Recovery, evidence: String, resumeCondition: String = ""): State {
+        require(evidence.isNotBlank()) { "recovery_requires_evidence" }
+        if (mode == Recovery.PROVEN_GATE) {
+            require(resumeCondition.isNotBlank()) { "gate_requires_resume_condition" }
+            proveGate(context, evidence, true)
+            return State.PROVEN_GATE
+        }
+        val next = when (mode) {
+            Recovery.RETRY_CHANGED -> State.EXECUTE
+            Recovery.REROUTE -> State.REROUTE
+            Recovery.WAIT_RESUMABLE -> State.WAIT
+            Recovery.PROVEN_GATE -> State.PROVEN_GATE
+        }
+        require(mode != Recovery.WAIT_RESUMABLE || resumeCondition.isNotBlank()) { "wait_requires_resume_condition" }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("state", next.name).putString("recovery_evidence", evidence.take(4000))
+            .putString("resume_condition", resumeCondition.take(1000)).putLong("updated_at", System.currentTimeMillis()).apply()
+        return next
+    }
+
+    fun reroute(context: Context, route: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("reroute", route.take(1000)).putString("state", State.REROUTE.name)
             .putLong("updated_at", System.currentTimeMillis()).apply()
@@ -74,7 +95,8 @@ object HakimGoalSupervisor {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return JSONObject().put("goal_is_unit_of_closure", true).put("tool_success_is_not_goal_success", true)
             .put("hypothetical_gate_forbidden", true).put("failure_requires_reroute", true)
-            .put("resume_after_restart", true).put("no_normal_stop_state", true)\n            .put("failure_of_means_never_closes_goal", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
+            .put("resume_after_restart", true).put("no_normal_stop_state", true)
+            .put("failure_of_means_never_closes_goal", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
             .put("goal_id", p.getString("goal_id", "")).put("effect_verified", p.getBoolean("effect_verified", false))
             .put("gate_proven", p.getBoolean("gate_proven", false))
     }

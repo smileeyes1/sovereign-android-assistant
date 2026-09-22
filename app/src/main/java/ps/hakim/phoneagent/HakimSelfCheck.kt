@@ -74,6 +74,32 @@ object HakimSelfCheck {
         check("الفجوة المادية تمنع إغلاق النية", intent.optBoolean("material_gap_blocks_complete"))
         check("بوابة الأفعال عالية الأثر فعالة", intent.optBoolean("high_impact_gate"))
 
+        val capability = HakimCapabilityKernel.status(context)
+        check("نواة القدرات فعالة", capability.optBoolean("capability_kernel"))
+        check("القدرات المجهولة مرفوضة", capability.optBoolean("unknown_capability_denied"))
+        check("النواة تفشل مغلقة", capability.optBoolean("fail_closed"))
+
+        val continuity = HakimValueContinuityEngine.status(context)
+        check("التحكم بالقيمة مغلق الحلقة", continuity.optBoolean("closed_loop_value_control"))
+        check("الاستمرارية ليست دورانًا مشغولًا", continuity.optBoolean("continuity_is_not_busy_loop"))
+        check("القيمة الحدية الموجبة شرط للاستمرار", continuity.optBoolean("positive_marginal_value_required"))
+        check("منع الدوران فعال", continuity.optBoolean("anti_loop"))
+        check("الحالة قابلة للحفظ والاستئناف", continuity.optBoolean("checkpoint_resume"))
+        check("آخر خط أساس مثبت محمي", continuity.optBoolean("verified_baseline_protected"))
+
+        val supervisor = HakimGoalSupervisor.status(context)
+        check("المقصد هو وحدة الإغلاق", supervisor.optBoolean("goal_is_unit_of_closure"))
+        check("نجاح الأداة ليس نجاح المقصد", supervisor.optBoolean("tool_success_is_not_goal_success"))
+        check("لا توقف عادي للمقصد", supervisor.optBoolean("no_normal_stop_state"))
+        check("فشل الوسيلة لا يغلق المقصد", supervisor.optBoolean("failure_of_means_never_closes_goal"))
+        check("تكرار الفشل يجبر تغيير المسار", supervisor.optBoolean("same_failure_forces_reroute"))
+        check("الانتظار قابل للاستئناف", supervisor.optBoolean("wait_must_be_resumable"))
+        check("البوابة الوهمية ممنوعة", supervisor.optBoolean("hypothetical_gate_forbidden"))
+
+        val executor = HakimGoalExecutor.heartbeat(context)
+        check("منفذ المقصد موجود", executor.optBoolean("executor"))
+        check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -130,6 +156,10 @@ object HakimSelfCheck {
             .put("checks", checks)
             .put("governance", governance)
             .put("intent", intent)
+            .put("capability_kernel", capability)
+            .put("value_continuity", continuity)
+            .put("goal_supervisor", supervisor)
+            .put("goal_executor", executor)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

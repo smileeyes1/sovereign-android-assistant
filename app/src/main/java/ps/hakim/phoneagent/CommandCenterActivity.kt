@@ -54,83 +54,52 @@ class CommandCenterActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(18, 18, 18, 18)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(28, 30, 28, 24)
         }
 
         root.addView(TextView(this).apply {
-            text = "حكيم — مركز القيادة"
-            textSize = 25f
+            text = "حكيم"
+            textSize = 28f
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 12)
+            setPadding(8, 8, 8, 8)
         })
 
         status = TextView(this).apply {
-            text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nن★ التكيفية: كل شيء مفيد • من كل شيء موثوق • في كل شيء مؤثر • كيف نفسها"
+            text = "جاهز لتحقيق مقصدك"
             textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 10)
+            setPadding(8, 2, 8, 18)
         }
         root.addView(status)
 
-        updateStatus = TextView(this).apply {
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 4)
-        }
-        root.addView(updateStatus)
-
-        root.addView(actionButton("فحص/تهيئة التحديث التلقائي") {
-            if (!AutoUpdater.canInstallPackages(this)) {
-                AutoUpdater.openInstallPermissionSettings(this)
-            } else {
-                AutoUpdater.checkAsync(this)
-                toast("يجري فحص التحديث الآن")
-                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-            }
-        })
-
         command = EditText(this).apply {
-            hint = "اكتب الغاية فقط…"
-            minLines = 4
-            maxLines = 10
-            textSize = 18f
+            hint = "ماذا تريد أن أنجز؟"
+            minLines = 2
+            maxLines = 6
+            textSize = 19f
             gravity = Gravity.TOP or Gravity.RIGHT
-            setPadding(14, 14, 14, 14)
+            setPadding(18, 18, 18, 18)
         }
         root.addView(command, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
-        root.addView(actionButton("نفّذ الغاية كاملة") {
+        root.addView(actionButton("أنجز") {
             executeBestRoute(command.text.toString().trim())
         })
 
-        val row1 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        updateStatus = TextView(this).apply {
+            textSize = 12f
             gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            visibility = View.GONE
         }
-        row1.addView(actionButton("إلى شات جي بي تي") { sendToChatGPT(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row1.addView(actionButton("فتح/بحث في حكيم") { openInHakim(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(row1)
+        root.addView(updateStatus)
 
-        val row2 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val details = actionButton("التفاصيل") {
+            val visible = updateStatus.visibility != View.VISIBLE
+            updateStatus.visibility = if (visible) View.VISIBLE else View.GONE
+            if (visible) refreshUpdateStatus()
         }
-        row2.addView(actionButton("إلى أي تطبيق") { shareToAny(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row2.addView(actionButton("نسخ") { copyCommand() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(row2)
-
-        root.addView(actionButton("متصفح حكيم") {
-            startActivity(Intent(this, MainActivity::class.java))
-        })
-
-        root.addView(TextView(this).apply {
-            text = "كل توجيه صريح يُلتقط ويُصنّف تلقائيًا. ن★ تزيد العمق تلقائيًا ما دام هناك مكسب مادي مثبت، ولا يتوقف حكيم عند خطوة وسيطة أو فجوة قابلة للإغلاق ما دام يستطيع إكمالها بأمان؛ ويتوقف فقط أمام عائق حقيقي أو موافقة نظامية/فعل نهائي عالي الأثر."
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(10, 18, 10, 4)
-        })
+        root.addView(details)
 
         setContentView(root)
     }

@@ -37,6 +37,21 @@ jobs:
         run: |
           python3 tests/verify_signing_continuity_policy.py
           python3 tests/verify_termux_resilience_policy.py
+          python3 tests/verify_capability_kernel_policy.py
+          python3 tests/verify_value_continuity_policy.py
+          python3 tests/verify_tol_policy.py
+          python3 tests/verify_calm_ui_policy.py
+          python3 tests/verify_autonomous_resume_policy.py
+          python3 tests/verify_religious_integrity_policy.py
+          python3 tests/verify_no_premature_stop_policy.py
+          python3 tests/verify_no_hypothetical_gate_policy.py
+          python3 tests/verify_goal_supervisor_policy.py
+          python3 tests/verify_execution_continuity.py
+          python3 tests/verify_self_check_continuity.py
+          python3 tests/verify_goal_executor_policy.py
+          python3 tests/verify_all_things_contract.py
+          python3 tests/verify_field_d1_trust_anchor.py
+          python3 tests/verify_version_monotonicity.py
           bash -n scripts/verify-field-signer.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh

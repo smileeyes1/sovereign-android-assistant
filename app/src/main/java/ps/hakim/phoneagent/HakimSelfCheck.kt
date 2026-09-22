@@ -153,7 +153,8 @@ object HakimSelfCheck {
             .put("governance", governance)
             .put("intent", intent)
             .put("capability_kernel", capability)
-            .put("value_continuity", continuity)\n            .put("goal_supervisor", supervisor)
+            .put("value_continuity", continuity)
+            .put("goal_supervisor", supervisor)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

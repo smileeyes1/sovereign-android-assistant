@@ -47,6 +47,7 @@ jobs:
           python3 tests/verify_no_hypothetical_gate_policy.py
           python3 tests/verify_goal_supervisor_policy.py
           python3 tests/verify_execution_continuity.py
+          python3 tests/verify_self_check_continuity.py
           python3 tests/verify_field_d1_trust_anchor.py
           python3 tests/verify_version_monotonicity.py
           bash -n scripts/verify-field-signer.sh

@@ -87,6 +87,15 @@ object HakimSelfCheck {
         check("الحالة قابلة للحفظ والاستئناف", continuity.optBoolean("checkpoint_resume"))
         check("آخر خط أساس مثبت محمي", continuity.optBoolean("verified_baseline_protected"))
 
+        val supervisor = HakimGoalSupervisor.status(context)
+        check("المقصد هو وحدة الإغلاق", supervisor.optBoolean("goal_is_unit_of_closure"))
+        check("نجاح الأداة ليس نجاح المقصد", supervisor.optBoolean("tool_success_is_not_goal_success"))
+        check("لا توقف عادي للمقصد", supervisor.optBoolean("no_normal_stop_state"))
+        check("فشل الوسيلة لا يغلق المقصد", supervisor.optBoolean("failure_of_means_never_closes_goal"))
+        check("تكرار الفشل يجبر تغيير المسار", supervisor.optBoolean("same_failure_forces_reroute"))
+        check("الانتظار قابل للاستئناف", supervisor.optBoolean("wait_must_be_resumable"))
+        check("البوابة الوهمية ممنوعة", supervisor.optBoolean("hypothetical_gate_forbidden"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -144,7 +153,7 @@ object HakimSelfCheck {
             .put("governance", governance)
             .put("intent", intent)
             .put("capability_kernel", capability)
-            .put("value_continuity", continuity)
+            .put("value_continuity", continuity)\n            .put("goal_supervisor", supervisor)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

@@ -29,7 +29,7 @@ import javax.crypto.spec.SecretKeySpec
 object HakimUnifiedRelay {
     const val PREFS = "hakim"
     const val KEY_TOPIC = "relay_topic"
-    const val KEY_RESULT_URL = "relay_result_url"
+    const val KEY_RESULT_TOPIC = "relay_result_topic"
     const val KEY_RELAY_KEY = "relay_hmac_key"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
@@ -37,7 +37,7 @@ object HakimUnifiedRelay {
     private const val ACTION_REJECT = "ps.hakim.stable.REMOTE_REJECT"
     private const val EXTRA_REQUEST_ID = "request_id"
     private const val CARRIER_PREFIX = "HC1."
-    private const val CARRIER_AAD = "HAKIM-CARRIER-v1"
+    private const val CARRIER_AAD = "HAKIM-CARRIER-v1"\n    private const val RESULT_PREFIX = "HR1."\n    private const val RESULT_AAD = "HAKIM-RESULT-v1"
     private const val GCM_NONCE_BYTES = 12
     private const val GCM_TAG_BITS = 128
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
@@ -48,13 +48,13 @@ object HakimUnifiedRelay {
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()
 
-    fun configure(context: Context, topic: String?, resultUrl: String?, relayKey: String?): Boolean {
+    fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?): Boolean {
         if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return false
-        if (resultUrl.isNullOrBlank() || !resultUrl.startsWith("https://")) return false
+        if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return false
         if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return false
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOPIC, topic)
-            .putString(KEY_RESULT_URL, resultUrl)
+            .putString(KEY_RESULT_TOPIC, resultTopic)
             .putString(KEY_RELAY_KEY, relayKey)
             .putBoolean("secure_relay_configured", true)
             .commit()
@@ -63,7 +63,7 @@ object HakimUnifiedRelay {
     fun isConfigured(context: Context): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return !p.getString(KEY_TOPIC, "").isNullOrBlank() &&
-            !p.getString(KEY_RESULT_URL, "").isNullOrBlank() &&
+            !p.getString(KEY_RESULT_TOPIC, "").isNullOrBlank() &&
             !p.getString(KEY_RELAY_KEY, "").isNullOrBlank()
     }
 
@@ -79,9 +79,9 @@ object HakimUnifiedRelay {
         while (running.get()) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val topic = prefs.getString(KEY_TOPIC, null)
-            val resultUrl = prefs.getString(KEY_RESULT_URL, null)
+            val resultTopic = prefs.getString(KEY_RESULT_TOPIC, null)
             val relayKey = prefs.getString(KEY_RELAY_KEY, null)
-            if (topic.isNullOrBlank() || resultUrl.isNullOrBlank() || relayKey.isNullOrBlank()) {
+            if (topic.isNullOrBlank() || resultTopic.isNullOrBlank() || relayKey.isNullOrBlank()) {
                 sleep(10_000L)
                 continue
             }
@@ -97,7 +97,7 @@ object HakimUnifiedRelay {
                         prefs.edit().putString("secure_relay_state", "connected").putLong("secure_relay_seen_at", System.currentTimeMillis()).apply()
                         while (running.get()) {
                             val line = reader.readLine() ?: break
-                            handleNtfyLine(context, line, resultUrl, relayKey)
+                            handleNtfyLine(context, line, resultTopic, relayKey)
                         }
                     }
                 }
@@ -110,7 +110,7 @@ object HakimUnifiedRelay {
         }
     }
 
-    private fun handleNtfyLine(context: Context, line: String, resultUrl: String, relayKey: String) {
+    private fun handleNtfyLine(context: Context, line: String, resultTopic: String, relayKey: String) {
         val event = runCatching { JSONObject(line) }.getOrNull() ?: return
         if (event.optString("event") != "message") return
         val carrier = event.optString("message").trim()
@@ -127,19 +127,19 @@ object HakimUnifiedRelay {
         if (payloadB64.length > 32768 || !SIGNATURE.matches(signature)) return
         if (!validSignature(relayKey, requestId, op, expiresAt, payloadB64, signature)) return
         if (expiresAt <= System.currentTimeMillis()) {
-            sendResult(context, resultUrl, requestId, "expired", JSONObject().put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("error", "request_expired"))
             return
         }
         if (!claimRemoteRequest(context, requestId)) {
-            sendResult(context, resultUrl, requestId, "duplicate", JSONObject().put("error", "duplicate_request"))
+            sendResult(context, resultTopic, requestId, "duplicate", JSONObject().put("error", "duplicate_request"))
             return
         }
 
         if (READ_ONLY_OPS.contains(op)) {
             val result = executeEnvelope(context, envelope)
-            sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         } else {
-            savePending(context, envelope, resultUrl)
+            savePending(context, envelope, resultTopic)
             showApproval(context, requestId, op)
         }
     }
@@ -191,20 +191,20 @@ object HakimUnifiedRelay {
         return prefs.edit().putStringSet("ids", ids).commit()
     }
 
-    private fun savePending(context: Context, envelope: JSONObject, resultUrl: String) {
+    private fun savePending(context: Context, envelope: JSONObject, resultTopic: String) {
         val id = envelope.optString("request_id")
         context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE).edit()
             .putString("$id.envelope", envelope.toString())
-            .putString("$id.result_url", resultUrl)
+            .putString("$id.result_topic", resultTopic)
             .apply()
     }
 
     private fun takePending(context: Context, requestId: String): Pair<JSONObject, String>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
         val raw = prefs.getString("$requestId.envelope", null) ?: return null
-        val url = prefs.getString("$requestId.result_url", null) ?: return null
-        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_url").apply()
-        return runCatching { JSONObject(raw) to url }.getOrNull()
+        val topic = prefs.getString("$requestId.result_topic", null) ?: return null
+        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").apply()
+        return runCatching { JSONObject(raw) to topic }.getOrNull()
     }
 
     private fun showApproval(context: Context, requestId: String, op: String) {
@@ -241,18 +241,18 @@ object HakimUnifiedRelay {
 
     fun handleApproval(context: Context, requestId: String, approved: Boolean) {
         val pending = takePending(context, requestId) ?: return
-        val (envelope, resultUrl) = pending
+        val (envelope, resultTopic) = pending
         if (!approved) {
-            sendResult(context, resultUrl, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
+            sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
             return
         }
         if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
-            sendResult(context, resultUrl, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
         executor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
-            sendResult(context, resultUrl, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
     }
 
@@ -340,28 +340,45 @@ object HakimUnifiedRelay {
         val app = context.applicationContext
         executor.execute {
             val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val url = p.getString(KEY_RESULT_URL, "").orEmpty()
-            if (url.isBlank()) return@execute
+            val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
+            if (resultTopic.isBlank()) return@execute
             val requestId = "pair-${System.currentTimeMillis()}"
             val result = status(app).put("event", "paired")
-            sendResult(app, url, requestId, "paired", result)
+            sendResult(app, resultTopic, requestId, "paired", result)
         }
     }
 
-    private fun sendResult(context: Context, resultUrl: String, requestId: String, status: String, result: JSONObject): Boolean {
+    private fun encryptResult(relayKey: String, payload: JSONObject): String {
+        val nonce = ByteArray(GCM_NONCE_BYTES).also { java.security.SecureRandom().nextBytes(it) }
+        val keyMaterial = "$RESULT_AAD\u0000$relayKey".toByteArray(Charsets.UTF_8)
+        val aesKey = MessageDigest.getInstance("SHA-256").digest(keyMaterial)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(aesKey, "AES"), GCMParameterSpec(GCM_TAG_BITS, nonce))
+        cipher.updateAAD(RESULT_AAD.toByteArray(Charsets.UTF_8))
+        val encrypted = cipher.doFinal(payload.toString().toByteArray(Charsets.UTF_8))
+        val packed = ByteArray(nonce.size + encrypted.size)
+        System.arraycopy(nonce, 0, packed, 0, nonce.size)
+        System.arraycopy(encrypted, 0, packed, nonce.size, encrypted.size)
+        return RESULT_PREFIX + Base64.encodeToString(packed, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    }
+
+    private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {
         return try {
+            val relayKey = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_RELAY_KEY, null) ?: return false
             val payload = JSONObject()
                 .put("request_id", requestId)
                 .put("status", status)
                 .put("received_at_ms", System.currentTimeMillis())
                 .put("result", result)
-            val conn = URL(resultUrl).openConnection() as HttpURLConnection
+            val carrier = encryptResult(relayKey, payload)
+            val conn = URL("https://ntfy.sh/$resultTopic").openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 20_000
             conn.requestMethod = "POST"
             conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
+            conn.outputStream.use { it.write(carrier.toByteArray(Charsets.UTF_8)) }
             val ok = conn.responseCode in 200..299
             runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
             conn.disconnect()

@@ -27,7 +27,6 @@ export function createHakimServer(
   const readTool=(name:HakimOp,title:string,description:string)=>{
     server.registerTool(name,{
       title,description,inputSchema:{},
-      securitySchemes:[{type:"oauth2",scopes:["hakim.read"]}],
       annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true}
     },async()=>{
       if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
@@ -46,7 +45,6 @@ export function createHakimServer(
     title:"فتح تطبيق أو رابط على جهاز حكيم",
     description:"اطلب فتح تطبيق أو رابط على جهاز المستخدم. هذا تغيير مرئي للحالة ويتطلب موافقة أندرويد حسب سياسة حكيم.",
     inputSchema:{package:z.string().optional(),url:z.string().url().optional()},
-    securitySchemes:[{type:"oauth2",scopes:["hakim.write"]}],
     annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true}
   },async({package:pkg,url})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
@@ -58,7 +56,6 @@ export function createHakimServer(
     title:"تنفيذ فعل واجهة مأذون على جهاز حكيم",
     description:"اطلب فعل واجهة محدودًا على جهاز المستخدم. لا يوجد shell أو root. يتطلب موافقة أندرويد قبل التنفيذ.",
     inputSchema:{kind:z.string().min(1).max(64),args:z.record(z.string(),z.unknown()).optional()},
-    securitySchemes:[{type:"oauth2",scopes:["hakim.write"]}],
     annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true}
   },async({kind,args})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
@@ -70,7 +67,6 @@ export function createHakimServer(
     title:"تحقق من نتيجة طلب حكيم",
     description:"اقرأ نتيجة طلب سابق باستخدام request_id دون إعادة تنفيذه.",
     inputSchema:{request_id:z.string().min(8).max(128)},
-    securitySchemes:[{type:"oauth2",scopes:["hakim.read"]}],
     annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true}
   },async({request_id})=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);

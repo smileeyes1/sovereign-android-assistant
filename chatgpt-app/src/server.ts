@@ -1,24 +1,39 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { DeviceCredential, HakimOp } from "./protocol.js";
-import { pollResult, publishCommand } from "./relay.js";
+import type { DeviceCredential,HakimOp } from "./protocol.js";
+import { pollResult,publishCommand } from "./relay.js";
 
-function text(value: unknown) {
-  return {content:[{type:"text" as const,text:JSON.stringify(value)}], structuredContent:value as Record<string,unknown>};
+function text(value:unknown){
+  return {content:[{type:"text" as const,text:JSON.stringify(value)}],structuredContent:value as Record<string,unknown>};
 }
 
-export function createHakimServer(credential: DeviceCredential) {
-  const server = new McpServer({name:"Hakim Executive Bridge",version:"0.1.0"});
+function authError(scope:string,metadataUrl:string){
+  const challenge=`Bearer resource_metadata="${metadataUrl}", error="insufficient_scope", error_description="Authorization with ${scope} is required"`;
+  return {
+    content:[{type:"text" as const,text:"يلزم ربط جهاز حكيم بالحساب قبل المتابعة."}],
+    isError:true,
+    _meta:{"mcp/www_authenticate":[challenge]}
+  };
+}
 
-  const readTool = (name: HakimOp, title: string, description: string) => {
-    server.registerTool(name, {
-      title, description,
-      inputSchema:{},
-      annotations:{readOnlyHint:true, destructiveHint:false, idempotentHint:true, openWorldHint:true}
-    }, async () => {
-      const requestId = await publishCommand(credential, name, {});
-      const result = await pollResult(credential, requestId, 8_000);
-      return text(result ?? {ok:false,status:"pending",request_id:requestId});
+export function createHakimServer(
+  credential:DeviceCredential,
+  scopes:string[],
+  resourceMetadataUrl:string
+){
+  const server=new McpServer({name:"Hakim Executive Bridge",version:"0.2.0"});
+  const has=(scope:string)=>scopes.includes(scope);
+
+  const readTool=(name:HakimOp,title:string,description:string)=>{
+    server.registerTool(name,{
+      title,description,inputSchema:{},
+      securitySchemes:[{type:"oauth2",scopes:["hakim.read"]}],
+      annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true}
+    },async()=>{
+      if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+      const requestId=await publishCommand(credential,name,{});
+      const result=await pollResult(credential,requestId,8_000);
+      return text(result??{ok:false,status:"pending",request_id:requestId});
     });
   };
 
@@ -27,34 +42,40 @@ export function createHakimServer(credential: DeviceCredential) {
   readTool("notifications","إشعارات حكيم","اقرأ الإشعارات التي منح المستخدم حكيم صلاحية الوصول إليها.");
   readTool("screenshot","لقطة شاشة حكيم","التقط لقطة شاشة من جهاز حكيم المرتبط إذا كانت خدمة الوصول تسمح بذلك.");
 
-  server.registerTool("launch", {
+  server.registerTool("launch",{
     title:"فتح تطبيق أو رابط على جهاز حكيم",
     description:"اطلب فتح تطبيق أو رابط على جهاز المستخدم. هذا تغيير مرئي للحالة ويتطلب موافقة أندرويد حسب سياسة حكيم.",
     inputSchema:{package:z.string().optional(),url:z.string().url().optional()},
+    securitySchemes:[{type:"oauth2",scopes:["hakim.write"]}],
     annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true}
-  }, async ({package: pkg,url}) => {
-    const requestId = await publishCommand(credential,"launch",{package:pkg ?? "",url:url ?? ""});
+  },async({package:pkg,url})=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    const requestId=await publishCommand(credential,"launch",{package:pkg??"",url:url??""});
     return text({ok:true,status:"approval_requested",request_id:requestId});
   });
 
-  server.registerTool("action", {
+  server.registerTool("action",{
     title:"تنفيذ فعل واجهة مأذون على جهاز حكيم",
     description:"اطلب فعل واجهة محدودًا على جهاز المستخدم. لا يوجد shell أو root. يتطلب موافقة أندرويد قبل التنفيذ.",
     inputSchema:{kind:z.string().min(1).max(64),args:z.record(z.string(),z.unknown()).optional()},
+    securitySchemes:[{type:"oauth2",scopes:["hakim.write"]}],
     annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true}
-  }, async ({kind,args}) => {
-    const requestId = await publishCommand(credential,"action",{kind,args:args ?? {}});
+  },async({kind,args})=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    const requestId=await publishCommand(credential,"action",{kind,args:args??{}});
     return text({ok:true,status:"approval_requested",request_id:requestId});
   });
 
-  server.registerTool("check_request", {
+  server.registerTool("check_request",{
     title:"تحقق من نتيجة طلب حكيم",
     description:"اقرأ نتيجة طلب سابق باستخدام request_id دون إعادة تنفيذه.",
     inputSchema:{request_id:z.string().min(8).max(128)},
+    securitySchemes:[{type:"oauth2",scopes:["hakim.read"]}],
     annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true}
-  }, async ({request_id}) => {
-    const result = await pollResult(credential,request_id,8_000);
-    return text(result ?? {ok:false,status:"pending",request_id});
+  },async({request_id})=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    const result=await pollResult(credential,request_id,8_000);
+    return text(result??{ok:false,status:"pending",request_id});
   });
 
   return server;

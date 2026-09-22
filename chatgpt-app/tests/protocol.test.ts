@@ -52,7 +52,14 @@ test("results are end-to-end encrypted with the relay key",()=>{
 test("tampered result fails closed",()=>{
   const c=createDeviceCredential();
   const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678"});
-  const last=carrier.at(-1)!;
-  const tampered=carrier.slice(0,-1)+(last==="A"?"B":"A");
+  const packed=Buffer.from(carrier.slice(4),"base64url");
+  packed[12]=packed[12]! ^ 0x01;
+  const tampered="HR1."+packed.toString("base64url");
   assert.throws(()=>decryptResult(c.relayKey,tampered));
+});
+
+test("wrong result key fails closed",()=>{
+  const c=createDeviceCredential();
+  const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678"});
+  assert.throws(()=>decryptResult("A".repeat(48),carrier));
 });

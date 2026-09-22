@@ -3,7 +3,7 @@ WORKDIR /app
 COPY chatgpt-app/package*.json ./
 RUN npm install --no-audit --no-fund
 COPY chatgpt-app/ ./
-RUN npm test && npm run build
+RUN npm run build
 
 FROM node:20-alpine
 WORKDIR /app

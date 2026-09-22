@@ -1,0 +1,27 @@
+name: ChatGPT Bridge CI
+
+on:
+  push:
+    branches: [feature/chatgpt-account-native-bridge]
+    paths:
+      - "chatgpt-app/**"
+      - ".github/workflows/chatgpt-bridge-ci.yml"
+  pull_request:
+    paths:
+      - "chatgpt-app/**"
+      - ".github/workflows/chatgpt-bridge-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatgpt-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build

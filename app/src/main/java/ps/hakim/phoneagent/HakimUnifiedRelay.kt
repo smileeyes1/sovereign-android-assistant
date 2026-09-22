@@ -37,7 +37,9 @@ object HakimUnifiedRelay {
     private const val ACTION_REJECT = "ps.hakim.stable.REMOTE_REJECT"
     private const val EXTRA_REQUEST_ID = "request_id"
     private const val CARRIER_PREFIX = "HC1."
-    private const val CARRIER_AAD = "HAKIM-CARRIER-v1"\n    private const val RESULT_PREFIX = "HR1."\n    private const val RESULT_AAD = "HAKIM-RESULT-v1"
+    private const val CARRIER_AAD = "HAKIM-CARRIER-v1"
+    private const val RESULT_PREFIX = "HR1."
+    private const val RESULT_AAD = "HAKIM-RESULT-v1"
     private const val GCM_NONCE_BYTES = 12
     private const val GCM_TAG_BITS = 128
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")

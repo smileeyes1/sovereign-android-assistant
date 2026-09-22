@@ -4,7 +4,8 @@ import android.content.Context
 import org.json.JSONObject
 
 object HakimGoalSupervisor {
-    private const val PREFS = "hakim_goal_supervisor"\n    private const val MAX_SAME_FAILURES = 2
+    private const val PREFS = "hakim_goal_supervisor"
+    private const val MAX_SAME_FAILURES = 2
     enum class State { EXECUTE, VERIFY_EFFECT, DIAGNOSE, REROUTE, WAIT, PROVEN_GATE, EFFECT_VERIFIED }
     enum class Recovery { RETRY_CHANGED, REROUTE, WAIT_RESUMABLE, PROVEN_GATE }
     enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
@@ -80,7 +81,9 @@ object HakimGoalSupervisor {
         val next = when {
             effect -> State.EFFECT_VERIFIED
             gate -> State.PROVEN_GATE
-            current == State.DIAGNOSE.name -> State.REROUTE\n            current == State.WAIT.name -> State.WAIT\n            current == State.REROUTE.name -> State.REROUTE
+            current == State.DIAGNOSE.name -> State.REROUTE
+            current == State.WAIT.name -> State.WAIT
+            current == State.REROUTE.name -> State.REROUTE
             else -> State.EXECUTE
         }
         p.edit().putString("state", next.name).putLong("resume_at", System.currentTimeMillis()).apply()

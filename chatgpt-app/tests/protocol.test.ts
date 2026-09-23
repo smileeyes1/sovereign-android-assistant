@@ -1,20 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { CARRIER_AAD,createDeviceCredential,decodeBearer,decryptResult,encodeBearer,encryptCarrier,encryptResult,makeEnvelope,pairingUrl } from "../src/protocol.js";
+import { CARRIER_AAD,createDeviceCredential,decodeBearer,decryptResult,encodeBearer,encryptCarrier,encryptResult,makeEnvelope,normalizeRelayBaseUrl,pairingUrl } from "../src/protocol.js";
 
-test("bearer round trip",()=>{
-  const c=createDeviceCredential();
+test("bearer round trip preserves relay endpoint",()=>{
+  const c=createDeviceCredential("https://relay.example");
   assert.deepEqual(decodeBearer(encodeBearer(c)),c);
+  assert.equal(c.relayBaseUrl,"https://relay.example");
 });
 
-test("pairing url uses topics, not callback secrets or result URLs",()=>{
-  const c=createDeviceCredential();
+test("relay URL is HTTPS-only and normalizes trailing slash",()=>{
+  assert.equal(normalizeRelayBaseUrl("https://relay.example/"),"https://relay.example");
+  assert.throws(()=>normalizeRelayBaseUrl("http://relay.example"));
+  assert.throws(()=>normalizeRelayBaseUrl("https://user:pass@relay.example"));
+  assert.throws(()=>normalizeRelayBaseUrl("https://relay.example/?x=1"));
+});
+
+test("pairing url carries portable relay endpoint and no callback URL",()=>{
+  const c=createDeviceCredential("https://relay.example");
   const u=pairingUrl(c);
   assert.match(u,/^hakim:\/\/pair\?/);
   assert.match(u,/relay_topic=/);
   assert.match(u,/relay_result_topic=/);
   assert.match(u,/relay_key=/);
+  assert.match(u,/relay_base_url=https%3A%2F%2Frelay\.example/);
   assert.equal(u.includes("result_url="),false);
   assert.equal(u.includes("callback"),false);
 });
@@ -42,7 +51,7 @@ test("command carrier decrypts with Android-compatible AES-GCM layout",()=>{
 
 test("results are end-to-end encrypted with the relay key",()=>{
   const c=createDeviceCredential();
-  const payload={request_id:"chatgpt-12345678",status:"ok",result:{private:"hidden"}};
+  const payload={request_id:"hakim-12345678",status:"ok",result:{private:"hidden"}};
   const carrier=encryptResult(c.relayKey,payload);
   assert.match(carrier,/^HR1\./);
   assert.equal(carrier.includes("hidden"),false);
@@ -51,7 +60,7 @@ test("results are end-to-end encrypted with the relay key",()=>{
 
 test("tampered result fails closed",()=>{
   const c=createDeviceCredential();
-  const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678"});
+  const carrier=encryptResult(c.relayKey,{request_id:"hakim-12345678"});
   const packed=Buffer.from(carrier.slice(4),"base64url");
   packed[12]=packed[12]! ^ 0x01;
   const tampered="HR1."+packed.toString("base64url");
@@ -60,6 +69,6 @@ test("tampered result fails closed",()=>{
 
 test("wrong result key fails closed",()=>{
   const c=createDeviceCredential();
-  const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678"});
+  const carrier=encryptResult(c.relayKey,{request_id:"hakim-12345678"});
   assert.throws(()=>decryptResult("A".repeat(48),carrier));
 });

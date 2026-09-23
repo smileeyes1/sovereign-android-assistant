@@ -15,11 +15,13 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Modern public Android source used for this candidate starts from commit `d3ae6946b2d63e402a1b597dbc93ab5d58efa12f` on `feature/hakim-capability-kernel-v1` (source versionCode 20088).
 
 ## Current Android candidate
-- Candidate versionCode: `20091`.
-- Branch: `feature/hakim-20091-multimodel-router-v1`.
+- Candidate versionCode: `20092`.
+- Branch: `feature/hakim-20092-playprotect-safe`.
+- Parent candidate 20091 was signed with D1 and cryptographically verified, but Google Play Protect blocked sideload installation because the APK declared high-risk Accessibility / Notification Listener surfaces.
+- 20092 removes those high-risk declarations from the installable core while keeping the audited source code available for future privileged-channel redesign.
+- 20092 also removes self-install package permissions from the core; installation/update remains an explicit Android/user action.
 - Status starts as SOURCE/CI CANDIDATE ONLY.
 - It must not replace the historical Android field baseline until the exact signed APK delivered to the device passes in-place update compatibility and field acceptance.
-- CI success, APK assembly, or external-app launch does not by itself prove user-visible task completion.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

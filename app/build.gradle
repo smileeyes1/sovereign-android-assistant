@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20088
-        versionName '2.0.88-calm-ui-governed-resume'
+        versionCode 20100
+        versionName '2.1.00-insets-pinned-composer'
     }
 
     compileOptions {

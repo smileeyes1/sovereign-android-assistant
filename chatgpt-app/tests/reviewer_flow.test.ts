@@ -47,7 +47,7 @@ test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
   await waitFor(base+"/health");
 
   const verifier="V".repeat(64);
-  const redirectUri="https://chatgpt.com/oauth/callback";
+  const redirectUri="https://chatgpt.com/connector_platform_oauth_redirect";
   const clientId="https://chatgpt.com/oauth/client.json";
   const authorize=new URL(base+"/oauth/authorize");
   authorize.searchParams.set("response_type","code");

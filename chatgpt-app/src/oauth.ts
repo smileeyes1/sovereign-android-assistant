@@ -159,7 +159,8 @@ export function isChatGPTClientId(clientId:string){
 export function isChatGPTRedirectUri(redirectUri:string){
   try{
     const u=new URL(redirectUri);
-    return u.protocol==="https:"&&u.hostname==="chatgpt.com"&&u.pathname.startsWith("/oauth/")&&!u.hash;
+    if(u.protocol!=="https:"||u.hostname!=="chatgpt.com"||u.port||u.username||u.password||u.hash) return false;
+    return u.pathname.startsWith("/oauth/") || (u.pathname==="/connector_platform_oauth_redirect"&&!u.search);
   }catch{return false;}
 }
 

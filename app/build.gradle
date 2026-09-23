@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20105
-        versionName '2.1.05-free-oauth-no-handoff'
+        versionCode 20106
+        versionName '2.1.06-free-sovereign-local-first'
     }
 
     compileOptions {
@@ -26,6 +26,7 @@ android {
 }
 
 dependencies {
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.17.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'

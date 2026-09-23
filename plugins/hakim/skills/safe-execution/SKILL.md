@@ -7,8 +7,8 @@ Use Hakim state-changing tools only for the user's explicit device goal.
 
 Rules:
 1. Prefer the narrowest action that can achieve the requested effect.
-2. `launch` may open a specific app or URL.
-3. `action` may request a bounded UI action supported by Hakim.
+2. `open_target` may open a specific app or URL.
+3. `perform_ui_action` may request a bounded UI action supported by Hakim.
 4. Never treat capability as authorization.
 5. Do not bypass Android, Hakim, or ChatGPT confirmation gates.
 6. Do not request shell, root, arbitrary code execution, or security-disable actions.

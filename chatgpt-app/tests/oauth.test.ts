@@ -23,7 +23,11 @@ test("ChatGPT CIMD and redirect allowlist is narrow",()=>{
   assert.equal(isChatGPTClientId("https://chatgpt.com/oauth/abc_123/client.json"),true);
   assert.equal(isChatGPTClientId("https://evil.example/oauth/client.json"),false);
   assert.equal(isChatGPTRedirectUri("https://chatgpt.com/oauth/callback"),true);
+  assert.equal(isChatGPTRedirectUri("https://chatgpt.com/connector_platform_oauth_redirect"),true);
+  assert.equal(isChatGPTRedirectUri("https://chatgpt.com/connector_platform_oauth_redirect?next=evil"),false);
+  assert.equal(isChatGPTRedirectUri("https://chatgpt.com/connector_platform_oauth_redirect_evil"),false);
   assert.equal(isChatGPTRedirectUri("https://evil.example/oauth/callback"),false);
+  assert.equal(isChatGPTRedirectUri("https://attacker@chatgpt.com/connector_platform_oauth_redirect"),false);
 });
 
 test("scope normalization rejects unknown scopes",()=>{

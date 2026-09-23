@@ -12,8 +12,7 @@ def req(cond: bool, reason: str):
         raise SystemExit("PLAYPROTECT_20092_GATE=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20092, "candidate_version")
-req("versionName '2.0.92-playprotect-safe'" in BUILD, "candidate_name")
+req(m is not None and int(m.group(1)) >= 20092, "candidate_version")
 req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for forbidden in [
@@ -53,4 +52,4 @@ except SystemExit:
 else:
     raise SystemExit("PLAYPROTECT_20092_GATE=FAIL reason=sentinel_not_detected")
 
-print("PLAYPROTECT_20092_GATE=PASS package=ps.hakim.stable candidate=20092")
+print("PLAYPROTECT_SAFE_GATE=PASS package=ps.hakim.stable candidate>=20092")

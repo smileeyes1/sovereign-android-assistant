@@ -18,15 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20106`.
-- Branch: `feature/hakim-20106-resilient-free-completion`.
-- 20105 remains the signed predecessor that established FREE_ONLY, one-click OpenRouter OAuth/PKCE, no automatic ChatGPT handoff, and inherited Quranic/Sunnah value governance.
-- New resilience requirement comes from repeated real-world evidence that a single AI provider can remain in a long thinking state without producing a usable result.
-- 20106 adds bounded no-stall behavior for direct free engines: first visible output <= 25s target, no visible progress <= 45s, total call <= 120s, then automatic retryable failure/failover.
-- Repeated retryable failure opens a 10-minute circuit breaker after two consecutive failures, so Hakim does not keep choosing the same unhealthy free engine.
-- The Wisdom Matrix excludes engines in cooldown and continues to hard-gate FREE_ONLY before quality scoring.
-- Quran/Sunnah governance remains values/limits only: truthfulness, verification, justice, trust, mercy, privacy and no-harm. Divine names, attributes and Qur'anic letters are never treated as hidden technical intelligence mechanisms.
-- Status: SIGNING/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED until the exact signed APK proves free OAuth/direct reply and a controlled stall/failover case on the phone.
+- Candidate versionCode: `20107`.
+- Branch: `feature/hakim-20107-openrouter-external-browser-loopback`.
+- Field evidence on 20106 exposed a real OAuth defect on Android: OpenRouter redirected to `http://127.0.0.1:<port>/callback`, and Hakim/WebView attempted to load that cleartext URL, producing `net::ERR_CLEARTEXT_NOT_PERMITTED`.
+- OpenRouter's official OAuth PKCE documentation explicitly supports localhost callbacks on arbitrary ports. The correct fix is therefore not to permit cleartext inside Hakim, but to keep the OAuth authorization/callback in a real external browser while Hakim's local loopback server receives the callback.
+- 20107 removes Hakim's generic http/https browsable claim, forces OpenRouter authorization to an external browser package (with an Android browser-selector fallback), preserves PKCE S256 + state + random loopback port, and keeps `usesCleartextTraffic=false`.
+- The final browser-to-app hop remains the custom `hakim://openrouter-connected` deep link after the loopback server has exchanged the authorization code.
+- All FREE_ONLY, resilience, Quran/Sunnah values governance, no-paid-fallback, circuit-breaker and D1 lineage requirements remain inherited.
+- Status: SOURCE/CI CANDIDATE only until CI, D1 signing and the same APK prove on the phone that OpenRouter OAuth returns to Hakim without WebView cleartext failure and then a free non-local answer returns inside Hakim.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

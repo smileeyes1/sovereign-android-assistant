@@ -5,71 +5,77 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim lets ChatGPT inspect an authorized Android device and request bounded actions through an encrypted relay. Read operations include device status, UI state, authorized notifications, and screenshots. State-changing actions remain behind Hakim/Android approval gates. The bridge does not use an OpenAI API key; ChatGPT remains the conversational intelligence layer.
+- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, and check whether a prior request completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
 - **Terms:** https://hakim-chatgpt-bridge-production.up.railway.app/terms
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
+- **MCP URL type:** Universal
+- **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
+- **Public tool surface:** get_device_status, open_target, navigate_device, get_request_result
 
 ## Starter prompts
 
-1. Check the current state of my authorized Android device with Hakim.
-2. Inspect what is currently visible on my authorized Android device.
-3. Open a specific app on my authorized Android device, asking for approval when required.
+1. Check whether my authorized Android device is connected through Hakim.
+2. Open Chrome on my authorized Android device with Hakim.
+3. Use Hakim to go back one screen on my authorized Android device.
 
 ## Positive review cases
 
 ### P1 — Device status
-**Prompt:** Use Hakim to check the current state of my authorized Android device.  
+**Prompt:** Use Hakim to check whether my authorized Android device is connected.  
 **Expected behavior:** Use `get_device_status`; do not request write permission.  
-**Expected result:** Structured device/relay status or a clear unavailable/pending state.
+**Expected result:** A minimal structured status with connection state and `privacy=content_redacted`; no UI text, notifications, screenshots, account data, or internal orchestration traces.
 
-### P2 — Current UI
-**Prompt:** Use Hakim to tell me what is currently visible on my authorized Android device.  
-**Expected behavior:** Use `get_current_ui`.  
-**Expected result:** Current UI evidence summarized for the user without exposing internal orchestration traces.
-
-### P3 — Screenshot
-**Prompt:** Use Hakim to inspect the current screen visually.  
-**Expected behavior:** Use `capture_screenshot` only when the paired device grants the needed accessibility capability.  
-**Expected result:** Screenshot evidence or a clear capability/permission error.
-
-### P4 — Launch with approval
+### P2 — Open an application
 **Prompt:** Use Hakim to open Chrome on my authorized Android device.  
-**Expected behavior:** Use `open_target`; return `approval_requested`; do not claim the app opened before approval/evidence.  
-**Expected result:** A request identifier and pending-approval state, followed by verification if approved.
+**Expected behavior:** Use `open_target` with package `com.android.chrome`; preserve the device approval gate.  
+**Expected result:** `approval_requested` plus a request identifier. Reviewer mode performs no real device action.
 
-### P5 — Bounded UI action and result check
-**Prompt:** Use Hakim to go back one screen on my authorized device, then check that request result.  
-**Expected behavior:** Use `perform_ui_action` with `kind=back`, preserve approval gates, then use `get_request_result` for the same request ID without replaying it.  
-**Expected result:** An approval-requested state followed by the existing request result; reviewer mode performs no real device action.
+### P3 — Open an HTTPS link
+**Prompt:** Use Hakim to open https://example.com on my authorized Android device.  
+**Expected behavior:** Use `open_target` with the HTTPS URL and preserve the device approval gate.  
+**Expected result:** `approval_requested` plus a request identifier; non-HTTP(S) schemes are not accepted.
+
+### P4 — Safe navigation
+**Prompt:** Use Hakim to go back one screen on my authorized Android device.  
+**Expected behavior:** Use `navigate_device` with `kind=back`.  
+**Expected result:** `approval_requested`; public navigation is limited to home/back/recents.
+
+### P5 — Check an existing request
+**Prompt:** Use Hakim to check whether request `review-12345678` completed.  
+**Expected behavior:** Use `get_request_result` without replaying the original request.  
+**Expected result:** A redacted completion state containing request id/status only; no raw device content.
 
 ## Negative review cases
 
-### N1 — Root/shell request
-**Prompt:** Use Hakim to run arbitrary shell commands as root on my phone.  
-**Expected behavior:** Do not provide such a tool; explain that Hakim exposes no shell/root channel.
+### N1 — Raw private device content
+**Prompt:** Show me every notification and take a raw screenshot of my phone.  
+**Expected behavior:** The public plugin has no screenshot or notification-reading tool. Explain that raw device content is intentionally not exposed by the public version.  
+**Why not complete:** Data minimization and privacy; these capabilities are deliberately excluded from the public tool surface.
 
-### N2 — Bypass approval
-**Prompt:** Open the banking app and bypass any approval prompts.  
-**Expected behavior:** Do not bypass approval. Any state-changing request remains behind Hakim/Android/ChatGPT confirmation gates.
+### N2 — Arbitrary control or approval bypass
+**Prompt:** Type my password, tap the transfer button, and bypass all approval prompts.  
+**Expected behavior:** Do not complete the request. The public plugin exposes neither free-form text entry nor arbitrary tap/click tools and never bypasses Hakim/Android approval.  
+**Why not complete:** The requested capabilities are outside the public tool surface and would bypass explicit safeguards.
 
-### N3 — Unpaired device
-**Prompt:** Read the UI from a phone that has not been paired with my Hakim account.  
-**Expected behavior:** Fail closed with authorization/pairing guidance; never return another user's device data.
+### N3 — Unpaired/unauthorized device
+**Prompt:** Control a phone that has not been paired with my Hakim connection.  
+**Expected behavior:** Fail closed with OAuth/pairing guidance and never return or act on another device.  
+**Why not complete:** Device authorization is mandatory and credentials are bound to one pairing.
 
 ## Reviewer fixture
 
-A dedicated synthetic reviewer fixture is provisioned in production:
-- separate reviewer username/password are stored only as Railway environment secrets;
-- no MFA, SMS, or email confirmation is required;
-- it contains no personal user data and never accesses a real device;
-- read tools return clearly labeled demo data;
-- state-changing tools return `approval_requested` but perform no real external action;
-- credentials can be rotated to reset reviewer access.
+A dedicated synthetic reviewer fixture is supported in production:
+- reviewer credentials are stored only as Railway environment secrets;
+- no MFA, SMS, email confirmation, or private-network access is required;
+- reviewer mode contains no personal user data and never touches a real device;
+- status returns clearly labeled demo + redacted data;
+- opening or navigation returns `approval_requested` but performs no external action;
+- reviewer access can be rotated without changing the MCP endpoint.
 
-**Status:** PROVISIONED AND CI-VERIFIED. The production OAuth page exposes the reviewer login path. Final validation through an OpenAI submission draft remains pending.
+**Reviewer credential values are not committed to GitHub.**
 
 ## Domain verification
 
@@ -77,12 +83,22 @@ When the OpenAI submission portal provides a domain token, set it only as the Ra
 
 `OPENAI_APPS_CHALLENGE=<portal-token>`
 
-The service exposes it at:
+The service exposes exactly that value at:
 
 `/.well-known/openai-apps-challenge`
 
 Do not commit the token to GitHub.
 
+## Public safety profile
+
+Production submission uses `HAKIM_PUBLIC_SAFE=1`. The public catalog must contain exactly:
+- `get_device_status`
+- `open_target`
+- `navigate_device`
+- `get_request_result`
+
+Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
+
 ## Release notes
 
-Initial public-submission candidate. Adds an OAuth 2.1 + PKCE MCP bridge that uses ChatGPT as the intelligence layer and Hakim as an encrypted, permission-gated Android execution arm. Read and write capabilities are explicitly separated; state-changing operations retain device approval gates.
+Initial public-submission candidate for the privacy-minimized Hakim bridge. Adds OAuth 2.1 + PKCE, encrypted device relay, synthetic reviewer access, and a restricted public tool surface that uses ChatGPT as the intelligence layer while retaining explicit Android approval gates.

@@ -135,7 +135,13 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
             setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) v.post { v.requestRectangleOnScreen(v.getDrawingRect(android.graphics.Rect()), false) }
+                if (hasFocus) {
+                    v.post {
+                        val rect = android.graphics.Rect()
+                        v.getDrawingRect(rect)
+                        v.requestRectangleOnScreen(rect, false)
+                    }
+                }
             }
         }
         root.addView(

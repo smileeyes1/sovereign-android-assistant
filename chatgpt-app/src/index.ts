@@ -12,7 +12,7 @@ import {
   pkceS256,requireProductionOAuthConfig
 } from "./oauth.js";
 import { pollPairAck } from "./relay.js";
-import { createHakimServer } from "./server.js";
+import { chatgptToolList,createHakimServer } from "./server.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -278,6 +278,10 @@ app.all("/mcp",async(req,res)=>{
       credential=token.credential;
       scopes=token.scopes;
     }
+    if(req.body?.method==="tools/list"){
+      return res.json({jsonrpc:"2.0",id:req.body.id,result:{tools:chatgptToolList()}});
+    }
+
     const server=createHakimServer(credential,scopes,metadataUrl);
     const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined});
     res.on("close",()=>{void transport.close();void server.close();});

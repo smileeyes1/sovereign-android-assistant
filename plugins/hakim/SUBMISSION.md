@@ -4,7 +4,7 @@
 
 - **Name:** Hakim
 - **Category:** Productivity
-- **Short description:** Connect ChatGPT to your authorized Hakim Android device.
+- **Short description:** Connect ChatGPT to Hakim
 - **Long description:** Hakim lets ChatGPT inspect an authorized Android device and request bounded actions through an encrypted relay. Read operations include device status, UI state, authorized notifications, and screenshots. State-changing actions remain behind Hakim/Android approval gates. The bridge does not use an OpenAI API key; ChatGPT remains the conversational intelligence layer.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
@@ -17,7 +17,6 @@
 1. Check the current state of my authorized Android device with Hakim.
 2. Inspect what is currently visible on my authorized Android device.
 3. Open a specific app on my authorized Android device, asking for approval when required.
-4. Check whether a previous Hakim device request has completed.
 
 ## Positive review cases
 

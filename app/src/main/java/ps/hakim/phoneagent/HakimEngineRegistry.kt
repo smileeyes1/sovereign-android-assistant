@@ -21,10 +21,36 @@ object HakimEngineRegistry {
         context: Context,
         attachments: List<HakimAttachmentGateway.Attachment>
     ): HakimInferenceEngine? {
-        return directEngines(context).firstOrNull { engine ->
-            HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
-                attachmentsSupported(engine, attachments)
+        val engines = directEngines(context)
+            .filter { engine ->
+                HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
+                    attachmentsSupported(engine, attachments)
+            }
+
+        val ranked = engines.associateBy { it.id }
+        val fieldVerified = context.getSharedPreferences(
+            GeminiDirectEngine.PREFS,
+            Context.MODE_PRIVATE
+        ).getBoolean("gemini_direct_field_verified", false)
+
+        val candidates = engines.map { engine ->
+            HakimWisdomMatrix.Candidate(
+                id = engine.id,
+                supported = true,
+                authorized = true,
+                directReturn = true,
+                officialChannel = true,
+                fieldVerified = if (engine.id == "gemini-direct") fieldVerified else false,
+                quality = 85,
+                reliability = if (engine.id == "gemini-direct" && fieldVerified) 90 else 70,
+                privacy = 55,
+                costEfficiency = 75,
+                latency = 75,
+                reversibility = 95
+            )
         }
+
+        return HakimWisdomMatrix.choose(candidates)?.let { ranked[it.id] }
     }
 
     fun hasConfiguredGeneralChat(context: Context): Boolean =

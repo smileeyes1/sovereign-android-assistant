@@ -19,7 +19,7 @@ for needed in [
     "private lateinit var conversation: TextView",
     "appendConversation(\"أنت\"",
     "appendConversation(\"حكيم\"",
-    "تم الرد داخل حكيم",
+    "HakimExecutiveLoop.complete",
     "hakim_conversation",
     "scrollConversationToBottom",
     "اكتب رسالتك إلى حكيم",

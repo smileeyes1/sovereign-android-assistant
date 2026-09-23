@@ -178,7 +178,15 @@ export function openRefreshToken(secret:string,token:string,resource:string):Ref
   return value;
 }
 
+export const PUBLIC_REVIEW_USER="openai-reviewer";
+export const PUBLIC_REVIEW_PASSWORD="Hakim-Review-Demo-Only-2026";
+
 export function reviewCredentialsMatch(env:NodeJS.ProcessEnv,user:string,password:string){
+  if(env.HAKIM_PUBLIC_REVIEW_DEMO==="1"){
+    const left=crypto.createHash("sha256").update(user+"\0"+password,"utf8").digest();
+    const right=crypto.createHash("sha256").update(PUBLIC_REVIEW_USER+"\0"+PUBLIC_REVIEW_PASSWORD,"utf8").digest();
+    if(crypto.timingSafeEqual(left,right)) return true;
+  }
   const expectedUser=env.HAKIM_REVIEW_USER??"";
   const expectedPassword=env.HAKIM_REVIEW_PASSWORD??"";
   if(expectedUser.length<3||expectedPassword.length<24) return false;

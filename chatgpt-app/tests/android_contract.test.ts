@@ -5,7 +5,9 @@ import path from "node:path";
 
 const root=path.resolve(import.meta.dirname,"../..");
 const relay=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt"),"utf8");
-const pairing=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt"),"utf8");\nconst accessibility=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimAccessibilityService.kt"),"utf8");\nconst server=fs.readFileSync(path.join(root,"chatgpt-app/src/server.ts"),"utf8");
+const pairing=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt"),"utf8");
+const accessibility=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimAccessibilityService.kt"),"utf8");
+const server=fs.readFileSync(path.join(root,"chatgpt-app/src/server.ts"),"utf8");
 
 test("Android and bridge share the v2 encrypted result contract",()=>{
   assert.match(relay,/KEY_RESULT_TOPIC = "relay_result_topic"/);
@@ -23,7 +25,6 @@ test("state-changing relay operations remain approval-gated",()=>{
   assert.match(relay,/ALLOWED_OPS = READ_ONLY_OPS \+ setOf\("action", "launch"\)/);
   assert.match(relay,/showApproval\(context, requestId, op\)/);
 });
-
 
 test("public action payload matches Android accessibility contract",()=>{
   const kinds=["home","back","recents","notifications","quick_settings","click_text","set_text","tap","swipe"];

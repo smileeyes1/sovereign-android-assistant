@@ -19,11 +19,11 @@ launcher_block = re.search(
 require(launcher_block is not None, "command_center_not_launcher")
 
 for text in [
-    "ماذا تريد؟",
-    "إرفاق صورة/ملف/فيديو",
-    "نفّذ بأفضل مسار",
+    "ماذا تريد أن أنجز؟",
+    "إرفاق",
+    "أنجز",
     "صوت",
-    "إدارة الجهاز",
+    "إدارة",
 ]:
     require(text in CENTER, "missing_primary_control:" + text)
 

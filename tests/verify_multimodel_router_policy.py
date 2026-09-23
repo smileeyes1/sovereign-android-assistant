@@ -60,6 +60,9 @@ require(center, "openProviderWeb", "provider_web_fallback_missing")
 require(center, "for (provider in candidates)", "bounded_provider_failover_missing")
 require(center, ".distinctBy { it.id }", "provider_dedup_missing")
 forbid(center, "sendToProviderApp(text, retry)", "recursive_provider_retry_detected")
+forbid(center, 'recordRoute("provider:" + provider.id, true)', "handoff_counted_as_task_success")
+forbid(center, 'recordRoute("share", true)', "share_launch_counted_as_task_success")
+forbid(center, 'recordRoute("browser", true)', "browser_launch_counted_as_task_success")
 
 for forbidden in [
     "OPENAI_API_KEY",

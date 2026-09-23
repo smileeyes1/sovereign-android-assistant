@@ -5,9 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import { createDeviceCredential } from "../src/protocol.js";
 import {
-  FileCodeStore,isChatGPTClientId,isChatGPTRedirectUri,issueAccessToken,issueRefreshToken,
+  FileCodeStore,isAllowedOAuthClientId,isAllowedOAuthRedirectUri,issueAccessToken,issueRefreshToken,
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
-  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
+  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch,trustedOAuthHosts
 } from "../src/oauth.js";
 
 const secret="s".repeat(64);
@@ -18,12 +18,17 @@ test("PKCE S256 is deterministic and URL safe",()=>{
   assert.equal(pkceS256(v),pkceS256(v));
 });
 
-test("ChatGPT CIMD and redirect allowlist is narrow",()=>{
-  assert.equal(isChatGPTClientId("https://chatgpt.com/oauth/client.json"),true);
-  assert.equal(isChatGPTClientId("https://chatgpt.com/oauth/abc_123/client.json"),true);
-  assert.equal(isChatGPTClientId("https://evil.example/oauth/client.json"),false);
-  assert.equal(isChatGPTRedirectUri("https://chatgpt.com/oauth/callback"),true);
-  assert.equal(isChatGPTRedirectUri("https://evil.example/oauth/callback"),false);
+test("OAuth trust is explicit and ChatGPT is only the default host",()=>{
+  const def={} as NodeJS.ProcessEnv;
+  assert.deepEqual([...trustedOAuthHosts(def)],["chatgpt.com"]);
+  assert.equal(isAllowedOAuthClientId(def,"https://chatgpt.com/oauth/client.json"),true);
+  assert.equal(isAllowedOAuthRedirectUri(def,"https://chatgpt.com/oauth/callback"),true);
+  assert.equal(isAllowedOAuthClientId(def,"https://other.example/client.json"),false);
+  const custom={HAKIM_TRUSTED_OAUTH_HOSTS:"chatgpt.com,assistant.example"} as NodeJS.ProcessEnv;
+  assert.equal(isAllowedOAuthClientId(custom,"https://assistant.example/client.json"),true);
+  assert.equal(isAllowedOAuthRedirectUri(custom,"https://assistant.example/oauth/callback"),true);
+  assert.equal(isAllowedOAuthClientId(custom,"http://assistant.example/client.json"),false);
+  assert.equal(isAllowedOAuthRedirectUri(custom,"https://evil.example/oauth/callback"),false);
 });
 
 test("scope normalization rejects unknown scopes",()=>{
@@ -61,14 +66,9 @@ test("production requires durable auth configuration",()=>{
   assert.doesNotThrow(()=>requireProductionOAuthConfig({NODE_ENV:"production",HAKIM_OAUTH_SECRET:secret,HAKIM_DATA_DIR:"/data"} as NodeJS.ProcessEnv));
 });
 
-
-test("review credentials fail closed and match only configured pair",()=>{
-  const env={
-    HAKIM_REVIEW_USER:"openai-reviewer",
-    HAKIM_REVIEW_PASSWORD:"R".repeat(32)
-  } as NodeJS.ProcessEnv;
-  assert.equal(reviewCredentialsMatch(env,"openai-reviewer","R".repeat(32)),true);
+test("review credentials exist only when explicitly configured",()=>{
+  const env={HAKIM_REVIEW_USER:"reviewer",HAKIM_REVIEW_PASSWORD:"R".repeat(32)} as NodeJS.ProcessEnv;
+  assert.equal(reviewCredentialsMatch(env,"reviewer","R".repeat(32)),true);
   assert.equal(reviewCredentialsMatch(env,"wrong","R".repeat(32)),false);
-  assert.equal(reviewCredentialsMatch(env,"openai-reviewer","wrong"),false);
-  assert.equal(reviewCredentialsMatch({} as NodeJS.ProcessEnv,"openai-reviewer","R".repeat(32)),false);
+  assert.equal(reviewCredentialsMatch({} as NodeJS.ProcessEnv,"reviewer","R".repeat(32)),false);
 });

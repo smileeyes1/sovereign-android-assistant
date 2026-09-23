@@ -1,0 +1,17 @@
+{
+  "display_name": "Hakim Device",
+  "short_description": "Control your paired Android",
+  "long_description": "Hakim Device connects ChatGPT to an Android device that the user owns or is authorized to manage. The public plugin intentionally exposes only a narrow set of device actions: check whether the paired device is online, open an explicitly selected app or HTTP/HTTPS link, navigate Home/Back/Recents, and check the status of a requested operation. Every state-changing action remains behind Android approval. The public plugin does not expose shell, root, raw screenshots, notifications, arbitrary typing, or general tap/swipe control. It does not require an OpenAI API key; ChatGPT remains the conversation and reasoning layer while Hakim is the authorized execution bridge.",
+  "developer_name": "Hakim Project",
+  "category": "Productivity",
+  "website_url": "https://hakim-chatgpt-bridge-production.up.railway.app/",
+  "support_url": "https://hakim-chatgpt-bridge-production.up.railway.app/support",
+  "privacy_url": "https://hakim-chatgpt-bridge-production.up.railway.app/privacy",
+  "terms_url": "https://hakim-chatgpt-bridge-production.up.railway.app/terms",
+  "mcp_url": "https://hakim-chatgpt-bridge-production.up.railway.app/mcp",
+  "starter_prompts": [
+    "Check whether my paired Hakim device is online.",
+    "Open Chrome on my paired Hakim device.",
+    "Go back once on my paired Hakim device."
+  ]
+}

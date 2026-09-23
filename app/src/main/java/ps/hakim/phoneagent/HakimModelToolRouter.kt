@@ -12,7 +12,8 @@ import android.net.Uri
  * - no account/session secret is copied between providers;
  * - current information goes to the browser/search path;
  * - attachments prefer a configured direct engine that supports their modality, then scoped Android sharing;
- * - provider web sessions are fallbacks and never treated as verified until the user account/session is actually usable;
+ * - in FREE_ONLY normal chat never auto-opens provider apps/web; it enters FREE_ENGINE_SETUP instead;
+ * - provider web/app handoff exists only for non-free/manual degraded operation and is never task completion;
  * - the router records observed success locally and may prefer a previously successful compatible route.
  */
 object HakimModelToolRouter {
@@ -20,6 +21,7 @@ object HakimModelToolRouter {
     enum class Channel {
         LOCAL_RESPONSE,
         DIRECT_MODEL,
+        FREE_ENGINE_SETUP,
         LOCAL_BROWSER,
         PROVIDER_APP,
         SYSTEM_SHARE,
@@ -111,6 +113,15 @@ object HakimModelToolRouter {
                 fallbacks = providers,
                 reason = HakimWisdomMatrix.choose(context, q, attachments)?.reason ?: "محرك مباشر مناسب يعيد النتيجة داخل حكيم.",
                 engineId = directEngine.id
+            )
+        }
+
+        if (HakimFreePolicy.freeOnly(context)) {
+            return Decision(
+                channel = Channel.FREE_ENGINE_SETUP,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "لا يوجد محرك مجاني مباشر مهيأ؛ يتوقف حكيم مغلقًا بدل فتح تطبيق نموذج خارجي أو إنشاء تكلفة."
             )
         }
 

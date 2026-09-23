@@ -11,10 +11,10 @@ def req(cond: bool, reason: str):
         raise SystemExit("OPENROUTER_BROWSER_LOOPBACK_20107=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20107, "version")
-req("versionName '2.1.07-openrouter-external-browser-loopback'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20107, "version")
+req(re.search(r"versionName\s+'2\.1\.\d+[-'][^\n]*", BUILD) is not None, "version_name")
 
-# Official OpenRouter localhost PKCE flow stays intact.
+# Official OpenRouter localhost PKCE flow stays intact in 20107 and later candidates.
 for needed in [
     "ServerSocket(0",
     'InetAddress.getByName("127.0.0.1")',

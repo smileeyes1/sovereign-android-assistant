@@ -30,6 +30,23 @@ const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-d
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 
+const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
+function reviewAttemptAllowed(ip:string){
+  const now=Date.now();
+  const current=reviewAttempts.get(ip);
+  if(!current||now-current.windowStart>60_000){
+    reviewAttempts.set(ip,{count:1,windowStart:now});
+    return true;
+  }
+  current.count+=1;
+  if(current.count>20) return false;
+  return true;
+}
+function reviewModeEnabled(){
+  return process.env.HAKIM_PUBLIC_REVIEW_DEMO==="1" ||
+    (!!process.env.HAKIM_REVIEW_USER&&!!process.env.HAKIM_REVIEW_PASSWORD);
+}
+
 function origin(req:express.Request){
   const host=req.get("host");
   if(!host) throw new Error("host_required");
@@ -137,7 +154,7 @@ app.get("/oauth/authorize",(req,res)=>{
 <p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
-${process.env.HAKIM_REVIEW_USER&&process.env.HAKIM_REVIEW_PASSWORD?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
+${reviewModeEnabled()?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
 </html>`);
   }catch(e){
@@ -152,6 +169,9 @@ app.post("/oauth/authorize",async(req,res)=>{
     const reviewPassword=one(req.body.review_password);
     const reviewRequested=reviewUser.length>0||reviewPassword.length>0;
     if(reviewRequested){
+      if(!reviewAttemptAllowed(req.ip??"unknown")){
+        return oauthError(res,429,"temporarily_unavailable","Too many reviewer login attempts.");
+      }
       if(!reviewCredentialsMatch(process.env,reviewUser,reviewPassword)){
         return oauthError(res,403,"access_denied","Invalid reviewer credential.");
       }

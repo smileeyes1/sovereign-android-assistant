@@ -404,6 +404,7 @@ class CommandCenterActivity : Activity() {
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
+                        HakimResiliencePolicy.recordSuccess(this, engine.id)
                         finishStreamingReply(result.text)
                         HakimExecutiveLoop.complete(
                             this,
@@ -439,6 +440,7 @@ class CommandCenterActivity : Activity() {
                     }
 
                     is HakimInferenceEngine.Result.Failure -> {
+                        HakimResiliencePolicy.recordFailure(this, engine.id, result.retryable, result.reason)
                         if (result.retryable) {
                             retryDirectOrBlock(
                                 text = text,
@@ -490,7 +492,7 @@ class CommandCenterActivity : Activity() {
                 "المحرك البديل: " + fallback.displayName
             )
             refreshOperations()
-            status.text = "يحوّل إلى " + fallback.displayName
+            status.text = "المحرك بطيء/متعثر؛ يحوّل إلى " + fallback.displayName
             executeDirectModel(text, instruction, fallback.id, nextExcluded)
             return
         }

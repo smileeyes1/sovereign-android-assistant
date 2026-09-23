@@ -10,14 +10,41 @@ import android.content.Context
  */
 object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
-        // A FINAL product must register at least one official/local GENERAL_CHAT engine here.
-        // Until then the release is correctly classified as a prototype/candidate.
-        return emptyList()
+        val out = mutableListOf<HakimInferenceEngine>()
+        if (HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY)) {
+            out += GeminiDirectEngine(context)
+        }
+        return out
     }
 
-    fun hasFieldUsableGeneralChat(context: Context): Boolean {
-        return directEngines(context).any {
-            HakimInferenceEngine.Capability.GENERAL_CHAT in it.capabilities
+    fun bestGeneralChat(
+        context: Context,
+        attachments: List<HakimAttachmentGateway.Attachment>
+    ): HakimInferenceEngine? {
+        return directEngines(context).firstOrNull { engine ->
+            HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
+                attachmentsSupported(engine, attachments)
+        }
+    }
+
+    fun hasConfiguredGeneralChat(context: Context): Boolean =
+        bestGeneralChat(context, emptyList()) != null
+
+    private fun attachmentsSupported(
+        engine: HakimInferenceEngine,
+        attachments: List<HakimAttachmentGateway.Attachment>
+    ): Boolean {
+        return attachments.all { a ->
+            when {
+                a.mimeType.startsWith("image/") ->
+                    HakimInferenceEngine.Capability.IMAGES in engine.capabilities
+                a.mimeType.startsWith("audio/") ->
+                    HakimInferenceEngine.Capability.AUDIO in engine.capabilities
+                a.mimeType.startsWith("video/") ->
+                    HakimInferenceEngine.Capability.VIDEO in engine.capabilities
+                else ->
+                    HakimInferenceEngine.Capability.FILES in engine.capabilities
+            }
         }
     }
 }

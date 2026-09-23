@@ -31,7 +31,10 @@ test("ChatGPT raw tools/list catalog exposes root OAuth security schemes",()=>{
     assert.deepEqual(t.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
     assert.deepEqual(t._meta?.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
     assert.equal(t.annotations?.readOnlyHint,false);
+    assert.equal(t.annotations?.openWorldHint,false);
   }
+  assert.equal(byName.get("launch")?.annotations?.destructiveHint,false);
+  assert.equal(byName.get("action")?.annotations?.destructiveHint,true);
 });
 
 test("review mode is isolated from real device transport",async()=>{

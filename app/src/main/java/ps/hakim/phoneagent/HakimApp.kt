@@ -15,10 +15,7 @@ class HakimApp : Application() {
         startHakimIfPaired(prefs)
         HakimConnectionResilience.install(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
-        AutoUpdater.schedule(this)
-        AutoUpdater.startRealtimeListener(this)
         HakimSelfCheck.schedule(this)
-        AutoUpdater.checkAsync(this)
         HakimSelfCheck.runAsync(this)
         HakimConstraintDoctor.runAsync(this, "app_start")
     }

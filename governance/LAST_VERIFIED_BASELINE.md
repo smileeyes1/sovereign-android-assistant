@@ -18,14 +18,15 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20101`.
-- Branch: `feature/hakim-20101-intent-to-completion-director`.
-- Field evidence on 20100: the composer and «أنجز/إلغاء» remained visible above the Android keyboard/navigation area on the actual phone, satisfying the pinned-composer user-eye test.
-- New user goal: every request to Hakim should be transformed internally into the strongest suitable execution instruction for the selected model/tool, and the model should privately optimize its own method until the user's completion criterion is met.
-- 20101 adds HakimIntentDirector. It derives an intent-specific acceptance contract, tells the selected model to formulate its best internal work instruction, execute it, privately review/improve it up to three revisions, and return only the final result/evidence—not chain-of-thought.
-- Hakim remains the supervisor: provider launch is not success, external completion still needs returned evidence, and no consumer ChatGPT session is treated as an API.
-- All 20092–20100 safety/routing/executive/user-eye gates remain required.
-- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes field acceptance.
+- Candidate versionCode: `20102`.
+- Branch: `feature/hakim-20102-gemini-direct`.
+- Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
+- 20101 intent-direction logic is inherited: each request gets an intent-specific completion contract and a compact governed instruction; private chain-of-thought is not exposed.
+- 20102 adds the first true DIRECT_MODEL path: official Gemini Interactions API streaming replies back into the Hakim conversation instead of opening a provider app.
+- The direct engine supports text plus bounded inline image/document/audio/video inputs, multi-turn continuity through `previous_interaction_id`, cancellation, and secure API-key storage via AndroidKeyStore.
+- Router policy now prefers a configured direct engine for compatible normal chat/attachments; provider apps/web remain degraded fallbacks only.
+- Product V1 FINAL promotion remains fail-closed. The direct engine has NOT yet been field-connected on the user's phone, and no 20102 signed APK has yet passed chat + multimodal field acceptance.
+- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

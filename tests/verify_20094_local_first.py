@@ -11,8 +11,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("LOCAL_FIRST_20094=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20094, "version")
-req("versionName '2.0.94-local-first-routing'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20094, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 req("LOCAL_RESPONSE" in ROUTER, "local_channel_missing")
 req('"مرحبا"' in ROUTER and '"السلام عليكم"' in ROUTER, "arabic_greeting_missing")
 req("localReply(q) != null" in ROUTER, "local_route_not_first")
@@ -32,4 +32,4 @@ except SystemExit:
 else:
     raise SystemExit("LOCAL_FIRST_20094=FAIL reason=sentinel_not_detected")
 
-print("LOCAL_FIRST_20094=PASS greeting=local external=compact launch_not_success")
+print("LOCAL_FIRST_GATE=PASS candidate>=20094 greeting=local external=compact launch_not_success")

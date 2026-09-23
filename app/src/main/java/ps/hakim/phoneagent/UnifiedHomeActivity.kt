@@ -22,6 +22,7 @@ class UnifiedHomeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        HakimFreePolicy.setFreeOnly(this, true)
         buildUi()
         maybeBootstrapLocalAdb()
     }
@@ -78,12 +79,38 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(directModelStatus)
 
-        root.addView(button("إعداد Gemini المباشر") {
+        root.addView(TextView(this).apply {
+            text = "وضع الذكاء: مجاني فقط — لا يستخدم حكيم محركًا مدفوعًا تلقائيًا"
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(8, 8, 8, 10)
+        })
+
+        root.addView(button("إعداد OpenRouter المجاني") {
+            showOpenRouterKeyDialog()
+        })
+
+        root.addView(button("اختبار أفضل محرك مجاني") {
+            testBestFreeEngine()
+        })
+
+        root.addView(button("إنشاء مفتاح OpenRouter مجاني") {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://openrouter.ai/settings/keys")))
+        })
+
+        root.addView(button("مسح مفتاح OpenRouter") {
+            HakimSecretStore.remove(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
+            refresh()
+        })
+
+        root.addView(button("إعداد Gemini Free Tier اختياري") {
             showGeminiKeyDialog()
         })
 
-        root.addView(button("اختبار المحرك المباشر") {
-            testDirectEngine()
+        root.addView(button("تأكيد/إلغاء Gemini Free Tier") {
+            val next = !HakimFreePolicy.geminiFreeTierConfirmed(this)
+            HakimFreePolicy.setGeminiFreeTierConfirmed(this, next)
+            refresh()
         })
 
         root.addView(button("إنشاء/عرض مفتاح Gemini") {
@@ -92,6 +119,7 @@ class UnifiedHomeActivity : Activity() {
 
         root.addView(button("مسح مفتاح Gemini") {
             HakimSecretStore.remove(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
+            HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
             getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)
                 .edit()
                 .remove("gemini_direct_field_verified")
@@ -99,7 +127,7 @@ class UnifiedHomeActivity : Activity() {
             refresh()
         })
 
-        root.addView(button("محادثة جديدة للمحرك") {
+        root.addView(button("محادثة جديدة للمحركات") {
             GeminiDirectEngine(this).clearConversation()
             android.widget.Toast.makeText(this, "تم بدء سياق مباشر جديد.", android.widget.Toast.LENGTH_SHORT).show()
         })
@@ -113,7 +141,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم أسرار ADB ومفتاح المحرك داخل AndroidKeyStore. لا يطبع مفتاح Gemini في السجل. حكيم لا يفعّل الفوترة؛ استخدم مفتاح مشروع Free Tier إذا أردت إبقاء الاستخدام بلا تكلفة."
+            text = "يحفظ حكيم المفاتيح داخل AndroidKeyStore ولا يطبعها في السجل. OpenRouter/free صفر السعر للرموز لكنه محدود بالحصة المجانية. Gemini لا يدخل مصفوفة المجاني إلا بعد تأكيدك أن المفتاح تابع لـ Free Tier."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)
@@ -121,6 +149,28 @@ class UnifiedHomeActivity : Activity() {
 
         setContentView(root)
         refresh()
+    }
+
+    private fun showOpenRouterKeyDialog() {
+        val input = EditText(this).apply {
+            hint = "ألصق مفتاح OpenRouter"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            isSingleLine = true
+        }
+        AlertDialog.Builder(this)
+            .setTitle("OpenRouter المجاني داخل حكيم")
+            .setMessage("يستخدم حكيم المسار openrouter/free فقط. يُحفظ المفتاح مشفّرًا ولا يُطبع في السجل.")
+            .setView(input)
+            .setPositiveButton("حفظ") { _, _ ->
+                val key = input.text.toString().trim()
+                if (key.isNotBlank()) {
+                    HakimSecretStore.put(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY, key)
+                    refresh()
+                    testBestFreeEngine()
+                }
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     private fun showGeminiKeyDialog() {
@@ -138,44 +188,49 @@ class UnifiedHomeActivity : Activity() {
                 if (key.isNotBlank()) {
                     HakimSecretStore.put(this, GeminiDirectEngine.SECRET_GEMINI_KEY, key)
                     refresh()
-                    testDirectEngine()
                 }
             }
             .setNegativeButton("إلغاء", null)
             .show()
     }
 
-    private fun testDirectEngine() {
-        if (!HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)) {
-            android.widget.Toast.makeText(this, "أدخل مفتاح Gemini أولًا.", android.widget.Toast.LENGTH_LONG).show()
+    private fun testBestFreeEngine() {
+        val ranked = HakimWisdomMatrix.choose(
+            this,
+            "أجب بالعربية بكلمة واحدة فقط: جاهز",
+            emptyList()
+        )
+        val engine = ranked?.engine
+        if (engine == null) {
+            directModelStatus.text = "لا يوجد محرك مجاني مباشر مهيأ. ابدأ بـ OpenRouter المجاني."
             return
         }
-        directModelStatus.text = "يختبر حكيم المحرك المباشر…"
+
+        directModelStatus.text = "يختبر حكيم " + engine.displayName + "…"
+        val started = System.currentTimeMillis()
         Thread {
-            val result = GeminiDirectEngine(this).complete(
+            val result = engine.complete(
                 "أجب بالعربية بكلمة واحدة فقط: جاهز",
                 emptyList(),
                 onDelta = {}
             )
+            val latency = (System.currentTimeMillis() - started).coerceAtLeast(0L)
+            HakimEngineTelemetry.record(
+                this,
+                engine.id,
+                result is HakimInferenceEngine.Result.Success,
+                latency
+            )
             runOnUiThread {
-                when (result) {
-                    is HakimInferenceEngine.Result.Success -> {
-                        getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)
-                            .edit()
-                            .putBoolean("gemini_direct_field_verified", true)
-                            .putLong("gemini_direct_verified_at", System.currentTimeMillis())
-                            .apply()
-                        directModelStatus.text = "✓ Gemini مباشر متصل؛ الرد يعود داخل حكيم"
-                    }
-                    is HakimInferenceEngine.Result.NeedsAuthorization -> {
-                        directModelStatus.text = "تعذر التفويض: " + result.reason
-                    }
-                    is HakimInferenceEngine.Result.Unavailable -> {
-                        directModelStatus.text = "غير متاح: " + result.reason
-                    }
-                    is HakimInferenceEngine.Result.Failure -> {
-                        directModelStatus.text = "فشل الاختبار: " + result.reason
-                    }
+                directModelStatus.text = when (result) {
+                    is HakimInferenceEngine.Result.Success ->
+                        "✓ " + engine.displayName + " متصل؛ الرد يعود داخل حكيم"
+                    is HakimInferenceEngine.Result.NeedsAuthorization ->
+                        "تعذر التفويض: " + result.reason
+                    is HakimInferenceEngine.Result.Unavailable ->
+                        "غير متاح: " + result.reason
+                    is HakimInferenceEngine.Result.Failure ->
+                        "فشل الاختبار: " + result.reason
                 }
             }
         }.start()
@@ -208,13 +263,18 @@ class UnifiedHomeActivity : Activity() {
     private fun refresh() {
         if (::adbStatus.isInitialized) adbStatus.text = HakimLocalPairing.currentSummary(this)
         if (::directModelStatus.isInitialized) {
-            val configured = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
-            val verified = getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)
-                .getBoolean("gemini_direct_field_verified", false)
-            directModelStatus.text = when {
-                configured && verified -> "✓ المحرك المباشر: Gemini متصل ومتحقق على هذا الجهاز"
-                configured -> "المحرك المباشر: مفتاح محفوظ — يلزم اختبار الاتصال"
-                else -> "المحرك المباشر: غير مُعدّ بعد"
+            val openRouter = HakimSecretStore.has(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
+            val gemini = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
+            val geminiFree = HakimFreePolicy.geminiFreeTierConfirmed(this)
+            val available = HakimWisdomMatrix.rank(this, "", emptyList())
+            directModelStatus.text = buildString {
+                append("المحركات المجانية المباشرة: ")
+                if (available.isEmpty()) append("غير مهيأة")
+                else append(available.joinToString(" ← ") { it.engine.displayName })
+                append("\nOpenRouter=")
+                append(if (openRouter) "مهيأ" else "غير مهيأ")
+                append(" | Gemini=")
+                append(if (gemini && geminiFree) "Free Tier مؤكد" else if (gemini) "مفتاح موجود غير مؤكد مجانيًا" else "غير مهيأ")
             }
         }
     }

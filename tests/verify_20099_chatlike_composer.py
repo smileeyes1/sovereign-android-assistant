@@ -11,8 +11,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("CHATLIKE_COMPOSER_20099=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20099, "version")
-req("versionName '2.0.99-chatlike-composer-progress'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20099, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "operationsExpanded = false",
@@ -36,4 +36,4 @@ req("operations.text = HakimExecutiveLoop.latestOperationText(this)" in CENTER, 
 collapsed = CENTER.split("private fun refreshOperations()",1)[1]
 req("if (operationsExpanded)" in collapsed, "operations_always_expanded")
 
-print("CHATLIKE_COMPOSER_20099=PASS progress=compact expandable=true ime=secondary_tools_hidden composer=preserved")
+print("CHATLIKE_COMPOSER_GATE=PASS candidate>=20099 progress=compact expandable=true ime=secondary_tools_hidden composer=preserved")

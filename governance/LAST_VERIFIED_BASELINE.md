@@ -18,14 +18,15 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20104`.
-- Branch: `feature/hakim-20104-quranic-governance`.
-- 20103 remains the latest signed free-intelligence predecessor: free-only cost gate, adaptive wisdom matrix, OpenRouter free engine, Gemini free-tier path when explicitly confirmed, bounded failover and in-app streaming are inherited.
-- 20104 adds Quran/Sunnah values governance and a strict theological/technical boundary: revelation governs purpose, ethics and limits; technical intelligence still comes from models, algorithms, tools, evidence and testing.
-- Fixed divine names are used only as ethical reminders (truth, knowledge, wisdom, oversight, mercy), never as magical weights, numerology, hidden algorithms or claims of divine technical causality.
-- Qur'anic anchors for verification, knowledge limits, justice, trust, non-aggression, consultation and non-coercion are codified with references.
-- The compact governance guard is injected into the model task envelope and the canonical Hakim constitution.
-- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
+- Candidate versionCode: `20105`.
+- Branch: `feature/hakim-20105-free-oauth-no-handoff`.
+- 20104 remains the latest Quranic-governance source/CI predecessor; its values/technical boundary is inherited unchanged.
+- User-eye evidence showed a remaining product defect: without a configured direct engine, normal Hakim chat still opened ChatGPT and exposed Hakim's internal governed task envelope.
+- 20105 closes that product defect in FREE_ONLY mode. Normal non-local chat may use a configured direct free engine, but if none exists it enters FREE_ENGINE_SETUP and never auto-opens ChatGPT/Gemini/Claude/DeepSeek.
+- OpenRouter free onboarding now uses official OAuth PKCE S256 with an ephemeral 127.0.0.1 callback. The user performs one unavoidable login/authorization; the returned key is stored in AndroidKeyStore and the pending Hakim intent resumes automatically.
+- OpenRouter remains pinned to `openrouter/free`; no paid model is selected by this path. Free inference is quota-limited and therefore cannot be promised as unlimited.
+- External provider app/web handoff remains available only as degraded/non-free/manual infrastructure; it is not the normal FREE_ONLY conversation path and never counts as completion.
+- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED until the exact signed APK proves one-click authorization and a non-local reply returning inside Hakim.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

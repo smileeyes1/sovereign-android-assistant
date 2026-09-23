@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
@@ -28,6 +27,61 @@ const readCatalog=[
   ["notifications","إشعارات حكيم","استخدم هذه الأداة عندما تحتاج إلى قراءة الإشعارات التي منح المستخدم حكيم صلاحية الوصول إليها."],
   ["screenshot","لقطة شاشة حكيم","استخدم هذه الأداة عندما تحتاج إلى لقطة شاشة من جهاز حكيم المرتبط، إذا كانت خدمة الوصول تسمح بذلك."]
 ] as const;
+
+
+export function chatgptToolList(){
+  const readTools=readCatalog.map(([name,title,description])=>({
+    name,title,description,
+    inputSchema:{type:"object",properties:{},additionalProperties:false},
+    annotations:READ_ANNOTATIONS,
+    securitySchemes:readSecurity,
+    _meta:{securitySchemes:readSecurity}
+  }));
+  return [
+    ...readTools,
+    {
+      name:"launch",
+      title:"فتح تطبيق أو رابط على جهاز حكيم",
+      description:"استخدم هذه الأداة عندما يطلب المستخدم فتح تطبيق أو رابط على جهازه. هذا تغيير مرئي للحالة ويتطلب موافقة أندرويد حسب سياسة حكيم.",
+      inputSchema:{
+        type:"object",
+        properties:{package:{type:"string"},url:{type:"string",format:"uri"}},
+        additionalProperties:false
+      },
+      annotations:WRITE_ANNOTATIONS,
+      securitySchemes:writeSecurity,
+      _meta:{securitySchemes:writeSecurity}
+    },
+    {
+      name:"action",
+      title:"تنفيذ فعل واجهة مأذون على جهاز حكيم",
+      description:"استخدم هذه الأداة عندما يطلب المستخدم فعل واجهة محدودًا على جهازه. لا يوجد shell أو root، ويتطلب التنفيذ موافقة أندرويد.",
+      inputSchema:{
+        type:"object",
+        properties:{kind:{type:"string",minLength:1,maxLength:64},args:{type:"object",additionalProperties:true}},
+        required:["kind"],
+        additionalProperties:false
+      },
+      annotations:WRITE_ANNOTATIONS,
+      securitySchemes:writeSecurity,
+      _meta:{securitySchemes:writeSecurity}
+    },
+    {
+      name:"check_request",
+      title:"تحقق من نتيجة طلب حكيم",
+      description:"استخدم هذه الأداة عندما تحتاج إلى قراءة نتيجة طلب حكيم سابق باستخدام request_id دون إعادة تنفيذه.",
+      inputSchema:{
+        type:"object",
+        properties:{request_id:{type:"string",minLength:8,maxLength:128}},
+        required:["request_id"],
+        additionalProperties:false
+      },
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    }
+  ];
+}
 
 export function createHakimServer(
   credential:DeviceCredential,
@@ -93,67 +147,5 @@ export function createHakimServer(
     return text(result??{ok:false,status:"pending",request_id});
   });
 
-  // @modelcontextprotocol/sdk v1.30 validates calls correctly but does not expose
-  // OpenAI's root-level securitySchemes through McpServer.registerTool.
-  // Override only tools/list; tools/call remains the SDK-validated handler.
-  const readTools=readCatalog.map(([name,title,description])=>({
-    name,title,description,
-    inputSchema:{type:"object",properties:{},additionalProperties:false},
-    annotations:READ_ANNOTATIONS,
-    securitySchemes:readSecurity,
-    _meta:{securitySchemes:readSecurity}
-  }));
-  const listedTools=[
-    ...readTools,
-    {
-      name:"launch",
-      title:"فتح تطبيق أو رابط على جهاز حكيم",
-      description:"استخدم هذه الأداة عندما يطلب المستخدم فتح تطبيق أو رابط على جهازه. هذا تغيير مرئي للحالة ويتطلب موافقة أندرويد حسب سياسة حكيم.",
-      inputSchema:{
-        type:"object",
-        properties:{
-          package:{type:"string"},
-          url:{type:"string",format:"uri"}
-        },
-        additionalProperties:false
-      },
-      annotations:WRITE_ANNOTATIONS,
-      securitySchemes:writeSecurity,
-      _meta:{securitySchemes:writeSecurity}
-    },
-    {
-      name:"action",
-      title:"تنفيذ فعل واجهة مأذون على جهاز حكيم",
-      description:"استخدم هذه الأداة عندما يطلب المستخدم فعل واجهة محدودًا على جهازه. لا يوجد shell أو root، ويتطلب التنفيذ موافقة أندرويد.",
-      inputSchema:{
-        type:"object",
-        properties:{
-          kind:{type:"string",minLength:1,maxLength:64},
-          args:{type:"object",additionalProperties:true}
-        },
-        required:["kind"],
-        additionalProperties:false
-      },
-      annotations:WRITE_ANNOTATIONS,
-      securitySchemes:writeSecurity,
-      _meta:{securitySchemes:writeSecurity}
-    },
-    {
-      name:"check_request",
-      title:"تحقق من نتيجة طلب حكيم",
-      description:"استخدم هذه الأداة عندما تحتاج إلى قراءة نتيجة طلب حكيم سابق باستخدام request_id دون إعادة تنفيذه.",
-      inputSchema:{
-        type:"object",
-        properties:{request_id:{type:"string",minLength:8,maxLength:128}},
-        required:["request_id"],
-        additionalProperties:false
-      },
-      annotations:READ_ANNOTATIONS,
-      securitySchemes:readSecurity,
-      _meta:{securitySchemes:readSecurity}
-    }
-  ];
-
-  server.server.setRequestHandler(ListToolsRequestSchema,async()=>({tools:listedTools as any}));
   return server;
 }

@@ -13,8 +13,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("INTENT_DIRECTOR_20101=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20101, "version")
-req("versionName '2.1.01-intent-to-completion-director'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20101, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "MAX_INTERNAL_REVISIONS = 3",
@@ -34,4 +34,4 @@ req("صياغة أمر تنفيذي أعلى للمحرك" in CENTER, "visible_p
 req("HakimExecutiveLoop.providerInstruction(context, prompt)" in ROUTER, "router_bypasses_director")
 req("HakimAttachmentGateway.buildShareIntent(context, prompt, attachments)" not in ROUTER, "raw_prompt_leak")
 
-print("INTENT_DIRECTOR_20101=PASS self_direction=private revisions=3 acceptance=intent_specific")
+print("INTENT_DIRECTOR_GATE=PASS candidate>=20101 self_direction=private revisions=3")

@@ -18,14 +18,16 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20102`.
-- Branch: `feature/hakim-20102-gemini-direct`.
+- Candidate versionCode: `20103`.
+- Branch: `feature/hakim-20103-free-intelligence-matrix`.
 - Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
-- 20101 intent-direction logic is inherited: each request gets an intent-specific completion contract and a compact governed instruction; private chain-of-thought is not exposed.
-- 20102 adds the first true DIRECT_MODEL path: official Gemini Interactions API streaming replies back into the Hakim conversation instead of opening a provider app.
-- The direct engine supports text plus bounded inline image/document/audio/video inputs, multi-turn continuity through `previous_interaction_id`, cancellation, and secure API-key storage via AndroidKeyStore.
-- Router policy now prefers a configured direct engine for compatible normal chat/attachments; provider apps/web remain degraded fallbacks only.
-- Product V1 FINAL promotion remains fail-closed. The direct engine has NOT yet been field-connected on the user's phone, and no 20102 signed APK has yet passed chat + multimodal field acceptance.
+- 20101 intent-direction and 20102 direct-model streaming are inherited.
+- 20103 makes monetary safety a hard routing rule: FREE_ONLY defaults true and no paid/unknown engine may be selected silently.
+- OpenRouter `openrouter/free` is added as a direct in-app text/image engine with zero token price; Gemini is eligible in FREE_ONLY mode only after explicit Free Tier confirmation.
+- HakimWisdomMatrix ranks eligible engines by zero-cost certainty, quality, learned reliability, privacy, latency and modality fit. HakimEngineTelemetry learns only success/failure and latency.
+- Retryable direct-engine failure automatically switches once through remaining eligible free engines under the bounded Executive Loop. It never falls into an unbounded retry loop.
+- Recent Hakim conversation context is bounded and carried into direct-engine instructions so free engines can sustain multi-turn chat without opening another app.
+- Product V1 FINAL promotion remains fail-closed until the exact signed APK proves direct chat, multimodal return, failover/blocker behavior and same-artifact acceptance on the phone.
 - Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
 
 ## Promotion rule

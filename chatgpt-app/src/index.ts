@@ -143,6 +143,7 @@ app.get("/oauth/authorize",(req,res)=>{
 <p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
+${process.env.HAKIM_REVIEW_CODE?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>رمز المراجعة <input name="review_code" type="password" autocomplete="off"></label> <button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
 </html>`);
   }catch(e){
@@ -153,7 +154,17 @@ app.get("/oauth/authorize",(req,res)=>{
 app.post("/oauth/authorize",async(req,res)=>{
   try{
     const context=openAuthorizeContext(oauthSecret,one(req.body.context));
-    const paired=await pollPairAck(context.credential,10_000);
+    const submittedReviewCode=one(req.body.review_code);
+    const configuredReviewCode=process.env.HAKIM_REVIEW_CODE??"";
+    const reviewRequested=submittedReviewCode.length>0;
+    if(reviewRequested){
+      if(configuredReviewCode.length<24||submittedReviewCode!==configuredReviewCode){
+        return oauthError(res,403,"access_denied","Invalid reviewer credential.");
+      }
+      context.credential.topic="hakim_review_"+randomSecret(18);
+      context.credential.resultTopic="hakim_review_result_"+randomSecret(18);
+    }
+    const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
     if(!paired){
       noStore(res);
       const link=pairingUrl(context.credential);

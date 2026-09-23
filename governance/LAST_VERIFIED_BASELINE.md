@@ -18,15 +18,15 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20105`.
-- Branch: `feature/hakim-20105-free-oauth-no-handoff`.
-- 20104 remains the latest Quranic-governance source/CI predecessor; its values/technical boundary is inherited unchanged.
-- User-eye evidence showed a remaining product defect: without a configured direct engine, normal Hakim chat still opened ChatGPT and exposed Hakim's internal governed task envelope.
-- 20105 closes that product defect in FREE_ONLY mode. Normal non-local chat may use a configured direct free engine, but if none exists it enters FREE_ENGINE_SETUP and never auto-opens ChatGPT/Gemini/Claude/DeepSeek.
-- OpenRouter free onboarding now uses official OAuth PKCE S256 with an ephemeral 127.0.0.1 callback. The user performs one unavoidable login/authorization; the returned key is stored in AndroidKeyStore and the pending Hakim intent resumes automatically.
-- OpenRouter remains pinned to `openrouter/free`; no paid model is selected by this path. Free inference is quota-limited and therefore cannot be promised as unlimited.
-- External provider app/web handoff remains available only as degraded/non-free/manual infrastructure; it is not the normal FREE_ONLY conversation path and never counts as completion.
-- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED until the exact signed APK proves one-click authorization and a non-local reply returning inside Hakim.
+- Candidate versionCode: `20106`.
+- Branch: `feature/hakim-20106-resilient-free-completion`.
+- 20105 remains the signed predecessor that established FREE_ONLY, one-click OpenRouter OAuth/PKCE, no automatic ChatGPT handoff, and inherited Quranic/Sunnah value governance.
+- New resilience requirement comes from repeated real-world evidence that a single AI provider can remain in a long thinking state without producing a usable result.
+- 20106 adds bounded no-stall behavior for direct free engines: first visible output <= 25s target, no visible progress <= 45s, total call <= 120s, then automatic retryable failure/failover.
+- Repeated retryable failure opens a 10-minute circuit breaker after two consecutive failures, so Hakim does not keep choosing the same unhealthy free engine.
+- The Wisdom Matrix excludes engines in cooldown and continues to hard-gate FREE_ONLY before quality scoring.
+- Quran/Sunnah governance remains values/limits only: truthfulness, verification, justice, trust, mercy, privacy and no-harm. Divine names, attributes and Qur'anic letters are never treated as hidden technical intelligence mechanisms.
+- Status: SIGNING/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED until the exact signed APK proves free OAuth/direct reply and a controlled stall/failover case on the phone.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

@@ -191,6 +191,12 @@ object HakimModelToolRouter {
             .replace(Regex("[!؟?،,.]+$"), "")
             .trim()
             .lowercase()
+        if (isHakimKeyboardQuestion(q)) {
+            return "لوحة المفاتيح تأخذ جزءًا من ارتفاع الشاشة عند الكتابة. في هذا الإصدار سيطلب حكيم من أندرويد تصغير مساحة المحادثة تلقائيًا بدل تغطية مكان الكتابة، ليبقى مربع الإدخال ظاهرًا."
+        }
+        if (isHakimUiQuestion(q)) {
+            return "هذا سؤال عن واجهة حكيم نفسها، لذلك أجيبك هنا محليًا ولا أفتح نموذجًا خارجيًا. اذكر العنصر الذي يزعجك وسأتعامل معه كدليل ميداني."
+        }
         return when (q) {
             "مرحبا", "مرحباً", "أهلا", "أهلاً", "السلام عليكم", "سلام", "هاي", "hello", "hi" ->
                 "أهلًا بك. أنا حكيم، اكتب مقصدك وسأتولى أفضل مسار متاح."
@@ -200,6 +206,18 @@ object HakimModelToolRouter {
                 "أنا حكيم، واجهة تنفيذ موحدة تختار الأدوات والنماذج بحسب المقصد والصلاحيات المتاحة."
             else -> null
         }
+    }
+
+    private fun isHakimKeyboardQuestion(q: String): Boolean {
+        val mentionsKeyboard = listOf("لوحة المفاتيح", "الكيبورد", "keyboard").any { q.contains(it) }
+        val mentionsComposer = listOf("مكان الكتابة", "مربع الكتابة", "حقل الكتابة", "الإدخال", "يغطي", "تغطي").any { q.contains(it) }
+        return mentionsKeyboard && mentionsComposer
+    }
+
+    private fun isHakimUiQuestion(q: String): Boolean {
+        val mentionsHakim = q.contains("حكيم") || q.contains("التطبيق") || q.contains("الواجهة")
+        val mentionsUi = listOf("الواجهة", "زر", "مكان الكتابة", "المحادثة", "الشاشة", "نافذة").any { q.contains(it) }
+        return mentionsHakim && mentionsUi
     }
 
     private fun compactExternalPrompt(prompt: String): String {

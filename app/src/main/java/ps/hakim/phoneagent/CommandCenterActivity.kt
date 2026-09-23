@@ -296,7 +296,7 @@ class CommandCenterActivity : Activity() {
             openInHakim(text)
             return
         }
-        val governed = HakimIntentEngine.governedPrompt(this, text)
+        val governed = HakimExecutiveLoop.providerInstruction(this, text)
         copyText(governed)
         getSharedPreferences("hakim", MODE_PRIVATE)
             .edit()
@@ -315,7 +315,7 @@ class CommandCenterActivity : Activity() {
         if (text.isBlank() && attachments.isEmpty()) return
         capture(text, "share_out")
         recordRoute("share", null)
-        val governed = HakimIntentEngine.governedPrompt(this, text)
+        val governed = HakimExecutiveLoop.providerInstruction(this, text)
         val out = HakimAttachmentGateway.buildShareIntent(this, governed, attachments)
         try {
             startActivity(Intent.createChooser(out, "اختر القناة المتوافقة"))

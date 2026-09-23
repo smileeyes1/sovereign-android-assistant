@@ -57,6 +57,9 @@ require(center, "HakimModelToolRouter.decide", "router_not_wired")
 require(center, "HakimAttachmentGateway.pickerIntent", "attachment_picker_not_wired")
 require(center, "sendToProviderApp", "provider_dispatch_missing")
 require(center, "openProviderWeb", "provider_web_fallback_missing")
+require(center, "for (provider in candidates)", "bounded_provider_failover_missing")
+require(center, ".distinctBy { it.id }", "provider_dedup_missing")
+forbid(center, "sendToProviderApp(text, retry)", "recursive_provider_retry_detected")
 
 for forbidden in [
     "OPENAI_API_KEY",

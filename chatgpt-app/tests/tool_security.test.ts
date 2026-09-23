@@ -46,3 +46,32 @@ test("tools/list exposes root OAuth security schemes for ChatGPT",async()=>{
     await server.close();
   }
 });
+
+
+test("review mode is isolated from real device transport",async()=>{
+  const reviewCredential:DeviceCredential={
+    ...credential,
+    topic:"hakim_review_abcdefghijklmnopqrstuvwxyz",
+    resultTopic:"hakim_review_result_abcdefghijklmnop"
+  };
+  const server=createHakimServer(
+    reviewCredential,
+    ["hakim.read","hakim.write"],
+    "https://example.test/.well-known/oauth-protected-resource"
+  );
+  const client=new Client({name:"hakim-review-ci",version:"1.0.0"},{capabilities:{}});
+  const [clientTransport,serverTransport]=InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(serverTransport),client.connect(clientTransport)]);
+  try{
+    const status=await client.callTool({name:"status",arguments:{}});
+    assert.equal((status.structuredContent as any)?.demo,true);
+    assert.equal((status.structuredContent as any)?.device?.name,"Hakim Review Device");
+
+    const launch=await client.callTool({name:"launch",arguments:{package:"com.example.safe"}});
+    assert.equal((launch.structuredContent as any)?.demo,true);
+    assert.equal((launch.structuredContent as any)?.status,"approval_requested");
+  }finally{
+    await client.close();
+    await server.close();
+  }
+});

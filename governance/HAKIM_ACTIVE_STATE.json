@@ -52,5 +52,14 @@
     "no_field_promotion_without_same_artifact_evidence": true,
     "newer_does_not_inherit_success": true,
     "rollback_target_preserved": true
+  },
+  "human_biology": {
+    "version": "HUMAN-BIOLOGY-2026-09-23-v1",
+    "whole_body_systems_covered": true,
+    "brain_covered": true,
+    "heart_covered": true,
+    "autonomous_clinical_action": false,
+    "direct_intervention_requires_qualified_gate": true,
+    "field_clinical_validation": false
   }
 }

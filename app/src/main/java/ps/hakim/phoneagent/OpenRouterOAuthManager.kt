@@ -3,6 +3,7 @@ package ps.hakim.phoneagent
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.content.pm.PackageManager
 import android.util.Base64
 import android.widget.Toast
 import okhttp3.MediaType.Companion.toMediaType
@@ -128,13 +129,52 @@ object OpenRouterOAuthManager {
             }
         }.start()
 
-        try {
-            activity.startActivity(Intent(Intent.ACTION_VIEW, authUri))
-        } catch (_: Exception) {
+        if (!launchExternalBrowser(activity, authUri)) {
             runCatching { server.close() }
             activeServer = null
-            Toast.makeText(activity, "لا يوجد متصفح قادر على فتح صفحة الربط.", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                activity,
+                "تعذر فتح متصفح خارجي آمن لإكمال الربط.",
+                Toast.LENGTH_LONG
+            ).show()
         }
+    }
+
+    private fun launchExternalBrowser(activity: Activity, authUri: Uri): Boolean {
+        val base = Intent(Intent.ACTION_VIEW, authUri).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+        }
+
+        val candidates = activity.packageManager.queryIntentActivities(
+            base,
+            PackageManager.MATCH_DEFAULT_ONLY
+        )
+        val external = candidates.firstOrNull {
+            it.activityInfo.packageName != activity.packageName
+        }
+
+        if (external != null) {
+            return runCatching {
+                activity.startActivity(
+                    Intent(base).apply {
+                        setPackage(external.activityInfo.packageName)
+                    }
+                )
+                true
+            }.getOrDefault(false)
+        }
+
+        val browserSelector = Intent.makeMainSelectorActivity(
+            Intent.ACTION_MAIN,
+            Intent.CATEGORY_APP_BROWSER
+        ).apply {
+            data = authUri
+        }
+
+        return runCatching {
+            activity.startActivity(browserSelector)
+            true
+        }.getOrDefault(false)
     }
 
     fun takePendingPrompt(context: android.content.Context): String? {

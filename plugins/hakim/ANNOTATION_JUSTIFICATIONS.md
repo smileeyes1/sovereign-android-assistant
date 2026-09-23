@@ -1,13 +1,17 @@
 # Hakim MCP annotation justifications
 
+These justifications accompany the annotations advertised by the production MCP server.
+
 | Tool | readOnlyHint | Why | openWorldHint | Why | destructiveHint | Why |
 | --- | --- | --- | --- | --- | --- | --- |
-| status | true | Reads status from the authenticated Hakim device only. | false | Scope is one paired private device. | false | No state is changed. |
-| ui | true | Reads the current UI tree only. | false | Scope is one paired private device. | false | No state is changed. |
-| notifications | true | Reads notifications already exposed by Android permission. | false | Scope is one paired private device. | false | No notification is dismissed or changed. |
-| screenshot | true | Returns current screen evidence when Android permission allows it. | false | Source is one paired private device. | false | Capture does not modify device state. |
-| check_request | true | Reads the result of an existing request without replaying it. | false | Scope is the authenticated device request channel. | false | It creates no new action. |
-| launch | false | Requests opening an app or URL after approval. | true | A URL can point to an external destination. | false | It is limited to opening a target and does not itself delete or overwrite data. |
-| action | false | Requests a bounded UI action after approval. | true | The UI action may involve an external app or service. | false | The tool itself is bounded and approval-gated; consequential outcomes remain subject to safety and confirmation gates. |
+| get_device_status | true | Reads bounded runtime/capability status from the authenticated Hakim device only. | false | Scope is one paired private device. | false | No external or device state is changed. |
+| get_current_ui | true | Reads the current accessibility/UI tree only. | false | Scope is one paired private device. | false | No external or device state is changed. |
+| list_notifications | true | Reads notifications already exposed to Hakim by Android permission. | false | Scope is one paired private device. | false | It does not dismiss, alter, or send notifications. |
+| capture_screenshot | true | Returns current screen evidence when Android permission allows it. | false | Source is one paired private device. | false | Capture does not modify device state. |
+| get_request_result | true | Reads an existing request result and never replays the original operation. | false | Scope is the authenticated device request channel. | false | It creates no new action. |
+| open_target | false | Requests opening exactly one app package or HTTP/HTTPS URL after approval. | true | A URL may point to an open-ended external internet destination. | false | Opening a target changes visible state but does not itself delete or overwrite user data. |
+| perform_ui_action | false | Requests one bounded Android UI action after approval. | true | The action may interact with an external app or service displayed on the device. | true | Click, tap, text entry, or gesture actions can cause consequential or hard-to-reverse effects depending on the current UI, so the tool is conservatively marked destructive and remains approval-gated. |
 
-If behavior changes, update the annotations and these justifications together, then rerun Scan Tools before publication.
+Supported `perform_ui_action` kinds are fixed to: `home`, `back`, `recents`, `notifications`, `quick_settings`, `click_text`, `set_text`, `tap`, and `swipe`.
+
+If behavior changes, update the server annotations and these justifications together, then rerun Scan Tools before publication.

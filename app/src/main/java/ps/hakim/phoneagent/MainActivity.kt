@@ -348,6 +348,13 @@ class MainActivity : Activity() {
         }
         root.addView(status)
 
+        root.addView(TextView(this).apply {
+            text = "على أندرويد: حكيم يعمل محليًا ويستخدم تطبيقات النماذج/المتصفح عند الحاجة. إضافة MCP الخاصة بـChatGPT ليست قناة أندرويد."
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setPadding(12, 2, 12, 6)
+        })
+
         permissionStatus = TextView(this).apply {
             textSize = 14f
             gravity = Gravity.CENTER
@@ -411,7 +418,7 @@ class MainActivity : Activity() {
             setPadding(10, 0, 10, 8)
         }
         pairField = EditText(this).apply {
-            hint = "رمز الاقتران"
+            hint = "رمز اقتران الجسر التنفيذي"
             setSingleLine(true)
             textSize = 14f
         }
@@ -493,18 +500,24 @@ class MainActivity : Activity() {
         row.visibility = if (paired) View.GONE else View.VISIBLE
         connectionRow.visibility = if (paired) View.VISIBLE else View.GONE
         status.text = when {
-            !paired && prefs.getBoolean("pairing_disabled_by_user", false) -> "الحالة: الاقتران مفصول بقرارك"
-            !paired -> "الحالة: يحتاج رمز الاقتران"
+            isDesktopOnlyPluginPage() -> "تنبيه: إضافة ChatGPT هذه لسطح المكتب فقط؛ لا تعتمدها على أندرويد. اقتران حكيم بالجسر منفصل عنها."
+            !paired && prefs.getBoolean("pairing_disabled_by_user", false) -> "قناة الجسر التنفيذي: الاقتران مفصول بقرارك"
+            !paired -> "قناة الجسر التنفيذي: تحتاج رمز اقتران حكيم — وليس رمز إضافة ChatGPT"
             HakimService.connected -> "الحالة: متصل فعليًا — حكيم جاهز"
             HakimService.running -> "الحالة: حكيم يعمل — جارٍ الاتصال"
             else -> "الحالة: مقترن — الخدمة متوقفة"
         }
     }
 
+    private fun isDesktopOnlyPluginPage(): Boolean {
+        val u = if (::webView.isInitialized) webView.url.orEmpty() else ""
+        return u.startsWith("https://chatgpt.com/plugins/") || u.contains("/codex/")
+    }
+
     private fun savePairing() {
         val parts = pairField.text.toString().trim().split("|")
         if (parts.size !in 2..3 || parts.take(2).any { it.isBlank() }) {
-            Toast.makeText(this, "رمز الاقتران غير صحيح", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "رمز اقتران الجسر التنفيذي غير صحيح", Toast.LENGTH_SHORT).show()
             return
         }
         val edit = prefs.edit()
@@ -516,7 +529,7 @@ class MainActivity : Activity() {
         pairField.setText("")
         startHakimService()
         refreshPairingUi()
-        Toast.makeText(this, "تم اقتران حكيم", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "تم اقتران حكيم بالجسر التنفيذي", Toast.LENGTH_SHORT).show()
     }
 
     private fun startHakimService() {

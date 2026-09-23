@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 BASELINE = (ROOT / "governance/LAST_VERIFIED_BASELINE.md").read_text(encoding="utf-8")
+APP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
 
 def req(cond: bool, reason: str):
     if not cond:
@@ -36,6 +37,12 @@ for needed in [
 req("c84359e422dad0aa205f59a153a1f29d7f4c4e81" in BASELINE, "cloud_baseline")
 req("20091" in BASELINE and "Play Protect" in BASELINE, "blocked_parent_not_recorded")
 req("20092" in BASELINE, "candidate_not_recorded")
+for forbidden_call in [
+    "AutoUpdater.schedule(this)",
+    "AutoUpdater.startRealtimeListener(this)",
+    "AutoUpdater.checkAsync(this)",
+]:
+    req(forbidden_call not in APP, "self_install_loop:" + forbidden_call)
 
 # Known failure: sensitive accessibility declaration must be detected.
 probe = MANIFEST + '\n<service android:name=".HakimAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" />'

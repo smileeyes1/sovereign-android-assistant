@@ -74,6 +74,11 @@ object HakimSelfCheck {
         check("الفجوة المادية تمنع إغلاق النية", intent.optBoolean("material_gap_blocks_complete"))
         check("بوابة الأفعال عالية الأثر فعالة", intent.optBoolean("high_impact_gate"))
 
+        val factory = HakimMaterialFactory.status(context)
+        check("مصنع حكيم للمادة فعّال", factory.optBoolean("material_factory"))
+        check("التصميم الرقمي لا يُعد منتجًا ماديًا", factory.optBoolean("digital_design_is_not_physical_product"))
+        check("الادعاء المادي يتطلب دليلًا ميدانيًا", factory.optBoolean("physical_claim_requires_field_evidence"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -130,6 +135,7 @@ object HakimSelfCheck {
             .put("checks", checks)
             .put("governance", governance)
             .put("intent", intent)
+            .put("material_factory", factory)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

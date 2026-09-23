@@ -18,16 +18,13 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20103`.
-- Branch: `feature/hakim-20103-free-intelligence-matrix`.
-- Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
-- 20101 intent-direction and 20102 direct-model streaming are inherited.
-- 20103 makes monetary safety a hard routing rule: FREE_ONLY defaults true and no paid/unknown engine may be selected silently.
-- OpenRouter `openrouter/free` is added as a direct in-app text/image engine with zero token price; Gemini is eligible in FREE_ONLY mode only after explicit Free Tier confirmation.
-- HakimWisdomMatrix ranks eligible engines by zero-cost certainty, quality, learned reliability, privacy, latency and modality fit. HakimEngineTelemetry learns only success/failure and latency.
-- Retryable direct-engine failure automatically switches once through remaining eligible free engines under the bounded Executive Loop. It never falls into an unbounded retry loop.
-- Recent Hakim conversation context is bounded and carried into direct-engine instructions so free engines can sustain multi-turn chat without opening another app.
-- Product V1 FINAL promotion remains fail-closed until the exact signed APK proves direct chat, multimodal return, failover/blocker behavior and same-artifact acceptance on the phone.
+- Candidate versionCode: `20104`.
+- Branch: `feature/hakim-20104-quranic-governance`.
+- 20103 remains the latest signed free-intelligence predecessor: free-only cost gate, adaptive wisdom matrix, OpenRouter free engine, Gemini free-tier path when explicitly confirmed, bounded failover and in-app streaming are inherited.
+- 20104 adds Quran/Sunnah values governance and a strict theological/technical boundary: revelation governs purpose, ethics and limits; technical intelligence still comes from models, algorithms, tools, evidence and testing.
+- Fixed divine names are used only as ethical reminders (truth, knowledge, wisdom, oversight, mercy), never as magical weights, numerology, hidden algorithms or claims of divine technical causality.
+- Qur'anic anchors for verification, knowledge limits, justice, trust, non-aggression, consultation and non-coercion are codified with references.
+- The compact governance guard is injected into the model task envelope and the canonical Hakim constitution.
 - Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
 
 ## Promotion rule

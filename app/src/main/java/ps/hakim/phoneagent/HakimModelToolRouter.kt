@@ -18,6 +18,7 @@ import android.net.Uri
 object HakimModelToolRouter {
 
     enum class Channel {
+        LOCAL_RESPONSE,
         LOCAL_BROWSER,
         PROVIDER_APP,
         SYSTEM_SHARE,
@@ -72,6 +73,16 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>
     ): Decision {
         val q = prompt.trim()
+
+        if (attachments.isEmpty() && localReply(q) != null) {
+            return Decision(
+                channel = Channel.LOCAL_RESPONSE,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "يمكن تحقيق هذا المقصد محليًا دون إرسال أي بيانات إلى مزود خارجي."
+            )
+        }
+
         if (isDirectUrl(q)) {
             return Decision(
                 channel = Channel.LOCAL_BROWSER,
@@ -169,10 +180,36 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>,
         packageName: String?
     ): Intent {
-        val governed = HakimIntentEngine.governedPrompt(context, prompt)
-        val out = HakimAttachmentGateway.buildShareIntent(context, governed, attachments)
+        val externalPrompt = compactExternalPrompt(prompt)
+        val out = HakimAttachmentGateway.buildShareIntent(context, externalPrompt, attachments)
         if (!packageName.isNullOrBlank()) out.setPackage(packageName)
         return out
+    }
+
+    fun localReply(prompt: String): String? {
+        val q = prompt.trim()
+            .replace(Regex("[!؟?،,.]+$"), "")
+            .trim()
+            .lowercase()
+        return when (q) {
+            "مرحبا", "مرحباً", "أهلا", "أهلاً", "السلام عليكم", "سلام", "هاي", "hello", "hi" ->
+                "أهلًا بك. أنا حكيم، اكتب مقصدك وسأتولى أفضل مسار متاح."
+            "شكرا", "شكراً", "شكرًا", "مشكور", "thanks", "thank you" ->
+                "على الرحب والسعة."
+            "من انت", "من أنت", "ما انت", "ما أنت" ->
+                "أنا حكيم، واجهة تنفيذ موحدة تختار الأدوات والنماذج بحسب المقصد والصلاحيات المتاحة."
+            else -> null
+        }
+    }
+
+    private fun compactExternalPrompt(prompt: String): String {
+        val q = prompt.trim()
+        return buildString {
+            appendLine("أجب عن طلب المستخدم مباشرة وبالعربية ما لم يطلب غير ذلك.")
+            appendLine("لا تدّعِ تنفيذًا أو نجاحًا لم يحدث فعليًا.")
+            appendLine("طلب المستخدم:")
+            append(q)
+        }.take(2_000)
     }
 
     private fun bestObservedProvider(context: Context, candidates: List<Provider>): Provider? {

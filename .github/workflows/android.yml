@@ -39,6 +39,7 @@ jobs:
           python3 tests/verify_20092_playprotect_safe.py
           python3 tests/verify_20093_no_install_prompt.py
           python3 tests/verify_20094_local_first.py
+          python3 tests/verify_20095_android_native.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
@@ -75,7 +76,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20094"
+          test "$VERSION_CODE" = "20095"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

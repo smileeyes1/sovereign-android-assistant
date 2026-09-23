@@ -32,7 +32,9 @@ jobs:
       - name: جلب المشروع
         uses: actions/checkout@v4
       - name: بوابة عقد حكيم الوحيد
-        run: python3 tests/verify_unified_hakim.py
+        run: |
+          python3 tests/verify_unified_hakim.py
+          python3 tests/verify_material_factory_policy.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py

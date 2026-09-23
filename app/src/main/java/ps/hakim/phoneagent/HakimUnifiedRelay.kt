@@ -315,6 +315,7 @@ object HakimUnifiedRelay {
             .put("accessibility", HakimAccessibilityService.instance != null)
             .put("notification_listener", HakimNotificationListener.isConnected())
             .put("auto_update", AutoUpdater.diagnostics(context))
+            .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
     }

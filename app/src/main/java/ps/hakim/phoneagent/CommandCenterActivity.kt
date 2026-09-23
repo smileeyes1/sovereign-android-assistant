@@ -252,7 +252,6 @@ class CommandCenterActivity : Activity() {
             try {
                 startActivity(out)
                 HakimModelToolRouter.recordOutcome(this, provider.id, true)
-                recordRoute("provider:" + provider.id, true)
                 status.text = "تم تمرير المهمة عبر " + provider.label + "."
                 return
             } catch (_: Exception) {
@@ -289,7 +288,6 @@ class CommandCenterActivity : Activity() {
         val out = HakimAttachmentGateway.buildShareIntent(this, governed, attachments)
         try {
             startActivity(Intent.createChooser(out, "اختر القناة المتوافقة"))
-            recordRoute("share", true)
         } catch (_: Exception) {
             recordRoute("share", false)
             toast("لا توجد قناة متوافقة مع هذا المحتوى")
@@ -302,7 +300,6 @@ class CommandCenterActivity : Activity() {
         val url = HakimModelToolRouter.browserTarget(raw)
         getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
         startActivity(Intent(this, MainActivity::class.java))
-        recordRoute("browser", true)
     }
 
     private fun handleIntent(i: Intent?) {

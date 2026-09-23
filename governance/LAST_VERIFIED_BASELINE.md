@@ -18,15 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20102`.
-- Branch: `feature/hakim-20102-gemini-direct`.
-- Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
-- 20101 intent-direction logic is inherited: each request gets an intent-specific completion contract and a compact governed instruction; private chain-of-thought is not exposed.
-- 20102 adds the first true DIRECT_MODEL path: official Gemini Interactions API streaming replies back into the Hakim conversation instead of opening a provider app.
-- The direct engine supports text plus bounded inline image/document/audio/video inputs, multi-turn continuity through `previous_interaction_id`, cancellation, and secure API-key storage via AndroidKeyStore.
-- Router policy now prefers a configured direct engine for compatible normal chat/attachments; provider apps/web remain degraded fallbacks only.
-- Product V1 FINAL promotion remains fail-closed. The direct engine has NOT yet been field-connected on the user's phone, and no 20102 signed APK has yet passed chat + multimodal field acceptance.
-- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
+- Candidate versionCode: `20103`.
+- Branch: `feature/hakim-20103-free-local-core`.
+- 20102 proved in CI that a direct in-app provider boundary can exist, but its Gemini path still requires a provider API key and therefore is optional, not the zero-cost default.
+- 20103 adds the zero-API path: LiteRT-LM + Gemma 4 E2B on-device. After one verified model download, normal text inference can run without subscription, API key, or network.
+- The model download is deliberately unmetered-only by default because the reference model is about 2.6 GB. SHA-256 must match before routing any task to it.
+- The router prioritizes the verified local engine for supported text tasks, then optional official direct providers, then degraded external handoff.
+- Quranic values are encoded as governance principles (verification, justice, trust, consultation, epistemic discipline) and explicitly are not treated as magical computational primitives, secret numerology, or guarantees of technical success.
+- Status starts as SOURCE/CI CANDIDATE ONLY. Local runtime performance, thermals, memory fit, Arabic quality and the exact signed APK must be field-proven before promotion.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

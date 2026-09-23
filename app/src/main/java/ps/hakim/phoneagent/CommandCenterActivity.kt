@@ -293,9 +293,9 @@ class CommandCenterActivity : Activity() {
         }
         capture(text, "best_route")
         appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
-        val acceptance = "إظهار نتيجة واضحة داخل حكيم، وعدم اعتبار فتح أداة خارجية نجاحًا، والتحقق من الأثر النهائي"
-        HakimExecutiveLoop.start(this, text, acceptance)
-        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "تحويل المقصد إلى خطة قابلة للتحقق")
+        val directed = HakimIntentDirector.build(this, text, attachments.size)
+        HakimExecutiveLoop.start(this, text, directed.acceptance)
+        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "صياغة أمر تنفيذي أعلى للمحرك وفق المقصد ومعيار الاكتمال")
         val decision = HakimModelToolRouter.decide(this, text, attachments)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
         refreshOperations()

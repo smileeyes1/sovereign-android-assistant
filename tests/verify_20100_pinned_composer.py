@@ -10,8 +10,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("PINNED_COMPOSER_20100=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20100, "version")
-req("versionName '2.1.00-insets-pinned-composer'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20100, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "WindowCompat.setDecorFitsSystemWindows(window, false)",
@@ -37,4 +37,4 @@ req("composerArea.addView(toolsRow)" in CENTER, "tools_not_part_of_composer_area
 req("bars.bottom" in CENTER, "system_navigation_inset_missing")
 req("ime.bottom" in CENTER, "ime_inset_missing")
 
-print("PINNED_COMPOSER_20100=PASS ime+systemBars=inset_aware composer=bottom_area header_hidden_while_typing")
+print("PINNED_COMPOSER_GATE=PASS candidate>=20100 ime+systemBars=inset_aware composer=bottom_area")

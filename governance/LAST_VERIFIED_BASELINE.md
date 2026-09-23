@@ -13,6 +13,9 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Version `20090` was installed later but was NOT PROMOTED after UX acceptance failed.
 - Exact source-to-APK correspondence for the field 20087/20090 build is NOT PROVEN from the currently connected public repository.
 - Modern public Android source used for this candidate starts from commit `d3ae6946b2d63e402a1b597dbc93ab5d58efa12f` on `feature/hakim-capability-kernel-v1` (source versionCode 20088).
+- Field evidence on 20091: Google Play Protect hard-blocked sideload installation while Accessibility/Notification Listener surfaces were declared.
+- Field evidence on 20092: the prior Play Protect hard block was removed, but Hakim exposed an impossible unknown-app-source/install permission prompt.
+- Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
 - Candidate versionCode: `20094`.

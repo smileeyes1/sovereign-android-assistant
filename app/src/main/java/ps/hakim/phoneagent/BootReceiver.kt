@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
         HakimGoalExecutor.tick(context)
         HakimSelfCheck.schedule(context)
         HakimConnectionResilience.install(context)
+        HakimNetworkGuardian.install(context)
         HakimSelfCheck.runAsync(context)
         HakimLocalPairing.reconnectAsync(context)
 

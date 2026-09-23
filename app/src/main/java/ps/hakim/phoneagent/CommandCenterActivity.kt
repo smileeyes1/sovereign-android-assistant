@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.view.Gravity
@@ -23,7 +22,6 @@ class CommandCenterActivity : Activity() {
 
     private lateinit var command: EditText
     private lateinit var status: TextView
-    private lateinit var updateStatus: TextView
     private lateinit var attachmentStatus: TextView
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
@@ -33,18 +31,11 @@ class CommandCenterActivity : Activity() {
         HakimLearning.initialize(this)
         buildUi()
         handleIntent(intent)
-        refreshUpdateStatus()
         refreshAttachmentStatus()
-        maybeOnboardAutoUpdate()
     }
 
     override fun onResume() {
         super.onResume()
-        refreshUpdateStatus()
-        if (AutoUpdater.canInstallPackages(this)) {
-            AutoUpdater.checkAsync(this)
-            updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -161,20 +152,6 @@ class CommandCenterActivity : Activity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         root.addView(tools)
-
-        updateStatus = TextView(this).apply {
-            textSize = 12f
-            gravity = Gravity.CENTER
-            visibility = View.GONE
-            setPadding(8, 6, 8, 2)
-        }
-        root.addView(updateStatus)
-
-        root.addView(actionButton("التفاصيل") {
-            val show = updateStatus.visibility != View.VISIBLE
-            updateStatus.visibility = if (show) View.VISIBLE else View.GONE
-            if (show) refreshUpdateStatus()
-        })
 
         setContentView(root)
     }
@@ -310,27 +287,6 @@ class CommandCenterActivity : Activity() {
         if (::attachmentStatus.isInitialized) {
             attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
         }
-    }
-
-    private fun maybeOnboardAutoUpdate() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || AutoUpdater.canInstallPackages(this)) return
-        val p = getSharedPreferences("hakim", MODE_PRIVATE)
-        val version = currentVersionCode()
-        if (p.getLong("auto_update_onboarding_version", -1L) == version) return
-        p.edit().putLong("auto_update_onboarding_version", version).apply()
-        updateStatus.text = "التحديث التلقائي يحتاج السماح من هذا المصدر مرة واحدة."
-    }
-
-    private fun refreshUpdateStatus() {
-        if (::updateStatus.isInitialized) updateStatus.text = AutoUpdater.statusSummary(this)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun currentVersionCode(): Long = try {
-        val info = packageManager.getPackageInfo(packageName, 0)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
-    } catch (_: Exception) {
-        0L
     }
 
     private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {

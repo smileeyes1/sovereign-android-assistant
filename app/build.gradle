@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20093
-        versionName '2.0.93-no-install-prompt'
+        versionCode 20094
+        versionName '2.0.94-local-first-routing'
     }
 
     compileOptions {

@@ -18,15 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20102`.
-- Branch: `feature/hakim-20102-gemini-direct`.
-- Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
-- 20101 intent-direction logic is inherited: each request gets an intent-specific completion contract and a compact governed instruction; private chain-of-thought is not exposed.
-- 20102 adds the first true DIRECT_MODEL path: official Gemini Interactions API streaming replies back into the Hakim conversation instead of opening a provider app.
-- The direct engine supports text plus bounded inline image/document/audio/video inputs, multi-turn continuity through `previous_interaction_id`, cancellation, and secure API-key storage via AndroidKeyStore.
-- Router policy now prefers a configured direct engine for compatible normal chat/attachments; provider apps/web remain degraded fallbacks only.
-- Product V1 FINAL promotion remains fail-closed. The direct engine has NOT yet been field-connected on the user's phone, and no 20102 signed APK has yet passed chat + multimodal field acceptance.
-- Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
+- Candidate versionCode: `20103`.
+- Branch: `feature/hakim-20103-openrouter-android-pkce`.
+- Field evidence from the user's Tecno POVA 7 showed the previous OpenRouter authorization redirecting to `http://127.0.0.1:46041/callback` inside Hakim WebView and failing with `ERR_CLEARTEXT_NOT_PERMITTED`. This was a desktop-style callback path used incorrectly on Android.
+- 20103 replaces that path with an Android-native local-first PKCE flow: Hakim binds an ephemeral loopback server on `127.0.0.1`, opens OpenRouter authorization in the system browser, validates `state` and S256 PKCE, exchanges the returned code over HTTPS, stores the resulting API key in AndroidKeyStore, and closes the loopback server.
+- The direct model is `openrouter/free` by default. It streams text back into Hakim, supports image input on the free router, and never silently falls back to a paid model.
+- OpenRouter is preferred before the optional Gemini direct engine when both are configured, because the user explicitly requires a zero-paid-default path.
+- Global cleartext traffic remains disabled; Hakim does not weaken Android network security to fix the OAuth bug.
+- Status starts as SOURCE/CI CANDIDATE ONLY. Product V1 remains NOT PROMOTED until the exact signed APK proves on the same phone: OAuth loopback success, direct free reply inside Hakim, at least one image reply inside Hakim, and bounded handling of quota/failure.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

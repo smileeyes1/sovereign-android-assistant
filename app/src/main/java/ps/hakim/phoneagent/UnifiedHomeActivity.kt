@@ -19,6 +19,7 @@ import android.widget.TextView
 class UnifiedHomeActivity : Activity() {
     private lateinit var adbStatus: TextView
     private lateinit var directModelStatus: TextView
+    private lateinit var localModelStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +70,53 @@ class UnifiedHomeActivity : Activity() {
         root.addView(button("إعادة الاتصال") {
             HakimLocalPairing.reconnectAsync(this)
             adbStatus.postDelayed({ refresh() }, 1200L)
+        })
+
+        localModelStatus = TextView(this).apply {
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setPadding(8, 18, 8, 8)
+        }
+        root.addView(localModelStatus)
+
+        root.addView(button("تنزيل الذكاء المحلي المجاني") {
+            val state = HakimLocalModelManager.state(this)
+            when (state) {
+                HakimLocalModelManager.State.READY -> {
+                    android.widget.Toast.makeText(this, "الذكاء المحلي جاهز بالفعل.", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                HakimLocalModelManager.State.DOWNLOADING -> {
+                    android.widget.Toast.makeText(this, "التنزيل جارٍ بالفعل.", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                else -> {
+                    HakimLocalModelManager.enqueueUnmeteredDownload(this)
+                    android.widget.Toast.makeText(
+                        this,
+                        "بدأ تنزيل النموذج عبر شبكة غير محدودة فقط. حجمه نحو ٢٫٦ غيغابايت.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    refresh()
+                }
+            }
+        })
+
+        root.addView(button("تحقق من النموذج المحلي") {
+            localModelStatus.text = "يتحقق حكيم من بصمة النموذج…"
+            Thread {
+                val ok = HakimLocalModelManager.verify(this)
+                runOnUiThread {
+                    localModelStatus.text = if (ok) {
+                        "✓ الذكاء المحلي المجاني: جاهز ومتحقق"
+                    } else {
+                        "فشل التحقق؛ لن يستخدم حكيم الملف."
+                    }
+                }
+            }.start()
+        })
+
+        root.addView(button("حذف النموذج المحلي") {
+            HakimLocalModelManager.delete(this)
+            refresh()
         })
 
         directModelStatus = TextView(this).apply {
@@ -207,6 +255,9 @@ class UnifiedHomeActivity : Activity() {
 
     private fun refresh() {
         if (::adbStatus.isInitialized) adbStatus.text = HakimLocalPairing.currentSummary(this)
+        if (::localModelStatus.isInitialized) {
+            localModelStatus.text = HakimLocalModelManager.statusArabic(this)
+        }
         if (::directModelStatus.isInitialized) {
             val configured = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
             val verified = getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)

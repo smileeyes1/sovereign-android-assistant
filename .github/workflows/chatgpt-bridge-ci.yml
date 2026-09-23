@@ -5,12 +5,16 @@ on:
     branches: [feature/chatgpt-account-native-bridge]
     paths:
       - "chatgpt-app/**"
+      - "plugins/hakim/**"
+      - ".agents/plugins/marketplace.json"
       - "Dockerfile"
       - "railway.toml"
       - ".github/workflows/chatgpt-bridge-ci.yml"
   pull_request:
     paths:
       - "chatgpt-app/**"
+      - "plugins/hakim/**"
+      - ".agents/plugins/marketplace.json"
       - "Dockerfile"
       - "railway.toml"
       - ".github/workflows/chatgpt-bridge-ci.yml"

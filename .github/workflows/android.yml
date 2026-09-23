@@ -46,6 +46,7 @@ jobs:
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_20100_pinned_composer.py
           python3 tests/verify_20101_intent_director.py
+          python3 tests/verify_product_v1_final_gate.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py

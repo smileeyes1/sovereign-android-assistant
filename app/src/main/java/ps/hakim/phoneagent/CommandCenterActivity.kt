@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
@@ -23,6 +24,8 @@ class CommandCenterActivity : Activity() {
     private lateinit var command: EditText
     private lateinit var status: TextView
     private lateinit var attachmentStatus: TextView
+    private lateinit var conversation: TextView
+    private lateinit var conversationScroll: ScrollView
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,6 +33,7 @@ class CommandCenterActivity : Activity() {
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
         buildUi()
+        loadConversation()
         handleIntent(intent)
         refreshAttachmentStatus()
     }
@@ -53,6 +57,7 @@ class CommandCenterActivity : Activity() {
                     command.setText(listOf(existing, heard).filter { it.isNotBlank() }.joinToString(" "))
                     command.setSelection(command.text.length)
                     status.text = "تم تحويل الصوت إلى نص."
+                    appendConversation("حكيم", "تم التقاط الصوت وتحويله إلى نص؛ يمكنك تعديله أو الضغط على «أنجز».")
                 }
             }
             return
@@ -66,8 +71,12 @@ class CommandCenterActivity : Activity() {
                 status.text = if (picked.isEmpty()) {
                     "لم يصل مرفق صالح."
                 } else {
-                    "أضيفت المرفقات محليًا؛ لن تُرسل إلا عبر المسار الذي يختاره حكيم."
+                    "أضيفت المرفقات محليًا."
                 }
+                appendConversation(
+                    "حكيم",
+                    if (picked.isEmpty()) "لم يصل مرفق صالح." else "أضيفت المرفقات محليًا ولن تُرسل إلا عند الحاجة للمهمة."
+                )
             }
             return
         }
@@ -79,31 +88,56 @@ class CommandCenterActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(28, 30, 28, 24)
+            setPadding(24, 24, 24, 18)
         }
 
         root.addView(TextView(this).apply {
             text = "حكيم"
             textSize = 28f
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 8)
+            setPadding(8, 4, 8, 4)
         })
 
         status = TextView(this).apply {
-            text = "جاهز لتحقيق مقصدك"
-            textSize = 15f
+            text = "جاهز"
+            textSize = 14f
             gravity = Gravity.CENTER
-            setPadding(8, 2, 8, 14)
+            setPadding(8, 0, 8, 8)
         }
         root.addView(status)
 
+        conversationScroll = ScrollView(this).apply {
+            isFillViewport = true
+        }
+        conversation = TextView(this).apply {
+            textSize = 18f
+            gravity = Gravity.TOP or Gravity.RIGHT
+            setPadding(16, 14, 16, 14)
+            minHeight = 160
+        }
+        conversationScroll.addView(
+            conversation,
+            ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT
+            )
+        )
+        root.addView(
+            conversationScroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
+
         command = EditText(this).apply {
-            hint = "ماذا تريد أن أنجز؟"
-            minLines = 3
-            maxLines = 8
+            hint = "اكتب رسالتك إلى حكيم"
+            minLines = 2
+            maxLines = 6
             textSize = 19f
             gravity = Gravity.TOP or Gravity.RIGHT
-            setPadding(18, 18, 18, 18)
+            setPadding(16, 14, 16, 14)
         }
         root.addView(
             command,
@@ -116,7 +150,7 @@ class CommandCenterActivity : Activity() {
         attachmentStatus = TextView(this).apply {
             textSize = 13f
             gravity = Gravity.RIGHT
-            setPadding(8, 6, 8, 4)
+            setPadding(8, 5, 8, 4)
         }
         root.addView(attachmentStatus)
 
@@ -162,13 +196,17 @@ class CommandCenterActivity : Activity() {
             return
         }
         capture(text, "best_route")
+        appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
         val decision = HakimModelToolRouter.decide(this, text, attachments)
-        status.text = "يجري تنفيذ مقصدك عبر أفضل مسار متاح."
+        status.text = "يجري التنفيذ"
 
         when (decision.channel) {
             HakimModelToolRouter.Channel.LOCAL_RESPONSE -> {
                 val reply = HakimModelToolRouter.localReply(text).orEmpty()
-                status.text = reply.ifBlank { "تم تنفيذ المقصد محليًا." }
+                val visibleReply = reply.ifBlank { "تم تنفيذ المقصد محليًا." }
+                appendConversation("حكيم", visibleReply)
+                status.text = "تم الرد داخل حكيم"
+                command.setText("")
                 recordRoute("local_response", true)
             }
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
@@ -192,7 +230,8 @@ class CommandCenterActivity : Activity() {
             )
             try {
                 startActivity(out)
-                status.text = "فُتحت القناة الخارجية. فتح التطبيق وحده ليس نجاحًا للمهمة."
+                appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن، لكن فتح التطبيق وحده لا يعني أن المهمة اكتملت.")
+                status.text = "بانتظار أثر القناة الخارجية"
                 return
             } catch (_: Exception) {
                 HakimModelToolRouter.recordOutcome(this, provider.id, false)
@@ -200,7 +239,8 @@ class CommandCenterActivity : Activity() {
             }
         }
 
-        status.text = "تعذرت القنوات المباشرة؛ يستخدم حكيم المشاركة الآمنة كمسار احتياطي."
+        appendConversation("حكيم", "تعذرت القنوات المباشرة؛ سأستخدم المشاركة الآمنة كمسار احتياطي.")
+        status.text = "مسار احتياطي"
         shareToAny(text)
     }
 
@@ -216,7 +256,8 @@ class CommandCenterActivity : Activity() {
             .putString("last_url", provider.webUrl)
             .apply()
         recordRoute("provider_web:" + provider.id, null)
-        status.text = "فُتحت القناة الرسمية المختارة، ولم يُعتمد النجاح قبل تحقق الأثر."
+        appendConversation("حكيم", "فتحت القناة الرسمية المختارة. لن أعتبر المهمة ناجحة قبل تحقق الأثر.")
+        status.text = "قناة خارجية"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -239,6 +280,8 @@ class CommandCenterActivity : Activity() {
         recordRoute("browser", null)
         val url = HakimModelToolRouter.browserTarget(raw)
         getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
+        appendConversation("حكيم", "فتحت المتصفح للمسار الذي يحتاج الويب.")
+        status.text = "المتصفح"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -291,6 +334,38 @@ class CommandCenterActivity : Activity() {
         if (::attachmentStatus.isInitialized) {
             attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
         }
+    }
+
+    private fun loadConversation() {
+        if (!::conversation.isInitialized) return
+        val saved = getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+            .getString("recent", "")
+            .orEmpty()
+        conversation.text = if (saved.isBlank()) {
+            "حكيم:\nجاهز. اكتب مقصدك وسأعرض الرد هنا بوضوح."
+        } else {
+            saved
+        }
+        scrollConversationToBottom()
+    }
+
+    private fun appendConversation(role: String, message: String) {
+        if (!::conversation.isInitialized || message.isBlank()) return
+        val current = conversation.text.toString().trim()
+        val entry = role + ":\n" + message.trim()
+        val next = if (current.isBlank()) entry else current + "\n\n" + entry
+        val kept = next.takeLast(12_000)
+        conversation.text = kept
+        getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+            .edit()
+            .putString("recent", kept)
+            .apply()
+        scrollConversationToBottom()
+    }
+
+    private fun scrollConversationToBottom() {
+        if (!::conversationScroll.isInitialized) return
+        conversationScroll.post { conversationScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {

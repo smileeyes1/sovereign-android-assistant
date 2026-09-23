@@ -4,12 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
-  createDeviceCredential,decodeBearer,encodeBearer,pairingUrl,randomSecret
+  createDeviceCredential,decodeBearer,encodeBearer,pairingUrl,randomSecret,normalizeRelayBaseUrl
 } from "./protocol.js";
 import {
-  FileCodeStore,isChatGPTClientId,isChatGPTRedirectUri,issueAccessToken,issueRefreshToken,
+  FileCodeStore,isAllowedOAuthClientId,isAllowedOAuthRedirectUri,issueAccessToken,issueRefreshToken,
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
-  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
+  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch,trustedOAuthHosts
 } from "./oauth.js";
 import { pollPairAck } from "./relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
@@ -27,6 +27,8 @@ app.use(express.urlencoded({extended:false,limit:"64kb"}));
 
 const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
 const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
+const relayBaseUrl=normalizeRelayBaseUrl(process.env.HAKIM_RELAY_BASE_URL);
+const trustedClientHosts=trustedOAuthHosts(process.env);
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 
@@ -43,8 +45,7 @@ function reviewAttemptAllowed(ip:string){
   return true;
 }
 function reviewModeEnabled(){
-  return process.env.HAKIM_PUBLIC_REVIEW_DEMO==="1" ||
-    (!!process.env.HAKIM_REVIEW_USER&&!!process.env.HAKIM_REVIEW_PASSWORD);
+  return !!process.env.HAKIM_REVIEW_USER&&!!process.env.HAKIM_REVIEW_PASSWORD;
 }
 
 function origin(req:express.Request){
@@ -104,7 +105,11 @@ app.get("/health",(_req,res)=>res.json({
   auth:"oauth-2.1-pkce-cimd",
   production_storage_required:true,
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
-  reviewer_demo:process.env.HAKIM_PUBLIC_REVIEW_DEMO==="1",
+  reviewer_demo:false,
+  relay_transport:"ntfy-compatible",
+  relay_host:new URL(relayBaseUrl).host,
+  oauth_trust:"explicit-host-allowlist",
+  trusted_oauth_host_count:trustedClientHosts.size,
   public_tools:process.env.HAKIM_PUBLIC_SAFE!=="0"
     ?["get_device_status","open_target","navigate_device","get_request_result"]
     :undefined
@@ -142,12 +147,12 @@ app.get("/oauth/authorize",(req,res)=>{
     const method=one(req.query.code_challenge_method);
     const resource=one(req.query.resource);
     const base=origin(req);
-    if(!isChatGPTClientId(clientId)) return oauthError(res,400,"invalid_client","Only ChatGPT CIMD clients are accepted.");
-    if(!isChatGPTRedirectUri(redirectUri)) return oauthError(res,400,"invalid_request","Invalid ChatGPT redirect URI.");
+    if(!isAllowedOAuthClientId(process.env,clientId)) return oauthError(res,400,"invalid_client","OAuth client host is not trusted.");
+    if(!isAllowedOAuthRedirectUri(process.env,redirectUri)) return oauthError(res,400,"invalid_request","OAuth redirect host is not trusted.");
     if(method!=="S256"||!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)) return oauthError(res,400,"invalid_request","PKCE S256 is required.");
     if(resource!==base) return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
     const scopes=normalizeScopes(one(req.query.scope)||undefined);
-    const credential=createDeviceCredential();
+    const credential=createDeviceCredential(relayBaseUrl);
     const context=makeAuthorizeContext(oauthSecret,{
       credential,clientId,redirectUri,state,codeChallenge,resource,scopes
     });
@@ -266,7 +271,7 @@ app.post("/oauth/token",async(req,res)=>{
 
 app.get("/pair",(_req,res)=>{
   if(process.env.HAKIM_ALLOW_DEV_BEARER!=="1") return res.status(404).end();
-  const c=createDeviceCredential();
+  const c=createDeviceCredential(relayBaseUrl);
   const link=pairingUrl(c);
   const bearer=encodeBearer(c);
   noStore(res);

@@ -132,6 +132,21 @@ object HakimExecutiveLoop {
             .edit().putBoolean("active", false).putLong("cancelled_at", System.currentTimeMillis()).apply()
     }
 
+    fun latestOperationText(context: Context): String {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
+        if (events.length() == 0) return "جاهز"
+        val e = events.optJSONObject(events.length() - 1) ?: return "جاهز"
+        val phase = e.optString("phase")
+        val mark = when (phase) {
+            Phase.COMPLETE.name -> "✓"
+            Phase.GATED.name, Phase.CANCELLED.name -> "■"
+            Phase.WAITING_EXTERNAL.name -> "…"
+            else -> "•"
+        }
+        return mark + " " + label(phase) + " — " + e.optString("detail")
+    }
+
     fun operationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }

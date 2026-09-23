@@ -18,6 +18,7 @@ import android.widget.Toast
 import android.text.TextUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowCompat
 
 class CommandCenterActivity : Activity() {
     companion object {
@@ -31,12 +32,16 @@ class CommandCenterActivity : Activity() {
     private lateinit var conversation: TextView
     private lateinit var conversationScroll: ScrollView
     private lateinit var operations: TextView
+    private lateinit var titleView: TextView
+    private lateinit var composerArea: LinearLayout
+    private lateinit var executeRow: LinearLayout
     private lateinit var toolsRow: LinearLayout
     private var operationsExpanded = false
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
@@ -101,12 +106,13 @@ class CommandCenterActivity : Activity() {
             clipToPadding = false
         }
 
-        root.addView(TextView(this).apply {
+        titleView = TextView(this).apply {
             text = "حكيم"
             textSize = 28f
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 4)
-        })
+        }
+        root.addView(titleView)
 
         status = TextView(this).apply {
             text = "جاهز"
@@ -138,7 +144,6 @@ class CommandCenterActivity : Activity() {
             textSize = 18f
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
-            minHeight = 160
         }
         conversationScroll.addView(conversation)
         root.addView(
@@ -149,6 +154,13 @@ class CommandCenterActivity : Activity() {
                 1f
             )
         )
+
+        composerArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, 0, 0, 0)
+        }
 
         command = EditText(this).apply {
             hint = "اكتب رسالتك إلى حكيم"
@@ -162,12 +174,12 @@ class CommandCenterActivity : Activity() {
                     v.post {
                         val rect = android.graphics.Rect()
                         v.getDrawingRect(rect)
-                        v.requestRectangleOnScreen(rect, false)
+                        v.requestRectangleOnScreen(rect, true)
                     }
                 }
             }
         }
-        root.addView(
+        composerArea.addView(
             command,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -180,9 +192,9 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.RIGHT
             setPadding(8, 5, 8, 4)
         }
-        root.addView(attachmentStatus)
+        composerArea.addView(attachmentStatus)
 
-        val executeRow = LinearLayout(this).apply {
+        executeRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
@@ -199,7 +211,7 @@ class CommandCenterActivity : Activity() {
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        root.addView(executeRow)
+        composerArea.addView(executeRow)
 
         toolsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -228,16 +240,46 @@ class CommandCenterActivity : Activity() {
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        root.addView(toolsRow)
+        composerArea.addView(toolsRow)
+
+        root.addView(
+            composerArea,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         setContentView(root)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val safeBottom = maxOf(bars.bottom, if (imeVisible) ime.bottom else 0)
+
+            root.setPadding(
+                24 + bars.left,
+                12 + bars.top,
+                24 + bars.right,
+                0
+            )
+            composerArea.setPadding(0, 0, 0, safeBottom)
+
+            titleView.visibility = if (imeVisible) View.GONE else View.VISIBLE
+            status.visibility = if (imeVisible) View.GONE else View.VISIBLE
             toolsRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
+
             if (imeVisible && operationsExpanded) {
                 operationsExpanded = false
                 refreshOperations()
+            }
+            if (imeVisible) {
+                command.post {
+                    val rect = android.graphics.Rect()
+                    command.getDrawingRect(rect)
+                    command.requestRectangleOnScreen(rect, true)
+                }
             }
             insets
         }

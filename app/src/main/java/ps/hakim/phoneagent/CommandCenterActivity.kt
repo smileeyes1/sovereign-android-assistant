@@ -15,6 +15,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.text.TextUtils
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class CommandCenterActivity : Activity() {
     companion object {
@@ -28,6 +31,8 @@ class CommandCenterActivity : Activity() {
     private lateinit var conversation: TextView
     private lateinit var conversationScroll: ScrollView
     private lateinit var operations: TextView
+    private lateinit var toolsRow: LinearLayout
+    private var operationsExpanded = false
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,6 +98,7 @@ class CommandCenterActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(24, 24, 24, 18)
+            clipToPadding = false
         }
 
         root.addView(TextView(this).apply {
@@ -111,10 +117,17 @@ class CommandCenterActivity : Activity() {
         root.addView(status)
 
         operations = TextView(this).apply {
-            text = "لا توجد عملية جارية"
+            text = "جاهز"
             textSize = 13f
             gravity = Gravity.RIGHT
-            setPadding(12, 8, 12, 8)
+            setPadding(12, 6, 12, 6)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            contentDescription = "حالة التنفيذ؛ اضغط لعرض أو إخفاء التفاصيل"
+            setOnClickListener {
+                operationsExpanded = !operationsExpanded
+                refreshOperations()
+            }
         }
         root.addView(operations)
 
@@ -139,8 +152,8 @@ class CommandCenterActivity : Activity() {
 
         command = EditText(this).apply {
             hint = "اكتب رسالتك إلى حكيم"
-            minLines = 2
-            maxLines = 6
+            minLines = 1
+            maxLines = 4
             textSize = 19f
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
@@ -188,36 +201,47 @@ class CommandCenterActivity : Activity() {
         )
         root.addView(executeRow)
 
-        val tools = LinearLayout(this).apply {
+        toolsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        tools.addView(
+        toolsRow.addView(
             actionButton("إرفاق") {
                 startActivityForResult(HakimAttachmentGateway.pickerIntent(), ATTACHMENT_PICKER_REQUEST)
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        tools.addView(
+        toolsRow.addView(
             actionButton("صوت") { startSpeechInput() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        tools.addView(
+        toolsRow.addView(
             actionButton("المتصفح") {
                 openInHakim(command.text.toString().trim())
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        tools.addView(
+        toolsRow.addView(
             actionButton("إدارة") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        root.addView(tools)
+        root.addView(toolsRow)
 
         setContentView(root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            toolsRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
+            if (imeVisible && operationsExpanded) {
+                operationsExpanded = false
+                refreshOperations()
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     private fun executeBestRoute(text: String) {
@@ -385,13 +409,26 @@ class CommandCenterActivity : Activity() {
 
     private fun refreshAttachmentStatus() {
         if (::attachmentStatus.isInitialized) {
-            attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
+            if (attachments.isEmpty()) {
+                attachmentStatus.text = ""
+                attachmentStatus.visibility = View.GONE
+            } else {
+                attachmentStatus.visibility = View.VISIBLE
+                attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
+            }
         }
     }
 
     private fun refreshOperations() {
-        if (::operations.isInitialized) {
+        if (!::operations.isInitialized) return
+        if (operationsExpanded) {
+            operations.maxLines = 7
+            operations.ellipsize = null
             operations.text = HakimExecutiveLoop.operationText(this)
+        } else {
+            operations.maxLines = 1
+            operations.ellipsize = TextUtils.TruncateAt.END
+            operations.text = HakimExecutiveLoop.latestOperationText(this)
         }
     }
 

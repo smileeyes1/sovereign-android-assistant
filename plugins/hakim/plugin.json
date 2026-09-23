@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hakim",
+  "version": "0.1.0",
+  "description": "Use ChatGPT as the conversational brain and Hakim as a permission-gated Android execution arm.",
+  "author": {
+    "name": "Hakim Project",
+    "url": "https://github.com/smileeyes1/sovereign-android-assistant"
+  },
+  "homepage": "https://hakim-chatgpt-bridge-production.up.railway.app",
+  "repository": "https://github.com/smileeyes1/sovereign-android-assistant",
+  "license": "MIT",
+  "keywords": ["android", "automation", "assistant", "mcp", "productivity"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hakim",
+        "shortDescription": "Connect ChatGPT to your Hakim Android device.",
+        "longDescription": "Hakim lets ChatGPT inspect an authorized Android device and request carefully permission-gated actions. Read operations include device status, UI state, authorized notifications, and screenshots. State-changing actions remain subject to Hakim and Android approval gates.",
+        "developerName": "Hakim Project",
+        "category": "Productivity",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://hakim-chatgpt-bridge-production.up.railway.app",
+        "privacyPolicyURL": "https://hakim-chatgpt-bridge-production.up.railway.app/privacy",
+        "termsOfServiceURL": "https://hakim-chatgpt-bridge-production.up.railway.app/terms",
+        "defaultPrompt": [
+          "Use Hakim to check the current state of my authorized Android device.",
+          "Use Hakim to inspect what is currently visible on my authorized Android device.",
+          "Use Hakim to open an app on my authorized Android device, asking for approval when required."
+        ],
+        "brandColor": "#111111"
+      }
+    }
+  }
+}

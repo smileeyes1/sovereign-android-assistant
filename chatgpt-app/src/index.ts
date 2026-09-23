@@ -9,7 +9,7 @@ import {
 import {
   FileCodeStore,isChatGPTClientId,isChatGPTRedirectUri,issueAccessToken,issueRefreshToken,
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
-  pkceS256,requireProductionOAuthConfig
+  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
 import { pollPairAck } from "./relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
@@ -137,7 +137,7 @@ app.get("/oauth/authorize",(req,res)=>{
 <p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
-${process.env.HAKIM_REVIEW_CODE?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>رمز المراجعة <input name="review_code" type="password" autocomplete="off"></label> <button type="submit">دخول مراجعة آمن</button></form></details>`:""}
+${process.env.HAKIM_REVIEW_USER&&process.env.HAKIM_REVIEW_PASSWORD?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
 </html>`);
   }catch(e){
@@ -148,11 +148,11 @@ ${process.env.HAKIM_REVIEW_CODE?`<details class="box"><summary>وصول المر
 app.post("/oauth/authorize",async(req,res)=>{
   try{
     const context=openAuthorizeContext(oauthSecret,one(req.body.context));
-    const submittedReviewCode=one(req.body.review_code);
-    const configuredReviewCode=process.env.HAKIM_REVIEW_CODE??"";
-    const reviewRequested=submittedReviewCode.length>0;
+    const reviewUser=one(req.body.review_user);
+    const reviewPassword=one(req.body.review_password);
+    const reviewRequested=reviewUser.length>0||reviewPassword.length>0;
     if(reviewRequested){
-      if(configuredReviewCode.length<24||submittedReviewCode!==configuredReviewCode){
+      if(!reviewCredentialsMatch(process.env,reviewUser,reviewPassword)){
         return oauthError(res,403,"access_denied","Invalid reviewer credential.");
       }
       context.credential.topic="hakim_review_"+randomSecret(18);

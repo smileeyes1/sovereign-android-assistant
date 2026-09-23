@@ -31,6 +31,9 @@ req(state["human_biology"]["autonomous_clinical_action"] is False, "clinical_aut
 req(state["human_biology"]["direct_intervention_requires_qualified_gate"] is True, "clinical_gate")
 req(promotion.get("candidate_version") == candidate, "promotion_state_version")
 req(promotion.get("promoted") is False, "promotion_state_must_be_false")
-req(state["android"]["candidate"]["source_ci_state"] in {"PENDING_CURRENT_HEAD_CI", "SOURCE_CI_VERIFIED"}, "candidate_ci_state")
+req(state["android"]["candidate"]["source_ci_state"] in {"PENDING_CURRENT_HEAD_CI", "SOURCE_CI_VERIFIED", "SOURCE_CI_VERIFIED_FOR_CODE_PARENT"}, "candidate_ci_state")
+if state["android"]["candidate"]["source_ci_state"] == "SOURCE_CI_VERIFIED_FOR_CODE_PARENT":
+    req(state["android"]["candidate"].get("source_ci_verified_code_commit") == "22bf46b2878a415155074274fc5346ff9a9e19c0", "verified_code_commit")
+    req(state["android"]["candidate"].get("source_ci_run_number") == 909, "verified_code_run")
 
 print("ACTIVE_STATE_GATE=PASS")

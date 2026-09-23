@@ -17,7 +17,8 @@ function authError(scope:string,metadataUrl:string){
 }
 
 const READ_ANNOTATIONS={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
-const WRITE_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
+const LAUNCH_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:false};
+const ACTION_ANNOTATIONS={readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:false};
 const readSecurity=[{type:"oauth2",scopes:["hakim.read"]}];
 const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
@@ -48,7 +49,7 @@ export function chatgptToolList(){
         properties:{package:{type:"string"},url:{type:"string",format:"uri"}},
         additionalProperties:false
       },
-      annotations:WRITE_ANNOTATIONS,
+      annotations:LAUNCH_ANNOTATIONS,
       securitySchemes:writeSecurity,
       _meta:{securitySchemes:writeSecurity}
     },
@@ -62,7 +63,7 @@ export function chatgptToolList(){
         required:["kind"],
         additionalProperties:false
       },
-      annotations:WRITE_ANNOTATIONS,
+      annotations:ACTION_ANNOTATIONS,
       securitySchemes:writeSecurity,
       _meta:{securitySchemes:writeSecurity}
     },
@@ -115,7 +116,7 @@ export function createHakimServer(
     title:"فتح تطبيق أو رابط على جهاز حكيم",
     description:"استخدم هذه الأداة عندما يطلب المستخدم فتح تطبيق أو رابط على جهازه. هذا تغيير مرئي للحالة ويتطلب موافقة أندرويد حسب سياسة حكيم.",
     inputSchema:{package:z.string().optional(),url:z.string().url().optional()},
-    annotations:WRITE_ANNOTATIONS
+    annotations:LAUNCH_ANNOTATIONS
   },async({package:pkg,url})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
     if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),note:"No real device action occurs in reviewer mode."});
@@ -127,7 +128,7 @@ export function createHakimServer(
     title:"تنفيذ فعل واجهة مأذون على جهاز حكيم",
     description:"استخدم هذه الأداة عندما يطلب المستخدم فعل واجهة محدودًا على جهازه. لا يوجد shell أو root، ويتطلب التنفيذ موافقة أندرويد.",
     inputSchema:{kind:z.string().min(1).max(64),args:z.record(z.string(),z.unknown()).optional()},
-    annotations:WRITE_ANNOTATIONS
+    annotations:ACTION_ANNOTATIONS
   },async({kind,args})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
     if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),note:"No real device action occurs in reviewer mode."});

@@ -9,14 +9,15 @@ const pairing=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneag
 const accessibility=fs.readFileSync(path.join(root,"app/src/main/java/ps/hakim/phoneagent/HakimAccessibilityService.kt"),"utf8");
 const server=fs.readFileSync(path.join(root,"chatgpt-app/src/server.ts"),"utf8");
 
-test("Android and bridge share the v2 encrypted result contract",()=>{
+test("Android and bridge share encrypted portable relay contract",()=>{
   assert.match(relay,/KEY_RESULT_TOPIC = "relay_result_topic"/);
+  assert.match(relay,/KEY_RELAY_BASE_URL = "relay_base_url"/);
   assert.match(relay,/RESULT_PREFIX = "HR1\."/);
   assert.match(relay,/RESULT_AAD = "HAKIM-RESULT-v1"/);
-  assert.match(relay,/https:\/\/ntfy\.sh\/\$resultTopic/);
   assert.match(pairing,/getQueryParameter\("relay_result_topic"\)/);
+  assert.match(pairing,/getQueryParameter\("relay_base_url"\)/);
+  assert.equal(relay.includes('URL("https://ntfy.sh/'),false);
   assert.equal(relay.includes("KEY_RESULT_URL"),false);
-  assert.equal(relay.includes("result_url"),false);
   assert.equal(pairing.includes("result_url"),false);
 });
 

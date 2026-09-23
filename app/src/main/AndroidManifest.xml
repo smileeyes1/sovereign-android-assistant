@@ -22,6 +22,9 @@
 
     <queries>
         <package android:name="com.openai.chatgpt" />
+        <package android:name="com.google.android.apps.bard" />
+        <package android:name="com.anthropic.claude" />
+        <package android:name="com.deepseek.chat" />
     </queries>
 
     <application

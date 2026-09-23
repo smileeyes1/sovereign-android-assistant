@@ -12,6 +12,10 @@ object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
         val out = mutableListOf<HakimInferenceEngine>()
 
+        if (HakimLocalModelManager.state(context) == HakimLocalModelManager.State.READY) {
+            out += LiteRtLocalEngine(context)
+        }
+
         if (HakimSecretStore.has(context, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)) {
             out += OpenRouterFreeEngine(context)
         }

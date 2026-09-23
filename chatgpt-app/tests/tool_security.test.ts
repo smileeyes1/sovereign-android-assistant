@@ -31,7 +31,7 @@ test("ChatGPT raw tools/list catalog exposes root OAuth security schemes",()=>{
     assert.deepEqual(t.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
     assert.deepEqual(t._meta?.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
     assert.equal(t.annotations?.readOnlyHint,false);
-    assert.equal(t.annotations?.openWorldHint,false);
+    assert.equal(t.annotations?.openWorldHint,true);
   }
   assert.equal(byName.get("open_target")?.annotations?.destructiveHint,false);
   assert.equal(byName.get("perform_ui_action")?.annotations?.destructiveHint,true);
@@ -59,6 +59,11 @@ test("review mode is isolated from real device transport",async()=>{
     const launch=await client.callTool({name:"open_target",arguments:{package:"com.example.safe"}});
     assert.equal((launch.structuredContent as any)?.demo,true);
     assert.equal((launch.structuredContent as any)?.status,"approval_requested");
+
+    const action=await client.callTool({name:"perform_ui_action",arguments:{kind:"tap",args:{x:120,y:240}}});
+    assert.equal((action.structuredContent as any)?.demo,true);
+    assert.equal((action.structuredContent as any)?.status,"approval_requested");
+    assert.equal((action.structuredContent as any)?.validated_action,"tap");
   }finally{
     await client.close();
     await server.close();

@@ -37,7 +37,9 @@
           "Inspect what is currently visible on my authorized Android device.",
           "Open an app on my authorized Android device, asking for approval when required."
         ],
-        "brandColor": "#111111"
+        "brandColor": "#111111",
+        "logo": "./assets/hakim-mark.svg",
+        "composerIcon": "./assets/hakim-mark.svg"
       }
     }
   }

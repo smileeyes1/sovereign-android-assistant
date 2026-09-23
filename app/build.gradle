@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20102
-        versionName '2.1.02-gemini-direct'
+        versionCode 20103
+        versionName '2.1.03-openrouter-android-pkce'
     }
 
     compileOptions {

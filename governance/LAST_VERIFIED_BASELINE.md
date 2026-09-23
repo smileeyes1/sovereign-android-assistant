@@ -37,4 +37,5 @@ A newer component inherits no success automatically. Promote only after the test
 - 20109 integrates the material factory contract and a whole-human biology domain while preserving the 20108 network-guardian lineage.
 - Human-biology scope is education, wellness, non-invasive monitoring and evidence-bounded decision support by default. It does not grant autonomous diagnosis, treatment, stimulation, implantation, dosing, surgery, or genome intervention.
 - Material state cannot be promoted to MATERIAL_VERIFIED without fabrication evidence, measurement, acceptance, and same-artifact proof.
-- 20109 remains NOT PROMOTED until its own current-head CI succeeds and the same correctly signed APK passes field acceptance.
+- Source/CI evidence for the integrated 20109 code parent: commit `22bf46b2878a415155074274fc5346ff9a9e19c0`, GitHub Actions run #909 = SUCCESS.
+- 20109 remains NOT PROMOTED until the same correctly signed APK passes field acceptance.

@@ -166,6 +166,11 @@ class CommandCenterActivity : Activity() {
         status.text = "يجري تنفيذ مقصدك عبر أفضل مسار متاح."
 
         when (decision.channel) {
+            HakimModelToolRouter.Channel.LOCAL_RESPONSE -> {
+                val reply = HakimModelToolRouter.localReply(text).orEmpty()
+                status.text = reply.ifBlank { "تم تنفيذ المقصد محليًا." }
+                recordRoute("local_response", true)
+            }
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
             HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
             HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
@@ -187,8 +192,7 @@ class CommandCenterActivity : Activity() {
             )
             try {
                 startActivity(out)
-                HakimModelToolRouter.recordOutcome(this, provider.id, true)
-                status.text = "تم تسليم المهمة إلى القناة المختارة؛ لم يُعتمد النجاح بعد."
+                status.text = "فُتحت القناة الخارجية. فتح التطبيق وحده ليس نجاحًا للمهمة."
                 return
             } catch (_: Exception) {
                 HakimModelToolRouter.recordOutcome(this, provider.id, false)

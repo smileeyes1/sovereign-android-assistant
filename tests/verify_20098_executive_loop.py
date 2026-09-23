@@ -6,6 +6,7 @@ BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 CENTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 LOOP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimExecutiveLoop.kt").read_text(encoding="utf-8")
 ROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimModelToolRouter.kt").read_text(encoding="utf-8")
+DIRECTOR = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimIntentDirector.kt").read_text(encoding="utf-8")
 
 def req(cond: bool, reason: str):
     if not cond:
@@ -26,7 +27,6 @@ for needed in [
     "WAITING_EXTERNAL",
     "COMPLETE",
     "fun providerInstruction",
-    "لا تعرض سلسلة التفكير",
     "advanceCycle",
 ]:
     req(needed in LOOP, "loop:" + needed)
@@ -43,6 +43,7 @@ for needed in [
     req(needed in CENTER, "ui:" + needed)
 
 req("HakimExecutiveLoop.providerInstruction(context, prompt)" in ROUTER, "router_not_using_executive_instruction")
+req("لا تعرض سلسلة التفكير" in (LOOP + DIRECTOR), "private_reasoning_guard_missing")
 req("HakimIntentEngine.governedPrompt(context, prompt)" not in ROUTER, "legacy_full_prompt_provider_path")
 req("HakimIntentEngine.governedPrompt(this, text)" not in CENTER, "legacy_full_prompt_ui_handoff")
 req("recordOutcome(this, provider.id, true)" not in CENTER, "provider_launch_still_success")

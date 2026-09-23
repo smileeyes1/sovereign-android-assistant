@@ -18,13 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20095`.
-- Branch: `feature/hakim-20095-android-native-only`.
-- Field evidence on 20094: Local-First greeting passed on the actual phone; «مرحبا» stayed inside Hakim.
-- New field evidence: the private ChatGPT plugin page on Android is marked «Desktop only». OpenAI's current documentation confirms imported plugins declaring MCP servers are desktop-only, and custom MCP apps are not available on mobile.
-- Therefore Android must not depend on the ChatGPT MCP plugin. The mobile path is: local deterministic handling -> Android provider app / system share -> provider web/browser fallback -> optional official direct API only when separately configured and authorized.
-- 20095 makes that boundary explicit in the UI and disambiguates Hakim bridge pairing from ChatGPT plugin setup. It does not remove the desktop plugin; it stops treating it as an Android dependency.
-- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes in-place update and field acceptance.
+- Candidate versionCode: `20096`.
+- Branch: `feature/hakim-20096-visible-conversation`.
+- Field evidence on 20094/20095 proved the Local-First route works: «مرحبا» no longer opens ChatGPT.
+- New user-eye evidence on the actual phone showed the local reply was technically written into the small status/header line, so the user reasonably perceived that Hakim did not answer.
+- 20096 fixes the presentation contract, not the routing contract: each submitted user message and Hakim reply are rendered in a dedicated scrollable conversation transcript, persisted locally, and automatically scrolled to the newest reply.
+- The status line is now only execution state; it is never the sole place for a conversational answer.
+- All Android-native / Play Protect-safe / no-install-prompt / Local-First protections remain inherited and must pass again in CI.
+- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes in-place update and the reply is visibly accepted by the user.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

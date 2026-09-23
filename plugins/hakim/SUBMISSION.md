@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, and check whether a prior request completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
+- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -31,12 +31,12 @@
 ### P2 — Open an application
 **Prompt:** Use Hakim to open Chrome on my authorized Android device.  
 **Expected behavior:** Use `open_target` with package `com.android.chrome`; preserve the device approval gate.  
-**Expected result:** `approval_requested` plus a request identifier. Reviewer mode performs no real device action.
+**Expected result:** `approval_requested` plus a operation token. Reviewer mode performs no real device action.
 
 ### P3 — Open an HTTPS link
 **Prompt:** Use Hakim to open https://example.com on my authorized Android device.  
 **Expected behavior:** Use `open_target` with the HTTPS URL and preserve the device approval gate.  
-**Expected result:** `approval_requested` plus a request identifier; non-HTTP(S) schemes are not accepted.
+**Expected result:** `approval_requested` plus a operation token; non-HTTP(S) schemes are not accepted.
 
 ### P4 — Safe navigation
 **Prompt:** Use Hakim to go back one screen on my authorized Android device.  
@@ -44,9 +44,9 @@
 **Expected result:** `approval_requested`; public navigation is limited to home/back/recents.
 
 ### P5 — Check an existing request
-**Prompt:** Use Hakim to check whether request `review-12345678` completed.  
+**Prompt:** Use Hakim to check whether operation `review-12345678` completed.  
 **Expected behavior:** Use `get_request_result` without replaying the original request.  
-**Expected result:** A redacted completion state containing request id/status only; no raw device content.
+**Expected result:** A redacted completion state containing operation status only; no raw device content.
 
 ## Negative review cases
 
@@ -68,16 +68,16 @@
 ## Reviewer fixture
 
 A dedicated synthetic reviewer fixture is supported in production:
-- **Username:** `openai-reviewer`
-- **Password:** `Hakim-Review-Demo-Only-2026`
+- reviewer username and password are stored only as Railway environment variables `HAKIM_REVIEW_USER` and `HAKIM_REVIEW_PASSWORD`;
+- live reviewer credentials are entered only in the OpenAI submission portal and are never committed to GitHub;
 - no MFA, SMS, email confirmation, or private-network access is required;
 - the credential is intentionally limited to a synthetic demo fixture and cannot access a real device;
 - status returns clearly labeled demo + redacted data;
-- opening or navigation returns `approval_requested` but performs no external action;
+- opening or navigation returns `approval_requested` plus an opaque `operation_token`, but performs no external action;
 - reviewer login is rate-limited;
-- the fixture is enabled only when `HAKIM_PUBLIC_REVIEW_DEMO=1`.
+- removing either reviewer environment variable disables reviewer login.
 
-These credentials are reviewer/demo credentials, not user credentials and not a path to real device data.
+These credentials are reviewer-only credentials, not user credentials and not a path to real device data.
 
 ## Domain verification
 
@@ -93,13 +93,35 @@ Do not commit the token to GitHub.
 
 ## Public safety profile
 
-Production submission uses `HAKIM_PUBLIC_SAFE=1` and `HAKIM_PUBLIC_REVIEW_DEMO=1`. The public catalog must contain exactly:
+Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabled only during review through Railway environment variables. The public catalog must contain exactly:
 - `get_device_status`
 - `open_target`
 - `navigate_device`
 - `get_request_result`
 
 Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
+
+## Tool annotation justifications
+
+### get_device_status
+- `readOnlyHint=true`: retrieves only a minimal connection/status summary and changes no device or server state.
+- `openWorldHint=false`: accesses only the single bounded device paired to the authenticated Hakim credential.
+- `destructiveHint=false`: performs no write, deletion, send, or irreversible action.
+
+### open_target
+- `readOnlyHint=false`: requests a visible state change on the paired Android device.
+- `openWorldHint=true`: when given an HTTP/HTTPS URL it may open an external public internet destination.
+- `destructiveHint=false`: opening an app or link does not itself delete, send, purchase, or commit a transaction; Android approval remains required.
+
+### navigate_device
+- `readOnlyHint=false`: requests Home, Back, or Recents navigation and therefore changes visible device state.
+- `openWorldHint=false`: the operation is confined to the paired Android device.
+- `destructiveHint=false`: Home/Back/Recents are reversible and do not delete or overwrite user data; Android approval remains required.
+
+### get_request_result
+- `readOnlyHint=true`: reads completion state for an existing operation without replaying it.
+- `openWorldHint=false`: reads only bounded paired-device operation state.
+- `destructiveHint=false`: causes no new device action or mutation.
 
 ## Content security policy
 

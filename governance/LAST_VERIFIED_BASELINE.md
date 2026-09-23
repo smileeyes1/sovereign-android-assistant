@@ -18,14 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20102`.
-- Branch: `feature/hakim-20102-gemini-direct`.
-- Field evidence on 20100 remains the latest proven Android layout success: composer + «أنجز/إلغاء» stayed visible above IME/system navigation on the real phone.
-- 20101 intent-direction logic is inherited: each request gets an intent-specific completion contract and a compact governed instruction; private chain-of-thought is not exposed.
-- 20102 adds the first true DIRECT_MODEL path: official Gemini Interactions API streaming replies back into the Hakim conversation instead of opening a provider app.
-- The direct engine supports text plus bounded inline image/document/audio/video inputs, multi-turn continuity through `previous_interaction_id`, cancellation, and secure API-key storage via AndroidKeyStore.
-- Router policy now prefers a configured direct engine for compatible normal chat/attachments; provider apps/web remain degraded fallbacks only.
-- Product V1 FINAL promotion remains fail-closed. The direct engine has NOT yet been field-connected on the user's phone, and no 20102 signed APK has yet passed chat + multimodal field acceptance.
+- Candidate versionCode: `20103`.
+- Branch: `feature/hakim-20103-quranic-wisdom-governance`.
+- 20102 remains the first source/CI-proven DIRECT_MODEL candidate; its direct-model path is inherited, but it is still NOT FIELD VERIFIED / NOT PROMOTED.
+- 20103 adds an explicit Quran/Sunnah values constitution and runtime instruction. It treats revelation as guidance for goals, values and boundaries, while technical means remain governed by evidence and testing.
+- Names and attributes of Allah are not modeled as software powers. Their meanings are used only to reinforce human duties such as wisdom, truthfulness, mercy, trust, justice, preservation and accountability.
+- Letters, abjad/numerology, awfaq and supposed hidden-letter powers are explicitly barred from acting as technical mechanisms, prediction, encryption, healing, routing or claims of improved model accuracy.
+- A fail-closed Wisdom Matrix now separates hard gates (support, authorization, direct return, official channel) from weighted utility dimensions (quality, reliability, privacy, cost efficiency, latency, reversibility and field verification).
+- Existing religious-integrity rules remain in force: Quran text/source integrity, hadith attribution checks, separation of revelation from interpretation, and no claim of divine technical causation.
 - Status: SOURCE/CI CANDIDATE; NOT FIELD VERIFIED / NOT PROMOTED.
 
 ## Promotion rule

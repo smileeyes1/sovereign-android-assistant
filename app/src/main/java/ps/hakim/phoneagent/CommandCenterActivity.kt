@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -17,6 +18,7 @@ import android.widget.Toast
 class CommandCenterActivity : Activity() {
     companion object {
         private const val ATTACHMENT_PICKER_REQUEST = 7301
+        private const val SPEECH_REQUEST = 7302
     }
 
     private lateinit var command: EditText
@@ -52,6 +54,18 @@ class CommandCenterActivity : Activity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == SPEECH_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
+                if (heard.isNotBlank()) {
+                    val existing = command.text.toString().trim()
+                    command.setText(listOf(existing, heard).filter { it.isNotBlank() }.joinToString(" "))
+                    command.setSelection(command.text.length)
+                    status.text = "تم تحويل الصوت إلى نص."
+                }
+            }
+            return
+        }
         if (requestCode == ATTACHMENT_PICKER_REQUEST) {
             if (resultCode == RESULT_OK) {
                 val picked = HakimAttachmentGateway.fromResult(this, data)
@@ -162,17 +176,38 @@ class CommandCenterActivity : Activity() {
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
+        utilityRow.addView(
+            actionButton("صوت") {
+                startSpeechInput()
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
         root.addView(utilityRow)
 
-        root.addView(actionButton("فحص التحديث") {
-            if (!AutoUpdater.canInstallPackages(this)) {
-                AutoUpdater.openInstallPermissionSettings(this)
-            } else {
-                AutoUpdater.checkAsync(this)
-                toast("يجري فحص التحديث")
-                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-            }
-        })
+        val managementRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        managementRow.addView(
+            actionButton("إدارة الجهاز") {
+                startActivity(Intent(this, UnifiedHomeActivity::class.java))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        managementRow.addView(
+            actionButton("فحص التحديث") {
+                if (!AutoUpdater.canInstallPackages(this)) {
+                    AutoUpdater.openInstallPermissionSettings(this)
+                } else {
+                    AutoUpdater.checkAsync(this)
+                    toast("يجري فحص التحديث")
+                    updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
+                }
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        root.addView(managementRow)
 
         root.addView(TextView(this).apply {
             text = "الأولوية: أداة حاسمة أو ويب حديث عند الحاجة، ثم قناة نموذج متاحة رسميًا، ثم بديل آمن. لا تُفترض API مدفوعة ولا تُنسخ أسرار الحسابات بين المزودين."
@@ -303,6 +338,19 @@ class CommandCenterActivity : Activity() {
                     capture(text, "process_text")
                 }
             }
+        }
+    }
+
+    private fun startSpeechInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "تحدث إلى حكيم")
+        }
+        try {
+            startActivityForResult(intent, SPEECH_REQUEST)
+        } catch (_: Exception) {
+            status.text = "الإدخال الصوتي غير متاح على هذا الجهاز حاليًا."
         }
     }
 

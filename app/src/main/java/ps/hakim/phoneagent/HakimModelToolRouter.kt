@@ -141,7 +141,7 @@ object HakimModelToolRouter {
     fun recordOutcome(context: Context, providerId: String?, success: Boolean) {
         if (providerId.isNullOrBlank()) return
         val prefs = context.getSharedPreferences("hakim_router", Context.MODE_PRIVATE)
-        val key = "provider_\${providerId}_score"
+        val key = "provider_" + providerId + "_score"
         val old = prefs.getInt(key, 0)
         val next = (old + if (success) 2 else -3).coerceIn(-20, 40)
         prefs.edit()
@@ -175,7 +175,7 @@ object HakimModelToolRouter {
     private fun bestObservedProvider(context: Context, candidates: List<Provider>): Provider? {
         if (candidates.isEmpty()) return null
         val prefs = context.getSharedPreferences("hakim_router", Context.MODE_PRIVATE)
-        val scored = candidates.map { it to prefs.getInt("provider_\${it.id}_score", 0) }
+        val scored = candidates.map { it to prefs.getInt("provider_" + it.id + "_score", 0) }
         val bestScore = scored.maxOf { it.second }
         if (bestScore <= 0) {
             return candidates.firstOrNull { it.id == "chatgpt" } ?: candidates.first()

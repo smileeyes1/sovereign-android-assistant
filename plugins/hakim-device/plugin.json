@@ -1,0 +1,37 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hakim-device",
+  "version": "0.1.0",
+  "description": "Connect ChatGPT to a user-authorized Android device through Hakim.",
+  "author": {
+    "name": "Hakim Project",
+    "url": "https://hakim-chatgpt-bridge-production.up.railway.app/"
+  },
+  "homepage": "https://hakim-chatgpt-bridge-production.up.railway.app/",
+  "repository": "https://github.com/smileeyes1/sovereign-android-assistant",
+  "license": "MIT",
+  "keywords": ["android", "device", "automation", "accessibility"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hakim Device",
+        "shortDescription": "Control your paired Android",
+        "longDescription": "Hakim Device connects ChatGPT to an Android device that the user owns or is authorized to manage. The public plugin exposes a deliberately narrow tool surface: check device availability, open an explicitly chosen app or HTTPS link, navigate Home/Back/Recents, and check the status of a previously requested operation. State-changing actions remain approval-gated on Android. The bridge does not require an OpenAI API key and does not expose shell, root, raw screenshots, notifications, arbitrary typing, or general tapping in the public directory version.",
+        "developerName": "Hakim Project",
+        "category": "Productivity",
+        "capabilities": [
+          "Check whether the paired Hakim Android device is connected",
+          "Open an explicitly selected Android app after device approval",
+          "Open an explicit HTTP or HTTPS link after device approval",
+          "Navigate Home, Back, or Recents after device approval",
+          "Check completion status for a previously requested operation"
+        ],
+        "websiteURL": "https://hakim-chatgpt-bridge-production.up.railway.app/",
+        "privacyPolicyURL": "https://hakim-chatgpt-bridge-production.up.railway.app/privacy",
+        "termsOfServiceURL": "https://hakim-chatgpt-bridge-production.up.railway.app/terms",
+        "supportURL": "https://hakim-chatgpt-bridge-production.up.railway.app/support",
+        "defaultPrompt": "Check whether my paired Hakim device is online."
+      }
+    }
+  }
+}

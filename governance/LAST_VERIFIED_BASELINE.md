@@ -18,14 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20098`.
-- Branch: `feature/hakim-20098-executive-loop-ui`.
-- 20097 remains the latest signed predecessor and its keyboard/local-help fixes are inherited.
-- User goal for 20098: Hakim should feel like one conversational executive surface, show concise live execution stages, and supervise tools/models rather than merely opening them.
-- 20098 adds a bounded Executive Loop with explicit stages: understanding → planning → routing → executing → verifying → repairing/waiting → complete/gated. The UI shows only operational status and evidence, never private model chain-of-thought.
-- Provider handoff uses an executive task envelope that tells the model to optimize its internal method privately and return the result/evidence only.
-- Opening a provider remains NOT success. Direct in-app model responses still require an official model API/authorized direct channel; consumer ChatGPT login is not treated as an API.
-- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes in-place update and user-eye acceptance.
+- Candidate versionCode: `20099`.
+- Branch: `feature/hakim-20099-chatlike-composer-progress`.
+- Field evidence on 20098 proved the executive operation stages are visible and Local-First still answers inside Hakim.
+- New field defect: the full operation history remained expanded and consumed too much vertical space; with the IME open, the composer/actions were pushed out of the useful viewport.
+- 20099 makes progress ChatGPT-like: one compact latest-operation line by default, tap to expand details, automatic collapse when the keyboard opens, and secondary tool buttons hide while typing so the composer + execute/cancel row remain visible.
+- Empty attachment status is hidden to recover vertical space. Conversation history remains preserved.
+- All 20092–20098 safety/routing/executive gates remain required.
+- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes the same phone-window + keyboard acceptance.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

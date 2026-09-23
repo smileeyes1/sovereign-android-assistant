@@ -178,6 +178,15 @@ export function openRefreshToken(secret:string,token:string,resource:string):Ref
   return value;
 }
 
+export function reviewCredentialsMatch(env:NodeJS.ProcessEnv,user:string,password:string){
+  const expectedUser=env.HAKIM_REVIEW_USER??"";
+  const expectedPassword=env.HAKIM_REVIEW_PASSWORD??"";
+  if(expectedUser.length<3||expectedPassword.length<24) return false;
+  const left=crypto.createHash("sha256").update(user+"\0"+password,"utf8").digest();
+  const right=crypto.createHash("sha256").update(expectedUser+"\0"+expectedPassword,"utf8").digest();
+  return crypto.timingSafeEqual(left,right);
+}
+
 export function requireProductionOAuthConfig(env:NodeJS.ProcessEnv){
   if(env.NODE_ENV!=="production") return;
   if(!env.HAKIM_OAUTH_SECRET||env.HAKIM_OAUTH_SECRET.length<43) throw new Error("HAKIM_OAUTH_SECRET_required_in_production");

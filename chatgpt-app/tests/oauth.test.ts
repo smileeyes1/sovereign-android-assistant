@@ -27,7 +27,8 @@ test("ChatGPT CIMD and redirect allowlist is narrow",()=>{
 });
 
 test("scope normalization rejects unknown scopes",()=>{
-  assert.deepEqual(normalizeScopes("hakim.read hakim.write offline_access"),["hakim.read","hakim.write","offline_access"]);\n  assert.deepEqual(normalizeScopes(undefined),["hakim.read","hakim.write","offline_access"]);
+  assert.deepEqual(normalizeScopes("hakim.read hakim.write offline_access"),["hakim.read","hakim.write","offline_access"]);
+  assert.deepEqual(normalizeScopes(undefined),["hakim.read","hakim.write","offline_access"]);
   assert.throws(()=>normalizeScopes("hakim.admin"));
 });
 

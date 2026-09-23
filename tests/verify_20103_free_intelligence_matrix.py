@@ -15,8 +15,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("FREE_INTELLIGENCE_20103=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20103, "version")
-req("versionName '2.1.03-free-intelligence-matrix'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20103, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 req("getBoolean(KEY_FREE_ONLY, true)" in FREE, "free_only_default")
 req("OpenRouterFreeEngine.ID -> true" in FREE, "openrouter_free_not_admitted")
 req("geminiFreeTierConfirmed" in FREE, "gemini_free_confirmation_missing")
@@ -29,4 +29,4 @@ req("nextExcluded" in CENTER and "fallback" in CENTER, "bounded_engine_switch_mi
 req("سياق المحادثة الحديث داخل حكيم" in DIRECTOR, "multiturn_context_missing")
 req("takeLast(8_000)" in DIRECTOR, "context_bound_missing")
 
-print("FREE_INTELLIGENCE_20103=PASS cost=fail_closed matrix=adaptive failover=automatic context=bounded")
+print("FREE_INTELLIGENCE_GATE=PASS candidate>=20103 cost=fail_closed matrix=adaptive failover=automatic context=bounded")

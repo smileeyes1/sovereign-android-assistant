@@ -86,7 +86,7 @@ class UnifiedHomeActivity : Activity() {
             testDirectEngine()
         })
 
-        root.addView(button("إنشاء/عرض مفتاح Gemini") {
+        root.addView(button("إنشاء مفتاح Gemini مجاني") {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey")))
         })
 
@@ -113,7 +113,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم أسرار ADB ومفتاح المحرك داخل AndroidKeyStore. لا يطبع مفتاح Gemini في السجل. حكيم لا يفعّل الفوترة؛ استخدم مفتاح مشروع Free Tier إذا أردت إبقاء الاستخدام بلا تكلفة."
+            text = "وضع حكيم الافتراضي: مجاني فقط. أنشئ من AI Studio مفتاح Authorization جديدًا لمشروع Free Tier غير مربوط بالفوترة، ثم ألصقه مرة واحدة. يُحفظ محليًا مشفّرًا في AndroidKeyStore ولا يُطبع في السجل. أسماء الله والقرآن حاكمة للقيم والحدود، وليست آلية تقنية خفية."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)
@@ -131,7 +131,7 @@ class UnifiedHomeActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("Gemini مباشر داخل حكيم")
-            .setMessage("يُحفظ المفتاح مشفّرًا في AndroidKeyStore ولا يظهر في المحادثة أو السجل.")
+            .setMessage("استخدم مفتاح Authorization جديدًا من AI Studio لمشروع Free Tier غير مربوط بالفوترة. يُحفظ مشفّرًا في AndroidKeyStore ولا يظهر في المحادثة أو السجل.")
             .setView(input)
             .setPositiveButton("حفظ") { _, _ ->
                 val key = input.text.toString().trim()

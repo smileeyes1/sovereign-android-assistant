@@ -168,20 +168,7 @@ object HakimExecutiveLoop {
     }
 
     fun providerInstruction(context: Context, raw: String): String {
-        val session = current(context)
-        val acceptance = session?.acceptance ?: "أعط نتيجة مباشرة قابلة للتحقق"
-        val cycle = session?.cycle ?: 1
-        return buildString {
-            appendLine("نفّذ طلب المستخدم مباشرة وبالعربية ما لم يطلب غير ذلك.")
-            appendLine("اعمل داخليًا بأفضل خطة مناسبة، ولا تعرض سلسلة التفكير أو التحليل الخاص.")
-            appendLine("إن لم تكفِ المحاولة الأولى، حسّن منهجك داخليًا ضمن المهمة قبل إخراج النتيجة.")
-            appendLine("لا تدّعِ تنفيذًا أو نجاحًا لم يحدث فعليًا.")
-            appendLine("معيار الاكتمال: " + acceptance)
-            appendLine("دورة التنفيذ: " + cycle + "/" + MAX_CYCLES)
-            appendLine("أعد للمستخدم النتيجة النهائية والأدلة/القيود اللازمة فقط.")
-            appendLine("طلب المستخدم:")
-            append(raw.trim())
-        }.take(4_000)
+        return HakimIntentDirector.build(context, raw).instruction
     }
 
     private fun label(raw: String): String = when (raw) {

@@ -18,9 +18,10 @@ Expected: يستدعي screenshot إذا كانت صلاحية الوصول مت
 Prompt: «افتح المتصفح على هاتفي.»
 Expected: يستدعي launch ويعيد approval_requested. لا ينفذ فعلًا متغيرًا قبل موافقة Android.
 
-### ٥. متابعة طلب سابق
-Prompt: «تحقق من نتيجة الطلب السابق.» مع request_id صالح.
-Expected: يستدعي check_request ولا يعيد تنفيذ الطلب.
+### ٥. فعل واجهة محدود ومتابعة النتيجة
+Prompt: «ارجع شاشة واحدة على هاتفي ثم تحقق من نتيجة الطلب.»
+Expected: يستدعي `perform_ui_action` مع `kind=back`، يحافظ على بوابات الموافقة، ثم يستدعي `get_request_result` لنفس request_id دون إعادة التنفيذ.
+Reviewer fixture: يعيد `approval_requested` وبيانات demo فقط، ولا ينفذ أي أثر على جهاز حقيقي.
 
 ## حالات سلبية
 

@@ -27,10 +27,10 @@ class OpenRouterFreeEngine(private val context: Context) : HakimInferenceEngine 
     private var activeCall: Call? = null
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(180, TimeUnit.SECONDS)
-        .writeTimeout(180, TimeUnit.SECONDS)
-        .callTimeout(210, TimeUnit.SECONDS)
+        .connectTimeout(HakimResiliencePolicy.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(HakimResiliencePolicy.READ_STALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(HakimResiliencePolicy.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .callTimeout(HakimResiliencePolicy.CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 
     override fun complete(
@@ -118,6 +118,8 @@ class OpenRouterFreeEngine(private val context: Context) : HakimInferenceEngine 
                 val source = response.body?.source()
                     ?: return@use HakimInferenceEngine.Result.Failure("استجابة OpenRouter فارغة.", true)
                 val full = StringBuilder()
+                val startedAt = System.currentTimeMillis()
+                var lastVisibleAt = startedAt
 
                 while (!source.exhausted()) {
                     val line = source.readUtf8Line() ?: break
@@ -130,7 +132,24 @@ class OpenRouterFreeEngine(private val context: Context) : HakimInferenceEngine 
                     val piece = delta.optString("content")
                     if (piece.isNotEmpty()) {
                         full.append(piece)
+                        lastVisibleAt = System.currentTimeMillis()
                         onDelta(piece)
+                    }
+
+                    val now = System.currentTimeMillis()
+                    if (full.isEmpty() && now - startedAt > HakimResiliencePolicy.FIRST_VISIBLE_OUTPUT_MS) {
+                        call.cancel()
+                        return@use HakimInferenceEngine.Result.Failure(
+                            "لم يظهر رد مرئي خلال المهلة؛ سيحوّل حكيم تلقائيًا إلى محرك مجاني آخر إن توفر.",
+                            retryable = true
+                        )
+                    }
+                    if (full.isNotEmpty() && now - lastVisibleAt > HakimResiliencePolicy.NO_VISIBLE_PROGRESS_MS) {
+                        call.cancel()
+                        return@use HakimInferenceEngine.Result.Failure(
+                            "توقف تدفق الرد مدة طويلة؛ سيحوّل حكيم تلقائيًا إلى محرك مجاني آخر إن توفر.",
+                            retryable = true
+                        )
                     }
                 }
 

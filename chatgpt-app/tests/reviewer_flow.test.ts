@@ -117,7 +117,12 @@ test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
       body:JSON.stringify({jsonrpc:"2.0",id:name,method:"tools/call",params:{name,arguments:args}})
     });
     assert.equal(response.status,200);
-    return await response.json() as any;
+    const raw=await response.text();
+    const contentType=response.headers.get("content-type")??"";
+    if(contentType.includes("application/json")) return JSON.parse(raw) as any;
+    const dataLine=raw.split("\n").find(line=>line.startsWith("data: "));
+    assert.ok(dataLine,"MCP SSE data line missing");
+    return JSON.parse(dataLine!.slice(6)) as any;
   }
 
   const status=await call("status");

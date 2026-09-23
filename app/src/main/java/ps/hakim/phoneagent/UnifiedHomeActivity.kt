@@ -154,7 +154,8 @@ class UnifiedHomeActivity : Activity() {
         Thread {
             val result = GeminiDirectEngine(this).complete(
                 "أجب بالعربية بكلمة واحدة فقط: جاهز",
-                emptyList()
+                emptyList(),
+                onDelta = {}
             )
             runOnUiThread {
                 when (result) {

@@ -102,7 +102,12 @@ app.get("/health",(_req,res)=>res.json({
   openai_api_key_required:false,
   result_transport:"end-to-end-encrypted-outbound-only",
   auth:"oauth-2.1-pkce-cimd",
-  production_storage_required:true
+  production_storage_required:true,
+  public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
+  reviewer_demo:process.env.HAKIM_PUBLIC_REVIEW_DEMO==="1",
+  public_tools:process.env.HAKIM_PUBLIC_SAFE!=="0"
+    ?["get_device_status","open_target","navigate_device","get_request_result"]
+    :undefined
 }));
 
 app.get(["/.well-known/oauth-protected-resource","/.well-known/oauth-protected-resource/mcp"],(req,res)=>{
@@ -272,7 +277,7 @@ app.get("/pair",(_req,res)=>{
 
 app.get("/support",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>دعم حكيم</title><body><h1>دعم حكيم</h1><p>حكيم يربط ChatGPT بجهاز Android مأذون. إذا تعذر الربط، تحقق من أن تطبيق حكيم مثبت ومفتوح وأن الجهاز متصل بالإنترنت، ثم أعد عملية الاقتران من ChatGPT.</p><p>لأعطال الأمان أو الخصوصية أو التنفيذ، افتح بلاغًا في مستودع المشروع: <a href="https://github.com/smileeyes1/sovereign-android-assistant/issues">GitHub Issues</a>. لا ترسل رموز الربط أو مفاتيح الوصول أو لقطات حساسة في بلاغ عام.</p></body></html>`));
 
-app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>خصوصية حكيم</title><body><h1>خصوصية حكيم</h1><p>الجسر لا يحتاج مفتاح OpenAI ولا يحتفظ بمحتوى الجهاز افتراضيًا. أوامر الهاتف ونتائجه تنتقل مشفرة طرفًا لطرف، ولا يتيح الجسر shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة أندرويد.</p><p>ChatGPT نفسه يعالج المحادثة وفق إعدادات حساب المستخدم وسياسات OpenAI. توفر الأدوات والنماذج يعتمد على الخطة والمنطقة والواجهة.</p></body></html>`));
+app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>خصوصية حكيم</title><body><h1>خصوصية حكيم</h1><p>الجسر لا يحتاج مفتاح OpenAI ولا يحتفظ بمحتوى الجهاز افتراضيًا. أوامر الهاتف ونتائجه تنتقل مشفرة طرفًا لطرف، ولا يتيح الجسر shell أو root.</p><p>النسخة العامة تطبق تقليل البيانات: لا تعرض لـChatGPT لقطات الشاشة الخام أو الإشعارات أو الكتابة الحرة أو النقر العام. تعرض فقط حالة اتصال مختصرة، وطلبات فتح هدف واضح، وتنقل Home/Back/Recents، وحالة طلب منزوعة المحتوى. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة أندرويد.</p><p>ChatGPT نفسه يعالج المحادثة وفق إعدادات حساب المستخدم وسياسات OpenAI. توفر الأدوات والنماذج يعتمد على الخطة والمنطقة والواجهة.</p></body></html>`));
 
 app.get("/terms",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>شروط حكيم</title><body><h1>شروط حكيم</h1><p>حكيم ذراع تنفيذ اختياري لجهاز يملكه المستخدم أو يملك صلاحية إدارته. لا يمنح التطبيق صلاحيات خارج ما وافق عليه المستخدم والنظام. الأفعال الحساسة أو غير القابلة للعكس لا تُنفذ بلا الموافقات المطلوبة.</p></body></html>`));
 

@@ -238,35 +238,31 @@ class CommandCenterActivity : Activity() {
     }
 
     private fun sendToProviderApp(text: String, decision: HakimModelToolRouter.Decision) {
-        val provider = decision.provider ?: run {
-            shareToAny(text)
-            return
-        }
-        recordRoute("provider:" + provider.id, null)
-        val out = HakimModelToolRouter.governedShareIntent(
-            this,
-            text,
-            attachments,
-            provider.packageName
-        )
-        try {
-            startActivity(out)
-            HakimModelToolRouter.recordOutcome(this, provider.id, true)
-            recordRoute("provider:" + provider.id, true)
-        } catch (_: Exception) {
-            HakimModelToolRouter.recordOutcome(this, provider.id, false)
-            recordRoute("provider:" + provider.id, false)
-            val retry = HakimModelToolRouter.decide(this, text, attachments)
-            if (retry.channel == HakimModelToolRouter.Channel.PROVIDER_APP &&
-                retry.provider != null &&
-                retry.provider.id != provider.id
-            ) {
-                status.text = "تعذر " + provider.label + "؛ ينتقل حكيم تلقائيًا إلى " + retry.provider.label
-                sendToProviderApp(text, retry)
-            } else {
-                shareToAny(text)
+        val candidates = (listOfNotNull(decision.provider) + decision.fallbacks)
+            .distinctBy { it.id }
+
+        for (provider in candidates) {
+            recordRoute("provider:" + provider.id, null)
+            val out = HakimModelToolRouter.governedShareIntent(
+                this,
+                text,
+                attachments,
+                provider.packageName
+            )
+            try {
+                startActivity(out)
+                HakimModelToolRouter.recordOutcome(this, provider.id, true)
+                recordRoute("provider:" + provider.id, true)
+                status.text = "تم تمرير المهمة عبر " + provider.label + "."
+                return
+            } catch (_: Exception) {
+                HakimModelToolRouter.recordOutcome(this, provider.id, false)
+                recordRoute("provider:" + provider.id, false)
             }
         }
+
+        status.text = "تعذرت القنوات المباشرة؛ يستخدم حكيم المشاركة الآمنة كمسار احتياطي."
+        shareToAny(text)
     }
 
     private fun openProviderWeb(text: String, decision: HakimModelToolRouter.Decision) {

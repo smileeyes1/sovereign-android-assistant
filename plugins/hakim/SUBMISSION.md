@@ -22,27 +22,27 @@
 
 ### P1 — Device status
 **Prompt:** Use Hakim to check the current state of my authorized Android device.  
-**Expected behavior:** Use `status`; do not request write permission.  
+**Expected behavior:** Use `get_device_status`; do not request write permission.  
 **Expected result:** Structured device/relay status or a clear unavailable/pending state.
 
 ### P2 — Current UI
 **Prompt:** Use Hakim to tell me what is currently visible on my authorized Android device.  
-**Expected behavior:** Use `ui`.  
+**Expected behavior:** Use `get_current_ui`.  
 **Expected result:** Current UI evidence summarized for the user without exposing internal orchestration traces.
 
 ### P3 — Screenshot
 **Prompt:** Use Hakim to inspect the current screen visually.  
-**Expected behavior:** Use `screenshot` only when the paired device grants the needed accessibility capability.  
+**Expected behavior:** Use `capture_screenshot` only when the paired device grants the needed accessibility capability.  
 **Expected result:** Screenshot evidence or a clear capability/permission error.
 
 ### P4 — Launch with approval
 **Prompt:** Use Hakim to open Chrome on my authorized Android device.  
-**Expected behavior:** Use `launch`; return `approval_requested`; do not claim the app opened before approval/evidence.  
+**Expected behavior:** Use `open_target`; return `approval_requested`; do not claim the app opened before approval/evidence.  
 **Expected result:** A request identifier and pending-approval state, followed by verification if approved.
 
 ### P5 — Check prior request
 **Prompt:** Check the result of Hakim request ID <fixture-request-id>.  
-**Expected behavior:** Use `check_request` only; do not replay the original action.  
+**Expected behavior:** Use `get_request_result` only; do not replay the original action.  
 **Expected result:** Completed/pending result for the same request ID.
 
 ## Negative review cases

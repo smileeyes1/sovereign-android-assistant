@@ -210,6 +210,7 @@ export function createHakimServer(
     const hasPkg=typeof pkg==="string"&&pkg.trim().length>0;
     const hasUrl=typeof url==="string"&&url.trim().length>0;
     if(hasPkg===hasUrl) throw new Error("exactly_one_target_required");
+    if(hasPkg&&!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg!.trim())) throw new Error("invalid_package_name");
     if(hasUrl){
       const u=new URL(url!);
       if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");

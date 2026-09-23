@@ -44,7 +44,7 @@ for provider in [
 require(router, "needsFreshWeb", "fresh_web_policy_missing")
 require(router, "recordOutcome", "observed_outcome_learning_missing")
 require(router, "coerceIn(-20, 40)", "bounded_learning_missing")
-require(router, "Intent.FLAG_GRANT_READ_URI_PERMISSION", "scoped_share_missing")
+require(attachments, "Intent.FLAG_GRANT_READ_URI_PERMISSION", "scoped_share_missing")
 
 require(attachments, "Intent.ACTION_OPEN_DOCUMENT", "document_picker_missing")
 require(attachments, "Intent.EXTRA_ALLOW_MULTIPLE", "multi_pick_missing")

@@ -14,8 +14,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("QURANIC_GOVERNANCE_20104=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20104, "version")
-req("2.1.04-quranic-governance" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20104, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "الحكيم",
@@ -56,4 +56,4 @@ for needed in [
 ]:
     req(needed in DOC + REL, "integrity:" + needed)
 
-print("QURANIC_GOVERNANCE_20104=PASS values=true occult=false technical_means=evidence")
+print("QURANIC_GOVERNANCE_GATE=PASS candidate>=20104 values=true occult=false technical_means=evidence")

@@ -230,7 +230,7 @@ class CommandCenterActivity : Activity() {
             )
             try {
                 startActivity(out)
-                appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن، لكن فتح التطبيق وحده لا يعني أن المهمة اكتملت.")
+                appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن. فتح التطبيق وحده ليس نجاحًا للمهمة.")
                 status.text = "بانتظار أثر القناة الخارجية"
                 return
             } catch (_: Exception) {

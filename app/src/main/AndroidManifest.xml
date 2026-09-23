@@ -69,6 +69,20 @@
         </activity>
 
         <activity
+            android:name=".OpenRouterOAuthReturnActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="hakim" android:host="openrouter-connected" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".HakimPairingActivity"
             android:exported="true"
             android:excludeFromRecents="true"

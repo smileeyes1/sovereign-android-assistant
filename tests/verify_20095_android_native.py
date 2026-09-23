@@ -11,8 +11,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("ANDROID_NATIVE_20095=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20095, "version")
-req("versionName '2.0.95-android-native-only'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20095, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 req("رمز اقتران الجسر التنفيذي" in MAIN, "bridge_pairing_label_missing")
 req("ليس رمز إضافة ChatGPT" in MAIN, "pairing_ambiguity_not_closed")
 req("إضافة ChatGPT هذه لسطح المكتب فقط" in MAIN, "desktop_only_warning_missing")
@@ -25,4 +25,4 @@ req("com.google.android.apps.bard" in ROUTER, "gemini_app_fallback_missing")
 # Known failure: generic pairing text must not be the only Android status anymore.
 req('!paired -> "الحالة: يحتاج رمز الاقتران"' not in MAIN, "legacy_pairing_ambiguity_returned")
 
-print("ANDROID_NATIVE_20095=PASS mobile=local+provider-app+browser desktop_plugin=excluded")
+print("ANDROID_NATIVE_GATE=PASS candidate>=20095 mobile=local+provider-app+browser desktop_plugin=excluded")

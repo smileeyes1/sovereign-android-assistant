@@ -5,32 +5,39 @@ import android.content.Context
 /**
  * Product-level registry.
  *
- * External app/browser handoff is deliberately NOT registered as a GENERAL_CHAT engine because
+ * External app/browser handoff is NOT a GENERAL_CHAT engine because
  * it cannot return a model answer into Hakim by itself.
  */
 object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
         val out = mutableListOf<HakimInferenceEngine>()
-        if (HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY)) {
+
+        if (HakimSecretStore.has(context, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)) {
+            out += OpenRouterFreeEngine(context)
+        }
+
+        if (
+            HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY) &&
+            HakimFreePolicy.allows("gemini-direct", context)
+        ) {
             out += GeminiDirectEngine(context)
         }
+
         return out
     }
 
     fun bestGeneralChat(
         context: Context,
-        attachments: List<HakimAttachmentGateway.Attachment>
-    ): HakimInferenceEngine? {
-        return directEngines(context).firstOrNull { engine ->
-            HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
-                attachmentsSupported(engine, attachments)
-        }
-    }
+        prompt: String,
+        attachments: List<HakimAttachmentGateway.Attachment>,
+        excluded: Set<String> = emptySet()
+    ): HakimInferenceEngine? =
+        HakimWisdomMatrix.choose(context, prompt, attachments, excluded)?.engine
 
     fun hasConfiguredGeneralChat(context: Context): Boolean =
-        bestGeneralChat(context, emptyList()) != null
+        bestGeneralChat(context, "", emptyList()) != null
 
-    private fun attachmentsSupported(
+    fun attachmentsSupported(
         engine: HakimInferenceEngine,
         attachments: List<HakimAttachmentGateway.Attachment>
     ): Boolean {

@@ -9,7 +9,7 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -58,11 +58,28 @@ jobs:
           print("SIGNED_RECONSTRUCTION=PASS sha256="+digest)
           PY
 
-      - name: "نشر APK عبر قناة التحديث نفسها"
+      - name: "إنشاء جسر HTTPS ثقيل عبر GitHub Release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="hakim-20108-d1-network-guardian"
+          ASSET="HAKIM-20108-D1-NETWORK-GUARDIAN.apk"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG"               --target 78f2634f3a2e086861e7dac56eec039eae9d52c0               --title "Hakim 20108 D1 — Network Guardian"               --notes "مرشح تمهيدي موقّع D1؛ CI ناجح، التحقق الميداني بعد التثبيت ما زال مطلوبًا."               --prerelease
+          fi
+          gh release upload "$TAG" "/tmp/$ASSET#$ASSET" --clobber
+          ASSET_URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
+          curl --fail --location --silent --show-error --range 0-1023 "$ASSET_URL" -o /tmp/asset-head.bin
+          test "$(wc -c < /tmp/asset-head.bin)" -gt 0
+          echo "ASSET_URL=$ASSET_URL" >> "$GITHUB_ENV"
+          echo "GITHUB_RELEASE_BRIDGE=PASS"
+
+      - name: "إرسال حبل الإشارة الخفيف إلى حكيم"
         run: |
           set -euo pipefail
           META='{"version_code":20108,"sha256":"547c26e888b3a08287ccd76dc7e5f4136edfd35ede6aae61d5c87031be44f82d","size":13835499}'
-          RESPONSE="$(curl --fail-with-body --silent --show-error             -X PUT             -T /tmp/HAKIM-20108-D1-NETWORK-GUARDIAN.apk             -H 'Title: HAKIM_UPDATE'             -H 'Filename: HAKIM-20108-D1-NETWORK-GUARDIAN.apk'             -H "Message: $META"             -H 'Content-Type: application/vnd.android.package-archive'             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
+          RESPONSE="$(curl --fail-with-body --silent --show-error             --data-binary "$META"             -H 'Title: HAKIM_UPDATE'             -H "Attach: $ASSET_URL"             -H 'Filename: HAKIM-20108-D1-NETWORK-GUARDIAN.apk'             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
           printf '%s' "$RESPONSE" > /tmp/ntfy-response.json
           python3 - <<'PY'
           import json
@@ -70,10 +87,12 @@ jobs:
           x=json.loads(Path("/tmp/ntfy-response.json").read_text())
           if x.get("event")!="message": raise SystemExit("NTFY_EVENT_NOT_MESSAGE")
           if x.get("title")!="HAKIM_UPDATE": raise SystemExit("NTFY_TITLE_MISMATCH")
+          if x.get("message","").find('"version_code":20108') < 0:
+              raise SystemExit("NTFY_METADATA_MISMATCH")
           a=x.get("attachment") or {}
-          if not str(a.get("url","")).startswith("https://"): raise SystemExit("NTFY_ATTACHMENT_URL_MISSING")
-          print("UPDATE_TUNNEL_PUBLISH=PASS")
+          if not str(a.get("url","")).startswith("https://github.com/"):
+              raise SystemExit("NTFY_ATTACHMENT_URL_MISMATCH")
+          print("UPDATE_SIGNAL_PUBLISH=PASS")
           print("event_id="+str(x.get("id","")))
           print("attachment_url="+str(a.get("url","")))
-          print("attachment_size="+str(a.get("size","")))
           PY

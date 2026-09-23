@@ -20,6 +20,7 @@ baseline = BASELINE.read_text(encoding="utf-8")
 router = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")
 attachments = (APP / "HakimAttachmentGateway.kt").read_text(encoding="utf-8")
 center = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
+intent_engine = (APP / "HakimIntentEngine.kt").read_text(encoding="utf-8")
 manifest = MANIFEST.read_text(encoding="utf-8")
 
 require(
@@ -43,6 +44,10 @@ for provider in [
 
 require(router, "needsFreshWeb", "fresh_web_policy_missing")
 require(router, "recordOutcome", "observed_outcome_learning_missing")
+require(intent_engine, '"model_or_builder"', "provider_neutral_builder_route_missing")
+require(intent_engine, '"model_or_design"', "provider_neutral_design_route_missing")
+forbid(intent_engine, '"chatgpt_or_builder"', "chatgpt_hardcoded_in_router_intent")
+forbid(intent_engine, "إلى ChatGPT ليستخدم", "chatgpt_hardcoded_as_only_reasoner")
 require(router, "coerceIn(-20, 40)", "bounded_learning_missing")
 require(attachments, "Intent.FLAG_GRANT_READ_URI_PERMISSION", "scoped_share_missing")
 

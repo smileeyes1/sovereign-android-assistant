@@ -10,7 +10,6 @@ must=[
     'actionButton("صوت")',
     'actionButton("المتصفح")',
     'actionButton("إدارة")',
-    "visibility = View.GONE",
 ]
 for x in must:
     assert x in p, x

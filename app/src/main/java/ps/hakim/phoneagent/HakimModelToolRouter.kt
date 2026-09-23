@@ -180,7 +180,7 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>,
         packageName: String?
     ): Intent {
-        val externalPrompt = compactExternalPrompt(prompt)
+        val externalPrompt = HakimExecutiveLoop.providerInstruction(context, prompt)
         val out = HakimAttachmentGateway.buildShareIntent(context, externalPrompt, attachments)
         if (!packageName.isNullOrBlank()) out.setPackage(packageName)
         return out

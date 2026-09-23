@@ -19,7 +19,7 @@ launcher_block = re.search(
 require(launcher_block is not None, "command_center_not_launcher")
 
 for text in [
-    "ماذا تريد أن أنجز؟",
+    "اكتب رسالتك إلى حكيم",
     "إرفاق",
     "أنجز",
     "صوت",

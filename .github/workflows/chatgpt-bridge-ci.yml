@@ -2,7 +2,10 @@ name: ChatGPT Bridge CI
 
 on:
   push:
-    branches: [feature/chatgpt-account-native-bridge]
+    branches:
+      - feature/chatgpt-account-native-bridge
+      - release/hakim-chatgpt-plugin-v1-rc1
+  workflow_dispatch:
     paths:
       - "chatgpt-app/**"
       - "plugins/hakim/**"

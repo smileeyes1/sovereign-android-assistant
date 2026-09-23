@@ -18,6 +18,7 @@ import android.widget.TextView
 
 class UnifiedHomeActivity : Activity() {
     private lateinit var adbStatus: TextView
+    private lateinit var openRouterStatus: TextView
     private lateinit var directModelStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,6 +72,37 @@ class UnifiedHomeActivity : Activity() {
             adbStatus.postDelayed({ refresh() }, 1200L)
         })
 
+        openRouterStatus = TextView(this).apply {
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setPadding(8, 18, 8, 8)
+        }
+        root.addView(openRouterStatus)
+
+        root.addView(button("ربط OpenRouter المجاني") {
+            OpenRouterPkceAuth.start(this)
+            openRouterStatus.text = "بانتظار موافقتك في المتصفح ثم العودة إلى حكيم…"
+        })
+
+        root.addView(button("اختبار OpenRouter المجاني") {
+            testOpenRouterDirect()
+        })
+
+        root.addView(button("مسح ربط OpenRouter") {
+            HakimSecretStore.remove(this, OpenRouterPkceAuth.SECRET_OPENROUTER_KEY)
+            getSharedPreferences(OpenRouterDirectEngine.PREFS, MODE_PRIVATE)
+                .edit()
+                .remove("openrouter_field_verified")
+                .remove("openrouter_history")
+                .apply()
+            refresh()
+        })
+
+        root.addView(button("محادثة جديدة — OpenRouter") {
+            OpenRouterDirectEngine(this).clearConversation()
+            android.widget.Toast.makeText(this, "تم بدء سياق OpenRouter جديد.", android.widget.Toast.LENGTH_SHORT).show()
+        })
+
         directModelStatus = TextView(this).apply {
             textSize = 16f
             gravity = Gravity.CENTER
@@ -113,7 +145,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم أسرار ADB ومفتاح المحرك داخل AndroidKeyStore. لا يطبع مفتاح Gemini في السجل. حكيم لا يفعّل الفوترة؛ استخدم مفتاح مشروع Free Tier إذا أردت إبقاء الاستخدام بلا تكلفة."
+            text = "على أندرويد يستخدم حكيم ربط OpenRouter الرسمي عبر PKCE والمتصفح الخارجي ثم يحفظ المفتاح في AndroidKeyStore. المسار الافتراضي openrouter/free فقط، فلا يتحول تلقائيًا إلى نموذج مدفوع. Gemini يبقى محركًا اختياريًا إضافيًا."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)
@@ -121,6 +153,38 @@ class UnifiedHomeActivity : Activity() {
 
         setContentView(root)
         refresh()
+    }
+
+    private fun testOpenRouterDirect() {
+        if (!HakimSecretStore.has(this, OpenRouterPkceAuth.SECRET_OPENROUTER_KEY)) {
+            openRouterStatus.text = "لم يكتمل ربط OpenRouter بعد."
+            return
+        }
+        openRouterStatus.text = "يختبر حكيم OpenRouter المجاني…"
+        Thread {
+            val result = OpenRouterDirectEngine(this).complete(
+                "أجب بالعربية بكلمة واحدة فقط: جاهز",
+                emptyList()
+            )
+            runOnUiThread {
+                when (result) {
+                    is HakimInferenceEngine.Result.Success -> {
+                        getSharedPreferences(OpenRouterDirectEngine.PREFS, MODE_PRIVATE)
+                            .edit()
+                            .putBoolean("openrouter_field_verified", true)
+                            .putLong("openrouter_verified_at", System.currentTimeMillis())
+                            .apply()
+                        openRouterStatus.text = "✓ OpenRouter المجاني متصل؛ الرد يعود داخل حكيم"
+                    }
+                    is HakimInferenceEngine.Result.NeedsAuthorization ->
+                        openRouterStatus.text = "يلزم إعادة الربط: " + result.reason
+                    is HakimInferenceEngine.Result.Unavailable ->
+                        openRouterStatus.text = "غير متاح: " + result.reason
+                    is HakimInferenceEngine.Result.Failure ->
+                        openRouterStatus.text = "فشل الاختبار: " + result.reason
+                }
+            }
+        }.start()
     }
 
     private fun showGeminiKeyDialog() {
@@ -207,6 +271,16 @@ class UnifiedHomeActivity : Activity() {
 
     private fun refresh() {
         if (::adbStatus.isInitialized) adbStatus.text = HakimLocalPairing.currentSummary(this)
+        if (::openRouterStatus.isInitialized) {
+            val configured = HakimSecretStore.has(this, OpenRouterPkceAuth.SECRET_OPENROUTER_KEY)
+            val verified = getSharedPreferences(OpenRouterDirectEngine.PREFS, MODE_PRIVATE)
+                .getBoolean("openrouter_field_verified", false)
+            openRouterStatus.text = when {
+                configured && verified -> "✓ المحرك المجاني: OpenRouter متصل ومتحقق على هذا الجهاز"
+                configured -> "OpenRouter مربوط — اضغط «اختبار OpenRouter المجاني»"
+                else -> "OpenRouter: " + OpenRouterPkceAuth.status(this)
+            }
+        }
         if (::directModelStatus.isInitialized) {
             val configured = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
             val verified = getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)

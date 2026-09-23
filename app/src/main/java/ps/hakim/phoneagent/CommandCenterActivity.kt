@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -30,6 +31,7 @@ class CommandCenterActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
         buildUi()
@@ -132,6 +134,9 @@ class CommandCenterActivity : Activity() {
             textSize = 19f
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
+            setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) v.post { v.requestRectangleOnScreen(v.getDrawingRect(android.graphics.Rect()), false) }
+            }
         }
         root.addView(
             command,

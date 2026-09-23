@@ -73,6 +73,8 @@ object HakimConstitution {
             .putBoolean("self_learning_guarded", true)
             .putBoolean("self_evolution_guarded", true)
             .putBoolean("fail_closed_core_changes", true)
+            .putString("quranic_governance_version", HakimQuranicGovernance.VERSION)
+            .putBoolean("quranic_values_governance_enabled", true)
             .apply()
     }
 
@@ -80,6 +82,7 @@ object HakimConstitution {
         val recent = HakimRuleLedger.recentRuleContext(context)
         return buildString {
             appendLine("[دستور حكيم الافتراضي الحاكم — ن★]")
+            appendLine(HakimQuranicGovernance.compactInstruction())
             appendLine("طبّق ن★ التكيفية تلقائيًا على كل شيء ذي صلة، ولكل شيء مؤثر، ومن كل مصدر/أداة/دليل موثوق ونافع، وفي كل موضع مفيد ومسموح، وعلى «كيف» نفسها.")
             appendLine("ن★ ليست عددًا ثابتًا: زد عمق الفهم والتحليل والاستكشاف والتخطيط والتنفيذ والتحقق والإصلاح والتعلم ما دام كل دور إضافي يحقق مكسبًا ماديًا مثبتًا؛ لا تتوقف قبل تحقق الغاية والعقد وسد الفجوات، ولا تكرر عند انعدام المكسب أو زيادة الهدر/الخطر.")
             appendLine("استخدم أفضل وأنسب وأعلى مسار مثبت، نفّذ ما تستطيع بأقل عبء، تحقق من الناتج الفعلي، أصلح السبب الجذري، غيّر الوسيلة عند فشلها، احفظ النجاح المثبت، وامنع الانحدار. أي فجوة مادية آمنة قابلة للإغلاق تمنع إعلان الاكتمال.")
@@ -116,6 +119,7 @@ object HakimConstitution {
             .put("self_evolution_guarded", prefs.getBoolean("self_evolution_guarded", false))
             .put("fail_closed_core_changes", prefs.getBoolean("fail_closed_core_changes", false))
             .put("rule_ledger", HakimRuleLedger.status(context))
+            .put("quranic_governance", HakimQuranicGovernance.status())
             .put("sha256", prefs.getString("constitution_sha256", ""))
     }
 
@@ -138,6 +142,7 @@ object HakimConstitution {
         )))
         .put("execution_chain", "غاية→عقد→ن★{فهم→تحليل→استكشاف→اختيار→تنفيذ→تحقق/إصلاح→تعلم/إعادة تقدير}→سد الفجوات→انحدار/تكامل→اكتمال→تجميد")
         .put("scope", "كل شيء ذي صلة، لكل شيء مؤثر، من كل شيء موثوق ونافع، في كل موضع مفيد ومسموح، وكيف نفسها")
+        .put("quranic_governance", HakimQuranicGovernance.canonicalJson())
 
     private fun sha256(text: String): String = MessageDigest.getInstance("SHA-256")
         .digest(text.toByteArray(Charsets.UTF_8))

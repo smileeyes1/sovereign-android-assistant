@@ -131,7 +131,6 @@ function limitedStatus(result:unknown,requestId:string){
   return {
     ok,
     status,
-    request_id:typeof root.request_id==="string"?root.request_id:requestId,
     device:{connected:true},
     privacy:"content_redacted"
   };
@@ -144,7 +143,7 @@ function limitedRequestResult(result:unknown,requestId:string){
   return {
     ok:status!=="error"&&status!=="failed",
     status,
-    request_id:typeof root.request_id==="string"?root.request_id:requestId,
+    operation_token:requestId,
     effect:"result_available",
     privacy:"content_redacted"
   };
@@ -224,8 +223,8 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
       :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي.",
     inputSchema:{
       type:"object",
-      properties:{request_id:{type:"string",minLength:8,maxLength:128}},
-      required:["request_id"],
+      properties:{operation_token:{type:"string",minLength:8,maxLength:128}},
+      required:["operation_token"],
       additionalProperties:false
     },
     annotations:READ_ANNOTATIONS,
@@ -280,9 +279,11 @@ export function createHakimServer(
       const u=new URL(url!);
       if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
     }
-    if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),note:"No real device action occurs in reviewer mode."});
+    if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",operation_token:reviewId(),note:"No real device action occurs in reviewer mode."});
     const requestId=await publishCommand(credential,"launch",{package:hasPkg?pkg!.trim():"",url:hasUrl?url!.trim():""});
-    return text({ok:true,status:"approval_requested",request_id:requestId});
+    return text(publicSafe
+      ?{ok:true,status:"approval_requested",operation_token:requestId}
+      :{ok:true,status:"approval_requested",request_id:requestId});
   });
 
   if(publicSafe){
@@ -293,9 +294,9 @@ export function createHakimServer(
       annotations:NAV_ANNOTATIONS
     },async({kind})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
-      if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),validated_action:kind,note:"No real device action occurs in reviewer mode."});
+      if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",operation_token:reviewId(),validated_action:kind,note:"No real device action occurs in reviewer mode."});
       const requestId=await publishCommand(credential,"action",{action:kind});
-      return text({ok:true,status:"approval_requested",request_id:requestId});
+      return text({ok:true,status:"approval_requested",operation_token:requestId});
     });
   }else{
     server.registerTool("perform_ui_action",{
@@ -317,15 +318,16 @@ export function createHakimServer(
     description:publicSafe
       ?"تحقق من اكتمال طلب سابق دون إعادة تنفيذه، مع حجب محتوى الجهاز."
       :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي.",
-    inputSchema:{request_id:z.string().min(8).max(128)},
+    inputSchema:{operation_token:z.string().min(8).max(128)},
     annotations:READ_ANNOTATIONS
-  },async({request_id})=>{
+  },async({operation_token})=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    const request_id=operation_token;
     if(reviewMode) return text(publicSafe
-      ?{ok:true,demo:true,status:"complete",request_id,effect:"result_available",privacy:"content_redacted"}
+      ?{ok:true,demo:true,status:"complete",operation_token,effect:"result_available",privacy:"content_redacted"}
       :{ok:true,demo:true,status:"complete",request_id,result:{message:"Safe reviewer fixture."}});
     const result=await pollResult(credential,request_id,8_000);
-    if(publicSafe) return text(limitedRequestResult(result,request_id));
+    if(publicSafe) return text(limitedRequestResult(result,operation_token));
     return text(result??{ok:false,status:"pending",request_id});
   });
 

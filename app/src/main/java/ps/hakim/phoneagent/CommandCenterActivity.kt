@@ -328,14 +328,27 @@ class CommandCenterActivity : Activity() {
         }
     }
 
-    private fun executeDirectModel(text: String, instruction: String, engineId: String?) {
+    private fun executeDirectModel(
+        text: String,
+        instruction: String,
+        engineId: String?,
+        excluded: Set<String> = emptySet()
+    ) {
         val engine = HakimEngineRegistry.directEngines(this)
-            .firstOrNull { it.id == engineId }
+            .firstOrNull { it.id == engineId && it.id !in excluded }
+            ?: HakimWisdomMatrix.choose(this, text, attachments, excluded)?.engine
             ?: run {
-                appendConversation("حكيم", "المحرك المباشر المحدد لم يعد متاحًا. افتح «إدارة» لإعداده أو جرّب لاحقًا.")
-                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "المحرك المباشر غير متاح وقت التنفيذ")
+                appendConversation(
+                    "حكيم",
+                    "لا يوجد الآن محرك ذكاء مباشر مجاني ومهيأ لهذا الطلب. افتح «إدارة» لإعداد محرك مجاني."
+                )
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.GATED,
+                    "لا يوجد محرك مباشر مجاني مؤهل للمقصد والمدخلات الحالية"
+                )
                 refreshOperations()
-                status.text = "يلزم إعداد المحرك المباشر"
+                status.text = "يلزم إعداد محرك مجاني"
                 return
             }
 
@@ -350,12 +363,21 @@ class CommandCenterActivity : Activity() {
         beginStreamingReply()
 
         val snapshot = attachments.toList()
+        val startedAt = System.currentTimeMillis()
+
         Thread {
             val result = engine.complete(instruction, snapshot) { delta ->
                 runOnUiThread {
                     if (currentDirectEngine === engine) appendStreamingDelta(delta)
                 }
             }
+            val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
+            HakimEngineTelemetry.record(
+                this,
+                engine.id,
+                success = result is HakimInferenceEngine.Result.Success,
+                latencyMs = latency
+            )
 
             runOnUiThread {
                 if (currentDirectEngine !== engine) return@runOnUiThread
@@ -374,38 +396,97 @@ class CommandCenterActivity : Activity() {
                         refreshAttachmentStatus()
                         status.text = "اكتمل"
                     }
+
                     is HakimInferenceEngine.Result.NeedsAuthorization -> {
-                        discardEmptyStreamingReply()
-                        appendConversation("حكيم", result.reason + " افتح «إدارة» لإكمال الإعداد.")
-                        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
-                        recordRoute("direct:" + engine.id, false)
-                        status.text = "يلزم تفويض المحرك"
-                    }
-                    is HakimInferenceEngine.Result.Unavailable -> {
-                        discardEmptyStreamingReply()
-                        appendConversation("حكيم", result.reason)
-                        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
-                        recordRoute("direct:" + engine.id, false)
-                        status.text = "المسار المباشر غير متاح لهذا الإدخال"
-                    }
-                    is HakimInferenceEngine.Result.Failure -> {
-                        discardEmptyStreamingReply()
-                        appendConversation(
-                            "حكيم",
-                            result.reason + if (result.retryable) " يمكنك إعادة المحاولة أو إضافة محرك مباشر بديل." else ""
+                        retryDirectOrBlock(
+                            text = text,
+                            instruction = instruction,
+                            failedEngine = engine,
+                            excluded = excluded,
+                            reason = result.reason,
+                            finalStatus = "يلزم تفويض محرك مجاني"
                         )
+                    }
+
+                    is HakimInferenceEngine.Result.Unavailable -> {
+                        retryDirectOrBlock(
+                            text = text,
+                            instruction = instruction,
+                            failedEngine = engine,
+                            excluded = excluded,
+                            reason = result.reason,
+                            finalStatus = "لا يوجد مسار مجاني مباشر لهذا الإدخال"
+                        )
+                    }
+
+                    is HakimInferenceEngine.Result.Failure -> {
                         if (result.retryable) {
-                            HakimExecutiveLoop.advanceCycle(this, "فشل المحرك المباشر؛ يلزم تبديل محرك أو إعادة المحاولة")
+                            retryDirectOrBlock(
+                                text = text,
+                                instruction = instruction,
+                                failedEngine = engine,
+                                excluded = excluded,
+                                reason = result.reason,
+                                finalStatus = "انتهت المسارات المجانية المتاحة"
+                            )
                         } else {
-                            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
+                            discardEmptyStreamingReply()
+                            appendConversation("حكيم", result.reason)
+                            HakimExecutiveLoop.record(
+                                this,
+                                HakimExecutiveLoop.Phase.GATED,
+                                result.reason
+                            )
+                            recordRoute("direct:" + engine.id, false)
+                            status.text = "لم تكتمل المهمة"
                         }
-                        recordRoute("direct:" + engine.id, false)
-                        status.text = "لم تكتمل المهمة"
                     }
                 }
                 refreshOperations()
             }
         }.start()
+    }
+
+    private fun retryDirectOrBlock(
+        text: String,
+        instruction: String,
+        failedEngine: HakimInferenceEngine,
+        excluded: Set<String>,
+        reason: String,
+        finalStatus: String
+    ) {
+        recordRoute("direct:" + failedEngine.id, false)
+        val nextExcluded = excluded + failedEngine.id
+        val fallback = HakimWisdomMatrix.choose(this, text, attachments, nextExcluded)?.engine
+
+        if (fallback != null && HakimExecutiveLoop.advanceCycle(
+                this,
+                "تعذر " + failedEngine.displayName + "؛ تحويل تلقائي إلى محرك مجاني آخر"
+            )
+        ) {
+            resetStreamingReplyForRetry()
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.ROUTING,
+                "المحرك البديل: " + fallback.displayName
+            )
+            refreshOperations()
+            status.text = "يحوّل إلى " + fallback.displayName
+            executeDirectModel(text, instruction, fallback.id, nextExcluded)
+            return
+        }
+
+        discardEmptyStreamingReply()
+        appendConversation(
+            "حكيم",
+            reason + " لا يوجد محرك مجاني مباشر آخر مؤهل الآن."
+        )
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.GATED,
+            reason
+        )
+        status.text = finalStatus
     }
 
     private fun sendToProviderApp(text: String, decision: HakimModelToolRouter.Decision) {
@@ -600,6 +681,13 @@ class CommandCenterActivity : Activity() {
         persistConversation()
         streamingBase = ""
         streamingBuffer.setLength(0)
+    }
+
+    private fun resetStreamingReplyForRetry() {
+        conversation.text = streamingBase
+        streamingBase = ""
+        streamingBuffer.setLength(0)
+        scrollConversationToBottom()
     }
 
     private fun discardEmptyStreamingReply() {

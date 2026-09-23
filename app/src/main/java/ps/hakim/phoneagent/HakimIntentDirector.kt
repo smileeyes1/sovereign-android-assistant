@@ -19,6 +19,10 @@ object HakimIntentDirector {
         val goal = raw.trim().take(4000)
         val acceptance = acceptanceFor(goal, attachmentCount)
         val cycle = HakimExecutiveLoop.current(context)?.cycle ?: 1
+        val recentContext = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
+            .getString("recent", "")
+            .orEmpty()
+            .takeLast(8_000)
 
         val instruction = buildString {
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
@@ -31,7 +35,11 @@ object HakimIntentDirector {
             appendLine("أعد النتيجة النهائية للمستخدم مباشرة، ثم اذكر فقط الدليل أو القيود الضرورية للتحقق.")
             appendLine("معيار الاكتمال: " + acceptance)
             appendLine("دورة إشراف حكيم: " + cycle)
-            appendLine("مقصد المستخدم:")
+            if (recentContext.isNotBlank()) {
+                appendLine("سياق المحادثة الحديث داخل حكيم:")
+                appendLine(recentContext)
+            }
+            appendLine("مقصد المستخدم الحالي:")
             append(goal)
         }.take(6000)
 

@@ -100,6 +100,18 @@ object HakimSelfCheck {
         check("منفذ المقصد موجود", executor.optBoolean("executor"))
         check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
 
+        val materialFactory = HakimMaterialFactory.status(context)
+        check("مصنع حكيم للمادة فعّال", materialFactory.optBoolean("material_factory"))
+        check("التصميم الرقمي لا يُعد منتجًا ماديًا", materialFactory.optBoolean("digital_design_is_not_physical_product"))
+        check("التحقق المادي يتطلب نفس الأثر", materialFactory.optBoolean("same_artifact_required"))
+        check("ترقية المصنع تفشل مغلقة", materialFactory.optBoolean("fail_closed_promotion"))
+
+        val humanBiology = HakimHumanBiology.status(context)
+        check("طبقة الأحياء والإنسان فعالة", humanBiology.optBoolean("human_biology"))
+        check("القلب والدماغ ضمن التغطية", humanBiology.optBoolean("covers_heart") && humanBiology.optBoolean("covers_brain"))
+        check("لا استقلال علاجي ذاتي", !humanBiology.optBoolean("autonomous_clinical_action"))
+        check("التدخل المباشر خلف بوابة مختصة", humanBiology.optBoolean("direct_intervention_requires_qualified_gate"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -158,6 +170,8 @@ object HakimSelfCheck {
             .put("value_continuity", continuity)
             .put("goal_supervisor", supervisor)
             .put("goal_executor", executor)
+            .put("material_factory", materialFactory)
+            .put("human_biology", humanBiology)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

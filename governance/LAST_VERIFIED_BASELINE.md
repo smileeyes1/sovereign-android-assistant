@@ -18,14 +18,12 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20096`.
-- Branch: `feature/hakim-20096-visible-conversation`.
-- Field evidence on 20094/20095 proved the Local-First route works: «مرحبا» no longer opens ChatGPT.
-- New user-eye evidence on the actual phone showed the local reply was technically written into the small status/header line, so the user reasonably perceived that Hakim did not answer.
-- 20096 fixes the presentation contract, not the routing contract: each submitted user message and Hakim reply are rendered in a dedicated scrollable conversation transcript, persisted locally, and automatically scrolled to the newest reply.
-- The status line is now only execution state; it is never the sole place for a conversational answer.
-- All Android-native / Play Protect-safe / no-install-prompt / Local-First protections remain inherited and must pass again in CI.
-- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes in-place update and the reply is visibly accepted by the user.
+- Candidate versionCode: `20097`.
+- Branch: `feature/hakim-20097-keyboard-aware-local-help`.
+- Field evidence on 20096 proved the conversation transcript is visible and persistent.
+- New field evidence: asking «لماذا لوحة المفاتيح تغطي مكان الكتابة» was unnecessarily routed to ChatGPT even though it is a question about Hakim's own UI. The Android keyboard also reduced the usable floating-window area.
+- 20097 keeps Hakim self-UI help local, adds a keyboard-specific local reply, and enforces `adjustResize` in both manifest and runtime so the composer stays visible when the IME opens.
+- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes the same field prompt without opening ChatGPT and the composer remains visible with the keyboard open.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

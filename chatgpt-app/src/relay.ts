@@ -1,10 +1,14 @@
 import type { DeviceCredential,HakimOp } from "./protocol.js";
-import { decryptResult,encryptCarrier,makeEnvelope } from "./protocol.js";
+import { decryptResult,encryptCarrier,makeEnvelope,normalizeRelayBaseUrl } from "./protocol.js";
+
+function relayUrl(c:DeviceCredential,topic:string,suffix=""){
+  return normalizeRelayBaseUrl(c.relayBaseUrl)+"/"+encodeURIComponent(topic)+suffix;
+}
 
 export async function publishCommand(c:DeviceCredential,op:HakimOp,payload:unknown){
   const envelope=makeEnvelope(c.relayKey,op,payload);
   const carrier=encryptCarrier(c.relayKey,envelope);
-  const response=await fetch("https://ntfy.sh/"+encodeURIComponent(c.topic),{
+  const response=await fetch(relayUrl(c,c.topic),{
     method:"POST",
     headers:{"Content-Type":"text/plain; charset=utf-8"},
     body:carrier,
@@ -17,7 +21,7 @@ export async function publishCommand(c:DeviceCredential,op:HakimOp,payload:unkno
 export async function pollResult(c:DeviceCredential,requestId:string,timeoutMs=8_000):Promise<unknown|null>{
   const deadline=Date.now()+timeoutMs;
   while(Date.now()<deadline){
-    const u=new URL("https://ntfy.sh/"+encodeURIComponent(c.resultTopic)+"/json");
+    const u=new URL(relayUrl(c,c.resultTopic,"/json"));
     u.searchParams.set("poll","1");
     u.searchParams.set("since","2m");
     const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});
@@ -41,7 +45,7 @@ export async function pollResult(c:DeviceCredential,requestId:string,timeoutMs=8
 export async function pollPairAck(c:DeviceCredential,timeoutMs=10_000):Promise<boolean>{
   const deadline=Date.now()+timeoutMs;
   while(Date.now()<deadline){
-    const u=new URL("https://ntfy.sh/"+encodeURIComponent(c.resultTopic)+"/json");
+    const u=new URL(relayUrl(c,c.resultTopic,"/json"));
     u.searchParams.set("poll","1");
     u.searchParams.set("since","10m");
     const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});

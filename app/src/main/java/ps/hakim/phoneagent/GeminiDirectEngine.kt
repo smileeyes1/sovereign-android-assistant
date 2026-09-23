@@ -16,9 +16,17 @@ import java.util.concurrent.TimeUnit
  * Replies stream back into Hakim instead of opening another app.
  * The API key is read from HakimSecretStore and never logged.
  */
-class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
-    override val id: String = "gemini-direct"
-    override val displayName: String = "Gemini مباشر"
+class GeminiDirectEngine(
+    private val context: Context,
+    private val modelId: String = DEFAULT_MODEL
+) : HakimInferenceEngine {
+    override val id: String = "gemini-direct:" + modelId
+    override val displayName: String = when (modelId) {
+        "gemini-3.8-flash" -> "Gemini 3.8 Flash مباشر"
+        "gemini-3.7-flash" -> "Gemini 3.7 Flash مباشر"
+        "gemini-3.5-flash-lite" -> "Gemini 3.5 Flash-Lite مباشر"
+        else -> "Gemini مباشر"
+    }
     override val capabilities: Set<HakimInferenceEngine.Capability> = setOf(
         HakimInferenceEngine.Capability.GENERAL_CHAT,
         HakimInferenceEngine.Capability.IMAGES,
@@ -49,10 +57,12 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
             )
         }
 
-        val model = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_MODEL, DEFAULT_MODEL)
-            .orEmpty()
-            .ifBlank { DEFAULT_MODEL }
+        val model = modelId
+        if (HakimFreeOnlyPolicy.freeOnly(context) && !HakimFreeOnlyPolicy.isKnownFreeGeminiModel(model)) {
+            return HakimInferenceEngine.Result.Unavailable(
+                "سياسة حكيم المجانية تمنع استخدام نموذج غير مثبت ضمن القائمة المجانية."
+            )
+        }
 
         val input = JSONArray()
         input.put(JSONObject().put("type", "text").put("text", instruction))
@@ -93,7 +103,7 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
         }
 
         val request = Request.Builder()
-            .url(INTERACTIONS_URL)
+            .url(INTERACTIONS_STREAM_URL)
             .header("x-goog-api-key", key)
             .header("Content-Type", "application/json")
             .post(body.toString().toRequestBody(JSON))
@@ -164,7 +174,7 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
                     HakimInferenceEngine.Result.Success(
                         text = text,
                         evidence = listOf(
-                            "engine=gemini-direct",
+                            "engine=" + id,
                             "model=" + model,
                             "returned_in_app=true"
                         )
@@ -227,11 +237,11 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
     companion object {
         const val SECRET_GEMINI_KEY = "gemini_api_key"
         const val PREFS = "hakim_direct_models"
-        const val KEY_MODEL = "gemini_model"
         const val DEFAULT_MODEL = "gemini-3.8-flash"
 
         private const val KEY_PREVIOUS_INTERACTION = "gemini_previous_interaction_id"
-        private const val INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
+        private const val INTERACTIONS_STREAM_URL =
+            "https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse"
         private const val MAX_SINGLE_INLINE = 8L * 1024L * 1024L
         private const val MAX_TOTAL_INLINE = 16L * 1024L * 1024L
         private val JSON = "application/json; charset=utf-8".toMediaType()

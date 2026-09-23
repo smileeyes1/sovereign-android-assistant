@@ -4,6 +4,7 @@ package ps.hakim.phoneagent
  * Stable product boundary between Hakim's conversation/executive layer and any inference backend.
  *
  * A GENERAL_CHAT engine must return content to Hakim. Launching another app is not an engine result.
+ * Streaming deltas are user-visible output only; private model reasoning is never surfaced.
  */
 interface HakimInferenceEngine {
     val id: String
@@ -40,8 +41,11 @@ interface HakimInferenceEngine {
         ) : Result()
     }
 
-    suspend fun complete(
+    fun complete(
         instruction: String,
-        attachments: List<HakimAttachmentGateway.Attachment>
+        attachments: List<HakimAttachmentGateway.Attachment>,
+        onDelta: (String) -> Unit = {}
     ): Result
+
+    fun cancel() {}
 }

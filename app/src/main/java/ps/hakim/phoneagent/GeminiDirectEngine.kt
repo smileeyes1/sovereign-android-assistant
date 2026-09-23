@@ -59,9 +59,15 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
 
         var totalInline = 0L
         for (attachment in attachments) {
-            val bytes = readAttachment(attachment)
+            if ((attachment.sizeBytes ?: 0L) > MAX_SINGLE_INLINE) {
+                return HakimInferenceEngine.Result.Unavailable(
+                    "المرفق كبير للمسار المباشر الحالي: " + attachment.displayName
+                )
+            }
+            val remaining = (MAX_TOTAL_INLINE - totalInline).coerceAtMost(MAX_SINGLE_INLINE)
+            val bytes = readAttachmentBounded(attachment, remaining)
                 ?: return HakimInferenceEngine.Result.Unavailable(
-                    "تعذر قراءة المرفق: " + attachment.displayName
+                    "تعذر قراءة المرفق أو تجاوز الحد الآمن: " + attachment.displayName
                 )
             totalInline += bytes.size.toLong()
             if (bytes.size.toLong() > MAX_SINGLE_INLINE || totalInline > MAX_TOTAL_INLINE) {
@@ -183,10 +189,24 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
             .edit().remove(KEY_PREVIOUS_INTERACTION).apply()
     }
 
-    private fun readAttachment(attachment: HakimAttachmentGateway.Attachment): ByteArray? =
-        runCatching {
-            context.contentResolver.openInputStream(attachment.uri)?.use { it.readBytes() }
-        }.getOrNull()
+    private fun readAttachmentBounded(
+        attachment: HakimAttachmentGateway.Attachment,
+        limit: Long
+    ): ByteArray? = runCatching {
+        context.contentResolver.openInputStream(attachment.uri)?.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read.toLong()
+                if (total > limit) return@use null
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
+        }
+    }.getOrNull()
 
     private fun interactionType(mime: String): String = when {
         mime.startsWith("image/") -> "image"

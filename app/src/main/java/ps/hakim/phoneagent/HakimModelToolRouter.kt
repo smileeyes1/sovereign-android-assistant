@@ -103,13 +103,13 @@ object HakimModelToolRouter {
             )
         }
 
-        val directEngine = HakimEngineRegistry.bestGeneralChat(context, attachments)
+        val directEngine = HakimEngineRegistry.bestGeneralChat(context, q, attachments)
         if (directEngine != null) {
             return Decision(
                 channel = Channel.DIRECT_MODEL,
                 provider = null,
                 fallbacks = providers,
-                reason = "محرك ذكاء مباشر رسمي متاح ويعيد النتيجة داخل حكيم.",
+                reason = HakimWisdomMatrix.choose(context, q, attachments)?.reason ?: "محرك مباشر مناسب يعيد النتيجة داخل حكيم.",
                 engineId = directEngine.id
             )
         }

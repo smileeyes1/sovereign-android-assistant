@@ -19,7 +19,7 @@ object HakimModelToolRouter {
 
     enum class Channel {
         LOCAL_BROWSER,
-        CHATGPT_APP,
+        PROVIDER_APP,
         SYSTEM_SHARE,
         PROVIDER_WEB
     }
@@ -49,17 +49,20 @@ object HakimModelToolRouter {
         Provider(
             id = "gemini",
             label = "جيميني",
-            webUrl = "https://gemini.google.com/app"
+            webUrl = "https://gemini.google.com/app",
+            packageName = "com.google.android.apps.bard"
         ),
         Provider(
             id = "claude",
             label = "كلود",
-            webUrl = "https://claude.ai/new"
+            webUrl = "https://claude.ai/new",
+            packageName = "com.anthropic.claude"
         ),
         Provider(
             id = "deepseek",
             label = "ديب سيك",
-            webUrl = "https://chat.deepseek.com/"
+            webUrl = "https://chat.deepseek.com/",
+            packageName = "com.deepseek.chat"
         )
     )
 
@@ -95,7 +98,7 @@ object HakimModelToolRouter {
             val preferred = bestObservedProvider(context, installed)
             if (preferred != null) {
                 return Decision(
-                    channel = Channel.CHATGPT_APP,
+                    channel = Channel.PROVIDER_APP,
                     provider = preferred,
                     fallbacks = providers.filterNot { it.id == preferred.id },
                     reason = "هناك مرفقات، وتوجد قناة تطبيق مثبتة تستطيع استلام URI بصلاحية قراءة محدودة."
@@ -113,7 +116,7 @@ object HakimModelToolRouter {
         val preferredInstalled = bestObservedProvider(context, installed)
         if (preferredInstalled != null) {
             return Decision(
-                channel = Channel.CHATGPT_APP,
+                channel = Channel.PROVIDER_APP,
                 provider = preferredInstalled,
                 fallbacks = providers.filterNot { it.id == preferredInstalled.id },
                 reason = "قناة نموذج مثبتة ومتوافقة متاحة، ولا توجد حاجة لأداة أخرى."

@@ -39,6 +39,7 @@ object HakimIntentEngine {
         val route = when {
             isUrlLike(text) -> "browser"
             listOf("ابحث", "افتح موقع", "تصفح", "سجل دخول", "صفحة", "رابط").any { s.contains(it) } -> "browser"
+            listOf("اصنع", "صنع", "منتج", "جهاز", "روبوت", "ملموس", "طابعة", "نانو", "ذري", "ميكرو", "حساس", "محرك").any { s.contains(it) } -> "material_factory"
             listOf("اصنع تطبيق", "أنشئ تطبيق", "ابن تطبيق", "برمج", "كود", "مستودع", "github", "apk").any { s.contains(it) } -> "chatgpt_or_builder"
             listOf("صمم", "تصميم", "واجهة", "شعار", "صورة").any { s.contains(it) } -> "chatgpt_or_design"
             listOf("أرسل", "شارك", "تطبيق آخر", "واتساب", "بريد").any { s.contains(it) } -> "share_or_chatgpt"
@@ -47,6 +48,7 @@ object HakimIntentEngine {
 
         val intent = when (route) {
             "browser" -> "تصفح/تنفيذ ويب"
+            "material_factory" -> "تصنيع/منتج مادي"
             "chatgpt_or_builder" -> "بناء/برمجة/إنتاج"
             "chatgpt_or_design" -> "تصميم/إبداع"
             "share_or_chatgpt" -> "توجيه/إرسال"
@@ -67,6 +69,7 @@ object HakimIntentEngine {
 
         val nextAction = when {
             highImpact -> "نفّذ كل التحضير الآمن ثم اطلب الموافقة عند آخر خطوة عالية الأثر فقط"
+            route == "material_factory" -> "فعّل عقد مصنع حكيم، أنجز التصميم والتحقق المتاحين، ولا ترقِّ الحالة إلى منتج مادي دون تنفيذ وقياس ميداني مثبت"
             route == "browser" -> "افتح أو ابحث داخل حكيم ثم تابع وفق ن★ حتى تحقق الغاية"
             else -> "مرّر الغاية مع الدستور والسياق إلى ChatGPT ليستخدم ن★ والأدوات المتاحة حتى الاكتمال"
         }
@@ -105,6 +108,9 @@ object HakimIntentEngine {
             appendLine("عند الفعل عالي الأثر: حضّر كل شيء ثم توقف فقط قبل الفعل النهائي الذي يتطلب موافقة المستخدم.")
             appendLine("[معايير الاكتمال]")
             plan.completion.forEach { appendLine("• $it") }
+            if (plan.route == "material_factory") {
+                appendLine(HakimMaterialFactory.governedContext(context, raw))
+            }
             appendLine("[أمر المستخدم]")
             append(raw.trim())
         }.take(12_000)

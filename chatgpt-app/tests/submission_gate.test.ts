@@ -41,3 +41,19 @@ test("review login is credential-gated and never enables dev bearer",()=>{
   assert.match(index,/reviewCredentialsMatch/);
   assert.equal(index.includes('HAKIM_ALLOW_DEV_BEARER="1"'),false);
 });
+
+
+test("privacy policy states data categories, recipients, retention and user controls",()=>{
+  for(const phrase of [
+    "ما الذي نعالجه",
+    "المستلمون والمعالِجون",
+    "الاحتفاظ",
+    "تحكم المستخدم",
+    "تنتهي بعد دقيقتين",
+    "تنتهي بعد ساعة",
+    "تنتهي بعد ٣٠ يومًا"
+  ]){
+    assert.equal(index.includes(phrase),true,"missing privacy requirement: "+phrase);
+  }
+  assert.equal(index.includes("لا يحتفظ الجسر بمحتوى الجهاز أو بنتائج الأدوات كقاعدة بيانات"),true);
+});

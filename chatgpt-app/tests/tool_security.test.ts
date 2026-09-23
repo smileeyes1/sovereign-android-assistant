@@ -10,7 +10,8 @@ const credential:DeviceCredential={
   topic:"hakim_cmd_abcdefghijklmnopqrstuvwxyz",
   resultTopic:"hakim_result_abcdefghijklmnopqrstuvwxyz",
   relayKey:"A".repeat(48),
-  pairToken:"B".repeat(43)
+  pairToken:"B".repeat(43),
+  relayBaseUrl:"https://relay.example"
 };
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{

@@ -86,16 +86,16 @@ class UnifiedHomeActivity : Activity() {
             setPadding(8, 8, 8, 10)
         })
 
-        root.addView(button("إعداد OpenRouter المجاني") {
+        root.addView(button("فعّل الذكاء المجاني — مرة واحدة") {
+            OpenRouterOAuthManager.start(this)
+        })
+
+        root.addView(button("مفتاح OpenRouter يدوي — احتياطي") {
             showOpenRouterKeyDialog()
         })
 
         root.addView(button("اختبار أفضل محرك مجاني") {
             testBestFreeEngine()
-        })
-
-        root.addView(button("إنشاء مفتاح OpenRouter مجاني") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://openrouter.ai/settings/keys")))
         })
 
         root.addView(button("مسح مفتاح OpenRouter") {
@@ -141,7 +141,7 @@ class UnifiedHomeActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "يحفظ حكيم المفاتيح داخل AndroidKeyStore ولا يطبعها في السجل. OpenRouter/free صفر السعر للرموز لكنه محدود بالحصة المجانية. Gemini لا يدخل مصفوفة المجاني إلا بعد تأكيدك أن المفتاح تابع لـ Free Tier."
+            text = "الربط التلقائي يستخدم OAuth/PKCE الرسمي ويحفظ المفتاح داخل AndroidKeyStore. حكيم يرسل المحادثة العادية إلى openrouter/free فقط، فلا يختار نموذجًا مدفوعًا تلقائيًا. الحصة المجانية محدودة، وعند انتهائها يتوقف دون إنشاء تكلفة."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 22, 12, 8)
@@ -272,7 +272,7 @@ class UnifiedHomeActivity : Activity() {
                 if (available.isEmpty()) append("غير مهيأة")
                 else append(available.joinToString(" ← ") { it.engine.displayName })
                 append("\nOpenRouter=")
-                append(if (openRouter) "مهيأ" else "غير مهيأ")
+                append(if (openRouter) "متصل" else "غير متصل — اضغط «فعّل الذكاء المجاني»")
                 append(" | Gemini=")
                 append(if (gemini && geminiFree) "Free Tier مؤكد" else if (gemini) "مفتاح موجود غير مؤكد مجانيًا" else "غير مهيأ")
             }

@@ -46,7 +46,17 @@ jobs:
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_20100_pinned_composer.py
           python3 tests/verify_20101_intent_director.py
-          python3 tests/verify_product_v1_final_gate.py
+          python3 tests/verify_product_v1_candidate_gate.py
+          set +e
+          FINAL_OUTPUT="$(python3 tests/verify_product_v1_final_gate.py 2>&1)"
+          FINAL_RC=$?
+          set -e
+          printf '%s\n' "$FINAL_OUTPUT"
+          if [[ $FINAL_RC -eq 0 ]]; then
+            echo "Product V1 unexpectedly promoted before field evidence" >&2
+            exit 1
+          fi
+          grep -q 'PRODUCT_V1_FINAL_GATE=FAIL reason=field_state:' <<<"$FINAL_OUTPUT"
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
@@ -83,7 +93,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20101"
+          test "$VERSION_CODE" = "20102"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

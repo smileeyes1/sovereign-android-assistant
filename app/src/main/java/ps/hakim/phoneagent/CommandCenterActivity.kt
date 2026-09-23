@@ -27,6 +27,7 @@ class CommandCenterActivity : Activity() {
     private lateinit var attachmentStatus: TextView
     private lateinit var conversation: TextView
     private lateinit var conversationScroll: ScrollView
+    private lateinit var operations: TextView
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +37,7 @@ class CommandCenterActivity : Activity() {
         HakimLearning.initialize(this)
         buildUi()
         loadConversation()
+        refreshOperations()
         handleIntent(intent)
         refreshAttachmentStatus()
     }
@@ -108,6 +110,14 @@ class CommandCenterActivity : Activity() {
         }
         root.addView(status)
 
+        operations = TextView(this).apply {
+            text = "لا توجد عملية جارية"
+            textSize = 13f
+            gravity = Gravity.RIGHT
+            setPadding(12, 8, 12, 8)
+        }
+        root.addView(operations)
+
         conversationScroll = ScrollView(this).apply {
             isFillViewport = true
         }
@@ -159,9 +169,24 @@ class CommandCenterActivity : Activity() {
         }
         root.addView(attachmentStatus)
 
-        root.addView(actionButton("أنجز") {
-            executeBestRoute(command.text.toString().trim())
-        })
+        val executeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        executeRow.addView(
+            actionButton("أنجز") { executeBestRoute(command.text.toString().trim()) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 3f)
+        )
+        executeRow.addView(
+            actionButton("إلغاء") {
+                HakimExecutiveLoop.cancel(this)
+                refreshOperations()
+                status.text = "أُلغي التنفيذ"
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        root.addView(executeRow)
 
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -202,15 +227,24 @@ class CommandCenterActivity : Activity() {
         }
         capture(text, "best_route")
         appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
+        val acceptance = "إظهار نتيجة واضحة داخل حكيم، وعدم اعتبار فتح أداة خارجية نجاحًا، والتحقق من الأثر النهائي"
+        HakimExecutiveLoop.start(this, text, acceptance)
+        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "تحويل المقصد إلى خطة قابلة للتحقق")
         val decision = HakimModelToolRouter.decide(this, text, attachments)
+        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
+        refreshOperations()
         status.text = "يجري التنفيذ"
 
         when (decision.channel) {
             HakimModelToolRouter.Channel.LOCAL_RESPONSE -> {
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "تنفيذ محلي دون إرسال بيانات")
+                refreshOperations()
                 val reply = HakimModelToolRouter.localReply(text).orEmpty()
                 val visibleReply = reply.ifBlank { "تم تنفيذ المقصد محليًا." }
                 appendConversation("حكيم", visibleReply)
-                status.text = "تم الرد داخل حكيم"
+                HakimExecutiveLoop.complete(this, "الرد ظاهر داخل سجل محادثة حكيم")
+                refreshOperations()
+                status.text = "اكتمل"
                 command.setText("")
                 recordRoute("local_response", true)
             }
@@ -234,7 +268,11 @@ class CommandCenterActivity : Activity() {
                 provider.packageName
             )
             try {
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "توجيه المهمة إلى " + provider.label)
+                refreshOperations()
                 startActivity(out)
+                HakimExecutiveLoop.waitExternal(this, provider.label)
+                refreshOperations()
                 appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن. فتح التطبيق وحده ليس نجاحًا للمهمة.")
                 status.text = "بانتظار أثر القناة الخارجية"
                 return
@@ -244,6 +282,10 @@ class CommandCenterActivity : Activity() {
             }
         }
 
+        if (HakimExecutiveLoop.advanceCycle(this, "تعذرت القنوات المباشرة؛ تغيير المسار بدل تكرار الفشل")) {
+            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, "المشاركة الآمنة كمسار احتياطي")
+        }
+        refreshOperations()
         appendConversation("حكيم", "تعذرت القنوات المباشرة؛ سأستخدم المشاركة الآمنة كمسار احتياطي.")
         status.text = "مسار احتياطي"
         shareToAny(text)
@@ -261,6 +303,9 @@ class CommandCenterActivity : Activity() {
             .putString("last_url", provider.webUrl)
             .apply()
         recordRoute("provider_web:" + provider.id, null)
+        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح قناة ويب رسمية داخل حكيم")
+        HakimExecutiveLoop.waitExternal(this, provider.label)
+        refreshOperations()
         appendConversation("حكيم", "فتحت القناة الرسمية المختارة. لن أعتبر المهمة ناجحة قبل تحقق الأثر.")
         status.text = "قناة خارجية"
         startActivity(Intent(this, MainActivity::class.java))
@@ -285,6 +330,9 @@ class CommandCenterActivity : Activity() {
         recordRoute("browser", null)
         val url = HakimModelToolRouter.browserTarget(raw)
         getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
+        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح المتصفح للمسار الذي يحتاج الويب")
+        HakimExecutiveLoop.waitExternal(this, "المتصفح")
+        refreshOperations()
         appendConversation("حكيم", "فتحت المتصفح للمسار الذي يحتاج الويب.")
         status.text = "المتصفح"
         startActivity(Intent(this, MainActivity::class.java))
@@ -338,6 +386,12 @@ class CommandCenterActivity : Activity() {
     private fun refreshAttachmentStatus() {
         if (::attachmentStatus.isInitialized) {
             attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
+        }
+    }
+
+    private fun refreshOperations() {
+        if (::operations.isInitialized) {
+            operations.text = HakimExecutiveLoop.operationText(this)
         }
     }
 

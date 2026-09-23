@@ -25,9 +25,11 @@ test("bridge never depends on an OpenAI API key or ChatGPT session secret",()=>{
   assert.equal(raw.includes("sk-proj-"),false);
 });
 
-test("plugin freezes ChatGPT-hosted model policy",()=>{
+test("Hakim freezes model-host independence policy",()=>{
   const raw=fs.readFileSync(path.join(root,"plugins/hakim/MODEL_POLICY.md"),"utf8");
-  assert.match(raw,/ChatGPT is the conversational and reasoning host/);
-  assert.match(raw,/does not select, unlock, proxy, imitate, or bill a language model/);
-  assert.match(raw,/must not bypass plan, rate, regional, workspace, safety, or product limits/);
+  assert.match(raw,/model-host independent/);
+  assert.match(raw,/ChatGPT is the current default host/);
+  assert.match(raw,/explicit HTTPS hostname allowlist/);
+  assert.match(raw,/does not select, unlock, imitate, or bill a language model/);
+  assert.match(raw,/ntfy\.sh is the default only/);
 });

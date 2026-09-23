@@ -48,17 +48,17 @@ object HakimIntentEngine {
         val route = when {
             isUrlLike(text) -> "browser"
             listOf("ابحث", "افتح موقع", "تصفح", "سجل دخول", "صفحة", "رابط").any { s.contains(it) } -> "browser"
-            listOf("اصنع تطبيق", "أنشئ تطبيق", "ابن تطبيق", "برمج", "كود", "مستودع", "github", "apk").any { s.contains(it) } -> "chatgpt_or_builder"
-            listOf("صمم", "تصميم", "واجهة", "شعار", "صورة").any { s.contains(it) } -> "chatgpt_or_design"
-            listOf("أرسل", "شارك", "تطبيق آخر", "واتساب", "بريد").any { s.contains(it) } -> "share_or_chatgpt"
-            else -> "chatgpt"
+            listOf("اصنع تطبيق", "أنشئ تطبيق", "ابن تطبيق", "برمج", "كود", "مستودع", "github", "apk").any { s.contains(it) } -> "model_or_builder"
+            listOf("صمم", "تصميم", "واجهة", "شعار", "صورة").any { s.contains(it) } -> "model_or_design"
+            listOf("أرسل", "شارك", "تطبيق آخر", "واتساب", "بريد").any { s.contains(it) } -> "share_or_model"
+            else -> "model"
         }
 
         val intent = when (route) {
             "browser" -> "تصفح/تنفيذ ويب"
-            "chatgpt_or_builder" -> "بناء/برمجة/إنتاج"
-            "chatgpt_or_design" -> "تصميم/إبداع"
-            "share_or_chatgpt" -> "توجيه/إرسال"
+            "model_or_builder" -> "بناء/برمجة/إنتاج"
+            "model_or_design" -> "تصميم/إبداع"
+            "share_or_model" -> "توجيه/إرسال"
             else -> "فهم وتنفيذ غاية عامة"
         }
 
@@ -77,7 +77,7 @@ object HakimIntentEngine {
         val nextAction = when {
             highImpact -> "نفّذ كل التحضير الآمن ثم اطلب الموافقة عند آخر خطوة عالية الأثر فقط"
             route == "browser" -> "افتح أو ابحث داخل حكيم ثم تابع وفق ن★ حتى تحقق الغاية"
-            else -> "مرّر الغاية مع الدستور والسياق إلى ChatGPT ليستخدم ن★ والأدوات المتاحة حتى الاكتمال"
+            else -> "مرّر الغاية مع الدستور والسياق إلى أفضل نموذج أو أداة متاحة ومأذونة، مع بديل تلقائي، حتى الاكتمال"
         }
 
         val plan = IntentPlan(

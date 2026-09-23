@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20102
-        versionName '2.1.02-gemini-direct'
+        versionCode 20103
+        versionName '2.1.03-free-local-core'
     }
 
     compileOptions {
@@ -27,6 +27,7 @@ android {
 
 dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.17.1'
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'

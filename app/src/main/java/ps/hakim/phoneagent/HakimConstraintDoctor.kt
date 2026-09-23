@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -31,7 +30,6 @@ object HakimConstraintDoctor {
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
-        AutoUpdater.schedule(app)
         HakimSelfCheck.schedule(app)
         HakimConnectionResilience.schedule(app)
 
@@ -40,15 +38,12 @@ object HakimConstraintDoctor {
             prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("auth_key", "").orEmpty().isNotBlank()
         val network = hasInternet(app)
-        val installAllowed = AutoUpdater.canInstallPackages(app)
         val batteryExempt = isBatteryOptimizationIgnored(app)
         val backgroundRestricted = isBackgroundRestricted(app)
         val notificationsAllowed = notificationsAllowed(app)
 
         if (!disabled && paired && network) {
             HakimConnectionResilience.recover(app, "constraint_doctor_$reason")
-            AutoUpdater.startRealtimeListener(app)
-            AutoUpdater.checkAsync(app)
             HakimHealthBeacon.sendAsync(app, "constraint_doctor_$reason")
         }
 
@@ -65,7 +60,6 @@ object HakimConstraintDoctor {
         if (disabled) add("PAIRING_DISABLED_BY_USER", "sovereign", false, true, "فصل الاقتران بقرار المستخدم")
         else if (!paired) add("PAIRING_REQUIRED", "blocker", false, true, "يلزم اقتران موثوق ولا يجوز اختلاق السر")
         if (!network) add("NETWORK_UNAVAILABLE", "blocker", false, false, "لا توجد شبكة إنترنت فعالة الآن")
-        if (!installAllowed) add("INSTALL_SOURCE_PERMISSION", "blocker", false, true, "يلزم سماح أندرويد لحكيم بتثبيت تحديثاته")
         if (!batteryExempt) add("BATTERY_OPTIMIZATION", "warning", false, true, "قد تقيد تحسينات البطارية الاستمرارية في الخلفية")
         if (backgroundRestricted) add("BACKGROUND_RESTRICTED", "blocker", false, true, "أندرويد يقيد عمل حكيم في الخلفية")
         if (!notificationsAllowed) add("NOTIFICATIONS_DISABLED", "warning", false, true, "تعطيل الإشعارات يخفي تنبيهات الاستعادة والموافقات")
@@ -80,7 +74,7 @@ object HakimConstraintDoctor {
             .put("network", network)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
-            .put("install_allowed", installAllowed)
+            .put("update_install_mode", "external_user_managed")
             .put("battery_optimization_ignored", batteryExempt)
             .put("background_restricted", backgroundRestricted)
             .put("notifications_allowed", notificationsAllowed)
@@ -91,7 +85,7 @@ object HakimConstraintDoctor {
             .putLong("last_constraint_check_at", System.currentTimeMillis())
             .apply()
 
-        val gate = chooseSystemGate(disabled, paired, installAllowed, backgroundRestricted, batteryExempt, notificationsAllowed)
+        val gate = chooseSystemGate(disabled, paired, backgroundRestricted, batteryExempt, notificationsAllowed)
         if (gate != null) notifyGate(app, gate.first, gate.second)
         return report
     }
@@ -99,19 +93,12 @@ object HakimConstraintDoctor {
     private fun chooseSystemGate(
         disabled: Boolean,
         paired: Boolean,
-        installAllowed: Boolean,
         backgroundRestricted: Boolean,
         batteryExempt: Boolean,
         notificationsAllowed: Boolean
     ): Pair<String, Intent>? {
         if (disabled) return null
         if (!paired) return "إكمال اقتران حكيم" to Intent(Intent.ACTION_MAIN).setClassName("ps.hakim.stable", "ps.hakim.phoneagent.MainActivity")
-        if (!installAllowed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return "السماح لحكيم بتثبيت تحديثاته" to Intent(
-                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:ps.hakim.stable")
-            )
-        }
         if (backgroundRestricted || !batteryExempt) {
             return "رفع قيود الخلفية/البطارية عن حكيم" to Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         }

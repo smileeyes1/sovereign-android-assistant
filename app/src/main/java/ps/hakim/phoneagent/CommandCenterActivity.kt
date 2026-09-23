@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -17,13 +16,14 @@ import android.widget.Toast
 
 class CommandCenterActivity : Activity() {
     companion object {
-        private const val CHATGPT_PACKAGE = "com.openai.chatgpt"
+        private const val ATTACHMENT_PICKER_REQUEST = 7301
     }
 
     private lateinit var command: EditText
     private lateinit var status: TextView
     private lateinit var updateStatus: TextView
-    private var inboundShare: Intent? = null
+    private lateinit var attachmentStatus: TextView
+    private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +32,7 @@ class CommandCenterActivity : Activity() {
         buildUi()
         handleIntent(intent)
         refreshUpdateStatus()
+        refreshAttachmentStatus()
         maybeOnboardAutoUpdate()
     }
 
@@ -50,6 +51,24 @@ class CommandCenterActivity : Activity() {
         handleIntent(intent)
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == ATTACHMENT_PICKER_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                val picked = HakimAttachmentGateway.fromResult(this, data)
+                val known = attachments.map { it.uri }.toMutableSet()
+                picked.filter { known.add(it.uri) }.forEach { attachments += it }
+                refreshAttachmentStatus()
+                status.text = if (picked.isEmpty()) {
+                    "لم يصل مرفق صالح."
+                } else {
+                    "أضيفت المرفقات محليًا؛ لن تُرسل إلا عبر المسار الذي يختاره حكيم."
+                }
+            }
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -58,14 +77,14 @@ class CommandCenterActivity : Activity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "حكيم — مركز القيادة"
-            textSize = 25f
+            text = "حكيم"
+            textSize = 27f
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 12)
+            setPadding(8, 8, 8, 8)
         })
 
         status = TextView(this).apply {
-            text = "الافتراضي: افهم النية → حقق الغاية → أكمل تلقائيًا\nن★ التكيفية: كل شيء مفيد • من كل شيء موثوق • في كل شيء مؤثر • كيف نفسها"
+            text = "اكتب الغاية فقط. حكيم يختار الأداة أو النموذج أو المتصفح ثم يحافظ على أقل صلاحية وكلفة."
             textSize = 15f
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 10)
@@ -73,66 +92,224 @@ class CommandCenterActivity : Activity() {
         root.addView(status)
 
         updateStatus = TextView(this).apply {
-            textSize = 14f
+            textSize = 13f
             gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 4)
+            setPadding(8, 2, 8, 4)
         }
         root.addView(updateStatus)
 
-        root.addView(actionButton("فحص/تهيئة التحديث التلقائي") {
-            if (!AutoUpdater.canInstallPackages(this)) {
-                AutoUpdater.openInstallPermissionSettings(this)
-            } else {
-                AutoUpdater.checkAsync(this)
-                toast("يجري فحص التحديث الآن")
-                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-            }
-        })
-
         command = EditText(this).apply {
-            hint = "اكتب الغاية فقط…"
+            hint = "ماذا تريد؟"
             minLines = 4
             maxLines = 10
             textSize = 18f
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(14, 14, 14, 14)
         }
-        root.addView(command, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        root.addView(
+            command,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-        root.addView(actionButton("نفّذ الغاية كاملة") {
+        attachmentStatus = TextView(this).apply {
+            textSize = 14f
+            gravity = Gravity.RIGHT
+            setPadding(8, 8, 8, 4)
+        }
+        root.addView(attachmentStatus)
+
+        val attachmentRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        attachmentRow.addView(
+            actionButton("إرفاق صورة/ملف/فيديو") {
+                startActivityForResult(HakimAttachmentGateway.pickerIntent(), ATTACHMENT_PICKER_REQUEST)
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        attachmentRow.addView(
+            actionButton("مسح المرفقات") {
+                attachments.clear()
+                refreshAttachmentStatus()
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        root.addView(attachmentRow)
+
+        root.addView(actionButton("نفّذ بأفضل مسار") {
             executeBestRoute(command.text.toString().trim())
         })
 
-        val row1 = LinearLayout(this).apply {
+        val utilityRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        row1.addView(actionButton("إلى شات جي بي تي") { sendToChatGPT(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row1.addView(actionButton("فتح/بحث في حكيم") { openInHakim(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(row1)
+        utilityRow.addView(
+            actionButton("مشاركة آمنة") {
+                shareToAny(command.text.toString().trim())
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        utilityRow.addView(
+            actionButton("المتصفح") {
+                openInHakim(command.text.toString().trim())
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        root.addView(utilityRow)
 
-        val row2 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        row2.addView(actionButton("إلى أي تطبيق") { shareToAny(command.text.toString().trim()) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row2.addView(actionButton("نسخ") { copyCommand() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(row2)
-
-        root.addView(actionButton("متصفح حكيم") {
-            startActivity(Intent(this, MainActivity::class.java))
+        root.addView(actionButton("فحص التحديث") {
+            if (!AutoUpdater.canInstallPackages(this)) {
+                AutoUpdater.openInstallPermissionSettings(this)
+            } else {
+                AutoUpdater.checkAsync(this)
+                toast("يجري فحص التحديث")
+                updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
+            }
         })
 
         root.addView(TextView(this).apply {
-            text = "كل توجيه صريح يُلتقط ويُصنّف تلقائيًا. ن★ تزيد العمق تلقائيًا ما دام هناك مكسب مادي مثبت، ولا يتوقف حكيم عند خطوة وسيطة أو فجوة قابلة للإغلاق ما دام يستطيع إكمالها بأمان؛ ويتوقف فقط أمام عائق حقيقي أو موافقة نظامية/فعل نهائي عالي الأثر."
+            text = "الأولوية: أداة حاسمة أو ويب حديث عند الحاجة، ثم قناة نموذج متاحة رسميًا، ثم بديل آمن. لا تُفترض API مدفوعة ولا تُنسخ أسرار الحسابات بين المزودين."
             textSize = 13f
             gravity = Gravity.CENTER
-            setPadding(10, 18, 10, 4)
+            setPadding(10, 16, 10, 4)
         })
 
         setContentView(root)
+    }
+
+    private fun executeBestRoute(text: String) {
+        if (text.isBlank() && attachments.isEmpty()) {
+            toast("اكتب الغاية أو أرفق محتوى")
+            return
+        }
+        capture(text, "best_route")
+        val decision = HakimModelToolRouter.decide(this, text, attachments)
+        val providerLabel = decision.provider?.label ?: "أداة محلية"
+        status.text = "المسار: " + providerLabel + "\n" + decision.reason
+
+        when (decision.channel) {
+            HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
+            HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
+            HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
+            HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
+        }
+    }
+
+    private fun sendToProviderApp(text: String, decision: HakimModelToolRouter.Decision) {
+        val provider = decision.provider ?: run {
+            shareToAny(text)
+            return
+        }
+        recordRoute("provider:" + provider.id, null)
+        val out = HakimModelToolRouter.governedShareIntent(
+            this,
+            text,
+            attachments,
+            provider.packageName
+        )
+        try {
+            startActivity(out)
+            HakimModelToolRouter.recordOutcome(this, provider.id, true)
+            recordRoute("provider:" + provider.id, true)
+        } catch (_: Exception) {
+            HakimModelToolRouter.recordOutcome(this, provider.id, false)
+            recordRoute("provider:" + provider.id, false)
+            val retry = HakimModelToolRouter.decide(this, text, attachments)
+            if (retry.channel == HakimModelToolRouter.Channel.PROVIDER_APP &&
+                retry.provider != null &&
+                retry.provider.id != provider.id
+            ) {
+                status.text = "تعذر " + provider.label + "؛ ينتقل حكيم تلقائيًا إلى " + retry.provider.label
+                sendToProviderApp(text, retry)
+            } else {
+                shareToAny(text)
+            }
+        }
+    }
+
+    private fun openProviderWeb(text: String, decision: HakimModelToolRouter.Decision) {
+        val provider = decision.provider ?: run {
+            openInHakim(text)
+            return
+        }
+        val governed = HakimIntentEngine.governedPrompt(this, text)
+        copyText(governed)
+        getSharedPreferences("hakim", MODE_PRIVATE)
+            .edit()
+            .putString("last_url", provider.webUrl)
+            .apply()
+        recordRoute("provider_web:" + provider.id, null)
+        status.text = "فتح حكيم جلسة " + provider.label + " الرسمية. نُسخ الأمر المحكوم احتياطًا دون نقل أسرار حساب."
+        startActivity(Intent(this, MainActivity::class.java))
+    }
+
+    private fun shareToAny(text: String) {
+        if (text.isBlank() && attachments.isEmpty()) return
+        capture(text, "share_out")
+        recordRoute("share", null)
+        val governed = HakimIntentEngine.governedPrompt(this, text)
+        val out = HakimAttachmentGateway.buildShareIntent(this, governed, attachments)
+        try {
+            startActivity(Intent.createChooser(out, "اختر القناة المتوافقة"))
+            recordRoute("share", true)
+        } catch (_: Exception) {
+            recordRoute("share", false)
+            toast("لا توجد قناة متوافقة مع هذا المحتوى")
+        }
+    }
+
+    private fun openInHakim(raw: String) {
+        capture(raw, "browser")
+        recordRoute("browser", null)
+        val url = HakimModelToolRouter.browserTarget(raw)
+        getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
+        startActivity(Intent(this, MainActivity::class.java))
+        recordRoute("browser", true)
+    }
+
+    private fun handleIntent(i: Intent?) {
+        if (i == null) return
+        when (i.action) {
+            Intent.ACTION_VIEW -> {
+                val u = i.data?.toString().orEmpty()
+                if (u.startsWith("http://") || u.startsWith("https://")) {
+                    command.setText(u)
+                    status.text = "وصل رابط إلى حكيم."
+                }
+            }
+            Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> {
+                val text = i.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
+                if (text.isNotBlank()) {
+                    command.setText(text)
+                    capture(text, "share_in")
+                }
+                val incoming = HakimAttachmentGateway.fromInboundShare(this, i)
+                val known = attachments.map { it.uri }.toMutableSet()
+                incoming.filter { known.add(it.uri) }.forEach { attachments += it }
+                refreshAttachmentStatus()
+                status.text = "وصل محتوى من تطبيق آخر؛ بقي محليًا حتى اختيار المسار."
+            }
+            Intent.ACTION_PROCESS_TEXT -> {
+                val text = i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString().orEmpty()
+                if (text.isNotBlank()) {
+                    command.setText(text)
+                    capture(text, "process_text")
+                }
+            }
+        }
+    }
+
+    private fun refreshAttachmentStatus() {
+        if (::attachmentStatus.isInitialized) {
+            attachmentStatus.text = HakimAttachmentGateway.summary(attachments)
+        }
     }
 
     private fun maybeOnboardAutoUpdate() {
@@ -141,8 +318,7 @@ class CommandCenterActivity : Activity() {
         val version = currentVersionCode()
         if (p.getLong("auto_update_onboarding_version", -1L) == version) return
         p.edit().putLong("auto_update_onboarding_version", version).apply()
-        updateStatus.text = "التحديث التلقائي يحتاج تفعيل «السماح من هذا المصدر» مرة واحدة فقط. ستفتح إعدادات أندرويد الآن."
-        updateStatus.postDelayed({ AutoUpdater.openInstallPermissionSettings(this) }, 700L)
+        updateStatus.text = "التحديث التلقائي يحتاج السماح من هذا المصدر مرة واحدة."
     }
 
     private fun refreshUpdateStatus() {
@@ -153,129 +329,14 @@ class CommandCenterActivity : Activity() {
     private fun currentVersionCode(): Long = try {
         val info = packageManager.getPackageInfo(packageName, 0)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
-    } catch (_: Exception) { 0L }
+    } catch (_: Exception) {
+        0L
+    }
 
     private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 16f
         setOnClickListener { action() }
-    }
-
-    private fun handleIntent(i: Intent?) {
-        if (i == null) return
-        when (i.action) {
-            Intent.ACTION_VIEW -> {
-                val u = i.data?.toString().orEmpty()
-                if (u.startsWith("http://") || u.startsWith("https://")) {
-                    openInHakim(u)
-                    finish()
-                }
-            }
-            Intent.ACTION_SEND -> {
-                inboundShare = Intent(i)
-                val text = i.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
-                if (text.isNotBlank()) {
-                    command.setText(text)
-                    capture(text, "share_in")
-                }
-                status.text = "وصل محتوى من تطبيق آخر — ن★ ومحرك النية والقواعد الافتراضية يعملان تلقائيًا."
-            }
-            Intent.ACTION_PROCESS_TEXT -> {
-                val text = i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString().orEmpty()
-                if (text.isNotBlank()) {
-                    command.setText(text)
-                    capture(text, "process_text")
-                }
-                status.text = "وصل نص محدد — تم التقاطه ون★ جاهزة لتحقيق الغاية وإكمالها."
-            }
-        }
-    }
-
-    private fun executeBestRoute(text: String) {
-        if (text.isBlank() && inboundShare == null) {
-            toast("اكتب الغاية أو شارك محتوى إلى حكيم")
-            return
-        }
-        capture(text, "best_route")
-        val plan = HakimIntentEngine.resolve(this, text)
-        status.text = "فهم حكيم النية: ${plan.intent}\nالمسار: ${plan.route} • العمق: ن★ تكيفي"
-        when (plan.route) {
-            "browser" -> openInHakim(text)
-            else -> sendToChatGPT(text)
-        }
-    }
-
-    private fun sendToChatGPT(text: String) {
-        capture(text, "chatgpt")
-        recordRoute("chatgpt", null)
-        val governedText = HakimIntentEngine.governedPrompt(this, text)
-        val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-        }
-        out.action = Intent.ACTION_SEND
-        if (out.type.isNullOrBlank()) out.type = "text/plain"
-        out.putExtra(Intent.EXTRA_TEXT, governedText)
-        out.setPackage(CHATGPT_PACKAGE)
-        out.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-        try {
-            startActivity(out)
-            recordRoute("chatgpt", true)
-        } catch (_: Exception) {
-            copyText(governedText)
-            val launch = packageManager.getLaunchIntentForPackage(CHATGPT_PACKAGE)
-            if (launch != null) {
-                startActivity(launch)
-                toast("تم نسخ الأمر المحكوم وفتح شات جي بي تي")
-            } else {
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")))
-                    toast("تم نسخ الأمر المحكوم وفتح شات جي بي تي على الويب")
-                } catch (_: Exception) {
-                    shareToAny(text)
-                }
-            }
-            recordRoute("chatgpt", false)
-        }
-    }
-
-    private fun shareToAny(text: String) {
-        capture(text, "share_out")
-        recordRoute("share", null)
-        val out = if (inboundShare != null) Intent(inboundShare) else Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-        }
-        out.action = Intent.ACTION_SEND
-        if (out.type.isNullOrBlank()) out.type = "text/plain"
-        if (text.isNotBlank()) out.putExtra(Intent.EXTRA_TEXT, text)
-        out.setPackage(null)
-        out.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        try {
-            startActivity(Intent.createChooser(out, "اختر التطبيق"))
-            recordRoute("share", true)
-        } catch (_: Exception) {
-            recordRoute("share", false)
-            toast("لا يوجد تطبيق مناسب لهذا المحتوى")
-        }
-    }
-
-    private fun openInHakim(raw: String) {
-        capture(raw, "browser")
-        recordRoute("browser", null)
-        val q = raw.trim()
-        if (q.isBlank()) {
-            startActivity(Intent(this, MainActivity::class.java))
-            recordRoute("browser", true)
-            return
-        }
-        val url = when {
-            q.startsWith("https://") || q.startsWith("http://") -> q
-            q.contains(".") && !q.contains(" ") -> "https://$q"
-            else -> "https://www.google.com/search?q=" + Uri.encode(q)
-        }
-        getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
-        startActivity(Intent(this, MainActivity::class.java))
-        recordRoute("browser", true)
     }
 
     private fun capture(text: String, source: String) {
@@ -286,14 +347,6 @@ class CommandCenterActivity : Activity() {
     private fun recordRoute(route: String, success: Boolean?) {
         if (success == null) HakimLearning.recordAttempt(this, route)
         else HakimLearning.recordResult(this, route, success)
-    }
-
-    private fun copyCommand() {
-        val text = command.text.toString().trim()
-        if (text.isBlank()) return
-        capture(text, "copy")
-        copyText(text)
-        toast("تم النسخ")
     }
 
     private fun copyText(text: String) {

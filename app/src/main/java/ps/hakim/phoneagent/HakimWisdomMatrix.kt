@@ -1,6 +1,8 @@
 package ps.hakim.phoneagent
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 
 /**
  * Free-first routing matrix.
@@ -23,6 +25,14 @@ object HakimWisdomMatrix {
     )
 
     private val profiles = mapOf(
+        LiteRtLocalEngine.ID to Profile(
+            engineId = LiteRtLocalEngine.ID,
+            quality = 74,
+            privacy = 100,
+            speed = 56,
+            multimodal = 0,
+            zeroCostCertainty = 100
+        ),
         OpenRouterFreeEngine.ID to Profile(
             engineId = OpenRouterFreeEngine.ID,
             quality = 82,
@@ -49,6 +59,8 @@ object HakimWisdomMatrix {
     ): List<Ranked> {
         val complex = isComplex(prompt)
         val privacySensitive = isPrivacySensitive(prompt)
+        val offline = isOffline(context)
+        val simple = !complex && prompt.length < 320 && attachments.isEmpty()
         return HakimEngineRegistry.directEngines(context)
             .asSequence()
             .filter { it.id !in excluded }
@@ -72,13 +84,21 @@ object HakimWisdomMatrix {
                     else -> ((p.quality + learnedSpeed) / 2)
                 }
                 val privacy = if (privacySensitive) p.privacy else (p.privacy + 15).coerceAtMost(100)
+                val localBonus = when {
+                    engine.id != LiteRtLocalEngine.ID -> 0
+                    privacySensitive -> 35
+                    offline -> 30
+                    simple -> 14
+                    else -> 4
+                }
                 val score =
                     p.zeroCostCertainty * 30 / 100 +
                     p.quality * 25 / 100 +
                     t.reliability * 20 / 100 +
                     privacy * 10 / 100 +
                     learnedSpeed * 10 / 100 +
-                    fit * 5 / 100
+                    fit * 5 / 100 +
+                    localBonus
                 Ranked(
                     engine = engine,
                     score = score,
@@ -86,7 +106,8 @@ object HakimWisdomMatrix {
                         " موثوقية=" + t.reliability +
                         " خصوصية=" + privacy +
                         " سرعة=" + learnedSpeed +
-                        " ملاءمة=" + fit
+                        " ملاءمة=" + fit +
+                        " محلي=" + localBonus
                 )
             }
             .sortedByDescending { it.score }
@@ -99,6 +120,13 @@ object HakimWisdomMatrix {
         attachments: List<HakimAttachmentGateway.Attachment>,
         excluded: Set<String> = emptySet()
     ): Ranked? = rank(context, prompt, attachments, excluded).firstOrNull()
+
+    private fun isOffline(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = cm.activeNetwork ?: return true
+        val caps = cm.getNetworkCapabilities(network) ?: return true
+        return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     private fun isComplex(text: String): Boolean {
         val q = text.lowercase()

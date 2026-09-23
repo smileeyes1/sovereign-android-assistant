@@ -291,13 +291,15 @@ class CommandCenterActivity : Activity() {
         ViewCompat.requestApplyInsets(root)
     }
 
-    private fun executeBestRoute(text: String) {
+    private fun executeBestRoute(text: String, appendUserMessage: Boolean = true) {
         if (text.isBlank() && attachments.isEmpty()) {
             toast("اكتب الغاية أو أرفق محتوى")
             return
         }
         capture(text, "best_route")
-        appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
+        if (appendUserMessage) {
+            appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
+        }
         val directed = HakimIntentDirector.build(this, text, attachments.size)
         HakimExecutiveLoop.start(this, text, directed.acceptance)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "صياغة أمر تنفيذي أعلى للمحرك وفق المقصد ومعيار الاكتمال")
@@ -321,11 +323,28 @@ class CommandCenterActivity : Activity() {
             }
             HakimModelToolRouter.Channel.DIRECT_MODEL ->
                 executeDirectModel(text, directed.instruction, decision.engineId)
+            HakimModelToolRouter.Channel.FREE_ENGINE_SETUP ->
+                beginFreeEngineSetup(text)
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
             HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
             HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
             HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
         }
+    }
+
+    private fun beginFreeEngineSetup(text: String) {
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.GATED,
+            "يلزم ربط محرك مجاني مباشر لمرة واحدة؛ لن يفتح حكيم ChatGPT تلقائيًا"
+        )
+        refreshOperations()
+        status.text = "ربط الذكاء المجاني"
+        appendConversation(
+            "حكيم",
+            "سأربط الآن محركًا مجانيًا رسميًا لمرة واحدة. بعد موافقتك سيعود الرد إلى حكيم نفسه، ولن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT."
+        )
+        OpenRouterOAuthManager.start(this, pendingPrompt = text)
     }
 
     private fun executeDirectModel(
@@ -574,6 +593,20 @@ class CommandCenterActivity : Activity() {
 
     private fun handleIntent(i: Intent?) {
         if (i == null) return
+
+        if (i.getBooleanExtra("resume_after_free_oauth", false)) {
+            val pending = OpenRouterOAuthManager.takePendingPrompt(this).orEmpty()
+            if (HakimSecretStore.has(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)) {
+                status.text = "تم ربط الذكاء المجاني"
+                if (pending.isNotBlank()) {
+                    command.setText(pending)
+                    command.post { executeBestRoute(pending, appendUserMessage = false) }
+                }
+            } else {
+                status.text = "لم يكتمل ربط الذكاء المجاني"
+            }
+            return
+        }
         when (i.action) {
             Intent.ACTION_VIEW -> {
                 val u = i.data?.toString().orEmpty()

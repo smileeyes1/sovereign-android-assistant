@@ -7,7 +7,7 @@ import { createDeviceCredential } from "../src/protocol.js";
 import {
   FileCodeStore,isChatGPTClientId,isChatGPTRedirectUri,issueAccessToken,issueRefreshToken,
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
-  pkceS256,requireProductionOAuthConfig
+  pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "../src/oauth.js";
 
 const secret="s".repeat(64);
@@ -59,4 +59,16 @@ test("authorization codes are atomically single-use",async()=>{
 test("production requires durable auth configuration",()=>{
   assert.throws(()=>requireProductionOAuthConfig({NODE_ENV:"production"} as NodeJS.ProcessEnv));
   assert.doesNotThrow(()=>requireProductionOAuthConfig({NODE_ENV:"production",HAKIM_OAUTH_SECRET:secret,HAKIM_DATA_DIR:"/data"} as NodeJS.ProcessEnv));
+});
+
+
+test("review credentials fail closed and match only configured pair",()=>{
+  const env={
+    HAKIM_REVIEW_USER:"openai-reviewer",
+    HAKIM_REVIEW_PASSWORD:"R".repeat(32)
+  } as NodeJS.ProcessEnv;
+  assert.equal(reviewCredentialsMatch(env,"openai-reviewer","R".repeat(32)),true);
+  assert.equal(reviewCredentialsMatch(env,"wrong","R".repeat(32)),false);
+  assert.equal(reviewCredentialsMatch(env,"openai-reviewer","wrong"),false);
+  assert.equal(reviewCredentialsMatch({} as NodeJS.ProcessEnv,"openai-reviewer","R".repeat(32)),false);
 });

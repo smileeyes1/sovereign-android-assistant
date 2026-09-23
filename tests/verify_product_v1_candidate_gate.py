@@ -4,6 +4,8 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimEngineRegistry.kt").read_text(encoding="utf-8")
 ENGINE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimInferenceEngine.kt").read_text(encoding="utf-8")
 GEMINI = (ROOT / "app/src/main/java/ps/hakim/phoneagent/GeminiDirectEngine.kt").read_text(encoding="utf-8")
+OPENROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/OpenRouterDirectEngine.kt").read_text(encoding="utf-8")
+PKCE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/OpenRouterPkceAuth.kt").read_text(encoding="utf-8")
 CENTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 ROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimModelToolRouter.kt").read_text(encoding="utf-8")
 SECRETS = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimSecretStore.kt").read_text(encoding="utf-8")
@@ -21,7 +23,7 @@ for needed in [
     req(needed in ENGINE, "engine:" + needed)
 
 for needed in [
-    "GeminiDirectEngine(context)",
+    "OpenRouterDirectEngine(context)",
     "bestGeneralChat",
     "HakimSecretStore.has",
 ]:
@@ -60,4 +62,8 @@ for needed in [
 req("AndroidKeyStore" in SECRETS, "keystore_missing")
 req("Gemini مباشر" in HOME and "اختبار المحرك المباشر" in HOME, "provider_setup_ui_missing")
 
-print("PRODUCT_V1_CANDIDATE_GATE=PASS direct_engine=gemini streaming=true multimodal_inline=true")
+req('"openrouter/free"' in OPENROUTER, "free_router_missing")
+req('"paid_fallback=false"' in OPENROUTER, "paid_fallback_guard_missing")
+req("code_challenge_method" in PKCE and "S256" in PKCE, "pkce_missing")
+
+print("PRODUCT_V1_CANDIDATE_GATE=PASS direct_engine=openrouter_free+gemini streaming=true no_paid_fallback=true")

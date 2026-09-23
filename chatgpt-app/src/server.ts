@@ -36,6 +36,9 @@ export function createHakimServer(
 ){
   const server=new McpServer({name:"Hakim Executive Bridge",version:"0.3.0"});
   const has=(scope:string)=>scopes.includes(scope);
+  const reviewMode=credential.topic.startsWith("hakim_review_");
+  const reviewId=()=>("review-"+Date.now().toString(36));
+
 
   for(const [name,title,description] of readCatalog){
     server.registerTool(name,{
@@ -43,6 +46,11 @@ export function createHakimServer(
       annotations:READ_ANNOTATIONS
     },async()=>{
       if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+      if(reviewMode) return text({
+        ok:true,demo:true,tool:name,
+        device:{name:"Hakim Review Device",connected:true},
+        message:"Safe reviewer fixture; no real device was accessed."
+      });
       const requestId=await publishCommand(credential,name as HakimOp,{});
       const result=await pollResult(credential,requestId,8_000);
       return text(result??{ok:false,status:"pending",request_id:requestId});
@@ -56,6 +64,7 @@ export function createHakimServer(
     annotations:WRITE_ANNOTATIONS
   },async({package:pkg,url})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),note:"No real device action occurs in reviewer mode."});
     const requestId=await publishCommand(credential,"launch",{package:pkg??"",url:url??""});
     return text({ok:true,status:"approval_requested",request_id:requestId});
   });
@@ -67,6 +76,7 @@ export function createHakimServer(
     annotations:WRITE_ANNOTATIONS
   },async({kind,args})=>{
     if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),note:"No real device action occurs in reviewer mode."});
     const requestId=await publishCommand(credential,"action",{kind,args:args??{}});
     return text({ok:true,status:"approval_requested",request_id:requestId});
   });
@@ -78,6 +88,7 @@ export function createHakimServer(
     annotations:READ_ANNOTATIONS
   },async({request_id})=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    if(reviewMode) return text({ok:true,demo:true,status:"complete",request_id,result:{message:"Safe reviewer fixture."}});
     const result=await pollResult(credential,request_id,8_000);
     return text(result??{ok:false,status:"pending",request_id});
   });

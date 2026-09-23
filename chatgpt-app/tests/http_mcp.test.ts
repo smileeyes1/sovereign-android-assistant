@@ -63,12 +63,12 @@ test("real HTTP /mcp tools/list exposes ChatGPT OAuth metadata",async(t)=>{
   assert.equal(body.result.tools.length,7);
 
   const byName=new Map(body.result.tools.map((x:any)=>[x.name,x]));
-  for(const name of ["status","ui","notifications","screenshot","check_request"]){
+  for(const name of ["get_device_status","get_current_ui","list_notifications","capture_screenshot","get_request_result"]){
     const tool:any=byName.get(name);
     assert.deepEqual(tool.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
     assert.equal(tool.annotations.readOnlyHint,true);
   }
-  for(const name of ["launch","action"]){
+  for(const name of ["open_target","perform_ui_action"]){
     const tool:any=byName.get(name);
     assert.deepEqual(tool.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
     assert.equal(tool.annotations.readOnlyHint,false);

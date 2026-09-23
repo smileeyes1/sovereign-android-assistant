@@ -32,3 +32,21 @@ test("marketplace entry points to the Hakim package",()=>{
   assert.equal(market.plugins[0].name,"hakim");
   assert.equal(market.plugins[0].policy.authentication,"ON_INSTALL");
 });
+
+
+test("branding assets exist and are square SVG",()=>{
+  const manifest=JSON.parse(fs.readFileSync(path.join(pluginRoot,"plugin.json"),"utf8"));
+  const ui=manifest.extensions["com.openai"].interface;
+  for(const field of ["logo","composerIcon"]){
+    const rel=ui[field];
+    assert.match(rel,/^\.\/assets\/.+\.svg$/);
+    const abs=path.join(pluginRoot,rel.slice(2));
+    assert.equal(fs.existsSync(abs),true,field+" asset missing");
+    const svg=fs.readFileSync(abs,"utf8");
+    assert.match(svg,/^<svg\b/);
+    const vb=svg.match(/viewBox="0 0 (\d+) (\d+)"/);
+    assert.ok(vb,field+" viewBox missing");
+    assert.equal(vb![1],vb![2],field+" must be square");
+    assert.ok(Number(vb![1])>=48);
+  }
+});

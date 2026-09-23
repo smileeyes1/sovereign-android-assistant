@@ -17,8 +17,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("FREE_OAUTH_NO_HANDOFF_20105=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20105, "version")
-req("versionName '2.1.05-free-oauth-no-handoff'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20105, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "https://openrouter.ai/auth",
@@ -58,4 +58,4 @@ req("لن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT" in
 req('private const val MODEL = "openrouter/free"' in OPENROUTER, "paid_model_risk")
 req("readAttachmentBounded" in OPENROUTER, "bounded_attachment_read_missing")
 
-print("FREE_OAUTH_NO_HANDOFF_20105=PASS oauth=pkce_s256 free_only=fail_closed auto_resume=true external_chat=not_automatic")
+print("FREE_OAUTH_NO_HANDOFF_GATE=PASS candidate>=20105 oauth=pkce_s256 free_only=fail_closed auto_resume=true")

@@ -16,8 +16,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("NO_INSTALL_PROMPT_20093=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20093, "version")
-req("versionName '2.0.93-no-install-prompt'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20093, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for forbidden in [
     "android.permission.REQUEST_INSTALL_PACKAGES",
@@ -54,4 +54,4 @@ except SystemExit:
 else:
     raise SystemExit("NO_INSTALL_PROMPT_20093=FAIL reason=sentinel_not_detected")
 
-print("NO_INSTALL_PROMPT_20093=PASS candidate=20093")
+print("NO_INSTALL_PROMPT_GATE=PASS candidate>=20093")

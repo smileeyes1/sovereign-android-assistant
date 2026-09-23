@@ -159,7 +159,8 @@ object HakimNetworkGuardian {
         }
 
         val wanted = "$FAMILY_DNS_1,$FAMILY_DNS_2"
-        if (!containsBothFamilyDns(currentDns)) {
+        val changedByGuardian = !containsBothFamilyDns(currentDns)
+        if (changedByGuardian) {
             val setBody = "<NewDNSServers>$wanted</NewDNSServers>"
             val set = soap(endpoint, gateway, "SetDNSServer", setBody)
             if (set.status == 401 || set.status == 403) {
@@ -173,6 +174,7 @@ object HakimNetworkGuardian {
 
         val after = soap(endpoint, gateway, "GetDNSServers", "")
         if (after.status !in 200..299) {
+            if (changedByGuardian) rollbackDns(context, endpoint, gateway, currentDns)
             return finish(context, "TR064_VERIFY_READ_FAILED_${after.status}", reason, now, gateway)
         }
         val verifiedDns = xmlTag(after.body, "NewDNSServers").trim()
@@ -192,12 +194,21 @@ object HakimNetworkGuardian {
             .putInt("family_resolver_blocked_rcode", resolverBlocked)
             .apply()
 
-        val state = when {
-            configured && familyResolverVerified -> "FAMILY_DNS_CONFIGURED"
-            configured -> "FAMILY_DNS_CONFIGURED_RESOLVER_UNVERIFIED"
-            else -> "FAMILY_DNS_NOT_VERIFIED"
+        if (!configured || !familyResolverVerified) {
+            if (changedByGuardian) {
+                val rolledBack = rollbackDns(context, endpoint, gateway, currentDns)
+                return finish(
+                    context,
+                    if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED",
+                    reason,
+                    now,
+                    gateway
+                )
+            }
+            return finish(context, "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED", reason, now, gateway)
         }
-        return finish(context, state, reason, now, gateway)
+
+        return finish(context, "FAMILY_DNS_CONFIGURED", reason, now, gateway)
     }
 
     fun status(context: Context): JSONObject {
@@ -212,6 +223,7 @@ object HakimNetworkGuardian {
             .put("baseline_dns_saved", p.contains("baseline_dns"))
             .put("family_dns_configured", p.getBoolean("family_dns_configured", false))
             .put("family_resolver_verified", p.getBoolean("family_resolver_verified", false))
+            .put("rollback_state", p.getString("rollback_state", "not_needed"))
             .put("last_run_at", p.getLong("last_run_at", 0L))
             .put("last_reason", p.getString("last_reason", ""))
             .put("last_detail", p.getString("last_detail", ""))
@@ -423,6 +435,38 @@ object HakimNetworkGuardian {
                 if (response.length < 12) -1 else buf[3].toInt() and 0x0f
             }
         } catch (_: Exception) { -1 }
+    }
+
+    private fun rollbackDns(
+        context: Context,
+        endpoint: ServiceEndpoint,
+        gateway: String,
+        baseline: String
+    ): Boolean {
+        if (baseline.isBlank()) {
+            prefs(context).edit().putString("rollback_state", "baseline_blank").apply()
+            return false
+        }
+        val response = soap(
+            endpoint,
+            gateway,
+            "SetDNSServer",
+            "<NewDNSServers>$baseline</NewDNSServers>"
+        )
+        if (response.status !in 200..299) {
+            prefs(context).edit()
+                .putString("rollback_state", "set_failed_${response.status}")
+                .putLong("rollback_at", System.currentTimeMillis())
+                .apply()
+            return false
+        }
+        val verify = soap(endpoint, gateway, "GetDNSServers", "")
+        val restored = verify.status in 200..299 && xmlTag(verify.body, "NewDNSServers").trim() == baseline.trim()
+        prefs(context).edit()
+            .putString("rollback_state", if (restored) "verified" else "verify_failed")
+            .putLong("rollback_at", System.currentTimeMillis())
+            .apply()
+        return restored
     }
 
     private fun containsBothFamilyDns(value: String): Boolean =

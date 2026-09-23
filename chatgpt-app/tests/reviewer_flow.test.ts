@@ -125,14 +125,14 @@ test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
     return JSON.parse(dataLine!.slice(6)) as any;
   }
 
-  const status=await call("status");
+  const status=await call("get_device_status");
   const statusText=status.result?.content?.[0]?.text??"";
   const statusPayload=JSON.parse(statusText);
   assert.equal(statusPayload.demo,true);
   assert.equal(statusPayload.device.name,"Hakim Review Device");
   assert.equal(statusPayload.device.connected,true);
 
-  const launch=await call("launch",{package:"com.android.chrome"});
+  const launch=await call("open_target",{package:"com.android.chrome"});
   const launchText=launch.result?.content?.[0]?.text??"";
   const launchPayload=JSON.parse(launchText);
   assert.equal(launchPayload.demo,true);

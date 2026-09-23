@@ -95,7 +95,7 @@ test("public reviewer mode is isolated from real device transport and redacts co
     assert.equal((nav.structuredContent as any)?.status,"approval_requested");
     assert.equal((nav.structuredContent as any)?.validated_action,"back");
 
-    const result=await client.callTool({name:"get_request_result",arguments:{request_id:"review-12345678"}});
+    const result=await client.callTool({name:"get_request_result",arguments:{operation_token:"review-12345678"}});
     assert.equal((result.structuredContent as any)?.privacy,"content_redacted");
     assert.equal("result" in ((result.structuredContent as any)??{}),false);
   }finally{

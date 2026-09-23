@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 factory = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimMaterialFactory.kt").read_text(encoding="utf-8")
 intent = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimIntentEngine.kt").read_text(encoding="utf-8")
+self_check = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
 
 def require(condition: bool, message: str) -> None:
     if not condition:
@@ -17,6 +18,8 @@ require('أبسط مقياس تصنيع يحقق الغاية' in factory, "FACT
 require('HakimMaterialFactory.governedContext' in intent, "FACTORY: المصنع غير موصول بمحرك النية")
 require('"material_factory"' in intent, "FACTORY: مسار المصنع غير معرف في محرك النية")
 require('اصنع' in intent and 'نانو' in intent and 'ملموس' in intent, "FACTORY: كلمات تفعيل المصنع الأساسية مفقودة")
+require('HakimMaterialFactory.status(context)' in self_check, "FACTORY: المصنع غير ظاهر في الفحص الذاتي")
+require('.put("material_factory", factory)' in self_check, "FACTORY: تقرير الفحص الذاتي لا يحمل حالة المصنع")
 
 print("HAKIM_MATERIAL_FACTORY_POLICY=PASS")
 

@@ -1,0 +1,98 @@
+name: "نشر تحديث حكيم ٢٠١٠٨ عبر النفق الخارجي"
+
+on:
+  push:
+    branches:
+      - feature/hakim-20108-network-guardian
+    paths:
+      - .github/workflows/publish-20108-update.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "جلب أثر CI المثبت حرفيًا"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/10770911731/zip"             -o /tmp/hakim-ci.zip
+          unzip -q /tmp/hakim-ci.zip -d /tmp/hakim-ci
+          test -f /tmp/hakim-ci/release/app-release-unsigned.apk
+          echo "6ec38dacbd6f9854e477894c74f7e32a5c05e49e035d1a5f41d8922700465900  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+
+      - name: "إعادة تركيب توقيع D1 المثبت — فشل مغلق"
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, struct, zipfile
+          from pathlib import Path
+
+          src=Path("/tmp/hakim-ci/release/app-release-unsigned.apk")
+          out=Path("/tmp/HAKIM-20108-D1-NETWORK-GUARDIAN.apk")
+          block=base64.b64decode(Path("release-control/20108-signing-block.b64").read_text().strip())
+          data=bytearray(src.read_bytes())
+          eocd=data.rfind(b"PK\x05\x06")
+          if eocd < 0: raise SystemExit("EOCD_NOT_FOUND")
+          cd=struct.unpack_from("<I",data,eocd+16)[0]
+          if cd != 13826544: raise SystemExit(f"UNEXPECTED_CD_OFFSET:{cd}")
+          signed=bytearray(data[:cd])+block+bytearray(data[cd:])
+          new_eocd=eocd+len(block)
+          struct.pack_into("<I",signed,new_eocd+16,cd+len(block))
+          out.write_bytes(signed)
+          digest=hashlib.sha256(signed).hexdigest()
+          if len(signed) != 13835499: raise SystemExit(f"SIZE_MISMATCH:{len(signed)}")
+          if digest != "547c26e888b3a08287ccd76dc7e5f4136edfd35ede6aae61d5c87031be44f82d":
+              raise SystemExit("SIGNED_SHA_MISMATCH:"+digest)
+          with zipfile.ZipFile(out) as z:
+              bad=z.testzip()
+              if bad: raise SystemExit("ZIP_BAD:"+bad)
+              if len(z.infolist()) != 86: raise SystemExit("ZIP_ENTRY_COUNT_MISMATCH")
+          print("SIGNED_RECONSTRUCTION=PASS sha256="+digest)
+          PY
+
+      - name: "إنشاء جسر HTTPS ثقيل عبر GitHub Release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="hakim-20108-d1-network-guardian"
+          ASSET="HAKIM-20108-D1-NETWORK-GUARDIAN.apk"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG"               --target 78f2634f3a2e086861e7dac56eec039eae9d52c0               --title "Hakim 20108 D1 — Network Guardian"               --notes "مرشح تمهيدي موقّع D1؛ CI ناجح، التحقق الميداني بعد التثبيت ما زال مطلوبًا."               --prerelease
+          fi
+          gh release upload "$TAG" "/tmp/$ASSET#$ASSET" --clobber
+          ASSET_URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
+          curl --fail --location --silent --show-error --range 0-1023 "$ASSET_URL" -o /tmp/asset-head.bin
+          test "$(wc -c < /tmp/asset-head.bin)" -gt 0
+          echo "ASSET_URL=$ASSET_URL" >> "$GITHUB_ENV"
+          echo "GITHUB_RELEASE_BRIDGE=PASS"
+
+      - name: "إرسال حبل الإشارة الخفيف إلى حكيم"
+        run: |
+          set -euo pipefail
+          META='{"version_code":20108,"sha256":"547c26e888b3a08287ccd76dc7e5f4136edfd35ede6aae61d5c87031be44f82d","size":13835499}'
+          RESPONSE="$(curl --fail-with-body --silent --show-error             --data-binary "$META"             -H 'Title: HAKIM_UPDATE'             -H "Attach: $ASSET_URL"             -H 'Filename: HAKIM-20108-D1-NETWORK-GUARDIAN.apk'             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
+          printf '%s' "$RESPONSE" > /tmp/ntfy-response.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("/tmp/ntfy-response.json").read_text())
+          if x.get("event")!="message": raise SystemExit("NTFY_EVENT_NOT_MESSAGE")
+          if x.get("title")!="HAKIM_UPDATE": raise SystemExit("NTFY_TITLE_MISMATCH")
+          if x.get("message","").find('"version_code":20108') < 0:
+              raise SystemExit("NTFY_METADATA_MISMATCH")
+          a=x.get("attachment") or {}
+          if not str(a.get("url","")).startswith("https://github.com/"):
+              raise SystemExit("NTFY_ATTACHMENT_URL_MISMATCH")
+          print("UPDATE_SIGNAL_PUBLISH=PASS")
+          print("event_id="+str(x.get("id","")))
+          print("attachment_url="+str(a.get("url","")))
+          PY

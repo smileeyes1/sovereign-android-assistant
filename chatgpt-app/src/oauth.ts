@@ -120,8 +120,8 @@ export function pkceS256(verifier:string){
 }
 
 export function normalizeScopes(raw:string|undefined){
-  const allowed=new Set(["hakim.read","hakim.write"]);
-  const requested=(raw??"hakim.read hakim.write").split(/\s+/).filter(Boolean);
+  const allowed=new Set(["hakim.read","hakim.write","offline_access"]);
+  const requested=(raw??"hakim.read hakim.write offline_access").split(/\s+/).filter(Boolean);
   const unique=[...new Set(requested)];
   if(unique.length===0||unique.some(s=>!allowed.has(s))) throw new Error("invalid_scope");
   return unique;

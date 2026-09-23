@@ -115,13 +115,7 @@ class CommandCenterActivity : Activity() {
             setPadding(16, 14, 16, 14)
             minHeight = 160
         }
-        conversationScroll.addView(
-            conversation,
-            ScrollView.LayoutParams(
-                ScrollView.LayoutParams.MATCH_PARENT,
-                ScrollView.LayoutParams.WRAP_CONTENT
-            )
-        )
+        conversationScroll.addView(conversation)
         root.addView(
             conversationScroll,
             LinearLayout.LayoutParams(

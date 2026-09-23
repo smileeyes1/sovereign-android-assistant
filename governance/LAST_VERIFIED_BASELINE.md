@@ -29,3 +29,12 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.
+
+
+## Current integrated source candidate — 20109
+- Parent source baseline: `20108` at `cfb2cf668a2f4431c3706a1b6d6d32bb5a9a8c76`, whose GitHub Actions run #903 completed SUCCESS.
+- Candidate branch: `feature/hakim-20109-unified-factory-v1`.
+- 20109 integrates the material factory contract and a whole-human biology domain while preserving the 20108 network-guardian lineage.
+- Human-biology scope is education, wellness, non-invasive monitoring and evidence-bounded decision support by default. It does not grant autonomous diagnosis, treatment, stimulation, implantation, dosing, surgery, or genome intervention.
+- Material state cannot be promoted to MATERIAL_VERIFIED without fabrication evidence, measurement, acceptance, and same-artifact proof.
+- 20109 remains NOT PROMOTED until its own current-head CI succeeds and the same correctly signed APK passes field acceptance.

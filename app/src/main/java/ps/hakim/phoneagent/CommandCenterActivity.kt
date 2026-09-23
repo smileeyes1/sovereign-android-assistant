@@ -87,38 +87,32 @@ class CommandCenterActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(18, 18, 18, 18)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(28, 30, 28, 24)
         }
 
         root.addView(TextView(this).apply {
             text = "حكيم"
-            textSize = 27f
+            textSize = 28f
             gravity = Gravity.CENTER
             setPadding(8, 8, 8, 8)
         })
 
         status = TextView(this).apply {
-            text = "اكتب الغاية فقط. حكيم يختار الأداة أو النموذج أو المتصفح ثم يحافظ على أقل صلاحية وكلفة."
+            text = "جاهز لتحقيق مقصدك"
             textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(8, 4, 8, 10)
+            setPadding(8, 2, 8, 14)
         }
         root.addView(status)
 
-        updateStatus = TextView(this).apply {
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(8, 2, 8, 4)
-        }
-        root.addView(updateStatus)
-
         command = EditText(this).apply {
-            hint = "ماذا تريد؟"
-            minLines = 4
-            maxLines = 10
-            textSize = 18f
+            hint = "ماذا تريد أن أنجز؟"
+            minLines = 3
+            maxLines = 8
+            textSize = 19f
             gravity = Gravity.TOP or Gravity.RIGHT
-            setPadding(14, 14, 14, 14)
+            setPadding(18, 18, 18, 18)
         }
         root.addView(
             command,
@@ -129,91 +123,57 @@ class CommandCenterActivity : Activity() {
         )
 
         attachmentStatus = TextView(this).apply {
-            textSize = 14f
+            textSize = 13f
             gravity = Gravity.RIGHT
-            setPadding(8, 8, 8, 4)
+            setPadding(8, 6, 8, 4)
         }
         root.addView(attachmentStatus)
 
-        val attachmentRow = LinearLayout(this).apply {
+        root.addView(actionButton("أنجز") {
+            executeBestRoute(command.text.toString().trim())
+        })
+
+        val tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        attachmentRow.addView(
-            actionButton("إرفاق صورة/ملف/فيديو") {
+        tools.addView(
+            actionButton("إرفاق") {
                 startActivityForResult(HakimAttachmentGateway.pickerIntent(), ATTACHMENT_PICKER_REQUEST)
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        attachmentRow.addView(
-            actionButton("مسح المرفقات") {
-                attachments.clear()
-                refreshAttachmentStatus()
-            },
+        tools.addView(
+            actionButton("صوت") { startSpeechInput() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        root.addView(attachmentRow)
-
-        root.addView(actionButton("نفّذ بأفضل مسار") {
-            executeBestRoute(command.text.toString().trim())
-        })
-
-        val utilityRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        utilityRow.addView(
-            actionButton("مشاركة آمنة") {
-                shareToAny(command.text.toString().trim())
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        utilityRow.addView(
+        tools.addView(
             actionButton("المتصفح") {
                 openInHakim(command.text.toString().trim())
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        utilityRow.addView(
-            actionButton("صوت") {
-                startSpeechInput()
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        root.addView(utilityRow)
-
-        val managementRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        managementRow.addView(
-            actionButton("إدارة الجهاز") {
+        tools.addView(
+            actionButton("إدارة") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        managementRow.addView(
-            actionButton("فحص التحديث") {
-                if (!AutoUpdater.canInstallPackages(this)) {
-                    AutoUpdater.openInstallPermissionSettings(this)
-                } else {
-                    AutoUpdater.checkAsync(this)
-                    toast("يجري فحص التحديث")
-                    updateStatus.postDelayed({ refreshUpdateStatus() }, 1800L)
-                }
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        root.addView(managementRow)
+        root.addView(tools)
 
-        root.addView(TextView(this).apply {
-            text = "الأولوية: أداة حاسمة أو ويب حديث عند الحاجة، ثم قناة نموذج متاحة رسميًا، ثم بديل آمن. لا تُفترض API مدفوعة ولا تُنسخ أسرار الحسابات بين المزودين."
-            textSize = 13f
+        updateStatus = TextView(this).apply {
+            textSize = 12f
             gravity = Gravity.CENTER
-            setPadding(10, 16, 10, 4)
+            visibility = View.GONE
+            setPadding(8, 6, 8, 2)
+        }
+        root.addView(updateStatus)
+
+        root.addView(actionButton("التفاصيل") {
+            val show = updateStatus.visibility != View.VISIBLE
+            updateStatus.visibility = if (show) View.VISIBLE else View.GONE
+            if (show) refreshUpdateStatus()
         })
 
         setContentView(root)
@@ -226,8 +186,7 @@ class CommandCenterActivity : Activity() {
         }
         capture(text, "best_route")
         val decision = HakimModelToolRouter.decide(this, text, attachments)
-        val providerLabel = decision.provider?.label ?: "أداة محلية"
-        status.text = "المسار: " + providerLabel + "\n" + decision.reason
+        status.text = "يجري تنفيذ مقصدك عبر أفضل مسار متاح."
 
         when (decision.channel) {
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
@@ -252,7 +211,7 @@ class CommandCenterActivity : Activity() {
             try {
                 startActivity(out)
                 HakimModelToolRouter.recordOutcome(this, provider.id, true)
-                status.text = "تم تمرير المهمة عبر " + provider.label + "."
+                status.text = "تم تسليم المهمة إلى القناة المختارة؛ لم يُعتمد النجاح بعد."
                 return
             } catch (_: Exception) {
                 HakimModelToolRouter.recordOutcome(this, provider.id, false)
@@ -276,7 +235,7 @@ class CommandCenterActivity : Activity() {
             .putString("last_url", provider.webUrl)
             .apply()
         recordRoute("provider_web:" + provider.id, null)
-        status.text = "فتح حكيم جلسة " + provider.label + " الرسمية. نُسخ الأمر المحكوم احتياطًا دون نقل أسرار حساب."
+        status.text = "فُتحت القناة الرسمية المختارة، ولم يُعتمد النجاح قبل تحقق الأثر."
         startActivity(Intent(this, MainActivity::class.java))
     }
 

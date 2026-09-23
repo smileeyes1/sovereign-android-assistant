@@ -68,14 +68,16 @@
 ## Reviewer fixture
 
 A dedicated synthetic reviewer fixture is supported in production:
-- reviewer credentials are stored only as Railway environment secrets;
+- **Username:** `openai-reviewer`
+- **Password:** `Hakim-Review-Demo-Only-2026`
 - no MFA, SMS, email confirmation, or private-network access is required;
-- reviewer mode contains no personal user data and never touches a real device;
+- the credential is intentionally limited to a synthetic demo fixture and cannot access a real device;
 - status returns clearly labeled demo + redacted data;
 - opening or navigation returns `approval_requested` but performs no external action;
-- reviewer access can be rotated without changing the MCP endpoint.
+- reviewer login is rate-limited;
+- the fixture is enabled only when `HAKIM_PUBLIC_REVIEW_DEMO=1`.
 
-**Reviewer credential values are not committed to GitHub.**
+These credentials are reviewer/demo credentials, not user credentials and not a path to real device data.
 
 ## Domain verification
 
@@ -91,13 +93,17 @@ Do not commit the token to GitHub.
 
 ## Public safety profile
 
-Production submission uses `HAKIM_PUBLIC_SAFE=1`. The public catalog must contain exactly:
+Production submission uses `HAKIM_PUBLIC_SAFE=1` and `HAKIM_PUBLIC_REVIEW_DEMO=1`. The public catalog must contain exactly:
 - `get_device_status`
 - `open_target`
 - `navigate_device`
 - `get_request_result`
 
 Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
+
+## Content security policy
+
+No custom plugin UI component is included in this MCP-only submission, so there are no component fetch domains and no UI CSP allowlist is required.
 
 ## Release notes
 

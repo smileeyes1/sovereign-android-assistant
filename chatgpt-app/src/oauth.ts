@@ -89,8 +89,29 @@ export class FileCodeStore{
     await fs.mkdir(this.dir,{recursive:true,mode:0o700});
   }
 
-  async issue(record:OAuthCodeRecord){
+  async cleanupExpired(now=Date.now()){
     await this.init();
+    const entries=await fs.readdir(this.dir,{withFileTypes:true}).catch(()=>[]);
+    let removed=0;
+    for(const entry of entries){
+      if(!entry.isFile()||!entry.name.endsWith(".json")) continue;
+      const file=path.join(this.dir,entry.name);
+      try{
+        const record=JSON.parse(await fs.readFile(file,"utf8")) as OAuthCodeRecord;
+        if(!Number.isFinite(record.expiresAt)||record.expiresAt<=now){
+          await fs.unlink(file).catch(()=>{});
+          removed+=1;
+        }
+      }catch{
+        await fs.unlink(file).catch(()=>{});
+        removed+=1;
+      }
+    }
+    return removed;
+  }
+
+  async issue(record:OAuthCodeRecord){
+    await this.cleanupExpired();
     const code=b64u(crypto.randomBytes(32));
     const final=path.join(this.dir,code+".json");
     const temp=final+"."+process.pid+".tmp";
@@ -101,7 +122,7 @@ export class FileCodeStore{
 
   async consume(code:string):Promise<OAuthCodeRecord>{
     if(!/^[A-Za-z0-9_-]{40,100}$/.test(code)) throw new Error("invalid_code");
-    await this.init();
+    await this.cleanupExpired();
     const final=path.join(this.dir,code+".json");
     const claimed=path.join(this.dir,code+"."+process.pid+"."+crypto.randomBytes(4).toString("hex")+".used");
     try{await fs.rename(final,claimed);}catch{throw new Error("invalid_or_consumed_code");}

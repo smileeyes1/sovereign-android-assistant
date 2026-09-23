@@ -4,6 +4,7 @@ export const CARRIER_PREFIX = "HC1.";
 export const CARRIER_AAD = "HAKIM-CARRIER-v1";
 export const RESULT_PREFIX = "HR1.";
 export const RESULT_AAD = "HAKIM-RESULT-v1";
+export const DEFAULT_RELAY_BASE_URL = "https://ntfy.sh";
 export const ALLOWED_OPS = ["status","ui","notifications","screenshot","action","launch"] as const;
 export type HakimOp = typeof ALLOWED_OPS[number];
 
@@ -13,19 +14,28 @@ export type DeviceCredential = {
   resultTopic: string;
   relayKey: string;
   pairToken: string;
+  relayBaseUrl: string;
 };
 
 const b64u=(b:Buffer)=>b.toString("base64url");
 const fromB64u=(s:string)=>Buffer.from(s,"base64url");
 export const randomSecret=(bytes=32)=>b64u(crypto.randomBytes(bytes));
 
-export function createDeviceCredential():DeviceCredential{
+export function normalizeRelayBaseUrl(raw?:string):string{
+  const u=new URL((raw||DEFAULT_RELAY_BASE_URL).trim());
+  if(u.protocol!=="https:"||u.username||u.password||u.search||u.hash) throw new Error("invalid_relay_base_url");
+  const path=u.pathname.replace(/\/+$/,"");
+  return u.origin+(path===""||path==="/"?"":path);
+}
+
+export function createDeviceCredential(relayBaseUrl=DEFAULT_RELAY_BASE_URL):DeviceCredential{
   return {
     v:2,
     topic:"hakim_cmd_"+randomSecret(18),
     resultTopic:"hakim_result_"+randomSecret(18),
     relayKey:randomSecret(48),
-    pairToken:randomSecret(32)
+    pairToken:randomSecret(32),
+    relayBaseUrl:normalizeRelayBaseUrl(relayBaseUrl)
   };
 }
 
@@ -35,17 +45,24 @@ export function encodeBearer(c:DeviceCredential):string{
 
 export function decodeBearer(raw:string):DeviceCredential{
   if(!raw.startsWith("HAKIM-B2.")) throw new Error("invalid_bearer");
-  const value=JSON.parse(fromB64u(raw.slice(9)).toString("utf8")) as DeviceCredential;
+  const value=JSON.parse(fromB64u(raw.slice(9)).toString("utf8")) as Partial<DeviceCredential>;
   if(value.v!==2) throw new Error("unsupported_bearer");
-  if(!/^[A-Za-z0-9_-]{20,120}$/.test(value.topic)) throw new Error("invalid_topic");
-  if(!/^[A-Za-z0-9_-]{20,120}$/.test(value.resultTopic)) throw new Error("invalid_result_topic");
-  if(!/^[A-Za-z0-9_-]{40,100}$/.test(value.relayKey)) throw new Error("invalid_key");
-  if(!/^[A-Za-z0-9_-]{32,256}$/.test(value.pairToken)) throw new Error("invalid_pair_token");
-  return value;
+  if(!value.topic||!/^[A-Za-z0-9_-]{20,120}$/.test(value.topic)) throw new Error("invalid_topic");
+  if(!value.resultTopic||!/^[A-Za-z0-9_-]{20,120}$/.test(value.resultTopic)) throw new Error("invalid_result_topic");
+  if(!value.relayKey||!/^[A-Za-z0-9_-]{40,100}$/.test(value.relayKey)) throw new Error("invalid_key");
+  if(!value.pairToken||!/^[A-Za-z0-9_-]{32,256}$/.test(value.pairToken)) throw new Error("invalid_pair_token");
+  return {
+    v:2,
+    topic:value.topic,
+    resultTopic:value.resultTopic,
+    relayKey:value.relayKey,
+    pairToken:value.pairToken,
+    relayBaseUrl:normalizeRelayBaseUrl(value.relayBaseUrl)
+  };
 }
 
 export function makeEnvelope(relayKey:string,op:HakimOp,payload:unknown,ttlMs=60_000){
-  const requestId="chatgpt-"+randomSecret(12);
+  const requestId="hakim-"+randomSecret(12);
   const expiresAt=Date.now()+ttlMs;
   const payloadB64=b64u(Buffer.from(JSON.stringify(payload??{}),"utf8"));
   const canonical=[requestId,op,String(expiresAt),payloadB64].join("\n");
@@ -94,7 +111,8 @@ export function pairingUrl(c:DeviceCredential):string{
     token:c.pairToken,
     relay_topic:c.topic,
     relay_result_topic:c.resultTopic,
-    relay_key:c.relayKey
+    relay_key:c.relayKey,
+    relay_base_url:c.relayBaseUrl
   });
   return "hakim://pair?"+q.toString();
 }

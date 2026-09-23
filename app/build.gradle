@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20097
-        versionName '2.0.97-keyboard-aware-local-help'
+        versionCode 20098
+        versionName '2.0.98-executive-loop-ui'
     }
 
     compileOptions {

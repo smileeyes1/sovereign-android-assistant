@@ -44,6 +44,7 @@ jobs:
           python3 tests/verify_20097_keyboard_local_help.py
           python3 tests/verify_20098_executive_loop.py
           python3 tests/verify_20099_chatlike_composer.py
+          python3 tests/verify_20100_pinned_composer.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
@@ -80,7 +81,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20099"
+          test "$VERSION_CODE" = "20100"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

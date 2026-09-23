@@ -21,6 +21,8 @@ object HakimIntentDirector {
         val cycle = HakimExecutiveLoop.current(context)?.cycle ?: 1
 
         val instruction = buildString {
+            appendLine(HakimQuranicGovernance.instruction())
+            appendLine()
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
             appendLine("افهم مقصد المستخدم قبل الإجابة، ثم صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل يحقق المقصد.")
             appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه داخليًا عند الحاجة حتى 3 مراجعات.")

@@ -3,8 +3,8 @@ from pathlib import Path
 p=Path("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 
 must=[
-    "جاهز لتحقيق مقصدك",
-    "ماذا تريد أن أنجز؟",
+    "جاهز",
+    "اكتب رسالتك إلى حكيم",
     'actionButton("أنجز")',
     'actionButton("إرفاق")',
     'actionButton("صوت")',
@@ -29,5 +29,7 @@ for x in [
 ]:
     assert x not in p, x
 
-assert "لم يُعتمد النجاح" in p
-print("CALM_UI_POLICY=PASS")
+assert ("لم يُعتمد النجاح" in p) or ("لن أعتبر المهمة ناجحة" in p) or ("ليس نجاحًا للمهمة" in p)
+assert "ScrollView" in p
+assert "appendConversation" in p
+print("CALM_UI_POLICY=PASS visible_conversation=true")

@@ -37,6 +37,9 @@ class CommandCenterActivity : Activity() {
     private lateinit var executeRow: LinearLayout
     private lateinit var toolsRow: LinearLayout
     private var operationsExpanded = false
+    @Volatile private var currentDirectEngine: HakimInferenceEngine? = null
+    private var streamingBase = ""
+    private val streamingBuffer = StringBuilder()
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -205,9 +208,11 @@ class CommandCenterActivity : Activity() {
         )
         executeRow.addView(
             actionButton("إلغاء") {
+                currentDirectEngine?.cancel()
+                currentDirectEngine = null
                 HakimExecutiveLoop.cancel(this)
                 refreshOperations()
-                status.text = "أُلغي تتبع حكيم؛ قد تستمر أي قناة خارجية فُتحت سابقًا"
+                status.text = "أُلغي التنفيذ الجاري"
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
@@ -314,11 +319,93 @@ class CommandCenterActivity : Activity() {
                 command.setText("")
                 recordRoute("local_response", true)
             }
+            HakimModelToolRouter.Channel.DIRECT_MODEL ->
+                executeDirectModel(text, directed.instruction, decision.engineId)
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
             HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
             HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
             HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
         }
+    }
+
+    private fun executeDirectModel(text: String, instruction: String, engineId: String?) {
+        val engine = HakimEngineRegistry.directEngines(this)
+            .firstOrNull { it.id == engineId }
+            ?: run {
+                appendConversation("حكيم", "المحرك المباشر المحدد لم يعد متاحًا. افتح «إدارة» لإعداده أو جرّب لاحقًا.")
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "المحرك المباشر غير متاح وقت التنفيذ")
+                refreshOperations()
+                status.text = "يلزم إعداد المحرك المباشر"
+                return
+            }
+
+        currentDirectEngine = engine
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "إجابة مباشرة داخل حكيم عبر " + engine.displayName
+        )
+        refreshOperations()
+        status.text = "يجيب " + engine.displayName
+        beginStreamingReply()
+
+        val snapshot = attachments.toList()
+        Thread {
+            val result = engine.complete(instruction, snapshot) { delta ->
+                runOnUiThread {
+                    if (currentDirectEngine === engine) appendStreamingDelta(delta)
+                }
+            }
+
+            runOnUiThread {
+                if (currentDirectEngine !== engine) return@runOnUiThread
+                currentDirectEngine = null
+
+                when (result) {
+                    is HakimInferenceEngine.Result.Success -> {
+                        finishStreamingReply(result.text)
+                        HakimExecutiveLoop.complete(
+                            this,
+                            "عاد الرد من " + engine.displayName + " إلى محادثة حكيم نفسها"
+                        )
+                        recordRoute("direct:" + engine.id, true)
+                        command.setText("")
+                        attachments.clear()
+                        refreshAttachmentStatus()
+                        status.text = "اكتمل"
+                    }
+                    is HakimInferenceEngine.Result.NeedsAuthorization -> {
+                        discardEmptyStreamingReply()
+                        appendConversation("حكيم", result.reason + " افتح «إدارة» لإكمال الإعداد.")
+                        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
+                        recordRoute("direct:" + engine.id, false)
+                        status.text = "يلزم تفويض المحرك"
+                    }
+                    is HakimInferenceEngine.Result.Unavailable -> {
+                        discardEmptyStreamingReply()
+                        appendConversation("حكيم", result.reason)
+                        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
+                        recordRoute("direct:" + engine.id, false)
+                        status.text = "المسار المباشر غير متاح لهذا الإدخال"
+                    }
+                    is HakimInferenceEngine.Result.Failure -> {
+                        discardEmptyStreamingReply()
+                        appendConversation(
+                            "حكيم",
+                            result.reason + if (result.retryable) " يمكنك إعادة المحاولة أو إضافة محرك مباشر بديل." else ""
+                        )
+                        if (result.retryable) {
+                            HakimExecutiveLoop.advanceCycle(this, "فشل المحرك المباشر؛ يلزم تبديل محرك أو إعادة المحاولة")
+                        } else {
+                            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
+                        }
+                        recordRoute("direct:" + engine.id, false)
+                        status.text = "لم تكتمل المهمة"
+                    }
+                }
+                refreshOperations()
+            }
+        }.start()
     }
 
     private fun sendToProviderApp(text: String, decision: HakimModelToolRouter.Decision) {
@@ -484,6 +571,54 @@ class CommandCenterActivity : Activity() {
         } else {
             saved
         }
+        scrollConversationToBottom()
+    }
+
+    private fun beginStreamingReply() {
+        streamingBase = conversation.text.toString().trim()
+        streamingBuffer.setLength(0)
+        renderStreamingReply()
+    }
+
+    private fun appendStreamingDelta(delta: String) {
+        if (delta.isBlank()) return
+        streamingBuffer.append(delta)
+        renderStreamingReply()
+    }
+
+    private fun renderStreamingReply() {
+        val prefix = if (streamingBase.isBlank()) "" else streamingBase + "\n\n"
+        conversation.text = prefix + "حكيم:\n" + streamingBuffer.toString()
+        scrollConversationToBottom()
+    }
+
+    private fun finishStreamingReply(finalText: String) {
+        if (streamingBuffer.isEmpty() && finalText.isNotBlank()) {
+            streamingBuffer.append(finalText)
+            renderStreamingReply()
+        }
+        persistConversation()
+        streamingBase = ""
+        streamingBuffer.setLength(0)
+    }
+
+    private fun discardEmptyStreamingReply() {
+        if (streamingBuffer.isEmpty() && streamingBase.isNotBlank()) {
+            conversation.text = streamingBase
+        } else if (streamingBuffer.isNotEmpty()) {
+            persistConversation()
+        }
+        streamingBase = ""
+        streamingBuffer.setLength(0)
+    }
+
+    private fun persistConversation() {
+        val kept = conversation.text.toString().takeLast(12_000)
+        conversation.text = kept
+        getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+            .edit()
+            .putString("recent", kept)
+            .apply()
         scrollConversationToBottom()
     }
 

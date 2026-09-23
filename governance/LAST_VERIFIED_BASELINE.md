@@ -15,11 +15,12 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Modern public Android source used for this candidate starts from commit `d3ae6946b2d63e402a1b597dbc93ab5d58efa12f` on `feature/hakim-capability-kernel-v1` (source versionCode 20088).
 
 ## Current Android candidate
-- Candidate versionCode: `20093`.
-- Branch: `feature/hakim-20093-no-install-prompt`.
-- 20092 installed successfully enough to reach the Android unknown-app-source settings screen, proving the prior Play Protect hard block was removed.
-- Field evidence exposed a new defect: the safe core still contained legacy runtime calls that asked for the very install-source permission intentionally removed from its manifest. Android therefore showed a disabled toggle and Hakim displayed an impossible request.
-- 20093 removes that residual updater/onboarding path from CommandCenter, BootReceiver, EvolutionJob, ConstraintDoctor, SelfCheck, and the manifest. Updates are explicitly external/user-managed in this safe core.
+- Candidate versionCode: `20094`.
+- Branch: `feature/hakim-20094-local-first-routing`.
+- Field evidence on 20093 showed that a trivial greeting ("مرحبا") opened ChatGPT and exposed a long governed prompt. That behavior is not accepted as an autonomous Hakim result.
+- 20094 introduces local-first routing for deterministic trivial intents, so greetings/thanks/basic identity are answered inside Hakim without leaving the app or sending data externally.
+- External provider handoff now uses a compact task envelope instead of exposing the full internal governance prompt.
+- Opening a provider app no longer increments provider success; launch != task success remains enforced.
 - Status starts as SOURCE/CI CANDIDATE ONLY. It does not replace the historical Android field baseline until the exact signed APK passes in-place update and field acceptance.
 
 ## Promotion rule

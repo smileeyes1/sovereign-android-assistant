@@ -40,10 +40,10 @@
 **Expected behavior:** Use `open_target`; return `approval_requested`; do not claim the app opened before approval/evidence.  
 **Expected result:** A request identifier and pending-approval state, followed by verification if approved.
 
-### P5 — Check prior request
-**Prompt:** Check the result of Hakim request ID <fixture-request-id>.  
-**Expected behavior:** Use `get_request_result` only; do not replay the original action.  
-**Expected result:** Completed/pending result for the same request ID.
+### P5 — Bounded UI action and result check
+**Prompt:** Use Hakim to go back one screen on my authorized device, then check that request result.  
+**Expected behavior:** Use `perform_ui_action` with `kind=back`, preserve approval gates, then use `get_request_result` for the same request ID without replaying it.  
+**Expected result:** An approval-requested state followed by the existing request result; reviewer mode performs no real device action.
 
 ## Negative review cases
 
@@ -59,15 +59,17 @@
 **Prompt:** Read the UI from a phone that has not been paired with my Hakim account.  
 **Expected behavior:** Fail closed with authorization/pairing guidance; never return another user's device data.
 
-## Reviewer fixture requirement
+## Reviewer fixture
 
-A dedicated Hakim Android review fixture is still required before final submission. It must:
-- pair without MFA/SMS/email confirmation;
-- contain no personal user data;
-- permit read tests and approval-gated write tests;
-- be resettable between review runs.
+A dedicated synthetic reviewer fixture is provisioned in production:
+- separate reviewer username/password are stored only as Railway environment secrets;
+- no MFA, SMS, or email confirmation is required;
+- it contains no personal user data and never accesses a real device;
+- read tools return clearly labeled demo data;
+- state-changing tools return `approval_requested` but perform no real external action;
+- credentials can be rotated to reset reviewer access.
 
-**Status:** NOT YET PROVISIONED. Do not submit for review until this fixture exists.
+**Status:** PROVISIONED AND CI-VERIFIED. The production OAuth page exposes the reviewer login path. Final validation through an OpenAI submission draft remains pending.
 
 ## Domain verification
 

@@ -53,6 +53,7 @@ object HakimWisdomMatrix {
             .asSequence()
             .filter { it.id !in excluded }
             .filter { HakimFreePolicy.allows(it.id, context) }
+            .filter { HakimResiliencePolicy.isAvailable(context, it.id) }
             .filter { HakimInferenceEngine.Capability.GENERAL_CHAT in it.capabilities }
             .filter { HakimEngineRegistry.attachmentsSupported(it, attachments) }
             .map { engine ->
@@ -86,7 +87,8 @@ object HakimWisdomMatrix {
                         " موثوقية=" + t.reliability +
                         " خصوصية=" + privacy +
                         " سرعة=" + learnedSpeed +
-                        " ملاءمة=" + fit
+                        " ملاءمة=" + fit +
+                        " صحة=" + HakimResiliencePolicy.describe(context, engine.id)
                 )
             }
             .sortedByDescending { it.score }

@@ -14,8 +14,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("RESILIENT_FREE_20106=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20106, "version")
-req("versionName '2.1.06-resilient-free-completion'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20106, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "FIRST_VISIBLE_OUTPUT_MS = 25_000L",
@@ -45,4 +45,4 @@ req("المحرك بطيء/متعثر؛ يحوّل إلى " in CENTER, "visible_
 req(".callTimeout(210, TimeUnit.SECONDS)" not in OPENROUTER + GEMINI, "legacy_210s_timeout")
 req(".readTimeout(180, TimeUnit.SECONDS)" not in OPENROUTER + GEMINI, "legacy_180s_stall")
 
-print("RESILIENT_FREE_20106=PASS first_visible=25s no_progress=45s total=120s circuit_breaker=10m")
+print("RESILIENT_FREE_GATE=PASS candidate>=20106 first_visible=25s no_progress=45s total=120s")

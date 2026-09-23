@@ -15,7 +15,6 @@ class HakimEvolutionJobService : JobService() {
                 HakimGoalExecutor.tick(applicationContext)
                 val report = HakimSelfCheck.run(applicationContext)
                 HakimLearning.recordHealth(applicationContext, report)
-                AutoUpdater.checkNow(applicationContext)
             } catch (_: Exception) {
             } finally {
                 jobFinished(params, false)

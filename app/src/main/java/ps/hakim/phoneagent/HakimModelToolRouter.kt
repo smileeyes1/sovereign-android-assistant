@@ -179,10 +179,6 @@ object HakimModelToolRouter {
         if (candidates.isEmpty()) return null
         val prefs = context.getSharedPreferences("hakim_router", Context.MODE_PRIVATE)
         val scored = candidates.map { it to prefs.getInt("provider_" + it.id + "_score", 0) }
-        val bestScore = scored.maxOf { it.second }
-        if (bestScore <= 0) {
-            return candidates.firstOrNull { it.id == "chatgpt" } ?: candidates.first()
-        }
         return scored.maxByOrNull { it.second }?.first
     }
 

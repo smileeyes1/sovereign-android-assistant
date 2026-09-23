@@ -182,7 +182,7 @@ class CommandCenterActivity : Activity() {
             actionButton("إلغاء") {
                 HakimExecutiveLoop.cancel(this)
                 refreshOperations()
-                status.text = "أُلغي التنفيذ"
+                status.text = "أُلغي تتبع حكيم؛ قد تستمر أي قناة خارجية فُتحت سابقًا"
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )

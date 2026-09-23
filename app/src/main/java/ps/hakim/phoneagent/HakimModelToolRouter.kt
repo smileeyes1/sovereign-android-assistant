@@ -11,7 +11,7 @@ import android.net.Uri
  * - no paid API is assumed;
  * - no account/session secret is copied between providers;
  * - current information goes to the browser/search path;
- * - attachments prefer an Android share-capable channel so URI grants stay scoped;
+ * - attachments prefer a configured direct engine that supports their modality, then scoped Android sharing;
  * - provider web sessions are fallbacks and never treated as verified until the user account/session is actually usable;
  * - the router records observed success locally and may prefer a previously successful compatible route.
  */
@@ -19,6 +19,7 @@ object HakimModelToolRouter {
 
     enum class Channel {
         LOCAL_RESPONSE,
+        DIRECT_MODEL,
         LOCAL_BROWSER,
         PROVIDER_APP,
         SYSTEM_SHARE,
@@ -37,7 +38,8 @@ object HakimModelToolRouter {
         val provider: Provider?,
         val fallbacks: List<Provider>,
         val reason: String,
-        val requiresUserChoice: Boolean = false
+        val requiresUserChoice: Boolean = false,
+        val engineId: String? = null
     )
 
     val providers = listOf(
@@ -98,6 +100,17 @@ object HakimModelToolRouter {
                 provider = null,
                 fallbacks = providers,
                 reason = "المهمة تعتمد على معلومات حديثة؛ يبدأ حكيم بالويب بدل ذاكرة نموذج."
+            )
+        }
+
+        val directEngine = HakimEngineRegistry.bestGeneralChat(context, attachments)
+        if (directEngine != null) {
+            return Decision(
+                channel = Channel.DIRECT_MODEL,
+                provider = null,
+                fallbacks = providers,
+                reason = "محرك ذكاء مباشر رسمي متاح ويعيد النتيجة داخل حكيم.",
+                engineId = directEngine.id
             )
         }
 

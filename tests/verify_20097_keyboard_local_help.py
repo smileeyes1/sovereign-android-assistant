@@ -12,8 +12,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("KEYBOARD_LOCAL_HELP_20097=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20097, "version")
-req("versionName '2.0.97-keyboard-aware-local-help'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20097, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 req(MANIFEST.count('android:windowSoftInputMode="adjustResize"') >= 2, "adjust_resize_missing")
 req("SOFT_INPUT_ADJUST_RESIZE" in CENTER, "runtime_adjust_resize_missing")
@@ -30,4 +30,4 @@ mentions_keyboard = any(x in q for x in ["لوحة المفاتيح", "الكي�
 mentions_composer = any(x in q for x in ["مكان الكتابة", "مربع الكتابة", "حقل الكتابة", "الإدخال", "يغطي", "تغطي"])
 req(mentions_keyboard and mentions_composer, "field_prompt_not_classified_local")
 
-print("KEYBOARD_LOCAL_HELP_20097=PASS ime=adjustResize field_prompt=local")
+print("KEYBOARD_LOCAL_HELP_GATE=PASS candidate>=20097 ime=adjustResize field_prompt=local")

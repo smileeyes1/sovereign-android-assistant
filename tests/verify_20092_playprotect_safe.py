@@ -34,7 +34,7 @@ for needed in [
     req(needed in MANIFEST, "core_capability_missing:" + needed)
 
 req("c84359e422dad0aa205f59a153a1f29d7f4c4e81" in BASELINE, "cloud_baseline")
-req("20091" in BASELINE and "Play Protect" in BASELINE, "blocked_parent_not_recorded")
+req("20092" in BASELINE and "Play Protect" in BASELINE, "playprotect_field_evidence_not_recorded")
 req("20092" in BASELINE, "candidate_not_recorded")
 for forbidden_call in [
     "AutoUpdater.schedule(this)",

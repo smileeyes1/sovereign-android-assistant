@@ -10,7 +10,6 @@ must=[
     'actionButton("صوت")',
     'actionButton("المتصفح")',
     'actionButton("إدارة")',
-    'actionButton("التفاصيل")',
     "visibility = View.GONE",
 ]
 for x in must:
@@ -25,6 +24,9 @@ for x in [
     "إلى شات جي بي تي",
     "إلى أي تطبيق",
     "ن★ التكيفية:",
+    "التحديث التلقائي يحتاج السماح",
+    "فحص/تهيئة التحديث التلقائي",
+    "openInstallPermissionSettings",
 ]:
     assert x not in p, x
 

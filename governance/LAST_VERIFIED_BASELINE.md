@@ -18,13 +18,13 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20094`.
-- Branch: `feature/hakim-20094-local-first-routing`.
-- Field evidence on 20093 showed that a trivial greeting ("مرحبا") opened ChatGPT and exposed a long governed prompt. That behavior is not accepted as an autonomous Hakim result.
-- 20094 introduces local-first routing for deterministic trivial intents, so greetings/thanks/basic identity are answered inside Hakim without leaving the app or sending data externally.
-- External provider handoff now uses a compact task envelope instead of exposing the full internal governance prompt.
-- Opening a provider app no longer increments provider success; launch != task success remains enforced.
-- Status starts as SOURCE/CI CANDIDATE ONLY. It does not replace the historical Android field baseline until the exact signed APK passes in-place update and field acceptance.
+- Candidate versionCode: `20095`.
+- Branch: `feature/hakim-20095-android-native-only`.
+- Field evidence on 20094: Local-First greeting passed on the actual phone; «مرحبا» stayed inside Hakim.
+- New field evidence: the private ChatGPT plugin page on Android is marked «Desktop only». OpenAI's current documentation confirms imported plugins declaring MCP servers are desktop-only, and custom MCP apps are not available on mobile.
+- Therefore Android must not depend on the ChatGPT MCP plugin. The mobile path is: local deterministic handling -> Android provider app / system share -> provider web/browser fallback -> optional official direct API only when separately configured and authorized.
+- 20095 makes that boundary explicit in the UI and disambiguates Hakim bridge pairing from ChatGPT plugin setup. It does not remove the desktop plugin; it stops treating it as an Android dependency.
+- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes in-place update and field acceptance.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

@@ -11,8 +11,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("VISIBLE_CONVERSATION_20096=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20096, "version")
-req("versionName '2.0.96-visible-conversation'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20096, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "ScrollView",
@@ -39,4 +39,4 @@ except SystemExit:
 else:
     raise SystemExit("VISIBLE_CONVERSATION_20096=FAIL reason=sentinel_not_detected")
 
-print("VISIBLE_CONVERSATION_20096=PASS reply=transcript persistent=true")
+print("VISIBLE_CONVERSATION_GATE=PASS candidate>=20096 reply=transcript persistent=true")

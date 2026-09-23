@@ -61,12 +61,18 @@ function resourceMetadata(req:express.Request){
   return {
     resource:base,
     authorization_servers:[base],
-    scopes_supported:["hakim.read","hakim.write"],
+    scopes_supported:["hakim.read","hakim.write","offline_access"],
     resource_documentation:base+"/privacy",
     resource_policy_uri:base+"/privacy",
     resource_tos_uri:base+"/terms"
   };
 }
+
+app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
+  const token=process.env.OPENAI_APPS_CHALLENGE;
+  if(!token||!/^[A-Za-z0-9._~-]{8,512}$/.test(token)) return res.status(404).end();
+  res.type("text/plain").send(token);
+});
 
 app.get("/health",(_req,res)=>res.json({
   ok:true,
@@ -94,7 +100,7 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
     grant_types_supported:["authorization_code","refresh_token"],
     code_challenge_methods_supported:["S256"],
     token_endpoint_auth_methods_supported:["none"],
-    scopes_supported:["hakim.read","hakim.write"],
+    scopes_supported:["hakim.read","hakim.write","offline_access"],
     client_id_metadata_document_supported:true,
     authorization_response_iss_parameter_supported:true
   });
@@ -182,12 +188,14 @@ app.post("/oauth/token",async(req,res)=>{
       const access=issueAccessToken(oauthSecret,{
         credential:record.credential,clientId:record.clientId,aud:record.resource,scopes:record.scopes
       });
-      const refresh=issueRefreshToken(oauthSecret,{
-        credential:record.credential,clientId:record.clientId,aud:record.resource,scopes:record.scopes
-      });
+      const refresh=record.scopes.includes("offline_access")
+        ? issueRefreshToken(oauthSecret,{
+            credential:record.credential,clientId:record.clientId,aud:record.resource,scopes:record.scopes
+          })
+        : undefined;
       return res.json({
         access_token:access,token_type:"Bearer",expires_in:3600,
-        refresh_token:refresh,scope:record.scopes.join(" ")
+        ...(refresh?{refresh_token:refresh}:{}),scope:record.scopes.join(" ")
       });
     }
 
@@ -199,12 +207,14 @@ app.post("/oauth/token",async(req,res)=>{
       const access=issueAccessToken(oauthSecret,{
         credential:current.credential,clientId:current.clientId,aud:current.aud,scopes:requested
       });
-      const refresh=issueRefreshToken(oauthSecret,{
-        credential:current.credential,clientId:current.clientId,aud:current.aud,scopes:requested
-      });
+      const refresh=requested.includes("offline_access")
+        ? issueRefreshToken(oauthSecret,{
+            credential:current.credential,clientId:current.clientId,aud:current.aud,scopes:requested
+          })
+        : undefined;
       return res.json({
         access_token:access,token_type:"Bearer",expires_in:3600,
-        refresh_token:refresh,scope:requested.join(" ")
+        ...(refresh?{refresh_token:refresh}:{}),scope:requested.join(" ")
       });
     }
 
@@ -223,6 +233,8 @@ app.get("/pair",(_req,res)=>{
   res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم — تطوير</title>
 <h1>ربط تطويري فقط</h1><p><a href="${html(link)}">ربط الهاتف</a></p><p style="word-break:break-all">${html(bearer)}</p></html>`);
 });
+
+app.get("/support",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>دعم حكيم</title><body><h1>دعم حكيم</h1><p>حكيم يربط ChatGPT بجهاز Android مأذون. إذا تعذر الربط، تحقق من أن تطبيق حكيم مثبت ومفتوح وأن الجهاز متصل بالإنترنت، ثم أعد عملية الاقتران من ChatGPT.</p><p>لأعطال الأمان أو الخصوصية أو التنفيذ، افتح بلاغًا في مستودع المشروع: <a href="https://github.com/smileeyes1/sovereign-android-assistant/issues">GitHub Issues</a>.</p></body></html>`));
 
 app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>خصوصية حكيم</title><body><h1>خصوصية حكيم</h1><p>الجسر لا يحتاج مفتاح OpenAI ولا يحتفظ بمحتوى الجهاز افتراضيًا. أوامر الهاتف ونتائجه تنتقل مشفرة طرفًا لطرف، ولا يتيح الجسر shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة أندرويد.</p><p>ChatGPT نفسه يعالج المحادثة وفق إعدادات حساب المستخدم وسياسات OpenAI. توفر الأدوات والنماذج يعتمد على الخطة والمنطقة والواجهة.</p></body></html>`));
 

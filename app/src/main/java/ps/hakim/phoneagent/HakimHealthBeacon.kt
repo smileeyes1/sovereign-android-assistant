@@ -61,6 +61,7 @@ object HakimHealthBeacon {
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
             .put("recovery", HakimConnectionResilience.status(context))
+            .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
             .toString()

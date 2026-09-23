@@ -56,6 +56,19 @@ test("authorization codes are atomically single-use",async()=>{
   }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
 
+test("expired OAuth codes are purged from durable storage",async()=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-oauth-cleanup-"));
+  try{
+    const store=new FileCodeStore(dir);
+    const credential=createDeviceCredential();
+    await store.issue({credential,clientId:"c",redirectUri:"https://chatgpt.com/oauth/callback",codeChallenge:"challenge",resource:"https://hakim.example",scopes:["hakim.read"],expiresAt:Date.now()-1});
+    const removed=await store.cleanupExpired();
+    assert.equal(removed,1);
+    const files=await fs.readdir(path.join(dir,"oauth-codes"));
+    assert.equal(files.length,0);
+  }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
+
 test("production requires durable auth configuration",()=>{
   assert.throws(()=>requireProductionOAuthConfig({NODE_ENV:"production"} as NodeJS.ProcessEnv));
   assert.doesNotThrow(()=>requireProductionOAuthConfig({NODE_ENV:"production",HAKIM_OAUTH_SECRET:secret,HAKIM_DATA_DIR:"/data"} as NodeJS.ProcessEnv));

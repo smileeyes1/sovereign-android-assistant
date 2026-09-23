@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,9 +26,18 @@ home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20088" in build, "P0: رقم إصدار المرشح غير مطابق لخط التحديث")
+version_match = re.search(r"versionCode\\s+(\\d+)", build)
+require(version_match is not None, "P0: رقم إصدار حكيم مفقود")
+require(int(version_match.group(1)) >= 20087, "P0: خفض إصدار حكيم دون خط الأساس الميداني")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
-require('android:name=".UnifiedHomeActivity"' in manifest, "P0: الواجهة الموحدة ليست نقطة الدخول")
+require('android:name=".CommandCenterActivity"' in manifest, "P0: مركز قيادة حكيم غير معلن")
+require('android:name=".UnifiedHomeActivity"' in manifest, "P0: إدارة الجهاز الموحدة غير معلنة")
+launcher_pattern = re.compile(
+    r'<activity\\s+android:name="\\.CommandCenterActivity"[\\s\\S]*?'
+    r'<action android:name="android.intent.action.MAIN" />[\\s\\S]*?'
+    r'<category android:name="android.intent.category.LAUNCHER" />'
+)
+require(launcher_pattern.search(manifest) is not None, "P0: مركز قيادة حكيم ليس نقطة الدخول الوحيدة")
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
 require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
 require('android:name=".HakimPairingReceiver"' in manifest, "P0: مستقبل الاقتران المحلي غير معلن")

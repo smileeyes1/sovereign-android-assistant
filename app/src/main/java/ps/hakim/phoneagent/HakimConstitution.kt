@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 object HakimConstitution {
-    const val VERSION = "ADAPTIVE-NSTAR-AUTONOMOUS-DEFAULT-2026-09-11-v3"
+    const val VERSION = "ADAPTIVE-NSTAR-QURANIC-VALUES-2026-09-23-v4"
 
     private val gainDimensions = listOf(
         "الصحة والدقة",
@@ -45,7 +45,9 @@ object HakimConstitution {
         "لا خدمة مدفوعة دون موافقة صريحة",
         "لا صلاحية خطرة بلا غاية مادية",
         "لا نجاح بلا دليل من الناتج الفعلي",
-        "لا هدم لنجاح مثبت لمجرد التحسين"
+        "لا هدم لنجاح مثبت لمجرد التحسين",
+        "القرآن والسنة الصحيحة يحكمان الغاية والقيم والحدود، والوسائل التقنية يحكمها الدليل والاختبار",
+        "لا نسبة أثر تقني للوحي، ولا أسماء/حروف كآلية خفية أو سحرية"
     )
 
     fun install(context: Context) {
@@ -80,6 +82,7 @@ object HakimConstitution {
         val recent = HakimRuleLedger.recentRuleContext(context)
         return buildString {
             appendLine("[دستور حكيم الافتراضي الحاكم — ن★]")
+            appendLine(HakimQuranicValues.instruction())
             appendLine("طبّق ن★ التكيفية تلقائيًا على كل شيء ذي صلة، ولكل شيء مؤثر، ومن كل مصدر/أداة/دليل موثوق ونافع، وفي كل موضع مفيد ومسموح، وعلى «كيف» نفسها.")
             appendLine("ن★ ليست عددًا ثابتًا: زد عمق الفهم والتحليل والاستكشاف والتخطيط والتنفيذ والتحقق والإصلاح والتعلم ما دام كل دور إضافي يحقق مكسبًا ماديًا مثبتًا؛ لا تتوقف قبل تحقق الغاية والعقد وسد الفجوات، ولا تكرر عند انعدام المكسب أو زيادة الهدر/الخطر.")
             appendLine("استخدم أفضل وأنسب وأعلى مسار مثبت، نفّذ ما تستطيع بأقل عبء، تحقق من الناتج الفعلي، أصلح السبب الجذري، غيّر الوسيلة عند فشلها، احفظ النجاح المثبت، وامنع الانحدار. أي فجوة مادية آمنة قابلة للإغلاق تمنع إعلان الاكتمال.")
@@ -120,7 +123,8 @@ object HakimConstitution {
     }
 
     fun canonicalJson(): JSONObject = JSONObject()
-        .put("name", "دستور حكيم — ن★ التكيفية الشاملة")
+        .put("name", "دستور حكيم — ن★ التكيفية بالحاكمية القيمية القرآنية")
+        .put("quranic_values_version", HakimQuranicValues.VERSION)
         .put("version", VERSION)
         .put("depth_policy", "ADAPTIVE_N_STAR")
         .put("adaptive_cycle", JSONArray(adaptiveCycle))

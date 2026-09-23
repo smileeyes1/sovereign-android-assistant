@@ -14,6 +14,7 @@ class HakimApp : Application() {
         HakimUnifiedRelay.start(this)
         startHakimIfPaired(prefs)
         HakimConnectionResilience.install(this)
+        HakimNetworkGuardian.install(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)

@@ -35,6 +35,7 @@ jobs:
         run: |
           python3 tests/verify_unified_hakim.py
           python3 tests/verify_multimodel_router_policy.py
+          python3 tests/verify_hakim_primary_ui.py
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py

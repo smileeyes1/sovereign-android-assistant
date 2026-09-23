@@ -33,8 +33,8 @@ for needed in [
     req(needed in CODE + DOC, "anchor:" + needed)
 
 for forbidden_claim in [
-    "technical_causality_claimed", true",
-    "letters_used_as_hidden_algorithm", true",
+    '"technical_causality_claimed", true',
+    '"letters_used_as_hidden_algorithm", true',
 ]:
     req(forbidden_claim not in CODE, "occult_claim:" + forbidden_claim)
 

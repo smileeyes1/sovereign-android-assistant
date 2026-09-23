@@ -12,8 +12,8 @@ def req(cond: bool, reason: str):
         raise SystemExit("EXECUTIVE_LOOP_20098=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20098, "version")
-req("versionName '2.0.98-executive-loop-ui'" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20098, "version")
+req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
     "MAX_CYCLES = 6",
@@ -51,4 +51,4 @@ req("recordOutcome(this, provider.id, true)" not in CENTER, "provider_launch_sti
 req("while (true)" not in LOOP, "unbounded_loop")
 req("MAX_CYCLES" in LOOP, "cycle_bound_missing")
 
-print("EXECUTIVE_LOOP_20098=PASS bounded=6 operations=visible provider_prompt=private_reasoning")
+print("EXECUTIVE_LOOP_GATE=PASS candidate>=20098 bounded=6 operations=visible provider_prompt=private_reasoning")

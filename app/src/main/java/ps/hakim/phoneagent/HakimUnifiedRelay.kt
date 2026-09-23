@@ -31,6 +31,9 @@ object HakimUnifiedRelay {
     const val KEY_TOPIC = "relay_topic"
     const val KEY_RESULT_TOPIC = "relay_result_topic"
     const val KEY_RELAY_KEY = "relay_hmac_key"
+    const val KEY_RELAY_BASE_URL = "relay_base_url"
+
+    private const val DEFAULT_RELAY_BASE_URL = "https://ntfy.sh"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
     private const val ACTION_APPROVE = "ps.hakim.stable.REMOTE_APPROVE"
@@ -50,14 +53,25 @@ object HakimUnifiedRelay {
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()
 
-    fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?): Boolean {
+    private fun normalizeRelayBaseUrl(raw: String?): String? {
+        val value = raw?.trim().takeUnless { it.isNullOrBlank() } ?: DEFAULT_RELAY_BASE_URL
+        return runCatching {
+            val u = URL(value)
+            if (u.protocol != "https" || !u.userInfo.isNullOrBlank() || !u.query.isNullOrBlank() || !u.ref.isNullOrBlank()) return@runCatching null
+            value.trimEnd('/')
+        }.getOrNull()
+    }
+
+    fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?, relayBaseUrl: String?): Boolean {
         if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return false
         if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return false
         if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return false
+        val relayBase = normalizeRelayBaseUrl(relayBaseUrl) ?: return false
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOPIC, topic)
             .putString(KEY_RESULT_TOPIC, resultTopic)
             .putString(KEY_RELAY_KEY, relayKey)
+            .putString(KEY_RELAY_BASE_URL, relayBase)
             .putBoolean("secure_relay_configured", true)
             .commit()
     }
@@ -83,12 +97,13 @@ object HakimUnifiedRelay {
             val topic = prefs.getString(KEY_TOPIC, null)
             val resultTopic = prefs.getString(KEY_RESULT_TOPIC, null)
             val relayKey = prefs.getString(KEY_RELAY_KEY, null)
+            val relayBase = normalizeRelayBaseUrl(prefs.getString(KEY_RELAY_BASE_URL, null)) ?: DEFAULT_RELAY_BASE_URL
             if (topic.isNullOrBlank() || resultTopic.isNullOrBlank() || relayKey.isNullOrBlank()) {
                 sleep(10_000L)
                 continue
             }
             try {
-                val conn = URL("https://ntfy.sh/$topic/json").openConnection() as HttpURLConnection
+                val conn = URL("$relayBase/$topic/json").openConnection() as HttpURLConnection
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 75_000
                 conn.requestMethod = "GET"
@@ -374,7 +389,9 @@ object HakimUnifiedRelay {
                 .put("received_at_ms", System.currentTimeMillis())
                 .put("result", result)
             val carrier = encryptResult(relayKey, payload)
-            val conn = URL("https://ntfy.sh/$resultTopic").openConnection() as HttpURLConnection
+            val relayBase = normalizeRelayBaseUrl(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_RELAY_BASE_URL, null)) ?: DEFAULT_RELAY_BASE_URL
+            val conn = URL("$relayBase/$resultTopic").openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 20_000
             conn.requestMethod = "POST"

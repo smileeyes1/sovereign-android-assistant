@@ -44,6 +44,7 @@ for needed in [
 
 req("HakimExecutiveLoop.providerInstruction(context, prompt)" in ROUTER, "router_not_using_executive_instruction")
 req("HakimIntentEngine.governedPrompt(context, prompt)" not in ROUTER, "legacy_full_prompt_provider_path")
+req("HakimIntentEngine.governedPrompt(this, text)" not in CENTER, "legacy_full_prompt_ui_handoff")
 req("recordOutcome(this, provider.id, true)" not in CENTER, "provider_launch_still_success")
 
 # Known-failure sentinel: unbounded self-loop is forbidden.

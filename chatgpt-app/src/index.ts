@@ -74,6 +74,16 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
   res.type("text/plain").send(token);
 });
 
+app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
+
+app.get("/support",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>دعم حكيم</title><body><h1>دعم حكيم</h1><p>للمشكلات التقنية أو الأمنية استخدم مستودع المشروع وقسم Issues. لا ترسل رموز الربط أو مفاتيح الوصول أو لقطات حساسة في بلاغ عام.</p><p><a href="https://github.com/smileeyes1/sovereign-android-assistant/issues">فتح صفحة البلاغات</a></p></body></html>`));
+
+app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
+  const token=process.env.OPENAI_APP_CHALLENGE;
+  if(!token) return res.status(404).end();
+  res.type("text/plain").send(token);
+});
+
 app.get("/health",(_req,res)=>res.json({
   ok:true,
   service:"hakim-chatgpt-bridge",

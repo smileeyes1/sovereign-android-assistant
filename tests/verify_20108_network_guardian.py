@@ -9,6 +9,8 @@ boot = (root / "app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_tex
 manifest = (root / "app/src/main/AndroidManifest.xml").read_text()
 gradle = (root / "app/build.gradle").read_text()
 workflow = (root / ".github/workflows/android.yml").read_text()
+health = (root / "app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt").read_text()
+relay = (root / "app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text()
 
 required = [
     'EXPECTED_GATEWAY = "192.168.1.1"',
@@ -29,6 +31,13 @@ required = [
 missing = [x for x in required if x not in src]
 if missing:
     print("NETWORK_GUARDIAN_GATE=FAIL missing=", missing)
+    sys.exit(1)
+
+if '.put("network_guardian", HakimNetworkGuardian.status(context))' not in health:
+    print("NETWORK_GUARDIAN_GATE=FAIL reason=health_observability_missing")
+    sys.exit(1)
+if '.put("network_guardian", HakimNetworkGuardian.status(context))' not in relay:
+    print("NETWORK_GUARDIAN_GATE=FAIL reason=relay_observability_missing")
     sys.exit(1)
 
 if "HakimNetworkGuardian.install(this)" not in app:

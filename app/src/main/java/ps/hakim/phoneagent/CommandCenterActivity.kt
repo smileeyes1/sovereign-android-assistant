@@ -329,7 +329,8 @@ class CommandCenterActivity : Activity() {
     }
 
     private fun executeDirectModel(text: String, instruction: String, engineId: String?) {
-        val engine = HakimEngineRegistry.directEngines(this)
+        val snapshot = attachments.toList()
+        val primary = HakimEngineRegistry.directEngines(this)
             .firstOrNull { it.id == engineId }
             ?: run {
                 appendConversation("حكيم", "المحرك المباشر المحدد لم يعد متاحًا. افتح «إدارة» لإعداده أو جرّب لاحقًا.")
@@ -339,23 +340,65 @@ class CommandCenterActivity : Activity() {
                 return
             }
 
-        currentDirectEngine = engine
-        HakimExecutiveLoop.record(
-            this,
-            HakimExecutiveLoop.Phase.EXECUTING,
-            "إجابة مباشرة داخل حكيم عبر " + engine.displayName
-        )
-        refreshOperations()
-        status.text = "يجيب " + engine.displayName
-        beginStreamingReply()
+        val candidates = listOf(primary) +
+            HakimEngineRegistry.fallbackGeneralChat(this, primary.id, snapshot)
 
-        val snapshot = attachments.toList()
+        beginStreamingReply()
         Thread {
-            val result = engine.complete(instruction, snapshot) { delta ->
+            var finalResult: HakimInferenceEngine.Result? = null
+            var finalEngine: HakimInferenceEngine? = null
+
+            for ((index, engine) in candidates.withIndex()) {
+                currentDirectEngine = engine
+                val hadDelta = java.util.concurrent.atomic.AtomicBoolean(false)
+
                 runOnUiThread {
-                    if (currentDirectEngine === engine) appendStreamingDelta(delta)
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.EXECUTING,
+                        if (index == 0) {
+                            "إجابة مباشرة داخل حكيم عبر " + engine.displayName
+                        } else {
+                            "تحويل تلقائي إلى " + engine.displayName + " بعد تعذر المحرك السابق"
+                        }
+                    )
+                    refreshOperations()
+                    status.text = "يجيب " + engine.displayName
                 }
+
+                val result = engine.complete(instruction, snapshot) { delta ->
+                    hadDelta.set(true)
+                    runOnUiThread {
+                        if (currentDirectEngine === engine) appendStreamingDelta(delta)
+                    }
+                }
+
+                if (currentDirectEngine !== engine) return@Thread
+
+                if (result is HakimInferenceEngine.Result.Failure &&
+                    result.retryable &&
+                    !hadDelta.get() &&
+                    index < candidates.lastIndex
+                ) {
+                    recordRoute("direct:" + engine.id, false)
+                    HakimExecutiveLoop.advanceCycle(
+                        this,
+                        "فشل " + engine.displayName + " دون إخراج؛ يجرب حكيم محركًا مجانيًا بديلًا"
+                    )
+                    continue
+                }
+
+                finalResult = result
+                finalEngine = engine
+                break
             }
+
+            val result = finalResult
+                ?: HakimInferenceEngine.Result.Failure(
+                    "استنفدت المحركات المباشرة المجانية المتاحة دون نتيجة.",
+                    retryable = false
+                )
+            val engine = finalEngine ?: candidates.last()
 
             runOnUiThread {
                 if (currentDirectEngine !== engine) return@runOnUiThread
@@ -390,15 +433,8 @@ class CommandCenterActivity : Activity() {
                     }
                     is HakimInferenceEngine.Result.Failure -> {
                         discardEmptyStreamingReply()
-                        appendConversation(
-                            "حكيم",
-                            result.reason + if (result.retryable) " يمكنك إعادة المحاولة أو إضافة محرك مباشر بديل." else ""
-                        )
-                        if (result.retryable) {
-                            HakimExecutiveLoop.advanceCycle(this, "فشل المحرك المباشر؛ يلزم تبديل محرك أو إعادة المحاولة")
-                        } else {
-                            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
-                        }
+                        appendConversation("حكيم", result.reason)
+                        HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, result.reason)
                         recordRoute("direct:" + engine.id, false)
                         status.text = "لم تكتمل المهمة"
                     }

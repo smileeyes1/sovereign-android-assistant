@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { pkceS256,PUBLIC_REVIEW_USER,PUBLIC_REVIEW_PASSWORD } from "../src/oauth.js";
+import { pkceS256 } from "../src/oauth.js";
 
 async function waitFor(url:string,timeoutMs=15_000){
   const deadline=Date.now()+timeoutMs;
@@ -22,8 +22,8 @@ function form(obj:Record<string,string>){
 test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
   const port=41000+Math.floor(Math.random()*1000);
   const dataDir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-review-ci-"));
-  const reviewUser=PUBLIC_REVIEW_USER;
-  const reviewPassword=PUBLIC_REVIEW_PASSWORD;
+  const reviewUser="openai-reviewer-ci";
+  const reviewPassword="R".repeat(40);
   const child=spawn(process.execPath,["--import","tsx","src/index.ts"],{
     cwd:path.resolve(import.meta.dirname,".."),
     env:{
@@ -33,7 +33,8 @@ test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
       HAKIM_OAUTH_SECRET:"S".repeat(64),
       HAKIM_DATA_DIR:dataDir,
       HAKIM_PUBLIC_SAFE:"1",
-      HAKIM_PUBLIC_REVIEW_DEMO:"1"
+      HAKIM_REVIEW_USER:reviewUser,
+      HAKIM_REVIEW_PASSWORD:reviewPassword
     },
     stdio:["ignore","pipe","pipe"]
   });
@@ -131,11 +132,13 @@ test("reviewer OAuth reaches safe demo tools without a real device",async(t)=>{
   assert.equal(statusPayload.demo,true);
   assert.equal(statusPayload.device.name,"Hakim Review Device");
   assert.equal(statusPayload.device.connected,true);
+  assert.equal(statusPayload.privacy,"content_redacted");
 
   const launch=await call("open_target",{package:"com.android.chrome"});
   const launchText=launch.result?.content?.[0]?.text??"";
   const launchPayload=JSON.parse(launchText);
   assert.equal(launchPayload.demo,true);
   assert.equal(launchPayload.status,"approval_requested");
+  assert.match(launchPayload.operation_token,/^review-/);
   assert.match(launchPayload.note,/No real device action occurs/);
 });

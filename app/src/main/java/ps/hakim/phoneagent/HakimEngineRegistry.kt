@@ -11,6 +11,9 @@ import android.content.Context
 object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
         val out = mutableListOf<HakimInferenceEngine>()
+        if (HakimLocalModelManager.state(context) == HakimLocalModelManager.State.READY) {
+            out += LiteRtLocalEngine(context)
+        }
         if (HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY)) {
             out += GeminiDirectEngine(context)
         }

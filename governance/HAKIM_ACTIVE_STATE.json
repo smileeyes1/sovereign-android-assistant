@@ -28,10 +28,12 @@
     "candidate": {
       "version_code": 20109,
       "branch": "feature/hakim-20109-unified-factory-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED_FOR_CODE_PARENT",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "source_ci_verified_code_commit": "22bf46b2878a415155074274fc5346ff9a9e19c0",
+      "source_ci_run_number": 909
     }
   },
   "local_execution": {

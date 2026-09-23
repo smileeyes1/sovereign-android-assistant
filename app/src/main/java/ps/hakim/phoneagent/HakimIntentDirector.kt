@@ -26,6 +26,7 @@ object HakimIntentDirector {
 
         val instruction = buildString {
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
+            appendLine(HakimQuranicGovernance.compactInstruction())
             appendLine("افهم مقصد المستخدم قبل الإجابة، ثم صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل يحقق المقصد.")
             appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه داخليًا عند الحاجة حتى 3 مراجعات.")
             appendLine("لا تعرض سلسلة التفكير أو المسودة الداخلية أو الأمر الذاتي الذي صغته لنفسك.")

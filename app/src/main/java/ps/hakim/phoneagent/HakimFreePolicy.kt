@@ -32,6 +32,7 @@ object HakimFreePolicy {
     fun allows(engineId: String, context: Context): Boolean {
         if (!freeOnly(context)) return true
         return when (engineId) {
+            LiteRtLocalEngine.ID -> true
             OpenRouterFreeEngine.ID -> true
             "gemini-direct" -> geminiFreeTierConfirmed(context)
             else -> false

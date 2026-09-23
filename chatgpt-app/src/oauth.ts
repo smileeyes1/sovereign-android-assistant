@@ -127,18 +127,37 @@ export function normalizeScopes(raw:string|undefined){
   return unique;
 }
 
-export function isChatGPTClientId(clientId:string){
+export function trustedOAuthHosts(env:NodeJS.ProcessEnv){
+  const raw=env.HAKIM_TRUSTED_OAUTH_HOSTS?.trim()||"chatgpt.com";
+  const hosts=raw.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
+  if(hosts.length===0||hosts.length>20) throw new Error("invalid_trusted_oauth_hosts");
+  for(const host of hosts){
+    if(!/^[a-z0-9.-]+$/.test(host)||host.startsWith(".")||host.endsWith(".")) throw new Error("invalid_trusted_oauth_host");
+  }
+  return new Set(hosts);
+}
+
+export function isAllowedOAuthClientId(env:NodeJS.ProcessEnv,clientId:string){
   try{
     const u=new URL(clientId);
-    if(u.protocol!=="https:"||u.hostname!=="chatgpt.com"||u.search||u.hash) return false;
-    return u.pathname==="/oauth/client.json" || /^\/oauth\/[A-Za-z0-9_-]+\/client\.json$/.test(u.pathname);
+    if(u.protocol!=="https:"||u.username||u.password||u.search||u.hash) return false;
+    const hosts=trustedOAuthHosts(env);
+    if(!hosts.has(u.hostname.toLowerCase())) return false;
+    if(u.hostname==="chatgpt.com"){
+      return u.pathname==="/oauth/client.json" || /^\/oauth\/[A-Za-z0-9_-]+\/client\.json$/.test(u.pathname);
+    }
+    return u.pathname.endsWith("/client.json");
   }catch{return false;}
 }
 
-export function isChatGPTRedirectUri(redirectUri:string){
+export function isAllowedOAuthRedirectUri(env:NodeJS.ProcessEnv,redirectUri:string){
   try{
     const u=new URL(redirectUri);
-    return u.protocol==="https:"&&u.hostname==="chatgpt.com"&&u.pathname.startsWith("/oauth/")&&!u.hash;
+    if(u.protocol!=="https:"||u.username||u.password||u.hash) return false;
+    const hosts=trustedOAuthHosts(env);
+    if(!hosts.has(u.hostname.toLowerCase())) return false;
+    if(u.hostname==="chatgpt.com") return u.pathname.startsWith("/oauth/");
+    return u.pathname.length>1;
   }catch{return false;}
 }
 
@@ -178,15 +197,7 @@ export function openRefreshToken(secret:string,token:string,resource:string):Ref
   return value;
 }
 
-export const PUBLIC_REVIEW_USER="openai-reviewer";
-export const PUBLIC_REVIEW_PASSWORD="Hakim-Review-Demo-Only-2026";
-
 export function reviewCredentialsMatch(env:NodeJS.ProcessEnv,user:string,password:string){
-  if(env.HAKIM_PUBLIC_REVIEW_DEMO==="1"){
-    const left=crypto.createHash("sha256").update(user+"\0"+password,"utf8").digest();
-    const right=crypto.createHash("sha256").update(PUBLIC_REVIEW_USER+"\0"+PUBLIC_REVIEW_PASSWORD,"utf8").digest();
-    if(crypto.timingSafeEqual(left,right)) return true;
-  }
   const expectedUser=env.HAKIM_REVIEW_USER??"";
   const expectedPassword=env.HAKIM_REVIEW_PASSWORD??"";
   if(expectedUser.length<3||expectedPassword.length<24) return false;

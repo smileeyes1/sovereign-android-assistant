@@ -18,13 +18,14 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 - Field evidence on 20093: that stale install-source prompt was removed; a new defect remained—typing «مرحبا» and pressing «أنجز» opened ChatGPT and exposed the long governed prompt instead of answering inside Hakim.
 
 ## Current Android candidate
-- Candidate versionCode: `20100`.
-- Branch: `feature/hakim-20100-insets-pinned-composer`.
-- Field evidence on 20099: compact progress succeeded when the keyboard was closed, but on the actual Android window the keyboard still covered/pushed the composer out of view; the system navigation bar also overlapped Hakim controls.
-- 20100 treats Android 15 edge-to-edge insets explicitly. The composer is a dedicated bottom area, padded by the greater of IME or system-navigation bottom insets. The conversation no longer has a forced minimum height.
-- While typing, title/status and secondary tools hide to preserve space; compact operation state remains, and the composer + execute/cancel row stay together above the keyboard.
-- All 20092–20099 safety/routing/executive/user-eye gates remain required.
-- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK proves, on the same phone window, that typed text and execute/cancel controls remain visible above both the keyboard and navigation bar.
+- Candidate versionCode: `20101`.
+- Branch: `feature/hakim-20101-intent-to-completion-director`.
+- Field evidence on 20100: the composer and «أنجز/إلغاء» remained visible above the Android keyboard/navigation area on the actual phone, satisfying the pinned-composer user-eye test.
+- New user goal: every request to Hakim should be transformed internally into the strongest suitable execution instruction for the selected model/tool, and the model should privately optimize its own method until the user's completion criterion is met.
+- 20101 adds HakimIntentDirector. It derives an intent-specific acceptance contract, tells the selected model to formulate its best internal work instruction, execute it, privately review/improve it up to three revisions, and return only the final result/evidence—not chain-of-thought.
+- Hakim remains the supervisor: provider launch is not success, external completion still needs returned evidence, and no consumer ChatGPT session is treated as an API.
+- All 20092–20100 safety/routing/executive/user-eye gates remain required.
+- Status starts as SOURCE/CI CANDIDATE ONLY and does not replace the field baseline until the exact signed APK passes field acceptance.
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.

@@ -10,11 +10,9 @@ import android.content.Context
  */
 object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
-        val out = mutableListOf<HakimInferenceEngine>()
-        if (HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY)) {
-            out += GeminiDirectEngine(context)
-        }
-        return out
+        if (!HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY)) return emptyList()
+        return HakimFreeOnlyPolicy.allowedGeminiModels(context)
+            .map { model -> GeminiDirectEngine(context, model) }
     }
 
     fun bestGeneralChat(
@@ -23,6 +21,18 @@ object HakimEngineRegistry {
     ): HakimInferenceEngine? {
         return directEngines(context).firstOrNull { engine ->
             HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
+                attachmentsSupported(engine, attachments)
+        }
+    }
+
+    fun fallbackGeneralChat(
+        context: Context,
+        failedEngineId: String,
+        attachments: List<HakimAttachmentGateway.Attachment>
+    ): List<HakimInferenceEngine> {
+        return directEngines(context).filter { engine ->
+            engine.id != failedEngineId &&
+                HakimInferenceEngine.Capability.GENERAL_CHAT in engine.capabilities &&
                 attachmentsSupported(engine, attachments)
         }
     }

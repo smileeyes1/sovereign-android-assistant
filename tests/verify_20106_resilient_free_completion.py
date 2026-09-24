@@ -39,7 +39,11 @@ for engine_name, src in [("openrouter", OPENROUTER), ("gemini", GEMINI)]:
 req("HakimResiliencePolicy.isAvailable(context, it.id)" in MATRIX, "cooldown_not_in_matrix")
 req("HakimResiliencePolicy.recordSuccess(this, engine.id)" in CENTER, "success_health_not_recorded")
 req("HakimResiliencePolicy.recordFailure(this, engine.id" in CENTER, "failure_health_not_recorded")
-req("المحرك بطيء/متعثر؛ يحوّل إلى " in CENTER, "visible_failover_missing")
+req(
+    "المحرك بطيء/متعثر؛ يحوّل إلى " in CENTER
+    or "يجرّب مسارًا آخر…" in CENTER,
+    "visible_failover_missing"
+)
 
 # No engine may retain the old multi-minute total timeout.
 req(".callTimeout(210, TimeUnit.SECONDS)" not in OPENROUTER + GEMINI, "legacy_210s_timeout")

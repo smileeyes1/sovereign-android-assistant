@@ -18,6 +18,7 @@ class HakimApp : Application() {
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
         HakimConstraintDoctor.runAsync(this, "app_start")
+        HakimSelfImprovementLoop.install(this)
     }
 
     private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {

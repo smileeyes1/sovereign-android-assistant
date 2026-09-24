@@ -43,6 +43,7 @@ object OpenRouterOAuthManager {
 
     fun start(activity: Activity, pendingPrompt: String? = null) {
         if (HakimSecretStore.has(activity, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)) {
+            HakimUserResourcePolicy.markUserOwned(activity, OpenRouterFreeEngine.ID)
             activity.runOnUiThread {
                 Toast.makeText(activity, "الذكاء المجاني مرتبط بالفعل.", Toast.LENGTH_SHORT).show()
             }
@@ -97,7 +98,8 @@ object OpenRouterOAuthManager {
                                 "exchange_failed"
                             } else {
                                 HakimSecretStore.put(activity, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY, key)
-                                HakimFreePolicy.setFreeOnly(activity, true)
+                                HakimUserResourcePolicy.markUserOwned(activity, OpenRouterFreeEngine.ID)
+                                HakimUserResourcePolicy.enforce(activity)
                                 activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
                                     .edit()
                                     .putBoolean("connected", true)

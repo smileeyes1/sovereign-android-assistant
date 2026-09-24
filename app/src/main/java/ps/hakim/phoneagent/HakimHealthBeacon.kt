@@ -15,6 +15,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 object HakimHealthBeacon {
+    private const val MIN_SEND_INTERVAL_MS = 5_000L
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
@@ -29,6 +30,7 @@ object HakimHealthBeacon {
         }.start()
     }
 
+    @Synchronized
     fun sendNow(context: Context, reason: String): Boolean {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
@@ -40,6 +42,15 @@ object HakimHealthBeacon {
         }
 
         val now = System.currentTimeMillis()
+        val lastAttempt = prefs.getLong("last_health_beacon_attempt_at", 0L)
+        if (lastAttempt > 0L && now - lastAttempt < MIN_SEND_INTERVAL_MS) {
+            prefs.edit()
+                .putString("last_health_beacon_state", "throttled")
+                .putLong("last_health_beacon_suppressed_at", now)
+                .apply()
+            return true
+        }
+        prefs.edit().putLong("last_health_beacon_attempt_at", now).apply()
         var versionCode = 0L
         var versionName = ""
         try {
@@ -62,6 +73,7 @@ object HakimHealthBeacon {
             .put("service_connected", HakimService.connected)
             .put("recovery", HakimConnectionResilience.status(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
+            .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
             .toString()

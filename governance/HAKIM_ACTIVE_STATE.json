@@ -26,9 +26,9 @@
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20201,
-      "branch": "feature/hakim-product-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20202,
+      "branch": "feature/hakim-20202-user-owned-free-factory-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -126,8 +126,8 @@
     "field_verified": false
   },
   "productization": {
-    "version": "PRODUCT-V1-2026-09-24-v2",
-    "candidate_version": 20201,
+    "version": "PRODUCT-V1-2026-09-24-v3",
+    "candidate_version": 20202,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -137,7 +137,30 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "45f33dd36488199bfbc5cf9048d78a6ea78204c5e1f8ee5cafac103364808275",
-    "signed_candidate_d1_verified": true
+    "signed_candidate_sha256": null,
+    "signed_candidate_d1_verified": false
+  },
+  "user_owned_free_factory": {
+    "version": "USER-OWNED-FREE-2026-09-24-v1",
+    "source_integrated": true,
+    "central_billing_allowed": false,
+    "automatic_paid_upgrade_allowed": false,
+    "user_owned_resources_required": true,
+    "free_only_default": true,
+    "field_verified": false,
+    "governed_formats": [
+      "PDF",
+      "HTML",
+      "DOCX",
+      "PPTX",
+      "XLSX",
+      "PNG",
+      "GOOGLE_DOC",
+      "GOOGLE_SLIDES",
+      "GOOGLE_SHEET"
+    ],
+    "local_deterministic_formats": [
+      "PDF"
+    ]
   }
 }

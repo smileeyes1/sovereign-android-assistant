@@ -336,6 +336,7 @@ object HakimUnifiedRelay {
             .put("auto_update", AutoUpdater.diagnostics(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
     }

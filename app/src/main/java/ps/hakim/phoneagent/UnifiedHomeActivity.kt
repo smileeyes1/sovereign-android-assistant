@@ -17,6 +17,7 @@ import android.widget.TextView
  */
 class UnifiedHomeActivity : Activity() {
     private lateinit var intelligenceStatus: TextView
+    private lateinit var workspaceStatus: TextView
     private lateinit var organizationStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +29,14 @@ class UnifiedHomeActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refresh()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (HakimGoogleWorkspaceAuthorization.handleActivityResult(this, requestCode, resultCode, data)) {
+            refresh()
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     private fun buildUi() {
@@ -53,6 +62,13 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(intelligenceStatus)
 
+        workspaceStatus = TextView(this).apply {
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(12, 4, 12, 10)
+        }
+        root.addView(workspaceStatus)
+
         organizationStatus = TextView(this).apply {
             textSize = 15f
             gravity = Gravity.CENTER
@@ -66,6 +82,10 @@ class UnifiedHomeActivity : Activity() {
 
         root.addView(button("اختبار الاتصال") {
             testConnection()
+        })
+
+        root.addView(button("ربط Google Workspace") {
+            connectWorkspace()
         })
 
         root.addView(button("بدء محادثة جديدة") {
@@ -113,11 +133,43 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
+        workspaceStatus.text = when {
+            HakimGoogleWorkspaceAuthorization.currentAccessToken() != null ->
+                "Google Workspace: جاهز لهذه الجلسة"
+            HakimGoogleWorkspaceAuthorization.wasAuthorizedBefore(this) ->
+                "Google Workspace: سيُتحقق من حسابك عند أول استخدام"
+            else ->
+                "Google Workspace: غير مربوط"
+        }
+
         val policy = HakimEnterprisePolicy.current(this)
         organizationStatus.text = if (policy.managed) {
             "هذا الجهاز مُدار بسياسة المؤسسة."
         } else {
             "الوضع الشخصي — الصلاحيات والبيانات بأقل نطاق افتراضيًا."
+        }
+    }
+
+    private fun connectWorkspace() {
+        workspaceStatus.text = "Google Workspace: يطلب الوصول المحدود…"
+        HakimGoogleWorkspaceAuthorization.authorize(this) { result ->
+            runOnUiThread {
+                result.onSuccess { token ->
+                    workspaceStatus.text = "Google Workspace: يتحقق من Drive…"
+                    Thread {
+                        val ping = HakimGoogleDriveBridge.ping(token)
+                        runOnUiThread {
+                            workspaceStatus.text = if (ping.isSuccess) {
+                                "Google Workspace: جاهز"
+                            } else {
+                                "Google Workspace: تعذر التحقق من Drive"
+                            }
+                        }
+                    }.start()
+                }.onFailure {
+                    workspaceStatus.text = "Google Workspace: لم تكتمل الموافقة"
+                }
+            }
         }
     }
 
@@ -167,6 +219,7 @@ class UnifiedHomeActivity : Activity() {
                 HakimUserResourcePolicy.clear(this, OpenRouterFreeEngine.ID)
                 HakimUserResourcePolicy.clear(this, GeminiDirectEngine.ID)
                 HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
+                HakimGoogleWorkspaceAuthorization.clearCurrentToken(this) { runOnUiThread { refresh() } }
                 refresh()
             }
             .setNegativeButton("رجوع", null)
@@ -178,7 +231,8 @@ class UnifiedHomeActivity : Activity() {
             .setTitle("الخصوصية والأمان")
             .setMessage(
                 "يعالج حكيم ما يستطيع محليًا أولًا. لا تُرسل المرفقات أو النصوص إلى خدمة خارجية إلا عندما تحتاج المهمة ذلك، " +
-                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
+                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. Google Workspace يطلب فقط صلاحية drive.file عند الاستخدام، " +
+                    "ولا يحفظ حكيم رمز الوصول في التخزين الدائم. قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
             )
             .setPositiveButton("حسنًا", null)
             .show()

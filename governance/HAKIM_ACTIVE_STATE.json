@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20112,
-      "commit": "7a96cd64ccb43255db458fe28c1981f0839c163f",
-      "ci_run_number": 936,
+      "version_code": 20113,
+      "commit": "7dbd9984d6fefb791a7044f98336bc4f805c645b",
+      "ci_run_number": 938,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20113,
-      "branch": "feature/hakim-20113-contextual-local-pdf-v1",
+      "version_code": 20114,
+      "branch": "feature/hakim-20114-silent-tool-orchestrator-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 936,
-      "commit": "7a96cd64ccb43255db458fe28c1981f0839c163f",
+      "run_number": 938,
+      "commit": "7dbd9984d6fefb791a7044f98336bc4f805c645b",
       "conclusion": "success"
     }
   },
@@ -114,5 +114,15 @@
     "contextual_followup": true,
     "recent_conversation_recovery": true,
     "last_artifact_memory": true
+  },
+  "tool_orchestration": {
+    "version": "SILENT-TOOLS-2026-09-24-v1",
+    "silent_first": true,
+    "embedded_browser_background": true,
+    "browser_is_tool_not_terminal": true,
+    "result_returns_to_hakim": true,
+    "direct_url_content_local_by_default": true,
+    "terminal_handoff_allowed": false,
+    "field_verified": false
   }
 }

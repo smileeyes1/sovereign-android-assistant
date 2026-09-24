@@ -60,7 +60,7 @@ require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التح�
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
-require('HakimLocalPairing.reconnectAsync' in local_pairing, "P0: قدرة ADB المحلية مفقودة")
+require('fun reconnectAsync' in local_pairing, "P0: قدرة ADB المحلية مفقودة")
 require('الإعدادات' in home and 'العودة إلى حكيم' in home, "P0: إعدادات المنتج غير قابلة للاستخدام")
 require('تأسيس ADB المحلي' not in home, "P0: تسرب عنصر تطويري ADB إلى إعدادات العميل")
 

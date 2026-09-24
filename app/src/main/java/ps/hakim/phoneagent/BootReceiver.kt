@@ -16,6 +16,7 @@ class BootReceiver : BroadcastReceiver() {
         HakimGoalSupervisor.resume(context)
         HakimGoalExecutor.tick(context)
         HakimSelfCheck.schedule(context)
+        HakimExecutionFabric.recover(context, "boot_or_replace")
         HakimConnectionResilience.install(context)
         HakimNetworkGuardian.install(context)
         HakimSelfCheck.runAsync(context)
@@ -24,9 +25,10 @@ class BootReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
-        val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+        val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
-        if (disabled || !paired) return
+        val securePaired = HakimUnifiedRelay.isConfigured(context)
+        if (disabled || (!legacyPaired && !securePaired)) return
 
         try {
             val service = Intent(context, HakimService::class.java)

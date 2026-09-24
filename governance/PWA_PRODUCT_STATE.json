@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "candidate_version": 20205,
+  "candidate_name": "commercial-pwa-v1",
+  "channel": "PWA",
+  "android_field_lineage_untouched": true,
+  "central_inference_billing": false,
+  "user_owned_credentials_only": true,
+  "client_first": true,
+  "server_content_storage": false,
+  "student_external_ai_default": "BLOCKED",
+  "student_external_attachments_default": "BLOCKED",
+  "sensitive_student_data_external_default": "BLOCKED",
+  "local_formats": ["PDF", "HTML", "DOCX", "PPTX", "XLSX", "PNG"],
+  "installable_pwa_source": true,
+  "source_ci_verified": false,
+  "deployed": false,
+  "field_verified": false,
+  "sellable": false
+}

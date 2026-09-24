@@ -130,27 +130,15 @@ object HakimLocalArtifactFactory {
                 strokeWidth = 1.2f
             }
 
-            canvas.drawText("ورقة عمل: الجمع ضمن ١٠", 545f, 58f, title)
+            val spec = HakimTeacherArtifactSpec.additionWithinTen()
+            canvas.drawText(spec.title, 545f, 58f, title)
             canvas.drawText("الاسم: ____________________    الصف: ______    التاريخ: ______", 545f, 96f, body)
             canvas.drawLine(50f, 112f, 545f, 112f, line)
-            canvas.drawText("أوجد ناتج الجمع، ثم اكتب الإجابة في المربع.", 545f, 145f, body)
-
-            val problems = listOf(
-                1 to 2,
-                3 to 4,
-                5 to 2,
-                6 to 3,
-                4 to 4,
-                7 to 2,
-                1 to 8,
-                5 to 5,
-                2 to 6,
-                3 to 6
-            )
+            canvas.drawText(spec.instruction, 545f, 145f, body)
 
             var y = 205f
-            problems.forEachIndexed { index, pair ->
-                drawQuestion(canvas, index + 1, pair.first, pair.second, y, math, body, line)
+            spec.problems.forEach { problem ->
+                drawQuestion(canvas, problem.number, problem.a, problem.b, y, math, body, line)
                 y += 60f
             }
 

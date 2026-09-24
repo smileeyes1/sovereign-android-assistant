@@ -68,6 +68,7 @@ jobs:
           python3 tests/verify_product_v1_candidate_gate.py
           python3 tests/verify_20202_user_owned_free_factory.py
           python3 tests/verify_20203_multiformat_teacher_factory.py
+          python3 tests/verify_20204_education_roles_privacy.py
           set +e
           FINAL_OUTPUT="$(python3 tests/verify_product_v1_final_gate.py 2>&1)"
           FINAL_RC=$?
@@ -124,7 +125,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20203"
+          test "$VERSION_CODE" = "20204"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

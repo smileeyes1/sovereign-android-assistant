@@ -6,6 +6,7 @@ loop=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimSelfImprovementLoop.kt").
 health=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt").read_text(encoding="utf-8")
 job=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimConnectionRecoveryJobService.kt").read_text(encoding="utf-8")
 app=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
+boot=(ROOT/"app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text(encoding="utf-8")
 selfcheck=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
 gradle=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 state=json.loads((ROOT/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
@@ -23,6 +24,8 @@ for token in [
     '"ROLLBACK_FORWARD_REQUIRED"',
     'MAX_POST_INSTALL_OBSERVE_MS = 5L * 60L * 1000L',
     'committedVersion == current',
+    'fun onPackageReplaced(context: Context)',
+    'alreadySamePending',
     '"FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE"',
     '.put("source_mutation_on_device", false)',
     '.put("automatic_downgrade", false)',
@@ -34,6 +37,7 @@ for token in [
     req(token in loop, "loop:"+token)
 
 req('HakimSelfImprovementLoop.install(this)' in app, "app_install")
+req('HakimSelfImprovementLoop.onPackageReplaced(context)' in boot, "package_replace_hook")
 req('HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")' in job, "watchdog_evaluation")
 req('HakimHealthBeacon.sendNow(applicationContext, "periodic_watchdog")' not in job, "duplicate_watchdog_health")
 req('MIN_SEND_INTERVAL_MS = 5_000L' in health, "health_throttle")

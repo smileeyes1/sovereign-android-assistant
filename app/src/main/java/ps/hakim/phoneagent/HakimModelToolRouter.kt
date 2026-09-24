@@ -23,6 +23,7 @@ object HakimModelToolRouter {
         LOCAL_ARTIFACT,
         DIRECT_MODEL,
         FREE_ENGINE_SETUP,
+        SILENT_BROWSER,
         LOCAL_BROWSER,
         PROVIDER_APP,
         SYSTEM_SHARE,
@@ -99,19 +100,19 @@ object HakimModelToolRouter {
 
         if (isDirectUrl(q)) {
             return Decision(
-                channel = Channel.LOCAL_BROWSER,
+                channel = Channel.SILENT_BROWSER,
                 provider = null,
                 fallbacks = emptyList(),
-                reason = "رابط مباشر؛ المتصفح هو الأداة الحاسمة الأقل كلفة."
+                reason = "رابط مباشر؛ يستخدم حكيم المتصفح المدمج في الخلفية كأداة، ولا يعد فتحه نجاحًا."
             )
         }
 
         if (needsFreshWeb(q)) {
             return Decision(
-                channel = Channel.LOCAL_BROWSER,
+                channel = Channel.SILENT_BROWSER,
                 provider = null,
                 fallbacks = providers,
-                reason = "المهمة تعتمد على معلومات حديثة؛ يبدأ حكيم بالويب بدل ذاكرة نموذج."
+                reason = "المهمة تعتمد على معلومات حديثة؛ يبحث المتصفح المدمج صامتًا ثم يعود الأثر إلى حكيم."
             )
         }
 

@@ -5,7 +5,7 @@ p=Path("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_te
 must=[
     "جاهز",
     "اكتب رسالتك إلى حكيم",
-    'actionButton("أنجز")',
+    'actionButton("أنجز", primary = true)',
     'actionButton("إرفاق")',
     'actionButton("صوت")',
     'actionButton("الإعدادات")',

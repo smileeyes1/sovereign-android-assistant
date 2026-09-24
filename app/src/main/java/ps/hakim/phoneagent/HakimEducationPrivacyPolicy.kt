@@ -44,7 +44,6 @@ object HakimEducationPrivacyPolicy {
         }
 
         if (
-            capability != Capability.WEB &&
             containsProtectedStudentData(prompt) &&
             !enterprise.externalStudentDataAllowed
         ) {

@@ -943,7 +943,8 @@ class CommandCenterActivity : Activity() {
     private fun appendConversation(role: String, message: String) {
         if (!::conversation.isInitialized || message.isBlank()) return
         val current = conversation.text.toString().trim()
-        val visible = if (role == "حكيم") HakimProductOutput.clean(message) else message.trim()\n        val entry = role + ":\n" + visible
+        val visible = if (role == "حكيم") HakimProductOutput.clean(message) else message.trim()
+        val entry = role + ":\n" + visible
         val next = if (current.isBlank()) entry else current + "\n\n" + entry
         val kept = next.takeLast(12_000)
         conversation.text = kept

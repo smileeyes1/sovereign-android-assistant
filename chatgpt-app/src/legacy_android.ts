@@ -163,3 +163,25 @@ export async function probeNtfyIpv4(){
     return {ok:false,status:0,latency_ms:Date.now()-started,error:e instanceof Error?e.message:String(e)};
   }
 }
+
+
+function digestB64(label:string,id:string,bytes:number){
+  return crypto.createHash("sha256").update(label+"\n"+id,"utf8").digest().subarray(0,bytes).toString("base64url");
+}
+
+export function statelessLegacySession(id:string):LegacyAndroidSession{
+  if(!/^[A-Za-z0-9_-]{32,96}$/.test(id)) throw new Error("invalid_stateless_session");
+  const now=Date.now();
+  return {
+    id,
+    commandTopic:"hakim_cmd_"+digestB64("cmd",id,18),
+    resultTopic:"hakim_result_"+digestB64("res",id,18),
+    authKey:crypto.createHash("sha256").update("key\n"+id,"utf8").digest("hex"),
+    createdAt:0,
+    expiresAt:Number.MAX_SAFE_INTEGER
+  };
+}
+
+export function newStatelessLegacyId(){
+  return randomSecret(32);
+}

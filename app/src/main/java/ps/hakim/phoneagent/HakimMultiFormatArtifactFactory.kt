@@ -11,10 +11,12 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /**
@@ -56,12 +58,39 @@ object HakimMultiFormatArtifactFactory {
                     HakimLocalArtifactFactory.create(context, prompt).getOrThrow()
                 HakimArtifactFormatRegistry.Format.HTML ->
                     saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.html", format.mimeType, renderHtml(spec))
-                HakimArtifactFormatRegistry.Format.DOCX ->
-                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.docx", format.mimeType, renderDocx(spec))
-                HakimArtifactFormatRegistry.Format.PPTX ->
-                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.pptx", format.mimeType, renderPptx(spec))
-                HakimArtifactFormatRegistry.Format.XLSX ->
-                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.xlsx", format.mimeType, renderXlsx(spec))
+                HakimArtifactFormatRegistry.Format.DOCX -> {
+                    val bytes = renderDocx(spec)
+                    verifyZip(bytes, setOf("[Content_Types].xml", "_rels/.rels", "word/document.xml"))
+                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.docx", format.mimeType, bytes)
+                }
+                HakimArtifactFormatRegistry.Format.PPTX -> {
+                    val bytes = renderPptx(spec)
+                    verifyZip(
+                        bytes,
+                        setOf(
+                            "[Content_Types].xml",
+                            "_rels/.rels",
+                            "ppt/presentation.xml",
+                            "ppt/slides/slide1.xml",
+                            "ppt/slideMasters/slideMaster1.xml",
+                            "ppt/slideLayouts/slideLayout1.xml"
+                        )
+                    )
+                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.pptx", format.mimeType, bytes)
+                }
+                HakimArtifactFormatRegistry.Format.XLSX -> {
+                    val bytes = renderXlsx(spec)
+                    verifyZip(
+                        bytes,
+                        setOf(
+                            "[Content_Types].xml",
+                            "_rels/.rels",
+                            "xl/workbook.xml",
+                            "xl/worksheets/sheet1.xml"
+                        )
+                    )
+                    saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.xlsx", format.mimeType, bytes)
+                }
                 HakimArtifactFormatRegistry.Format.PNG ->
                     saveBytes(context, "ورقة_عمل_الجمع_ضمن_١٠.png", format.mimeType, renderPng(spec))
                 else -> error("الصيغة ليست ضمن المصنع المحلي الحالي: " + format.name)
@@ -290,6 +319,22 @@ object HakimMultiFormatArtifactFactory {
         val file = File(dir, displayName)
         FileOutputStream(file).use { it.write(bytes) }
         return HakimLocalArtifactFactory.Created(null, displayName, file.absolutePath, mimeType)
+    }
+
+    private fun verifyZip(bytes: ByteArray, requiredEntries: Set<String>) {
+        require(bytes.size > 100) { "حزمة Office فارغة أو صغيرة بصورة غير صالحة." }
+        val seen = linkedSetOf<String>()
+        ZipInputStream(ByteArrayInputStream(bytes)).use { input ->
+            while (true) {
+                val entry = input.nextEntry ?: break
+                seen += entry.name
+                input.closeEntry()
+            }
+        }
+        val missing = requiredEntries - seen
+        require(missing.isEmpty()) {
+            "حزمة Office غير مكتملة: " + missing.joinToString(",")
+        }
     }
 
     private fun zip(parts: LinkedHashMap<String, String>): ByteArray {

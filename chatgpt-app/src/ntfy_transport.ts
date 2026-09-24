@@ -1,5 +1,6 @@
 import https from "node:https";
 import dns from "node:dns/promises";
+import crypto from "node:crypto";
 
 export type NtfyTextOptions={
   method?:"GET"|"POST";
@@ -64,7 +65,7 @@ export async function ntfyText(url:string,opts:NtfyTextOptions={}){
 }
 
 export async function probeNtfyIpv4(){
-  const topic="hakim_diag_"+Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString("base64url");
+  const topic="hakim_diag_"+crypto.randomBytes(8).toString("base64url");
   const started=Date.now();
   try{
     const response=await ntfyText("https://ntfy.sh/"+encodeURIComponent(topic),{

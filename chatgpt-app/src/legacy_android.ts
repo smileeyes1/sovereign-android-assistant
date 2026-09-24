@@ -223,16 +223,15 @@ export function newStatelessLegacyId(){
 }
 
 
-export async function pollLegacyHealth(s:LegacyAndroidSession,maxAgeMs=120_000){
-  const u=new URL("https://ntfy.sh/"+encodeURIComponent(s.resultTopic)+"/json");
-  u.searchParams.set("poll","1");
-  u.searchParams.set("since","10m");
-  const response=await httpsText(u.toString(),{timeoutMs:8_000});
-  if(response.status<200||response.status>=300) return null;
-  const now=Date.now();
+export function extractLatestSignedHealth(
+  s:LegacyAndroidSession,
+  body:string,
+  now=Date.now(),
+  maxAgeMs=120_000
+){
   let latest:any=null;
   let latestTime=0;
-  for(const line of response.body.split("\n")){
+  for(const line of body.split("\n")){
     if(!line.trim()) continue;
     try{
       const evt=JSON.parse(line);
@@ -248,4 +247,13 @@ export async function pollLegacyHealth(s:LegacyAndroidSession,maxAgeMs=120_000){
     }catch{}
   }
   return latest;
+}
+
+export async function pollLegacyHealth(s:LegacyAndroidSession,maxAgeMs=120_000){
+  const u=new URL("https://ntfy.sh/"+encodeURIComponent(s.resultTopic)+"/json");
+  u.searchParams.set("poll","1");
+  u.searchParams.set("since","10m");
+  const response=await httpsText(u.toString(),{timeoutMs:8_000});
+  if(response.status<200||response.status>=300) return null;
+  return extractLatestSignedHealth(s,response.body,Date.now(),maxAgeMs);
 }

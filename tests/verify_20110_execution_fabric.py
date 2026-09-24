@@ -14,7 +14,9 @@ def req(cond: bool, reason: str):
     if not cond:
         raise SystemExit("EXECUTION_FABRIC_GATE=FAIL reason=" + reason)
 
-req("versionCode 20110" in gradle, "candidate_version")
+import re
+m = re.search(r"versionCode\\s+(\\d+)", gradle)
+req(m is not None and int(m.group(1)) >= 20110, "candidate_version")
 req("EXECUTION-FABRIC-2026-09-24-v1" in fabric, "fabric_version")
 for token in [
     '"secure_relay"', '"legacy_websocket"', '"local_adb"',

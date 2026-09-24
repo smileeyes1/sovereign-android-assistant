@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * The API key is read from HakimSecretStore and never logged.
  */
 class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
-    override val id: String = "gemini-direct"
+    override val id: String = ID
     override val displayName: String = "Gemini مباشر"
     override val capabilities: Set<HakimInferenceEngine.Capability> = setOf(
         HakimInferenceEngine.Capability.GENERAL_CHAT,
@@ -244,6 +244,7 @@ class GeminiDirectEngine(private val context: Context) : HakimInferenceEngine {
     }
 
     companion object {
+        const val ID = "gemini-direct"
         const val SECRET_GEMINI_KEY = "gemini_api_key"
         const val PREFS = "hakim_direct_models"
         const val KEY_MODEL = "gemini_model"

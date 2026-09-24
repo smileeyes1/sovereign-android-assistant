@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20200,
-  "candidate_name": "3.0.0-product-v1-candidate",
+  "candidate_version": 20201,
+  "candidate_name": "3.0.1-product-v1-candidate",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -26,5 +26,8 @@
   "sellable": false,
   "local_audit_trail": true,
   "local_data_deletion": true,
-  "intelligence_disconnect": true
+  "intelligence_disconnect": true,
+  "raw_markdown_hidden": true,
+  "artifact_refusal_not_success": true,
+  "contextual_addition_within_10_restored": true
 }

@@ -53,7 +53,15 @@ req(free_gate < provider_scan, "free_gate_after_provider_handoff")
 req("beginFreeEngineSetup" in CENTER, "setup_handler_missing")
 req("OpenRouterOAuthManager.start(this, pendingPrompt = text)" in CENTER, "oauth_not_started_from_pending_goal")
 req("executeBestRoute(pending, appendUserMessage = false)" in CENTER, "automatic_resume_missing")
-req("لن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT" in CENTER, "user_boundary_missing")
+req(
+    "بعد موافقتك سيعود العمل إلى حكيم ويكمل طلبك هنا." in CENTER
+    or "لن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT" in CENTER,
+    "user_boundary_missing"
+)
+setup_start = CENTER.index("private fun beginFreeEngineSetup")
+setup_end = CENTER.index("private fun executeDirectModel", setup_start)
+setup_block = CENTER[setup_start:setup_end]
+req("startActivity(" not in setup_block, "automatic_provider_handoff")
 
 req('private const val MODEL = "openrouter/free"' in OPENROUTER, "paid_model_risk")
 req("readAttachmentBounded" in OPENROUTER, "bounded_attachment_read_missing")

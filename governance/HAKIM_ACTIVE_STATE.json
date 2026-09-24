@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20111,
-      "commit": "b01047f70e2985cbbe8a6d6a88d238095662648b",
-      "ci_run_number": 927,
+      "version_code": 20112,
+      "commit": "7a96cd64ccb43255db458fe28c1981f0839c163f",
+      "ci_run_number": 936,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20112,
-      "branch": "feature/hakim-20112-local-pdf-v1",
+      "version_code": 20113,
+      "branch": "feature/hakim-20113-contextual-local-pdf-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,17 +99,20 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 927,
-      "commit": "b01047f70e2985cbbe8a6d6a88d238095662648b",
+      "run_number": 936,
+      "commit": "7a96cd64ccb43255db458fe28c1981f0839c163f",
       "conclusion": "success"
     }
   },
   "local_artifacts": {
-    "version": "LOCAL-PDF-2026-09-24-v1",
+    "version": "LOCAL-PDF-2026-09-24-v2",
     "source_integrated": true,
     "worksheet_addition_within_10": true,
     "local_before_external_models": true,
     "openrouter_for_this_task": false,
-    "field_verified": false
+    "field_verified": false,
+    "contextual_followup": true,
+    "recent_conversation_recovery": true,
+    "last_artifact_memory": true
   }
 }

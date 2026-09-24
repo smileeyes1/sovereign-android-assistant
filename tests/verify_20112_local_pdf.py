@@ -41,9 +41,11 @@ case_block = CENTER[case_start:case_end]
 req("OpenRouterOAuthManager.start" not in case_block, "local_artifact_can_open_oauth")
 
 # All fixed worksheet problems must stay within ten.
-problem_match = re.search(r"val problems = listOf\((.*?)\)\n\s*\)", FACTORY, re.S)
-req(problem_match is not None, "problems_missing")
-pairs = [(int(a), int(b)) for a, b in re.findall(r"(\d+)\s+to\s+(\d+)", problem_match.group(1))]
+problems_start = FACTORY.index("val problems = listOf(")
+problems_end = FACTORY.index("var y =", problems_start)
+req(problems_start >= 0 and problems_end > problems_start, "problems_missing")
+problem_block = FACTORY[problems_start:problems_end]
+pairs = [(int(a), int(b)) for a, b in re.findall(r"(\d+)\s+to\s+(\d+)", problem_block)]
 req(len(pairs) >= 8, "too_few_problems")
 req(all(a + b <= 10 for a, b in pairs), "sum_exceeds_ten")
 

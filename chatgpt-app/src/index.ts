@@ -13,7 +13,7 @@ import {
 } from "./oauth.js";
 import { pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { AndroidPairStore,androidPairHref } from "./android_pair.js";
-import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,probeNtfyIpv4,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
+import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,pollLegacyHealth,publishLegacyCommand,probeNtfyIpv4,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
 const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";
@@ -145,8 +145,10 @@ app.get("/android/legacy/stable/:id/status",async(req,res)=>{
     noStore(res);
     const requestId=await publishLegacyCommand(session,{type:"ping"});
     const result=await pollLegacyResult(session,requestId,8000);
-    if(!result) return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
-    return res.json({ok:true,paired:true,status:"online",device:result});
+    if(result) return res.json({ok:true,paired:true,status:"online",evidence:"signed_ping",device:result});
+    const health=await pollLegacyHealth(session,120_000);
+    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
+    return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
   }catch(e){
     return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
   }

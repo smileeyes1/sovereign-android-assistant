@@ -26,9 +26,9 @@
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20203,
-      "branch": "feature/hakim-20203-multiformat-teacher-factory-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20204,
+      "branch": "feature/hakim-20204-google-workspace-user-bridge-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -126,8 +126,8 @@
     "field_verified": false
   },
   "productization": {
-    "version": "PRODUCT-V1-2026-09-24-v4",
-    "candidate_version": 20203,
+    "version": "PRODUCT-V1-2026-09-24-v5",
+    "candidate_version": 20204,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -193,5 +193,21 @@
       "commit": "58c370fdc844e3a3c1e5866ade2b18f886cd602f",
       "conclusion": "success"
     }
+  },
+  "google_workspace": {
+    "version": "GOOGLE-WORKSPACE-USER-BRIDGE-2026-09-24-v1",
+    "source_integrated": true,
+    "scope": "https://www.googleapis.com/auth/drive.file",
+    "access_token_persisted": false,
+    "embedded_webview": false,
+    "user_account_files": true,
+    "central_google_account": false,
+    "android_package": "ps.hakim.stable",
+    "d1_sha1": "17:5D:2F:49:B1:F9:4C:B6:94:D1:79:92:7A:B8:EA:54:FC:68:4F:8C",
+    "d1_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "oauth_android_client_registered": false,
+    "drive_api_enabled": false,
+    "source_ci": null,
+    "field_verified": false
   }
 }

@@ -12,6 +12,9 @@ class BootReceiver : BroadcastReceiver() {
 
         HakimConstitution.install(context)
         HakimLearning.initialize(context)
+        if (action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            HakimSelfImprovementLoop.onPackageReplaced(context)
+        }
         HakimValueContinuityEngine.resumePending(context)
         HakimGoalSupervisor.resume(context)
         HakimGoalExecutor.tick(context)

@@ -112,6 +112,13 @@ object HakimSelfCheck {
         check("لا استقلال علاجي ذاتي", !humanBiology.optBoolean("autonomous_clinical_action"))
         check("التدخل المباشر خلف بوابة مختصة", humanBiology.optBoolean("direct_intervention_requires_qualified_gate"))
 
+        val improvement = HakimSelfImprovementLoop.status(context)
+        check("حلقة التحسين الذاتي محكومة", improvement.optBoolean("self_improvement_loop"))
+        check("لا تعديل مصدر ذاتي على الهاتف", !improvement.optBoolean("source_mutation_on_device"))
+        check("الرجوع أمامي من مصدر مثبت فقط", improvement.optString("rollback_strategy") == "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE")
+        check("توقيع D1 حاكم للترقية الميدانية", improvement.optBoolean("d1_required_for_field_update"))
+        check("الجديد لا يرث النجاح", improvement.optBoolean("new_candidate_does_not_inherit_success"))
+
         val executionFabric = HakimExecutionFabric.status(context)
         check("نسيج التنفيذ فعّال", executionFabric.optBoolean("execution_fabric"))
         check("Online لا يُعلن بلا مسار حي", executionFabric.optBoolean("online_requires_live_path"))
@@ -180,6 +187,7 @@ object HakimSelfCheck {
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)
             .put("execution_fabric", executionFabric)
+            .put("self_improvement", improvement)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

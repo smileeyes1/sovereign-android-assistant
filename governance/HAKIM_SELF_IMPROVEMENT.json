@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "version": "SELF-IMPROVEMENT-LOOP-2026-09-24-v1",
+  "loop": [
+    "OBSERVE",
+    "DIAGNOSE",
+    "ISOLATED_CANDIDATE",
+    "CI_VERIFIED",
+    "D1_SIGNED",
+    "PREINSTALL_VERIFIED",
+    "INSTALL_REQUESTED",
+    "OS_INSTALLED",
+    "POST_INSTALL_OBSERVED",
+    "PROMOTED_OR_FORWARD_ROLLBACK"
+  ],
+  "on_device_source_mutation": false,
+  "automatic_downgrade": false,
+  "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
+  "d1_required": true,
+  "verified_baseline_source_required": true,
+  "same_artifact_field_evidence_required": true,
+  "newer_does_not_inherit_success": true,
+  "current_field_source_mapping": "NOT_PROVEN",
+  "field_promotion_default": "FAIL_CLOSED"
+}

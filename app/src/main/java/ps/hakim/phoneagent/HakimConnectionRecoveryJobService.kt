@@ -9,8 +9,8 @@ class HakimConnectionRecoveryJobService : JobService() {
             try {
                 HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")
                 HakimConstraintDoctor.run(applicationContext, "periodic_watchdog")
-                HakimHealthBeacon.sendNow(applicationContext, "periodic_watchdog")
                 HakimSelfCheck.runAsync(applicationContext)
+                HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
             } catch (_: Exception) {
             } finally {
                 jobFinished(params, false)

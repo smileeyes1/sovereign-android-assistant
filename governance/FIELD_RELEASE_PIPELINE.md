@@ -17,3 +17,7 @@
 ## حالات الدليل
 SOURCE_VERIFIED → CI_VERIFIED → ARTIFACT_VERIFIED → D1_SIGNED → PREINSTALL_VERIFIED → INSTALL_REQUESTED → OS_INSTALLED → UI_OBSERVED → PROMOTED_BASELINE.
 لا يجوز القفز بين الحالات بالاستنتاج.
+
+
+## الرجوع الأمامي
+إذا فشل مرشح بعد تثبيته فلا يُستخدم downgrade تلقائي على Android. يُنشأ مرشح جديد بإصدار أعلى من **آخر مصدر ميداني ثبتت مطابقته**، ثم يمر من CI وتوقيع D1 والتحقق قبل التثبيت وبعده. إذا كان مصدر آخر نجاح ميداني غير مثبت المطابقة، يتوقف الرجوع الآلي عند مانع SOURCE_MAPPING_NOT_PROVEN ولا يُخمن المصدر.

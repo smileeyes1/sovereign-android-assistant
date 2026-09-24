@@ -11,8 +11,7 @@ class HakimApp : Application() {
         HakimLearning.initialize(this)
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
-        HakimUnifiedRelay.start(this)
-        startHakimIfPaired(prefs)
+        HakimExecutionFabric.recover(this, "app_start")
         HakimConnectionResilience.install(this)
         HakimNetworkGuardian.install(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
@@ -26,7 +25,7 @@ class HakimApp : Application() {
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
         val securePaired = !prefs.getString(HakimUnifiedRelay.KEY_TOPIC, "").isNullOrBlank() &&
-            !prefs.getString(HakimUnifiedRelay.KEY_RESULT_URL, "").isNullOrBlank() &&
+            !prefs.getString(HakimUnifiedRelay.KEY_RESULT_TOPIC, "").isNullOrBlank() &&
             !prefs.getString(HakimUnifiedRelay.KEY_RELAY_KEY, "").isNullOrBlank()
         if (disabled || (!legacyPaired && !securePaired)) return
         try {

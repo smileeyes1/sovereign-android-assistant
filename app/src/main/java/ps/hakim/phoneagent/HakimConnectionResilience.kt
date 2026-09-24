@@ -78,62 +78,44 @@ object HakimConnectionResilience {
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
-        val p = prefs(app)
-        PairingDefaults.ensure(p)
-
-        val disabled = p.getBoolean("pairing_disabled_by_user", false)
-        val paired = p.getString("command_topic", "").orEmpty().isNotBlank() &&
-            p.getString("result_topic", "").orEmpty().isNotBlank()
-        val now = System.currentTimeMillis()
-
-        if (disabled) {
-            p.edit().putString("connection_recovery_state", "disabled_by_user").apply()
-            return state(app, "disabled_by_user", reason)
+        val result = HakimExecutionFabric.recover(app, reason)
+        val state = result.optString("state", "RECOVERING")
+        val mapped = when (state) {
+            "ONLINE" -> "healthy"
+            "DISABLED_BY_USER" -> "disabled_by_user"
+            "UNCONFIGURED" -> "unpaired"
+            else -> "restart_requested"
         }
-        if (!paired) {
-            p.edit().putString("connection_recovery_state", "unpaired").apply()
-            return state(app, "unpaired", reason)
-        }
+        prefs(app).edit()
+            .putString("connection_recovery_state", mapped)
+            .putString("last_recovery_reason", reason.take(80))
+            .putLong("last_recovery_attempt_at", System.currentTimeMillis())
+            .apply()
 
-        if (HakimService.running && HakimService.connected) {
-            p.edit()
-                .putString("connection_recovery_state", "healthy")
-                .putLong("last_recovery_ok_at", now)
-                .remove("last_recovery_error")
-                .apply()
-            return state(app, "healthy", reason)
-        }
-
-        return try {
-            val intent = Intent(app, HakimService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) app.startForegroundService(intent)
-            else app.startService(intent)
-            p.edit()
-                .putString("connection_recovery_state", "restart_requested")
-                .putString("last_recovery_reason", reason.take(80))
-                .putLong("last_recovery_attempt_at", now)
-                .remove("last_recovery_error")
-                .apply()
-            state(app, "restart_requested", reason)
-        } catch (e: Exception) {
-            val message = safe(e.message.ifNullOrBlank { e.javaClass.simpleName })
-            p.edit()
-                .putString("connection_recovery_state", "start_blocked")
-                .putString("last_recovery_reason", reason.take(80))
-                .putString("last_recovery_error", message)
-                .putLong("last_recovery_attempt_at", now)
-                .apply()
+        if (!result.optBoolean("online") && result.optString("service_start") == "blocked") {
+            prefs(app).edit().putString("connection_recovery_state", "start_blocked").apply()
             notifyRecoveryNeeded(app)
-            state(app, "start_blocked", reason).put("error", message)
         }
+        if (result.optBoolean("online")) {
+            prefs(app).edit()
+                .putLong("last_recovery_ok_at", System.currentTimeMillis())
+                .remove("last_recovery_error")
+                .apply()
+        }
+        return status(app)
     }
 
     fun status(context: Context): JSONObject {
         val p = prefs(context)
+        val fabric = HakimExecutionFabric.status(context)
         return JSONObject()
             .put("state", p.getString("connection_recovery_state", "unknown"))
+            .put("online", fabric.optBoolean("online"))
+            .put("execution_fabric", fabric)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
+            .put("secure_relay_connected", HakimUnifiedRelay.isConnected())
+            .put("local_adb_connected", p.getBoolean("local_adb_connected", false))
             .put("last_connected_at", p.getLong("last_connected_at", 0L))
             .put("last_recovery_attempt_at", p.getLong("last_recovery_attempt_at", 0L))
             .put("last_recovery_ok_at", p.getLong("last_recovery_ok_at", 0L))
@@ -142,9 +124,6 @@ object HakimConnectionResilience {
             .put("last_network_available_at", p.getLong("last_network_available_at", 0L))
             .put("last_network_lost_at", p.getLong("last_network_lost_at", 0L))
     }
-
-    private fun state(context: Context, state: String, reason: String): JSONObject =
-        status(context).put("state", state).put("reason", reason)
 
     private fun notifyRecoveryNeeded(context: Context) {
         try {
@@ -167,8 +146,8 @@ object HakimConnectionResilience {
             nm.notify(
                 NOTIFICATION_ID,
                 builder.setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-                    .setContentTitle("حكيم يحاول استعادة الاتصال")
-                    .setContentText("منع أندرويد إعادة التشغيل من الخلفية. فتح حكيم يعيد المحاولة فورًا.")
+                    .setContentTitle("حكيم يعيد بناء قناة التنفيذ")
+                    .setContentText("تعذر بدء الخدمة من الخلفية؛ سيستأنف حكيم عند أول فرصة يسمح بها أندرويد.")
                     .setAutoCancel(true)
                     .setContentIntent(pending)
                     .build()
@@ -178,5 +157,4 @@ object HakimConnectionResilience {
 
     private fun prefs(context: Context) = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
     private fun safe(value: String?): String = value.orEmpty().take(300)
-    private fun String?.ifNullOrBlank(block: () -> String): String = if (this.isNullOrBlank()) block() else this
 }

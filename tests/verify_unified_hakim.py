@@ -24,6 +24,7 @@ local_pairing = text("app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt
 local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManager.kt")
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
+fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version_match = re.search(r"versionCode\s+(\d+)", build)
@@ -45,7 +46,11 @@ require('android:name=".HakimAccessibilityService"' not in manifest, "P0: خدم
 require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: ربط الوصول الحساس ما زال مكشوفًا")
 require('android:name=".HakimNotificationListener"' not in manifest, "P0: مستمع الإشعارات الحساس لا يجوز إعلانُه في ملف التثبيت الآمن")
 require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ربط الإشعارات الحساس ما زال مكشوفًا")
-require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم")
+require(
+    ('HakimUnifiedRelay.start(this)' in app) or
+    ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric),
+    "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر نسيج التنفيذ"
+)
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
@@ -57,7 +62,7 @@ require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' 
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
 require('تأسيس ADB المحلي' in home and 'مركز القيادة' in home, "P0: الواجهة الموحدة لا تعرض مسار التأسيس والقيادة")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot])
+all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot, fabric])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

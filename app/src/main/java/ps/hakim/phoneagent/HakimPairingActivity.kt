@@ -23,12 +23,12 @@ class HakimPairingActivity : Activity() {
         val uri = i?.data
         val token = uri?.getQueryParameter("token").orEmpty()
         val topic = uri?.getQueryParameter("relay_topic")
-        val resultUrl = uri?.getQueryParameter("result_url")
+        val resultTopic = uri?.getQueryParameter("relay_result_topic")
         val relayKey = uri?.getQueryParameter("relay_key")
 
         val ok = uri?.scheme == "hakim" && uri.host == "pair" &&
             token.length in 32..256 &&
-            HakimUnifiedRelay.configure(this, topic, resultUrl, relayKey)
+            HakimUnifiedRelay.configure(this, topic, resultTopic, relayKey)
 
         if (ok) {
             getSharedPreferences("hakim", MODE_PRIVATE).edit()

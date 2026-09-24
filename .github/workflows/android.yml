@@ -52,6 +52,10 @@ jobs:
           python3 tests/verify_20106_resilient_free_completion.py
           python3 tests/verify_20107_openrouter_browser_loopback.py
           python3 tests/verify_20108_network_guardian.py
+          python3 tests/verify_20109_unified_factory.py
+          python3 tests/verify_20109_human_biology.py
+          python3 tests/verify_20110_execution_fabric.py
+          python3 tests/verify_active_state_consistency.py
           python3 tests/verify_product_v1_candidate_gate.py
           set +e
           FINAL_OUTPUT="$(python3 tests/verify_product_v1_final_gate.py 2>&1)"
@@ -99,7 +103,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20108"
+          test "$VERSION_CODE" = "20110"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

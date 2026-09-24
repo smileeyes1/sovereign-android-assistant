@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20108
-        versionName '2.1.08-network-guardian'
+        versionCode 20110
+        versionName '2.1.10-execution-fabric'
     }
 
     compileOptions {

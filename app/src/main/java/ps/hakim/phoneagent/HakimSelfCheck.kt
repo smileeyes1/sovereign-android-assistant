@@ -100,11 +100,30 @@ object HakimSelfCheck {
         check("منفذ المقصد موجود", executor.optBoolean("executor"))
         check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
 
+        val materialFactory = HakimMaterialFactory.status(context)
+        check("مصنع حكيم للمادة فعّال", materialFactory.optBoolean("material_factory"))
+        check("التصميم الرقمي لا يُعد منتجًا ماديًا", materialFactory.optBoolean("digital_design_is_not_physical_product"))
+        check("التحقق المادي يتطلب نفس الأثر", materialFactory.optBoolean("same_artifact_required"))
+        check("ترقية المصنع تفشل مغلقة", materialFactory.optBoolean("fail_closed_promotion"))
+
+        val humanBiology = HakimHumanBiology.status(context)
+        check("طبقة الأحياء والإنسان فعالة", humanBiology.optBoolean("human_biology"))
+        check("القلب والدماغ ضمن التغطية", humanBiology.optBoolean("covers_heart") && humanBiology.optBoolean("covers_brain"))
+        check("لا استقلال علاجي ذاتي", !humanBiology.optBoolean("autonomous_clinical_action"))
+        check("التدخل المباشر خلف بوابة مختصة", humanBiology.optBoolean("direct_intervention_requires_qualified_gate"))
+
+        val executionFabric = HakimExecutionFabric.status(context)
+        check("نسيج التنفيذ فعّال", executionFabric.optBoolean("execution_fabric"))
+        check("Online لا يُعلن بلا مسار حي", executionFabric.optBoolean("online_requires_live_path"))
+        check("فشل مسار واحد لا يغلق المقصد", executionFabric.optBoolean("single_path_failure_does_not_close_goal"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
-        val paired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+        val legacyPaired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             mainPrefs.getString("result_topic", "").orEmpty().isNotBlank()
-        check("حالة الاقتران منطقية", userDisabled || paired, "warn", if (userDisabled) "فصل المستخدم محترم" else if (paired) "مقترن" else "غير مقترن")
+        val securePaired = HakimUnifiedRelay.isConfigured(context)
+        val paired = legacyPaired || securePaired || mainPrefs.getBoolean("local_adb_paired", false)
+        check("حالة الاقتران منطقية", userDisabled || paired, "warn", if (userDisabled) "فصل المستخدم محترم" else if (paired) "يوجد مسار مهيأ" else "غير مقترن")
 
         val recovery = HakimConnectionResilience.status(context)
         check(
@@ -115,7 +134,7 @@ object HakimSelfCheck {
         )
         check(
             "الاتصال الحي متاح عند الاقتران",
-            userDisabled || !paired || recovery.optBoolean("service_connected"),
+            userDisabled || !paired || recovery.optBoolean("online"),
             "warn",
             recovery.optString("state")
         )
@@ -158,6 +177,9 @@ object HakimSelfCheck {
             .put("value_continuity", continuity)
             .put("goal_supervisor", supervisor)
             .put("goal_executor", executor)
+            .put("material_factory", materialFactory)
+            .put("human_biology", humanBiology)
+            .put("execution_fabric", executionFabric)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

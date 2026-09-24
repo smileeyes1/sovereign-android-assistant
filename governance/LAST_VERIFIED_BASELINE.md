@@ -29,3 +29,24 @@ This cloud baseline is the rollback target for bridge/OAuth work until a success
 
 ## Promotion rule
 A newer component inherits no success automatically. Promote only after the tests relevant to what changed pass on the same artifact/deployment that is delivered. If a field-signing credential is unavailable, keep the Android candidate explicitly NOT INSTALLABLE / NOT PROMOTED.
+
+
+## Current integrated source candidate — 20109
+- Parent source baseline: `20108` at `cfb2cf668a2f4431c3706a1b6d6d32bb5a9a8c76`, whose GitHub Actions run #903 completed SUCCESS.
+- Candidate branch: `feature/hakim-20109-unified-factory-v1`.
+- 20109 integrates the material factory contract and a whole-human biology domain while preserving the 20108 network-guardian lineage.
+- Human-biology scope is education, wellness, non-invasive monitoring and evidence-bounded decision support by default. It does not grant autonomous diagnosis, treatment, stimulation, implantation, dosing, surgery, or genome intervention.
+- Material state cannot be promoted to MATERIAL_VERIFIED without fabrication evidence, measurement, acceptance, and same-artifact proof.
+- Source/CI evidence for the integrated 20109 code parent: commit `22bf46b2878a415155074274fc5346ff9a9e19c0`, GitHub Actions run #909 = SUCCESS.
+- 20109 remains NOT PROMOTED until the same correctly signed APK passes field acceptance.
+
+
+## Execution fabric source candidate — 20110
+- Parent source baseline: `20109` at `744e803ef10cd4ac56f9af75a5c4c005f69ce19c`, GitHub Actions run #912 = SUCCESS.
+- Cloud/ChatGPT bridge production baseline remains `c84359e422dad0aa205f59a153a1f29d7f4c4e81`.
+- Root-cause correction: Android now uses the same v2 relay contract as production: `relay_result_topic` and encrypted `HR1` results over ntfy; the stale Android `result_url` contract is rejected by CI.
+- Execution fabric combines secure relay, legacy WebSocket, and local ADB; ONLINE requires at least one currently live path.
+- App start, boot/package replacement, network availability, task removal, and periodic recovery all feed the same execution-fabric recovery path.
+- Source evidence: code commit `7b798ebeeb0076c39b5c88f23dba9f1f8ab69762`, GitHub Actions run #915 = SUCCESS.
+- External device connector was observed OFFLINE on 2026-09-24; no field-online claim is inherited from source CI.
+- 20110 remains NOT PROMOTED until the same D1-signed APK is installed and a live phone-originated execution path is proven.

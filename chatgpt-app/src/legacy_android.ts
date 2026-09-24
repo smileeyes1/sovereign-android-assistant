@@ -1,60 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import https from "node:https";
-import dns from "node:dns/promises";
 import {randomSecret} from "./protocol.js";
-
-async function httpsOnce(
-  url:string,
-  opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={},
-  forcedAddress?:string
-){
-  const u=new URL(url);
-  const requestOptions:https.RequestOptions={
-    protocol:"https:",
-    hostname:forcedAddress??u.hostname,
-    port:u.port?Number(u.port):443,
-    path:u.pathname+u.search,
-    method:opts.method??"GET",
-    headers:{...(opts.headers??{}),...(forcedAddress?{Host:u.hostname}:{})},
-    servername:u.hostname,
-    family:forcedAddress?4:undefined,
-    agent:false,
-    timeout:opts.timeoutMs??3500
-  };
-  return await new Promise<{status:number;body:string}>((resolve,reject)=>{
-    const req=https.request(requestOptions,res=>{
-      const chunks:Buffer[]=[];
-      res.on("data",chunk=>chunks.push(Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk)));
-      res.on("end",()=>resolve({status:res.statusCode??0,body:Buffer.concat(chunks).toString("utf8")}));
-    });
-    req.on("timeout",()=>req.destroy(new Error("ntfy_timeout")));
-    req.on("error",reject);
-    if(opts.body) req.write(opts.body);
-    req.end();
-  });
-}
-
-async function httpsText(url:string,opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={}){
-  const u=new URL(url);
-  const errors:string[]=[];
-  let addresses:string[]=[];
-  try{ addresses=await dns.resolve4(u.hostname); }catch(e){ errors.push("dns4:"+(e instanceof Error?e.message:String(e))); }
-  const candidates=[...new Set(addresses)].slice(0,4);
-  for(const address of candidates){
-    try{
-      const r=await httpsOnce(url,{...opts,timeoutMs:Math.min(opts.timeoutMs??3500,3500)},address);
-      if(r.status>0) return r;
-    }catch(e){ errors.push(address+":"+(e instanceof Error?e.message:String(e))); }
-  }
-  try{
-    return await httpsOnce(url,{...opts,timeoutMs:opts.timeoutMs??5000});
-  }catch(e){
-    errors.push("host:"+(e instanceof Error?e.message:String(e)));
-    throw new Error("ntfy_all_routes_failed:"+errors.slice(-5).join("|"));
-  }
-}
+import {ntfyText,probeNtfyIpv4} from "./ntfy_transport.js";
 
 export type LegacyAndroidSession={
   id:string;
@@ -126,7 +74,7 @@ export async function publishLegacyCommand(s:LegacyAndroidSession,command:Record
   const payload=Buffer.from(JSON.stringify(payloadObj),"utf8").toString("base64url");
   const sig=hmacHex(s.authKey,payload);
   const body=JSON.stringify({payload,sig});
-  const response=await httpsText("https://ntfy.sh/"+encodeURIComponent(s.commandTopic),{
+  const response=await ntfyText("https://ntfy.sh/"+encodeURIComponent(s.commandTopic),{
     method:"POST",
     headers:{"Content-Type":"text/plain; charset=utf-8"},
     body,
@@ -154,7 +102,7 @@ export async function pollLegacyResult(s:LegacyAndroidSession,requestId:string|u
     const u=new URL("https://ntfy.sh/"+encodeURIComponent(s.resultTopic)+"/json");
     u.searchParams.set("poll","1");
     u.searchParams.set("since","10m");
-    const response=await httpsText(u.toString(),{timeoutMs:8_000});
+    const response=await ntfyText(u.toString(),{timeoutMs:8_000});
     if(response.status>=200&&response.status<300){
       const groups=new Map<string,{total:number;parts:Map<number,string>}>();
       const body=response.body;
@@ -181,43 +129,4 @@ export async function pollLegacyResult(s:LegacyAndroidSession,requestId:string|u
     await new Promise(r=>setTimeout(r,700));
   }
   return null;
-}
-
-
-export async function probeNtfyIpv4(){
-  const topic="hakim_diag_"+randomSecret(8);
-  const started=Date.now();
-  try{
-    const response=await httpsText("https://ntfy.sh/"+encodeURIComponent(topic),{
-      method:"POST",
-      headers:{"Content-Type":"text/plain; charset=utf-8"},
-      body:"hakim-ipv4-probe",
-      timeoutMs:5_000
-    });
-    return {ok:response.status>=200&&response.status<300,status:response.status,latency_ms:Date.now()-started,body:response.body.slice(0,300)};
-  }catch(e){
-    return {ok:false,status:0,latency_ms:Date.now()-started,error:e instanceof Error?e.message:String(e)};
-  }
-}
-
-
-function digestB64(label:string,id:string,bytes:number){
-  return crypto.createHash("sha256").update(label+"\n"+id,"utf8").digest().subarray(0,bytes).toString("base64url");
-}
-
-export function statelessLegacySession(id:string):LegacyAndroidSession{
-  if(!/^[A-Za-z0-9_-]{32,96}$/.test(id)) throw new Error("invalid_stateless_session");
-  const now=Date.now();
-  return {
-    id,
-    commandTopic:"hakim_cmd_"+digestB64("cmd",id,18),
-    resultTopic:"hakim_result_"+digestB64("res",id,18),
-    authKey:crypto.createHash("sha256").update("key\n"+id,"utf8").digest("hex"),
-    createdAt:0,
-    expiresAt:Number.MAX_SAFE_INTEGER
-  };
-}
-
-export function newStatelessLegacyId(){
-  return randomSecret(32);
 }

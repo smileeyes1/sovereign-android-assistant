@@ -17,6 +17,7 @@ object HakimSelfImprovementLoop {
     const val VERSION = "SELF-IMPROVEMENT-LOOP-2026-09-24-v1"
     private const val PREFS = "hakim_self_improvement"
     private const val GRACE_MS = 45_000L
+    private const val MAX_POST_INSTALL_OBSERVE_MS = 5L * 60L * 1000L
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var evaluationScheduled = false
 
@@ -25,12 +26,17 @@ object HakimSelfImprovementLoop {
         val p = prefs(app)
         val current = currentVersion(app)
         val previous = p.getLong("last_started_version", 0L)
+        val mainPrefs = app.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+        val committedVersion = mainPrefs.getLong("last_update_commit_version", -1L)
+        val committedAt = mainPrefs.getLong("last_update_commit_at", 0L)
+        val versionChanged = previous > 0L && current > previous
+        val committedCandidateStarted = committedVersion == current && committedAt > 0L
 
-        if (previous > 0L && current > previous) {
+        if (versionChanged || committedCandidateStarted) {
             p.edit()
                 .putBoolean("post_install_pending", true)
                 .putLong("post_install_candidate_version", current)
-                .putLong("post_install_previous_version", previous)
+                .putLong("post_install_previous_version", if (previous > 0L) previous else -1L)
                 .putLong("post_install_first_seen_at", System.currentTimeMillis())
                 .putString("state", "POST_INSTALL_OBSERVING")
                 .putString("last_reason", "version_changed")
@@ -43,7 +49,7 @@ object HakimSelfImprovementLoop {
             .putLong("last_seen_at", System.currentTimeMillis())
             .apply()
 
-        scheduleEvaluation(app, if (previous > 0L && current > previous) "version_changed" else "startup")
+        scheduleEvaluation(app, if (versionChanged) "version_changed" else if (committedCandidateStarted) "committed_candidate_started" else "startup")
     }
 
     fun scheduleEvaluation(context: Context, reason: String) {
@@ -51,11 +57,8 @@ object HakimSelfImprovementLoop {
         if (evaluationScheduled) return
         evaluationScheduled = true
         handler.postDelayed({
-            try {
-                evaluate(app, reason)
-            } finally {
-                evaluationScheduled = false
-            }
+            evaluationScheduled = false
+            evaluate(app, reason)
         }, GRACE_MS)
     }
 
@@ -72,9 +75,12 @@ object HakimSelfImprovementLoop {
         val selfHealthy = selfStatus == "PASS" || selfStatus == "PASS_WITH_WARNINGS"
         val healthy = online && selfHealthy
         val previousState = p.getString("state", "OBSERVING").orEmpty()
+        val firstSeenAt = p.getLong("post_install_first_seen_at", 0L)
+        val observationAge = if (firstSeenAt > 0L) (System.currentTimeMillis() - firstSeenAt).coerceAtLeast(0L) else 0L
 
         val nextState = when {
             pending && candidate == current && healthy -> "POST_INSTALL_HEALTHY"
+            pending && candidate == current && observationAge < MAX_POST_INSTALL_OBSERVE_MS -> "POST_INSTALL_WAITING_EVIDENCE"
             pending && candidate == current -> "ROLLBACK_FORWARD_REQUIRED"
             healthy -> "BASELINE_HEALTHY"
             else -> "OBSERVING"
@@ -105,6 +111,9 @@ object HakimSelfImprovementLoop {
         if (previousState != nextState) {
             HakimHealthBeacon.sendAsync(app, "self_improvement_$nextState")
         }
+        if (nextState == "POST_INSTALL_WAITING_EVIDENCE") {
+            scheduleEvaluation(app, "post_install_retry")
+        }
         return status(app)
     }
 
@@ -125,6 +134,7 @@ object HakimSelfImprovementLoop {
             .put("rollback_forward_reason", p.getString("rollback_forward_reason", ""))
             .put("last_field_observed_healthy_version", p.getLong("last_field_observed_healthy_version", -1L))
             .put("last_evaluated_at", p.getLong("last_evaluated_at", 0L))
+            .put("max_post_install_observe_ms", MAX_POST_INSTALL_OBSERVE_MS)
             .put("source_mutation_on_device", false)
             .put("automatic_downgrade", false)
             .put("rollback_strategy", "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE")

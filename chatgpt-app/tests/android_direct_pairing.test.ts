@@ -163,3 +163,15 @@ test("stable status route falls back only to signed recent health",async()=>{
   assert.match(source,/evidence:"signed_recent_health"/);
   assert.match(source,/evidence:"signed_ping"/);
 });
+
+
+test("stable status prefers signed recent health before ping",async()=>{
+  const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
+  const start=source.indexOf('app.get("/android/legacy/stable/:id/status"');
+  const end=source.indexOf('app.get("/android/legacy"',start+1);
+  assert.ok(start>=0&&end>start);
+  const block=source.slice(start,end);
+  const healthAt=block.indexOf("pollLegacyHealth(session,120_000)");
+  const pingAt=block.indexOf('publishLegacyCommand(session,{type:"ping"})');
+  assert.ok(healthAt>=0&&pingAt>healthAt);
+});

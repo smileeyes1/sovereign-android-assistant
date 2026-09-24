@@ -139,11 +139,9 @@ app.get("/android/legacy/session/:id/status",async(req,res)=>{
   try{
     const session=await legacyAndroidStore.get(String(req.params.id??""));
     noStore(res);
-    const online=await pollLegacyResult(session,undefined,2500);
-    if(!online) return res.status(409).json({ok:false,paired:false,status:"waiting_for_phone"});
     const requestId=await publishLegacyCommand(session,{type:"ping"});
     const result=await pollLegacyResult(session,requestId,8000);
-    if(!result) return res.status(202).json({ok:false,paired:true,status:"phone_connected_result_pending"});
+    if(!result) return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
     return res.json({ok:true,paired:true,status:"online",device:result});
   }catch(e){
     return oauthError(res,404,"legacy_android_session_unavailable",e instanceof Error?e.message:"session_not_found");

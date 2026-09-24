@@ -28,8 +28,13 @@ req('if (role == "حكيم") HakimProductOutput.clean(message)' in CENTER,"messa
 req('HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"pdf_acceptance_missing")
 req('HakimLocalArtifactFactory.canHandle(this, text)' in CENTER,"pdf_local_fallback_missing")
 
-for phrase in ['"joining within 10"','"addition within 10"','isPdfAdditionWorksheet(prompt)']:
+for phrase in ['"joining within 10"','"addition within 10"','isPdfAdditionWorksheet(prompt)','val directPdfAddition = isPdfAdditionWorksheet(prompt)','val contextualFollowUp = isPdfWorksheetFollowUp(prompt)']:
     req(phrase in FACTORY,"context:"+phrase)
+
+# Exact field regression: «انشئ لي ورقة عمل بي دي اف الجمع» must be allowed
+# to recover «ضمن ١٠» from the recent conversation instead of falling to a text model.
+req('if (!directPdfAddition && !contextualFollowUp) return false' in FACTORY,"field_prompt_blocked_before_context")
+req('if (!isPdfWorksheetFollowUp(prompt)) return false' not in FACTORY,"old_early_return_regression")
 
 for phrase in [
     "لا تعرض Markdown خامًا مثل ### أو **",

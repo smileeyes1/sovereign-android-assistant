@@ -38,7 +38,10 @@ class HakimService : Service() {
         @Volatile var connected = false
         const val ACTION_STOP = "ps.hakim.phoneagent.STOP"
         const val ACTION_SYNC_URL = "ps.hakim.phoneagent.SYNC_URL"
+        const val ACTION_BROWSER_TASK = "ps.hakim.phoneagent.BROWSER_TASK"
         const val EXTRA_URL = "url"
+        const val EXTRA_BROWSER_TASK_ID = "browser_task_id"
+        const val EXTRA_BROWSER_QUERY = "browser_query"
         private const val CHANNEL_ID = "hakim_background"
         private const val NOTIFICATION_ID = 17
         private const val MAX_COMMAND_AGE_MS = 180_000L
@@ -57,6 +60,9 @@ class HakimService : Service() {
     private var explicitStop = false
     private lateinit var webView: WebView
     private val recentRequests = LinkedHashSet<String>()
+    private var activeBrowserTaskId: String? = null
+    private var activeBrowserTaskStartedAt: Long = 0L
+    private val browserTaskPrefs by lazy { getSharedPreferences("hakim_browser_tasks", MODE_PRIVATE) }
 
     override fun onCreate() {
         super.onCreate()
@@ -85,6 +91,14 @@ class HakimService : Service() {
                     webView.post {
                         if (webView.url != url) webView.loadUrl(url)
                     }
+                }
+                return START_STICKY
+            }
+            ACTION_BROWSER_TASK -> {
+                val taskId = intent.getStringExtra(EXTRA_BROWSER_TASK_ID).orEmpty().trim()
+                val query = intent.getStringExtra(EXTRA_BROWSER_QUERY).orEmpty().trim()
+                if (taskId.isNotBlank() && query.isNotBlank()) {
+                    startBrowserTask(taskId, query)
                 }
                 return START_STICKY
             }
@@ -181,12 +195,15 @@ class HakimService : Service() {
                 if (u.startsWith("http")) {
                     prefs.edit().putString("last_url", u).remove("last_web_error").apply()
                     CookieManager.getInstance().flush()
+                    view?.let { maybeCompleteBrowserTask(it, u) }
                 }
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
-                    prefs.edit().putString("last_web_error", error?.description?.toString().orEmpty()).apply()
+                    val message = error?.description?.toString().orEmpty()
+                    prefs.edit().putString("last_web_error", message).apply()
+                    activeBrowserTaskId?.let { failBrowserTask(it, message.ifBlank { "تعذر تحميل الصفحة" }) }
                 }
             }
         }
@@ -195,6 +212,68 @@ class HakimService : Service() {
         }
         val last = prefs.getString("last_url", "https://www.google.com").orEmpty().ifBlank { "https://www.google.com" }
         webView.loadUrl(last)
+    }
+
+    private fun startBrowserTask(taskId: String, query: String) {
+        activeBrowserTaskId = taskId
+        activeBrowserTaskStartedAt = System.currentTimeMillis()
+        browserTaskPrefs.edit()
+            .putString(taskId + "_state", "RUNNING")
+            .putString(taskId + "_query", query.take(4000))
+            .putLong(taskId + "_started_at", activeBrowserTaskStartedAt)
+            .remove(taskId + "_result")
+            .remove(taskId + "_error")
+            .apply()
+        if (!::webView.isInitialized) createBrowser()
+        webView.post {
+            navigate(webView, query)
+        }
+    }
+
+    private fun maybeCompleteBrowserTask(target: WebView, url: String) {
+        val taskId = activeBrowserTaskId ?: return
+        if (System.currentTimeMillis() - activeBrowserTaskStartedAt < 250L) return
+        target.postDelayed({
+            if (activeBrowserTaskId != taskId) return@postDelayed
+            val script = """
+                (function(){
+                  try{
+                    const title=(document.title||'').slice(0,300);
+                    const text=(document.body&&document.body.innerText?document.body.innerText:'')
+                      .replace(/\s+/g,' ').trim().slice(0,12000);
+                    const links=[...document.querySelectorAll('a[href]')].slice(0,40).map(a=>({
+                      text:(a.innerText||a.getAttribute('aria-label')||'').trim().slice(0,180),
+                      href:(a.href||'').slice(0,700)
+                    }));
+                    return JSON.stringify({url:location.href,title:title,text:text,links:links});
+                  }catch(e){
+                    return JSON.stringify({url:location.href,error:String(e)});
+                  }
+                })()
+            """.trimIndent()
+            target.evaluateJavascript(script) { raw ->
+                val decoded = decodeJsString(raw)
+                val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
+                page.put("captured_at", System.currentTimeMillis())
+                browserTaskPrefs.edit()
+                    .putString(taskId + "_state", "COMPLETE")
+                    .putString(taskId + "_result", page.toString())
+                    .putString(taskId + "_url", url)
+                    .putLong(taskId + "_completed_at", System.currentTimeMillis())
+                    .apply()
+                activeBrowserTaskId = null
+                updateNotification("حكيم جاهز — اكتمل جمع نتيجة الويب")
+            }
+        }, 900L)
+    }
+
+    private fun failBrowserTask(taskId: String, reason: String) {
+        browserTaskPrefs.edit()
+            .putString(taskId + "_state", "FAILED")
+            .putString(taskId + "_error", reason.take(500))
+            .putLong(taskId + "_completed_at", System.currentTimeMillis())
+            .apply()
+        if (activeBrowserTaskId == taskId) activeBrowserTaskId = null
     }
 
     private fun enqueueDownload(url: String?, userAgent: String?, contentDisposition: String?, mimeType: String?) {

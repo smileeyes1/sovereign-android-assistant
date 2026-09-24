@@ -28,7 +28,7 @@
     "candidate": {
       "version_code": 20203,
       "branch": "feature/hakim-20203-multiformat-teacher-factory-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 988,
-      "commit": "b66cf68118273bf130ddc6c0c856529939bcc8e3",
+      "run_number": 991,
+      "commit": "58c370fdc844e3a3c1e5866ade2b18f886cd602f",
       "conclusion": "success"
     }
   },
@@ -188,6 +188,10 @@
     "office_packages_structurally_verified_before_save": true,
     "same_semantic_spec_across_formats": true,
     "field_verified": false,
-    "source_ci": null
+    "source_ci": {
+      "run_number": 991,
+      "commit": "58c370fdc844e3a3c1e5866ade2b18f886cd602f",
+      "conclusion": "success"
+    }
   }
 }

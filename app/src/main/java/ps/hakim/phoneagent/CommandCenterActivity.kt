@@ -112,6 +112,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(24, 24, 24, 18)
             clipToPadding = false
+            setBackgroundColor(android.graphics.Color.WHITE)
         }
 
         titleView = TextView(this).apply {
@@ -120,6 +121,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 4)
         }
+        HakimUiKit.title(titleView)
         root.addView(titleView)
 
         status = TextView(this).apply {
@@ -128,6 +130,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(8, 0, 8, 8)
         }
+        HakimUiKit.status(status)
         root.addView(status)
 
         operations = TextView(this).apply {
@@ -145,6 +148,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
         }
+        HakimUiKit.conversation(conversation)
         conversationScroll.addView(conversation)
         root.addView(
             conversationScroll,
@@ -179,6 +183,7 @@ class CommandCenterActivity : Activity() {
                 }
             }
         }
+        HakimUiKit.composer(command)
         composerArea.addView(
             command,
             LinearLayout.LayoutParams(
@@ -200,7 +205,7 @@ class CommandCenterActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
         executeRow.addView(
-            actionButton("أنجز") { executeBestRoute(command.text.toString().trim()) },
+            actionButton("أنجز", primary = true) { executeBestRoute(command.text.toString().trim()) },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 3f)
         )
         executeRow.addView(
@@ -940,9 +945,10 @@ class CommandCenterActivity : Activity() {
         conversationScroll.post { conversationScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
-    private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {
+    private fun actionButton(label: String, primary: Boolean = false, action: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 16f
+        if (primary) HakimUiKit.primary(this) else HakimUiKit.secondary(this)
         setOnClickListener { action() }
     }
 

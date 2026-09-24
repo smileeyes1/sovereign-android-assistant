@@ -12,13 +12,16 @@ object HakimEngineRegistry {
     fun directEngines(context: Context): List<HakimInferenceEngine> {
         val out = mutableListOf<HakimInferenceEngine>()
 
-        if (HakimSecretStore.has(context, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)) {
+        if (
+            HakimSecretStore.has(context, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY) &&
+            HakimUserResourcePolicy.allows(context, OpenRouterFreeEngine.ID)
+        ) {
             out += OpenRouterFreeEngine(context)
         }
 
         if (
             HakimSecretStore.has(context, GeminiDirectEngine.SECRET_GEMINI_KEY) &&
-            HakimFreePolicy.allows("gemini-direct", context)
+            HakimUserResourcePolicy.allows(context, GeminiDirectEngine.ID)
         ) {
             out += GeminiDirectEngine(context)
         }

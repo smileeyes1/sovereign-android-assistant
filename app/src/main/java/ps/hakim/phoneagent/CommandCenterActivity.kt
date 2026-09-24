@@ -954,6 +954,7 @@ class CommandCenterActivity : Activity() {
     private fun recordRoute(route: String, success: Boolean?) {
         if (success == null) HakimLearning.recordAttempt(this, route)
         else HakimLearning.recordResult(this, route, success)
+        HakimAuditTrail.record(this, route, success)
     }
 
     private fun copyText(text: String) {

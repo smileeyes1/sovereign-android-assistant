@@ -28,7 +28,7 @@
     "candidate": {
       "version_code": 20201,
       "branch": "feature/hakim-product-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 940,
-      "commit": "17949285373497924aff9a1e3e204292585a51f5",
+      "run_number": 984,
+      "commit": "a2db0ddebd18c46ca419f5515924c542bb094420",
       "conclusion": "success"
     }
   },
@@ -136,6 +136,8 @@
     "field_acceptance_required": true,
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
-    "artifact_refusal_not_success": true
+    "artifact_refusal_not_success": true,
+    "signed_candidate_sha256": "45f33dd36488199bfbc5cf9048d78a6ea78204c5e1f8ee5cafac103364808275",
+    "signed_candidate_d1_verified": true
   }
 }

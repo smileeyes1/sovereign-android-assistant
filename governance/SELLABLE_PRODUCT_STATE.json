@@ -23,5 +23,8 @@
   "reboot_recovery_field_verified": false,
   "network_loss_recovery_field_verified": false,
   "second_device_smoke_verified": false,
-  "sellable": false
+  "sellable": false,
+  "local_audit_trail": true,
+  "local_data_deletion": true,
+  "intelligence_disconnect": true
 }

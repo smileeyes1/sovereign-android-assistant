@@ -29,7 +29,8 @@ req("OpenRouter" not in FACTORY and "http://" not in FACTORY and "https://" not 
 
 # Critical routing invariant: local artifact must be considered before any direct model,
 # free-engine setup, provider app, or provider web path.
-artifact_marker = "HakimLocalArtifactFactory.canHandle(context, q)" if "HakimLocalArtifactFactory.canHandle(context, q)" in ROUTER else "HakimLocalArtifactFactory.canHandle(q)"\nartifact_pos = ROUTER.index(artifact_marker)
+artifact_marker = "HakimLocalArtifactFactory.canHandle(context, q)" if "HakimLocalArtifactFactory.canHandle(context, q)" in ROUTER else "HakimLocalArtifactFactory.canHandle(q)"
+artifact_pos = ROUTER.index(artifact_marker)
 direct_pos = ROUTER.index("HakimEngineRegistry.bestGeneralChat")
 free_pos = ROUTER.index("HakimFreePolicy.freeOnly")
 req(artifact_pos < direct_pos < free_pos, "local_artifact_not_before_external_engines")

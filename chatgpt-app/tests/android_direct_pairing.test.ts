@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {AndroidPairStore,androidPairHref} from "../src/android_pair.js";
+import {LegacyAndroidStore,legacyPairCode} from "../src/legacy_android.js";
 
 test("android direct pairing store is private, temporary, and produces a Hakim deep link",async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-android-pair-"));
@@ -42,4 +43,30 @@ test("preview bypass is exact-name scoped and production remains fail-closed",as
   assert.match(source,/process\.env\.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview"/);
   assert.match(source,/if \(!androidPreviewMode\) requireProductionOAuthConfig\(process\.env\)/);
   assert.doesNotMatch(source,/androidPreviewMode\s*=\s*true/);
+});
+
+
+test("legacy Android pairing code matches the installed Hakim field contract",async()=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-legacy-pair-"));
+  try{
+    const store=new LegacyAndroidStore(dir);
+    await store.init();
+    const s=await store.create(60_000);
+    const code=legacyPairCode(s);
+    const parts=code.split("|");
+    assert.equal(parts.length,3);
+    assert.match(parts[0]!,/^hakim_cmd_[A-Za-z0-9_-]{20,}$/);
+    assert.match(parts[1]!,/^hakim_result_[A-Za-z0-9_-]{20,}$/);
+    assert.match(parts[2]!,/^[0-9a-f]{64}$/);
+  }finally{
+    await fs.rm(dir,{recursive:true,force:true});
+  }
+});
+
+test("legacy Android route is status-only after local pairing save",async()=>{
+  const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
+  assert.match(source,/app\.get\("\/android\/legacy"/);
+  assert.match(source,/رمز اقتران الجسر التنفيذي/);
+  assert.match(source,/publishLegacyCommand\(session,\{type:"ping"\}\)/);
+  assert.doesNotMatch(source,/publishLegacyCommand\(session,\{type:"open_url"/);
 });

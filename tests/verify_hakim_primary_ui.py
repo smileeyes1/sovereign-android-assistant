@@ -23,7 +23,7 @@ for text in [
     "إرفاق",
     "أنجز",
     "صوت",
-    "إدارة",
+    "الإعدادات",
 ]:
     require(text in CENTER, "missing_primary_control:" + text)
 
@@ -31,6 +31,7 @@ require("HakimModelToolRouter.decide" in CENTER, "router_not_connected")
 require("HakimAttachmentGateway.pickerIntent" in CENTER, "attachments_not_connected")
 require("RecognizerIntent.ACTION_RECOGNIZE_SPEECH" in CENTER, "voice_not_connected")
 require("UnifiedHomeActivity::class.java" in CENTER, "device_management_unreachable")
+require('actionButton("المتصفح")' not in CENTER, "browser_control_hidden")
 
 # Provider selection stays behind the router; the primary interface must not
 # expose one button per vendor.

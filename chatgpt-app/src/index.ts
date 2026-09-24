@@ -11,10 +11,13 @@ import {
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
-import { pollPairAck } from "./relay.js";
+import { pollPairAck,pollResult,publishCommand } from "./relay.js";
+import { AndroidPairStore,androidPairHref } from "./android_pair.js";
+import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,pollLegacyHealth,publishLegacyCommand,probeNtfyIpv4,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
-requireProductionOAuthConfig(process.env);
+const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";
+if (!androidPreviewMode) requireProductionOAuthConfig(process.env);
 
 const app=express();
 app.set("trust proxy",true);
@@ -26,11 +29,15 @@ app.use(express.json({limit:"256kb"}));
 app.use(express.urlencoded({extended:false,limit:"64kb"}));
 
 const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
-const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
+const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),androidPreviewMode?"hakim-android-preview":"hakim-oauth-dev");
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
-const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
+const androidPairStore=new AndroidPairStore(dataDir);
+await androidPairStore.init();
+const legacyAndroidStore=new LegacyAndroidStore(dataDir);
+await legacyAndroidStore.init();
+const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();void androidPairStore.cleanupExpired();void legacyAndroidStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
@@ -96,6 +103,148 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
 
 app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
 
+
+app.get("/android/diag/ntfy-ipv4",async(_req,res)=>{
+  if(!androidPreviewMode) return res.status(404).end();
+  noStore(res);
+  const result=await probeNtfyIpv4();
+  return res.status(result.ok?200:503).json(result);
+});
+
+app.get("/android/legacy/stable",async(_req,res)=>{
+  const id=newStatelessLegacyId();
+  noStore(res);
+  res.setHeader("Referrer-Policy","no-referrer");
+  return res.redirect(302,"/android/legacy/stable/"+encodeURIComponent(id));
+});
+
+app.get("/android/legacy/stable/:id",async(req,res)=>{
+  try{
+    const id=String(req.params.id??"");
+    const session=statelessLegacySession(id);
+    const code=legacyPairCode(session);
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    res.setHeader("X-Frame-Options","DENY");
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>حكيم — اقتران مستدام</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:24px;line-height:1.8;background:#fafafa}.card{background:white;border:1px solid #ddd;border-radius:18px;padding:18px;margin:14px 0}textarea{width:100%;height:92px;font-size:15px;direction:ltr;box-sizing:border-box}.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:15px;border:0;border-radius:14px;background:#111;color:#fff;font-size:18px;margin:10px 0}.secondary{background:#e9e9e9;color:#111;text-decoration:none}.ok{color:#126b2e}</style>
+<h1>حكيم — اقتران أندرويد مستدام</h1>
+<div class="card"><strong>لا تعتمد هذه الجلسة على ملف خادم أو قاعدة بيانات.</strong><br>إعادة نشر السحابة لا تمحو الاقتران. احتفظ بسرية رابط هذه الصفحة.</div>
+<textarea id="code" readonly>${html(code)}</textarea>
+<button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('code').value).then(()=>this.textContent='تم النسخ — الصق الرمز في حكيم ثم اضغط حفظ')">١) نسخ رمز الاقتران المستدام</button>
+<a class="btn secondary" href="/android/legacy/stable/${encodeURIComponent(id)}/status">٢) تحقق أن الهاتف Online</a>
+</html>`);
+  }catch(e){
+    return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/legacy/stable/:id/status",async(req,res)=>{
+  try{
+    const session=statelessLegacySession(String(req.params.id??""));
+    noStore(res);
+    const health=await pollLegacyHealth(session,120_000);
+    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
+    const requestId=await publishLegacyCommand(session,{type:"ping"});
+    const result=await pollLegacyResult(session,requestId,8000);
+    if(result) return res.json({ok:true,paired:true,status:"online",evidence:"signed_ping",device:result});
+    return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
+  }catch(e){
+    return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/legacy",async(_req,res)=>{
+  try{
+    const session=await legacyAndroidStore.create();
+    noStore(res);
+    return res.redirect(302,"/android/legacy/session/"+encodeURIComponent(session.id));
+  }catch(e){
+    return oauthError(res,500,"legacy_android_pairing_unavailable",e instanceof Error?e.message:"pairing_failed");
+  }
+});
+
+app.get("/android/legacy/session/:id",async(req,res)=>{
+  try{
+    const session=await legacyAndroidStore.get(String(req.params.id??""));
+    const code=legacyPairCode(session);
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    res.setHeader("X-Frame-Options","DENY");
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ربط حكيم — أندرويد</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:24px;line-height:1.8;background:#fafafa}.card{background:white;border:1px solid #ddd;border-radius:18px;padding:18px;margin:14px 0}textarea{width:100%;height:92px;font-size:15px;direction:ltr;box-sizing:border-box}.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:15px;border:0;border-radius:14px;background:#111;color:#fff;font-size:18px;margin:10px 0}.secondary{background:#e9e9e9;color:#111;text-decoration:none}.ok{color:#126b2e}</style>
+<h1>حكيم — ربط هاتف أندرويد الحالي</h1>
+<div class="card">هذه الصفحة متوافقة مع <strong>حقل «رمز اقتران الجسر التنفيذي» الموجود في نسختك الحالية</strong>. لا تحتاج حاسوبًا ولا APK جديدًا.</div>
+<textarea id="code" readonly>${html(code)}</textarea>
+<button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('code').value).then(()=>this.textContent='تم النسخ — الصق الرمز في حكيم ثم اضغط حفظ')">١) نسخ رمز الاقتران</button>
+<a class="btn secondary" href="/android/legacy/session/${encodeURIComponent(session.id)}/status">٢) تحقق أن الهاتف Online</a>
+<div class="card">بعد النسخ: الصق الرمز في خانة <strong>رمز اقتران الجسر التنفيذي</strong> داخل حكيم واضغط <strong>حفظ</strong>. بعدها اضغط زر التحقق أعلاه.</div>
+</html>`);
+  }catch(e){
+    return oauthError(res,404,"legacy_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/legacy/session/:id/status",async(req,res)=>{
+  try{
+    const session=await legacyAndroidStore.get(String(req.params.id??""));
+    noStore(res);
+    const health=await pollLegacyHealth(session,120_000);
+    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
+    const requestId=await publishLegacyCommand(session,{type:"ping"});
+    const result=await pollLegacyResult(session,requestId,8000);
+    if(!result) return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
+    return res.json({ok:true,paired:true,status:"online",evidence:"signed_ping",device:result});
+  }catch(e){
+    return oauthError(res,404,"legacy_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android",async(_req,res)=>{
+  try{
+    const session=await androidPairStore.create();
+    noStore(res);
+    return res.redirect(302,"/android/session/"+encodeURIComponent(session.id));
+  }catch(e){
+    return oauthError(res,500,"android_pairing_unavailable",e instanceof Error?e.message:"pairing_failed");
+  }
+});
+
+app.get("/android/session/:id",async(req,res)=>{
+  try{
+    const session=await androidPairStore.get(String(req.params.id??""));
+    const pair=androidPairHref(session);
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    res.setHeader("X-Frame-Options","DENY");
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ربط حكيم — أندرويد</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:28px;line-height:1.9;background:#fafafa}.card{background:white;border:1px solid #ddd;border-radius:18px;padding:20px;margin:16px 0}.btn{display:block;text-align:center;padding:15px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-size:19px}.secondary{background:#e9e9e9;color:#111}.muted{color:#666;font-size:14px}</style>
+<h1>حكيم — ربط أندرويد مباشرة</h1>
+<div class="card"><strong>هذا المسار للهاتف فقط.</strong><br>لا يحتاج حاسوبًا ولا إضافة سطح المكتب ولا مفتاح OpenAI API.</div>
+<a class="btn" href="${html(pair)}">١) افتح تطبيق حكيم واربط الهاتف</a>
+<a class="btn secondary" href="/android/session/${encodeURIComponent(session.id)}/status">٢) تحقق أن الهاتف Online</a>
+<p class="muted">جلسة الاقتران مؤقتة وخاصة. لا تشارك رابط هذه الصفحة مع أي شخص.</p>
+</html>`);
+  }catch(e){
+    return oauthError(res,404,"android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/session/:id/status",async(req,res)=>{
+  try{
+    const session=await androidPairStore.get(String(req.params.id??""));
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    const paired=await pollPairAck(session.credential,2500);
+    if(!paired) return res.status(409).json({ok:false,paired:false,status:"waiting_for_phone"});
+    const requestId=await publishCommand(session.credential,"status",{});
+    const result=await pollResult(session.credential,requestId,8000);
+    if(!result) return res.status(202).json({ok:false,paired:true,status:"phone_paired_result_pending"});
+    return res.json({ok:true,paired:true,status:"online",device:result});
+  }catch(e){
+    return oauthError(res,404,"android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
 
 app.get("/health",(_req,res)=>res.json({
   ok:true,

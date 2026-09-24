@@ -28,10 +28,12 @@
     "candidate": {
       "version_code": 20110,
       "branch": "feature/hakim-20110-execution-fabric-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "source_ci_verified_code_commit": "7b798ebeeb0076c39b5c88f23dba9f1f8ab69762",
+      "source_ci_run_number": 915
     }
   },
   "local_execution": {

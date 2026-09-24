@@ -35,3 +35,11 @@ test("android bootstrap route remains read-only",async()=>{
   assert.doesNotMatch(source,/android\/session\/.*navigate_device/);
   assert.doesNotMatch(source,/android\/session\/.*perform_ui_action/);
 });
+
+
+test("preview bypass is exact-name scoped and production remains fail-closed",async()=>{
+  const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
+  assert.match(source,/process\.env\.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview"/);
+  assert.match(source,/if \(!androidPreviewMode\) requireProductionOAuthConfig\(process\.env\)/);
+  assert.doesNotMatch(source,/androidPreviewMode\s*=\s*true/);
+});

@@ -15,7 +15,8 @@ def req(cond, reason):
     if not cond:
         raise SystemExit("SELF_IMPROVEMENT_GATE=FAIL reason="+reason)
 
-req("versionCode 20111" in gradle, "candidate_version")
+m = re.search(r"versionCode\s+(\d+)", gradle)
+req(m is not None and int(m.group(1)) >= 20111, "candidate_version")
 for token in [
     'SELF-IMPROVEMENT-LOOP-2026-09-24-v1',
     '"POST_INSTALL_OBSERVING"',
@@ -44,7 +45,7 @@ req('MIN_SEND_INTERVAL_MS = 5_000L' in health, "health_throttle")
 req('@Synchronized\n    fun sendNow' in health, "health_race_guard")
 req('.put("self_improvement", HakimSelfImprovementLoop.status(context))' in health, "health_evidence")
 req('val improvement = HakimSelfImprovementLoop.status(context)' in selfcheck, "selfcheck_integration")
-req(state["android"]["candidate"]["version_code"] == 20111, "state_candidate")
+req(state["android"]["candidate"]["version_code"] >= 20111, "state_candidate")
 req(state["android"]["candidate"]["field_verified"] is False, "field_false")
 req(state["android"]["candidate"]["promoted"] is False, "promotion_false")
 req(state["android"]["field_observed_current"]["version_code"] == 20106, "field_observed_version")

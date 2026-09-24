@@ -308,6 +308,12 @@ class CommandCenterActivity : Activity() {
         val directed = HakimIntentDirector.build(this, text, attachments.size)
         HakimExecutiveLoop.start(this, text, directed.acceptance)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "صياغة أمر تنفيذي أعلى للمحرك وفق المقصد ومعيار الاكتمال")
+        val toolPlan = HakimSilentToolOrchestrator.plan(this, text, attachments.isNotEmpty())
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.PLANNING,
+            "خطة الأدوات: " + toolPlan.orderedTools.joinToString(" ← ") + "؛ التنفيذ الصامت أولًا"
+        )
         val decision = HakimModelToolRouter.decide(this, text, attachments)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
         refreshOperations()
@@ -397,7 +403,11 @@ class CommandCenterActivity : Activity() {
                 refreshOperations()
 
                 val engine = HakimEngineRegistry.bestGeneralChat(this, text, attachments)
-                if (engine != null && pageText.isNotBlank()) {
+                if (
+                    engine != null &&
+                    pageText.isNotBlank() &&
+                    !HakimSilentToolOrchestrator.isDirectUrl(text)
+                ) {
                     val evidence = pageText.take(8_000)
                     val augmented = buildString {
                         appendLine(baseInstruction)

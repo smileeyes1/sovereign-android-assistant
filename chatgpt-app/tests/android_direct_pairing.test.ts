@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {AndroidPairStore,androidPairHref} from "../src/android_pair.js";
-import {LegacyAndroidStore,legacyPairCode} from "../src/legacy_android.js";
+import {LegacyAndroidStore,legacyPairCode,statelessLegacySession,newStatelessLegacyId} from "../src/legacy_android.js";
 
 test("android direct pairing store is private, temporary, and produces a Hakim deep link",async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-android-pair-"));
@@ -69,4 +69,32 @@ test("legacy Android route is status-only after local pairing save",async()=>{
   assert.match(source,/رمز اقتران الجسر التنفيذي/);
   assert.match(source,/publishLegacyCommand\(session,\{type:"ping"\}\)/);
   assert.doesNotMatch(source,/publishLegacyCommand\(session,\{type:"open_url"/);
+});
+
+
+test("stateless Android pairing survives server restarts without stored state",()=>{
+  const id=newStatelessLegacyId();
+  const a=statelessLegacySession(id);
+  const b=statelessLegacySession(id);
+  assert.equal(a.commandTopic,b.commandTopic);
+  assert.equal(a.resultTopic,b.resultTopic);
+  assert.equal(a.authKey,b.authKey);
+  assert.equal(legacyPairCode(a),legacyPairCode(b));
+  assert.match(id,/^[A-Za-z0-9_-]{32,96}$/);
+  assert.match(a.authKey,/^[0-9a-f]{64}$/);
+});
+
+test("different stateless Android ids derive isolated channels",()=>{
+  const a=statelessLegacySession(newStatelessLegacyId());
+  const b=statelessLegacySession(newStatelessLegacyId());
+  assert.notEqual(a.commandTopic,b.commandTopic);
+  assert.notEqual(a.resultTopic,b.resultTopic);
+  assert.notEqual(a.authKey,b.authKey);
+});
+
+test("stable pairing routes derive credentials and do not depend on legacy store files",async()=>{
+  const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
+  assert.match(source,/app\.get\("\/android\/legacy\/stable"/);
+  assert.match(source,/statelessLegacySession\(String\(req\.params\.id/);
+  assert.doesNotMatch(source,/stable\/:id.*legacyAndroidStore\.get/s);
 });

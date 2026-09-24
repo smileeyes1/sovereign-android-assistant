@@ -13,7 +13,7 @@ import {
 } from "./oauth.js";
 import { pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { AndroidPairStore,androidPairHref } from "./android_pair.js";
-import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand } from "./legacy_android.js";
+import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,probeNtfyIpv4 } from "./legacy_android.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
 const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";
@@ -103,6 +103,13 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
 
 app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
 
+
+app.get("/android/diag/ntfy-ipv4",async(_req,res)=>{
+  if(!androidPreviewMode) return res.status(404).end();
+  noStore(res);
+  const result=await probeNtfyIpv4();
+  return res.status(result.ok?200:503).json(result);
+});
 
 app.get("/android/legacy",async(_req,res)=>{
   try{

@@ -1,7 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import https from "node:https";
 import {randomSecret} from "./protocol.js";
+
+const ipv4Agent=new https.Agent({keepAlive:true,family:4});
+
+async function httpsText(url:string,opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={}){
+  return await new Promise<{status:number;body:string}>((resolve,reject)=>{
+    const req=https.request(url,{method:opts.method??"GET",headers:opts.headers,agent:ipv4Agent,timeout:opts.timeoutMs??10_000},res=>{
+      const chunks:Buffer[]=[];
+      res.on("data",chunk=>chunks.push(Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk)));
+      res.on("end",()=>resolve({status:res.statusCode??0,body:Buffer.concat(chunks).toString("utf8")}));
+    });
+    req.on("timeout",()=>req.destroy(new Error("ntfy_timeout")));
+    req.on("error",reject);
+    if(opts.body) req.write(opts.body);
+    req.end();
+  });
+}
 
 export type LegacyAndroidSession={
   id:string;
@@ -73,13 +90,13 @@ export async function publishLegacyCommand(s:LegacyAndroidSession,command:Record
   const payload=Buffer.from(JSON.stringify(payloadObj),"utf8").toString("base64url");
   const sig=hmacHex(s.authKey,payload);
   const body=JSON.stringify({payload,sig});
-  const response=await fetch("https://ntfy.sh/"+encodeURIComponent(s.commandTopic),{
+  const response=await httpsText("https://ntfy.sh/"+encodeURIComponent(s.commandTopic),{
     method:"POST",
     headers:{"Content-Type":"text/plain; charset=utf-8"},
     body,
-    signal:AbortSignal.timeout(10_000)
+    timeoutMs:10_000
   });
-  if(!response.ok) throw new Error("legacy_publish_failed");
+  if(response.status<200||response.status>=300) throw new Error("legacy_publish_failed:"+response.status);
   return requestId;
 }
 
@@ -101,10 +118,10 @@ export async function pollLegacyResult(s:LegacyAndroidSession,requestId:string|u
     const u=new URL("https://ntfy.sh/"+encodeURIComponent(s.resultTopic)+"/json");
     u.searchParams.set("poll","1");
     u.searchParams.set("since","10m");
-    const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});
-    if(response.ok){
+    const response=await httpsText(u.toString(),{timeoutMs:8_000});
+    if(response.status>=200&&response.status<300){
       const groups=new Map<string,{total:number;parts:Map<number,string>}>();
-      const body=await response.text();
+      const body=response.body;
       for(const line of body.split("\n")){
         if(!line.trim()) continue;
         try{

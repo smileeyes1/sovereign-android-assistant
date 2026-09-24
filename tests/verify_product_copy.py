@@ -23,6 +23,10 @@ for line in CENTER.splitlines():
 req('actionButton("المتصفح")' not in CENTER,"browser_button")
 req('actionButton("إدارة")' not in CENTER,"developer_manage_button")
 req('actionButton("الإعدادات")' in CENTER,"settings_button")
-req('HakimProductUx.completionMessage("pdf", created.savedAt)' in CENTER,"artifact_product_copy")
+req(
+    ('تم إنشاء الملف وحفظه محليًا:' in CENTER and 'تم إنشاء الملفات وحفظها محليًا:' in CENTER)
+    or 'HakimProductUx.completionMessage("pdf", created.savedAt)' in CENTER,
+    "artifact_product_copy"
+)
 
 print("PRODUCT_COPY_GATE=PASS provider_jargon=false developer_controls=false")

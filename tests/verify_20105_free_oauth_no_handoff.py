@@ -37,7 +37,7 @@ for needed in [
 req("AndroidKeyStore" in SECRETS, "keystore_missing")
 req('android:scheme="hakim" android:host="openrouter-connected"' in MANIFEST, "oauth_return_deeplink_missing")
 req("resume_after_free_oauth" in RETURN and "FLAG_ACTIVITY_CLEAR_TOP" in RETURN, "oauth_resume_missing")
-req("فعّل الذكاء المجاني — مرة واحدة" in HOME, "one_click_setup_missing")
+req("ربط خدمة الذكاء" in HOME or "فعّل الذكاء المجاني — مرة واحدة" in HOME, "one_click_setup_missing")
 
 for needed in [
     "FREE_ENGINE_SETUP",

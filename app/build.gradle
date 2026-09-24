@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20112
-        versionName '2.1.12-local-pdf'
+        versionCode 20113
+        versionName '2.1.13-contextual-local-pdf'
     }
 
     compileOptions {

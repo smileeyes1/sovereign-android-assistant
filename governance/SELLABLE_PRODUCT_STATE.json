@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20202,
-  "candidate_name": "3.0.2-user-owned-free-factory-v1-candidate",
+  "candidate_version": 20203,
+  "candidate_name": "3.0.3-multiformat-teacher-factory-v1-candidate",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,9 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": 988,
-    "commit": "b66cf68118273bf130ddc6c0c856529939bcc8e3",
-    "conclusion": "success"
+    "run_number": null,
+    "commit": null,
+    "conclusion": "PENDING"
   },
   "signed_candidate": {
     "file": null,

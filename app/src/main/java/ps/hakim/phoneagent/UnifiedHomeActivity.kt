@@ -21,7 +21,7 @@ class UnifiedHomeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        HakimFreePolicy.setFreeOnly(this, true)
+        HakimUserResourcePolicy.enforce(this)
         buildUi()
     }
 
@@ -164,6 +164,8 @@ class UnifiedHomeActivity : Activity() {
             .setPositiveButton("إلغاء الربط") { _, _ ->
                 HakimSecretStore.remove(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
                 HakimSecretStore.remove(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
+                HakimUserResourcePolicy.clear(this, OpenRouterFreeEngine.ID)
+                HakimUserResourcePolicy.clear(this, GeminiDirectEngine.ID)
                 HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
                 refresh()
             }

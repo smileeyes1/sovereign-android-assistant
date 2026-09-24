@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20201,
-  "candidate_name": "3.0.1-product-v1-candidate",
+  "candidate_version": 20202,
+  "candidate_name": "3.0.2-user-owned-free-factory-v1-candidate",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,17 +31,17 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": 984,
-    "commit": "a2db0ddebd18c46ca419f5515924c542bb094420",
+    "run_number": 988,
+    "commit": "b66cf68118273bf130ddc6c0c856529939bcc8e3",
     "conclusion": "success"
   },
   "signed_candidate": {
-    "file": "Hakim-20201-Product-D1.apk",
-    "sha256": "45f33dd36488199bfbc5cf9048d78a6ea78204c5e1f8ee5cafac103364808275",
-    "signer_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
-    "v2": true,
-    "v3": true,
-    "signers": 1,
+    "file": null,
+    "sha256": null,
+    "signer_sha256": null,
+    "v2": false,
+    "v3": false,
+    "signers": 0,
     "field_verified": false
   }
 }

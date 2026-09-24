@@ -16,9 +16,9 @@ candidate = int(m.group(1))
 
 req(state.get("single_source_of_truth") is True, "single_source")
 req(state["cloud"]["last_verified_baseline_commit"] == "c84359e422dad0aa205f59a153a1f29d7f4c4e81", "cloud_baseline")
-req(state["android"]["latest_source_parent"]["commit"] == "7a96cd64ccb43255db458fe28c1981f0839c163f", "source_parent")
-req(state["android"]["latest_source_parent"]["ci_run_number"] == 936, "source_parent_ci")
-req(state["android"]["candidate"]["version_code"] == candidate == 20113, "candidate_version")
+req(state["android"]["latest_source_parent"]["commit"] == "7dbd9984d6fefb791a7044f98336bc4f805c645b", "source_parent")
+req(state["android"]["latest_source_parent"]["ci_run_number"] == 938, "source_parent_ci")
+req(state["android"]["candidate"]["version_code"] == candidate == 20114, "candidate_version")
 req(state["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")
 req(state["android"]["candidate"]["promoted"] is False, "must_not_promote")
 req(state["local_execution"]["phone_channel"] == "ONLINE_SIGNED_HEALTH_OBSERVED", "phone_claim")
@@ -45,3 +45,10 @@ req(state["local_artifacts"]["contextual_followup"] is True, "contextual_followu
 req(state["local_artifacts"]["last_artifact_memory"] is True, "last_artifact_memory")
 
 print("ACTIVE_STATE_GATE=PASS")
+
+req(state["tool_orchestration"]["silent_first"] is True, "silent_first")
+req(state["tool_orchestration"]["embedded_browser_background"] is True, "embedded_browser_background")
+req(state["tool_orchestration"]["browser_is_tool_not_terminal"] is True, "browser_not_terminal")
+req(state["tool_orchestration"]["result_returns_to_hakim"] is True, "result_returns")
+req(state["tool_orchestration"]["direct_url_content_local_by_default"] is True, "direct_url_privacy")
+req(state["tool_orchestration"]["terminal_handoff_allowed"] is False, "terminal_handoff")

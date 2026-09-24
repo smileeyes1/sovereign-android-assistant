@@ -168,3 +168,15 @@ jobs:
           name: hakim-field-${{ steps.candidate_version.outputs.code }}
           path: app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           if-no-files-found: error
+
+      - name: تصدير أداة apksigner الرسمية
+        run: |
+          APKSIGNER_DIR="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          test -f "$APKSIGNER_DIR/lib/apksigner.jar"
+          cp "$APKSIGNER_DIR/lib/apksigner.jar" "$RUNNER_TEMP/apksigner.jar"
+      - name: حفظ أداة apksigner الرسمية
+        uses: actions/upload-artifact@v4
+        with:
+          name: apksigner-official-tool
+          path: ${{ runner.temp }}/apksigner.jar
+          if-no-files-found: error

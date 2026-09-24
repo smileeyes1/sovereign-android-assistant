@@ -308,7 +308,6 @@ async function renderPptx(spec: TeacherArtifactSpec): Promise<Blob> {
   pptx.subject = spec.subject;
   pptx.title = spec.title;
   pptx.company = "Hakim";
-  pptx.lang = "ar-PS";
   pptx.defineLayout({ name: "A4P", width: 8.27, height: 11.69 });
   pptx.layout = "A4P";
 

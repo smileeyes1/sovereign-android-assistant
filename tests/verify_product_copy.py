@@ -9,9 +9,10 @@ HOME=(APP/"UnifiedHomeActivity.kt").read_text(encoding="utf-8")
 def req(v,reason):
     if not v: raise SystemExit("PRODUCT_COPY_GATE=FAIL reason="+reason)
 
-# Settings must be customer-facing.
+# Settings must be customer-facing. Inspect string literals, not internal class names.
+home_strings="\n".join(re.findall(r'"(?:\\.|[^"\\])*"', HOME))
 for forbidden in ["OpenRouter","Gemini API","ADB","متصفح حكيم","مفتاح API","openrouter/free"]:
-    req(forbidden not in HOME,"settings_jargon:"+forbidden)
+    req(forbidden not in home_strings,"settings_jargon:"+forbidden)
 
 # Primary user messages must not expose provider/transport jargon.
 for line in CENTER.splitlines():

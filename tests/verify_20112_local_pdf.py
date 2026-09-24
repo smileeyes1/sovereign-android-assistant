@@ -21,7 +21,7 @@ req('"ورقة_عمل_الجمع_ضمن_١٠.pdf"' in FACTORY, "pdf_filename_mis
 req("easternDigits" in FACTORY and "toEastern" in FACTORY, "eastern_digits_missing")
 req('val tokens = listOf(toEastern(a), "+", toEastern(b), "=")' in FACTORY, "math_token_order_missing")
 req("canvas.drawRect(box, line)" in FACTORY, "answer_box_missing")
-req("HakimLocalArtifactFactory.canHandle(q)" in ROUTER, "local_artifact_detection_missing")
+req("HakimLocalArtifactFactory.canHandle(context, q)" in ROUTER or "HakimLocalArtifactFactory.canHandle(q)" in ROUTER, "local_artifact_detection_missing")
 req("LOCAL_ARTIFACT" in ROUTER, "local_artifact_channel_missing")
 req("executeLocalArtifact(text)" in CENTER, "local_artifact_execution_missing")
 req('"local_artifact_pdf"' in CENTER, "local_artifact_telemetry_missing")
@@ -29,7 +29,7 @@ req("OpenRouter" not in FACTORY and "http://" not in FACTORY and "https://" not 
 
 # Critical routing invariant: local artifact must be considered before any direct model,
 # free-engine setup, provider app, or provider web path.
-artifact_pos = ROUTER.index("HakimLocalArtifactFactory.canHandle(q)")
+artifact_marker = "HakimLocalArtifactFactory.canHandle(context, q)" if "HakimLocalArtifactFactory.canHandle(context, q)" in ROUTER else "HakimLocalArtifactFactory.canHandle(q)"\nartifact_pos = ROUTER.index(artifact_marker)
 direct_pos = ROUTER.index("HakimEngineRegistry.bestGeneralChat")
 free_pos = ROUTER.index("HakimFreePolicy.freeOnly")
 req(artifact_pos < direct_pos < free_pos, "local_artifact_not_before_external_engines")
@@ -50,13 +50,10 @@ req(len(pairs) >= 8, "too_few_problems")
 req(all(a + b <= 10 for a, b in pairs), "sum_exceeds_ten")
 
 # Known-failure sentinel: moving local artifact after direct model must be detected.
-mutated = ROUTER.replace(
-    'if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q))',
-    'if (false && attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q))',
-    1,
-)
+needle = 'if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q))' if 'HakimLocalArtifactFactory.canHandle(context, q)' in ROUTER else 'if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q))'
+mutated = ROUTER.replace(needle, 'if (false && attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q))', 1)
 try:
-    req('if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q))' in mutated, "known_failure_sentinel")
+    req(needle in mutated, "known_failure_sentinel")
 except SystemExit:
     pass
 else:

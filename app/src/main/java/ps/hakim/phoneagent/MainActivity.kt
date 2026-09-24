@@ -67,7 +67,6 @@ class MainActivity : Activity() {
         if (savedInstanceState == null) {
             val last = prefs.getString("last_url", "https://www.google.com").orEmpty().ifBlank { "https://www.google.com" }
             webView.loadUrl(last)
-            uiHandler.postDelayed({ requestUsefulPermissions() }, 500L)
         }
     }
 

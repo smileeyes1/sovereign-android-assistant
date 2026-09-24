@@ -8,13 +8,14 @@ must=[
     'actionButton("أنجز")',
     'actionButton("إرفاق")',
     'actionButton("صوت")',
-    'actionButton("المتصفح")',
-    'actionButton("إدارة")',
+    'actionButton("الإعدادات")',
 ]
 for x in must:
     assert x in p, x
 
 for x in [
+    'actionButton("المتصفح")',
+    'actionButton("إدارة")',
     'actionButton("شات جي بي تي")',
     'actionButton("جيميني")',
     'actionButton("كلود")',

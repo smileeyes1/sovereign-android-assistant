@@ -20,6 +20,7 @@ object HakimModelToolRouter {
 
     enum class Channel {
         LOCAL_RESPONSE,
+        LOCAL_ARTIFACT,
         DIRECT_MODEL,
         FREE_ENGINE_SETUP,
         LOCAL_BROWSER,
@@ -77,6 +78,15 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>
     ): Decision {
         val q = prompt.trim()
+
+        if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q)) {
+            return Decision(
+                channel = Channel.LOCAL_ARTIFACT,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "يمكن إنشاء هذا الملف محليًا داخل الهاتف؛ يمنع فتح OAuth أو إرسال الطلب إلى مزود خارجي."
+            )
+        }
 
         if (attachments.isEmpty() && localReply(q) != null) {
             return Decision(

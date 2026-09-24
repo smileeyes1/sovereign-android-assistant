@@ -106,6 +106,19 @@ object HakimModelToolRouter {
         }
 
         if (attachments.isNotEmpty()) {
+            HakimEducationPrivacyPolicy.blockReason(
+                context,
+                HakimEducationPrivacyPolicy.Capability.EXTERNAL_ATTACHMENT,
+                q,
+                hasAttachments = true
+            )?.let { reason ->
+                return Decision(
+                    channel = Channel.POLICY_BLOCKED,
+                    provider = null,
+                    fallbacks = emptyList(),
+                    reason = reason
+                )
+            }
             HakimEnterprisePolicy.blockReason(context, "attachments")?.let { reason ->
                 return Decision(
                     channel = Channel.POLICY_BLOCKED,
@@ -117,6 +130,13 @@ object HakimModelToolRouter {
         }
 
         if (isDirectUrl(q)) {
+            HakimEducationPrivacyPolicy.blockReason(
+                context,
+                HakimEducationPrivacyPolicy.Capability.WEB,
+                q
+            )?.let { reason ->
+                return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
+            }
             HakimEnterprisePolicy.blockReason(context, "web")?.let { reason ->
                 return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
             }
@@ -129,6 +149,13 @@ object HakimModelToolRouter {
         }
 
         if (needsFreshWeb(q)) {
+            HakimEducationPrivacyPolicy.blockReason(
+                context,
+                HakimEducationPrivacyPolicy.Capability.WEB,
+                q
+            )?.let { reason ->
+                return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
+            }
             HakimEnterprisePolicy.blockReason(context, "web")?.let { reason ->
                 return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
             }
@@ -137,6 +164,19 @@ object HakimModelToolRouter {
                 provider = null,
                 fallbacks = providers,
                 reason = "المهمة تعتمد على معلومات حديثة؛ يبحث المتصفح المدمج صامتًا ثم يعود الأثر إلى حكيم."
+            )
+        }
+
+        HakimEducationPrivacyPolicy.blockReason(
+            context,
+            HakimEducationPrivacyPolicy.Capability.EXTERNAL_AI,
+            q
+        )?.let { reason ->
+            return Decision(
+                channel = Channel.POLICY_BLOCKED,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = reason
             )
         }
 

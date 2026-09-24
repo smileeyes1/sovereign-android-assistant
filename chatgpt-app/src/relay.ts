@@ -1,16 +1,17 @@
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { decryptResult,encryptCarrier,makeEnvelope } from "./protocol.js";
+import {ntfyText} from "./ntfy_transport.js";
 
 export async function publishCommand(c:DeviceCredential,op:HakimOp,payload:unknown){
   const envelope=makeEnvelope(c.relayKey,op,payload);
   const carrier=encryptCarrier(c.relayKey,envelope);
-  const response=await fetch("https://ntfy.sh/"+encodeURIComponent(c.topic),{
+  const response=await ntfyText("https://ntfy.sh/"+encodeURIComponent(c.topic),{
     method:"POST",
     headers:{"Content-Type":"text/plain; charset=utf-8"},
     body:carrier,
-    signal:AbortSignal.timeout(10_000)
+    timeoutMs:10_000
   });
-  if(!response.ok) throw new Error("carrier_publish_failed");
+  if(response.status<200||response.status>=300) throw new Error("carrier_publish_failed:"+response.status);
   return envelope.request_id;
 }
 
@@ -20,9 +21,9 @@ export async function pollResult(c:DeviceCredential,requestId:string,timeoutMs=8
     const u=new URL("https://ntfy.sh/"+encodeURIComponent(c.resultTopic)+"/json");
     u.searchParams.set("poll","1");
     u.searchParams.set("since","2m");
-    const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});
-    if(response.ok){
-      const body=await response.text();
+    const response=await ntfyText(u.toString(),{timeoutMs:8_000});
+    if(response.status>=200&&response.status<300){
+      const body=response.body;
       for(const line of body.split("\n")){
         if(!line.trim()) continue;
         try{
@@ -44,9 +45,9 @@ export async function pollPairAck(c:DeviceCredential,timeoutMs=10_000):Promise<b
     const u=new URL("https://ntfy.sh/"+encodeURIComponent(c.resultTopic)+"/json");
     u.searchParams.set("poll","1");
     u.searchParams.set("since","10m");
-    const response=await fetch(u,{signal:AbortSignal.timeout(8_000)});
-    if(response.ok){
-      const body=await response.text();
+    const response=await ntfyText(u.toString(),{timeoutMs:8_000});
+    if(response.status>=200&&response.status<300){
+      const body=response.body;
       for(const line of body.split("\n")){
         if(!line.trim()) continue;
         try{

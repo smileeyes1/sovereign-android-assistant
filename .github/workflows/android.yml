@@ -56,6 +56,7 @@ jobs:
           python3 tests/verify_20109_human_biology.py
           python3 tests/verify_20110_execution_fabric.py
           python3 tests/verify_20111_self_improvement_loop.py
+          python3 tests/verify_20112_local_pdf.py
           python3 tests/verify_active_state_consistency.py
           python3 tests/verify_product_v1_candidate_gate.py
           set +e

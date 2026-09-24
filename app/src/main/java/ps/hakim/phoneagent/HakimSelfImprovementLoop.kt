@@ -30,17 +30,16 @@ object HakimSelfImprovementLoop {
         val committedVersion = mainPrefs.getLong("last_update_commit_version", -1L)
         val committedAt = mainPrefs.getLong("last_update_commit_at", 0L)
         val versionChanged = previous > 0L && current > previous
-        val committedCandidateStarted = committedVersion == current && committedAt > 0L
+        val alreadyHealthy = p.getLong("last_field_observed_healthy_version", -1L) == current
+        val committedCandidateStarted = committedVersion == current && committedAt > 0L && !alreadyHealthy
 
         if (versionChanged || committedCandidateStarted) {
-            p.edit()
-                .putBoolean("post_install_pending", true)
-                .putLong("post_install_candidate_version", current)
-                .putLong("post_install_previous_version", if (previous > 0L) previous else -1L)
-                .putLong("post_install_first_seen_at", System.currentTimeMillis())
-                .putString("state", "POST_INSTALL_OBSERVING")
-                .putString("last_reason", "version_changed")
-                .apply()
+            markCandidate(
+                app,
+                current,
+                if (previous > 0L && previous != current) previous else -1L,
+                if (versionChanged) "version_changed" else "committed_candidate_started"
+            )
         }
 
         p.edit()
@@ -50,6 +49,33 @@ object HakimSelfImprovementLoop {
             .apply()
 
         scheduleEvaluation(app, if (versionChanged) "version_changed" else if (committedCandidateStarted) "committed_candidate_started" else "startup")
+    }
+
+    fun onPackageReplaced(context: Context) {
+        val app = context.applicationContext
+        val current = currentVersion(app)
+        val p = prefs(app)
+        val previous = p.getLong("post_install_previous_version", -1L)
+        if (p.getLong("last_field_observed_healthy_version", -1L) != current) {
+            markCandidate(app, current, previous, "package_replaced")
+            scheduleEvaluation(app, "package_replaced")
+        }
+    }
+
+    private fun markCandidate(context: Context, current: Long, previous: Long, reason: String) {
+        val p = prefs(context)
+        val alreadySamePending = p.getBoolean("post_install_pending", false) &&
+            p.getLong("post_install_candidate_version", -1L) == current
+        val edit = p.edit()
+            .putBoolean("post_install_pending", true)
+            .putLong("post_install_candidate_version", current)
+            .putString("state", "POST_INSTALL_OBSERVING")
+            .putString("last_reason", reason.take(80))
+        if (!alreadySamePending) {
+            edit.putLong("post_install_previous_version", previous)
+                .putLong("post_install_first_seen_at", System.currentTimeMillis())
+        }
+        edit.apply()
     }
 
     fun scheduleEvaluation(context: Context, reason: String) {

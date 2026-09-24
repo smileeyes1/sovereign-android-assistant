@@ -81,7 +81,13 @@ object HakimModelToolRouter {
     ): Decision {
         val q = prompt.trim()
 
-        if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q)) {
+        if (
+            attachments.isEmpty() &&
+            (
+                HakimMultiFormatArtifactFactory.canHandle(context, q) ||
+                    HakimLocalArtifactFactory.canHandle(context, q)
+            )
+        ) {
             return Decision(
                 channel = Channel.LOCAL_ARTIFACT,
                 provider = null,

@@ -31,8 +31,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package.json
 
       - name: بوابة الأسرار والاعتماد المركزي
         working-directory: .

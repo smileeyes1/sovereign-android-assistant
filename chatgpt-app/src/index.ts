@@ -13,7 +13,7 @@ import {
 } from "./oauth.js";
 import { pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { AndroidPairStore,androidPairHref } from "./android_pair.js";
-import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,probeNtfyIpv4 } from "./legacy_android.js";
+import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,probeNtfyIpv4,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
 const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";
@@ -109,6 +109,47 @@ app.get("/android/diag/ntfy-ipv4",async(_req,res)=>{
   noStore(res);
   const result=await probeNtfyIpv4();
   return res.status(result.ok?200:503).json(result);
+});
+
+app.get("/android/legacy/stable",async(_req,res)=>{
+  const id=newStatelessLegacyId();
+  noStore(res);
+  res.setHeader("Referrer-Policy","no-referrer");
+  return res.redirect(302,"/android/legacy/stable/"+encodeURIComponent(id));
+});
+
+app.get("/android/legacy/stable/:id",async(req,res)=>{
+  try{
+    const id=String(req.params.id??"");
+    const session=statelessLegacySession(id);
+    const code=legacyPairCode(session);
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    res.setHeader("X-Frame-Options","DENY");
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>حكيم — اقتران مستدام</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:24px;line-height:1.8;background:#fafafa}.card{background:white;border:1px solid #ddd;border-radius:18px;padding:18px;margin:14px 0}textarea{width:100%;height:92px;font-size:15px;direction:ltr;box-sizing:border-box}.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:15px;border:0;border-radius:14px;background:#111;color:#fff;font-size:18px;margin:10px 0}.secondary{background:#e9e9e9;color:#111;text-decoration:none}.ok{color:#126b2e}</style>
+<h1>حكيم — اقتران أندرويد مستدام</h1>
+<div class="card"><strong>لا تعتمد هذه الجلسة على ملف خادم أو قاعدة بيانات.</strong><br>إعادة نشر السحابة لا تمحو الاقتران. احتفظ بسرية رابط هذه الصفحة.</div>
+<textarea id="code" readonly>${html(code)}</textarea>
+<button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('code').value).then(()=>this.textContent='تم النسخ — الصق الرمز في حكيم ثم اضغط حفظ')">١) نسخ رمز الاقتران المستدام</button>
+<a class="btn secondary" href="/android/legacy/stable/${encodeURIComponent(id)}/status">٢) تحقق أن الهاتف Online</a>
+</html>`);
+  }catch(e){
+    return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/legacy/stable/:id/status",async(req,res)=>{
+  try{
+    const session=statelessLegacySession(String(req.params.id??""));
+    noStore(res);
+    const requestId=await publishLegacyCommand(session,{type:"ping"});
+    const result=await pollLegacyResult(session,requestId,8000);
+    if(!result) return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
+    return res.json({ok:true,paired:true,status:"online",device:result});
+  }catch(e){
+    return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
 });
 
 app.get("/android/legacy",async(_req,res)=>{

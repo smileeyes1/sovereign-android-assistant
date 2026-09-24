@@ -384,7 +384,7 @@ class CommandCenterActivity : Activity() {
         }.onFailure {
             appendConversation("حكيم", HakimProductUx.publicError("تعذر الاتصال بمسار الويب"))
             HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "تعذر بدء خدمة المتصفح المدمج")
-            status.text = "تعذر مسار المتصفح"
+            status.text = "تعذر إكمال الطلب"
             return
         }
 
@@ -477,7 +477,7 @@ class CommandCenterActivity : Activity() {
                 result.onSuccess { created ->
                     appendConversation(
                         "حكيم",
-                        "أنشأت ورقة العمل PDF محليًا وحفظتها في ${created.savedAt}. لا يحتاج هذا الطلب إلى OpenRouter."
+                        HakimProductUx.completionMessage("pdf", created.savedAt)
                     )
                     HakimExecutiveLoop.complete(this, "تم إنشاء ملف PDF وحفظه محليًا")
                     recordRoute("local_artifact_pdf", true)
@@ -548,7 +548,7 @@ class CommandCenterActivity : Activity() {
                     "لا يوجد محرك مباشر مجاني مؤهل للمقصد والمدخلات الحالية"
                 )
                 refreshOperations()
-                status.text = "يلزم إعداد محرك مجاني"
+                status.text = "تحتاج هذه الميزة ربطًا لمرة واحدة"
                 return
             }
 
@@ -605,7 +605,7 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "يلزم تفويض محرك مجاني"
+                            finalStatus = "تحتاج هذه الميزة موافقتك"
                         )
                     }
 
@@ -616,7 +616,7 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "لا يوجد مسار مجاني مباشر لهذا الإدخال"
+                            finalStatus = "تعذر إكمال هذا النوع من الطلب الآن"
                         )
                     }
 
@@ -629,7 +629,7 @@ class CommandCenterActivity : Activity() {
                                 failedEngine = engine,
                                 excluded = excluded,
                                 reason = result.reason,
-                                finalStatus = "انتهت المسارات المجانية المتاحة"
+                                finalStatus = "تعذر إكمال الطلب الآن"
                             )
                         } else {
                             discardEmptyStreamingReply()
@@ -709,7 +709,7 @@ class CommandCenterActivity : Activity() {
                 startActivity(out)
                 HakimExecutiveLoop.waitExternal(this, provider.label)
                 refreshOperations()
-                appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن. فتح التطبيق وحده ليس نجاحًا للمهمة.")
+                appendConversation("حكيم", "تحتاج هذه المهمة تطبيقًا آخر لإكمال خطوة لا يستطيع حكيم تنفيذها داخليًا. لن أعتبر المهمة مكتملة حتى يتحقق الأثر.")
                 status.text = "بانتظار أثر القناة الخارجية"
                 return
             } catch (_: Exception) {
@@ -742,7 +742,7 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح قناة ويب رسمية داخل حكيم")
         HakimExecutiveLoop.waitExternal(this, provider.label)
         refreshOperations()
-        appendConversation("حكيم", "فتحت القناة الرسمية المختارة. لن أعتبر المهمة ناجحة قبل تحقق الأثر.")
+        appendConversation("حكيم", "تحتاج هذه المهمة خدمة خارجية. لن أعتبرها مكتملة قبل تحقق النتيجة.")
         status.text = "بانتظار موافقتك"
         startActivity(Intent(this, MainActivity::class.java))
     }
@@ -769,7 +769,7 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح المتصفح للمسار الذي يحتاج الويب")
         HakimExecutiveLoop.waitExternal(this, "المتصفح")
         refreshOperations()
-        appendConversation("حكيم", "فتحت المتصفح للمسار الذي يحتاج الويب.")
+        appendConversation("حكيم", "بدأت معالجة هذا الطلب عبر الويب، ولم أعتبر المهمة مكتملة بعد.")
         status.text = "يعمل على طلبك…"
         startActivity(Intent(this, MainActivity::class.java))
     }

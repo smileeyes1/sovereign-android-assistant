@@ -10,7 +10,6 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@vite-pwa/assets-generator": "^0.2.6",
     "docx": "^9.5.1",
     "html-to-image": "^1.11.13",
     "idb": "^8.0.3",

@@ -1,0 +1,68 @@
+name: بناء حكيم PWA التجاري
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'web/**'
+      - 'governance/PWA_PRODUCT_STATE.json'
+      - '.github/workflows/pwa.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'governance/PWA_PRODUCT_STATE.json'
+      - '.github/workflows/pwa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pwa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: جلب المشروع
+        uses: actions/checkout@v4
+
+      - name: إعداد Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package.json
+
+      - name: بوابة الأسرار والاعتماد المركزي
+        working-directory: .
+        run: |
+          set -euo pipefail
+          ! grep -R -E 'AIza[0-9A-Za-z_-]{25,}|sk-or-v1-[0-9A-Za-z_-]{20,}' web/src web/public
+          grep -q '"central_inference_billing": false' governance/PWA_PRODUCT_STATE.json
+          grep -q '"user_owned_credentials_only": true' governance/PWA_PRODUCT_STATE.json
+          grep -q '"server_content_storage": false' governance/PWA_PRODUCT_STATE.json
+
+      - name: تثبيت الحزم
+        run: npm install --no-audit --no-fund
+
+      - name: اختبارات القبول
+        run: npm test
+
+      - name: بناء PWA
+        run: npm run build
+
+      - name: فحص الناتج
+        run: |
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          find dist -type f | grep -q .
+          grep -R -q 'مصنع المعلم الفلسطيني' dist
+          test "$(du -sb dist | awk '{print $1}')" -gt 1000
+
+      - name: حفظ PWA المختبر
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-pwa-20205
+          path: web/dist
+          if-no-files-found: error

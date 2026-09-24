@@ -37,8 +37,9 @@ for token in [
 ]:
     req(token in AUTH, "auth:" + token)
 
-req("SharedPreferences" not in AUTH or "accessToken" not in re.sub(r"@Volatile private var accessToken.*", "", AUTH), "token_persistence_review")
 req('@Volatile private var accessToken: String? = null' in AUTH, "token_not_memory_only")
+req('putString("accessToken"' not in AUTH, "token_sharedprefs")
+req('HakimSecretStore.put' not in AUTH, "token_secret_store")
 
 for token in [
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",

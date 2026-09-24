@@ -143,11 +143,11 @@ app.get("/android/legacy/stable/:id/status",async(req,res)=>{
   try{
     const session=statelessLegacySession(String(req.params.id??""));
     noStore(res);
+    const health=await pollLegacyHealth(session,120_000);
+    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
     const requestId=await publishLegacyCommand(session,{type:"ping"});
     const result=await pollLegacyResult(session,requestId,8000);
     if(result) return res.json({ok:true,paired:true,status:"online",evidence:"signed_ping",device:result});
-    const health=await pollLegacyHealth(session,120_000);
-    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
     return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
   }catch(e){
     return oauthError(res,404,"stateless_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
@@ -189,10 +189,12 @@ app.get("/android/legacy/session/:id/status",async(req,res)=>{
   try{
     const session=await legacyAndroidStore.get(String(req.params.id??""));
     noStore(res);
+    const health=await pollLegacyHealth(session,120_000);
+    if(health) return res.json({ok:true,paired:true,status:"online",evidence:"signed_recent_health",device:health});
     const requestId=await publishLegacyCommand(session,{type:"ping"});
     const result=await pollLegacyResult(session,requestId,8000);
     if(!result) return res.status(409).json({ok:false,paired:false,status:"no_signed_phone_response"});
-    return res.json({ok:true,paired:true,status:"online",device:result});
+    return res.json({ok:true,paired:true,status:"online",evidence:"signed_ping",device:result});
   }catch(e){
     return oauthError(res,404,"legacy_android_session_unavailable",e instanceof Error?e.message:"session_not_found");
   }

@@ -54,6 +54,7 @@ class HakimService : Service() {
         .build()
     private var socket: WebSocket? = null
     private var reconnectDelay = 1500L
+    private var explicitStop = false
     private lateinit var webView: WebView
     private val recentRequests = LinkedHashSet<String>()
 
@@ -64,6 +65,8 @@ class HakimService : Service() {
         recentRequests.addAll(prefs.getStringSet("seen_request_ids", emptySet()) ?: emptySet())
         trimRecentRequests()
         startAsForeground()
+        HakimUnifiedRelay.start(applicationContext)
+        HakimLocalPairing.reconnectAsync(applicationContext)
         createBrowser()
         connectRemote()
     }
@@ -71,6 +74,8 @@ class HakimService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                explicitStop = true
+                HakimUnifiedRelay.stop()
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -84,6 +89,8 @@ class HakimService : Service() {
                 return START_STICKY
             }
         }
+        HakimUnifiedRelay.start(applicationContext)
+        HakimLocalPairing.reconnectAsync(applicationContext)
         if (socket == null && isPaired()) connectRemote()
         return START_STICKY
     }
@@ -94,7 +101,14 @@ class HakimService : Service() {
         socket?.cancel()
         socket = null
         if (::webView.isInitialized) webView.destroy()
+        if (!explicitStop) HakimConnectionResilience.schedule(applicationContext)
         super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        HakimConnectionResilience.schedule(applicationContext)
+        HakimExecutionFabric.recover(applicationContext, "task_removed")
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

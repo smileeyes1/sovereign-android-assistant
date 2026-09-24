@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20113,
-      "commit": "7dbd9984d6fefb791a7044f98336bc4f805c645b",
-      "ci_run_number": 938,
+      "version_code": 20114,
+      "commit": "17949285373497924aff9a1e3e204292585a51f5",
+      "ci_run_number": 940,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20114,
-      "branch": "feature/hakim-20114-silent-tool-orchestrator-v1",
+      "version_code": 20200,
+      "branch": "feature/hakim-product-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 938,
-      "commit": "7dbd9984d6fefb791a7044f98336bc4f805c645b",
+      "run_number": 940,
+      "commit": "17949285373497924aff9a1e3e204292585a51f5",
       "conclusion": "success"
     }
   },
@@ -124,5 +124,15 @@
     "direct_url_content_local_by_default": true,
     "terminal_handoff_allowed": false,
     "field_verified": false
+  },
+  "productization": {
+    "version": "PRODUCT-V1-2026-09-24-v1",
+    "candidate_version": 20200,
+    "primary_ui_productized": true,
+    "technical_diagnostics_hidden": true,
+    "embedded_browser_hidden_from_primary_ui": true,
+    "permission_on_demand": true,
+    "sellable": false,
+    "field_acceptance_required": true
   }
 }

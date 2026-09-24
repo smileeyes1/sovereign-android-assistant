@@ -30,18 +30,58 @@ object HakimLocalArtifactFactory {
 
     private val easternDigits = charArrayOf('٠','١','٢','٣','٤','٥','٦','٧','٨','٩')
 
-    fun canHandle(prompt: String): Boolean {
-        val q = prompt.trim().lowercase()
+    private const val PREFS = "hakim_local_artifacts"
+    private const val LAST_KIND = "last_kind"
+    private const val KIND_ADD_WITHIN_10 = "worksheet_addition_within_10"
+
+    fun canHandle(prompt: String): Boolean = explicitAdditionWithinTen(prompt)
+
+    fun canHandle(context: Context, prompt: String): Boolean {
+        if (explicitAdditionWithinTen(prompt)) return true
+        if (!isPdfWorksheetFollowUp(prompt)) return false
+
+        val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
+            .getString("recent", "")
+            .orEmpty()
+            .takeLast(8_000)
+
+        if (explicitAdditionWithinTen(recent)) return true
+
+        val lastKind = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(LAST_KIND, "")
+            .orEmpty()
+        return lastKind == KIND_ADD_WITHIN_10
+    }
+
+    fun create(context: Context, prompt: String): Result<Created> = runCatching {
+        require(canHandle(context, prompt)) { "المخرج المحلي المطلوب غير مدعوم بعد." }
+        val created = createAdditionWithinTenPdf(context)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(LAST_KIND, KIND_ADD_WITHIN_10)
+            .putLong("last_created_at", System.currentTimeMillis())
+            .apply()
+        created
+    }
+
+    private fun explicitAdditionWithinTen(text: String): Boolean {
+        val q = normalize(text)
         val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
         val addition = q.contains("الجمع") || q.contains("جمع")
         val withinTen = listOf("ضمن ١٠", "ضمن 10", "حتى ١٠", "حتى 10", "إلى ١٠", "الى ١٠").any { q.contains(it) }
         return worksheet && addition && withinTen
     }
 
-    fun create(context: Context, prompt: String): Result<Created> = runCatching {
-        require(canHandle(prompt)) { "المخرج المحلي المطلوب غير مدعوم بعد." }
-        createAdditionWithinTenPdf(context)
+    private fun isPdfWorksheetFollowUp(text: String): Boolean {
+        val q = normalize(text)
+        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "ملف", "للتحميل", "تحميل", "للطباعة", "الطباعة").any { q.contains(it) }
+        val referent = listOf("ورقة العمل", "ورقه العمل", "الورقة", "الورقه", "هذه", "هذي", "نفسها", "حولها", "حوّلها", "اريدها", "أريدها").any { q.contains(it) }
+        return pdf && referent
     }
+
+    private fun normalize(text: String): String =
+        text.trim().lowercase().replace(Regex("\\s+"), " ")
+
 
     private fun createAdditionWithinTenPdf(context: Context): Created {
         val displayName = "ورقة_عمل_الجمع_ضمن_١٠.pdf"

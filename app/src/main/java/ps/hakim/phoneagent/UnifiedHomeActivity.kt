@@ -36,13 +36,14 @@ class UnifiedHomeActivity : Activity() {
             layoutDirection = android.view.View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(28, 36, 28, 28)
+            setBackgroundColor(android.graphics.Color.WHITE)
         }
 
         root.addView(TextView(this).apply {
             text = "الإعدادات"
-            textSize = 28f
             gravity = Gravity.CENTER
             setPadding(8, 8, 8, 20)
+            HakimUiKit.title(this)
         })
 
         intelligenceStatus = TextView(this).apply {
@@ -59,7 +60,7 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(organizationStatus)
 
-        root.addView(button("ربط خدمة الذكاء") {
+        root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
         })
 
@@ -181,10 +182,10 @@ class UnifiedHomeActivity : Activity() {
             .show()
     }
 
-    private fun button(label: String, action: () -> Unit): Button = Button(this).apply {
+    private fun button(label: String, primary: Boolean = false, action: () -> Unit): Button = Button(this).apply {
         text = label
-        textSize = 18f
-        setAllCaps(false)
+        textSize = 17f
+        if (primary) HakimUiKit.primary(this) else HakimUiKit.secondary(this)
         setOnClickListener { action() }
     }
 }

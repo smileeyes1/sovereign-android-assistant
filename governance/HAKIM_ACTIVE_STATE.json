@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-23",
+  "snapshot_date": "2026-09-24",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -19,27 +19,28 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20108,
-      "commit": "cfb2cf668a2f4431c3706a1b6d6d32bb5a9a8c76",
-      "ci_run_number": 903,
+      "version_code": 20109,
+      "commit": "744e803ef10cd4ac56f9af75a5c4c005f69ce19c",
+      "ci_run_number": 912,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20109,
-      "branch": "feature/hakim-20109-unified-factory-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED_FOR_CODE_PARENT",
+      "version_code": 20110,
+      "branch": "feature/hakim-20110-execution-fabric-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false,
-      "source_ci_verified_code_commit": "22bf46b2878a415155074274fc5346ff9a9e19c0",
-      "source_ci_run_number": 909
+      "promoted": false
     }
   },
   "local_execution": {
-    "phone_channel": "NOT_PROVEN_CURRENTLY",
+    "phone_channel": "OFFLINE_EXTERNAL_CONNECTOR",
     "termux_channel": "NOT_PROVEN_CURRENTLY",
-    "do_not_claim_device_control_without_live_evidence": true
+    "do_not_claim_device_control_without_live_evidence": true,
+    "execution_fabric_source_integrated": true,
+    "execution_fabric_field_online": false,
+    "production_bridge_contract": "relay_result_topic+HR1"
   },
   "material_factory": {
     "version": "MATERIAL-FACTORY-2026-09-23-v2",

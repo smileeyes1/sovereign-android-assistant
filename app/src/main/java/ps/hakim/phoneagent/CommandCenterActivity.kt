@@ -227,7 +227,15 @@ class CommandCenterActivity : Activity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("صوت") { startSpeechInput() },
+            actionButton("صوت") {
+                val blocked = HakimEnterprisePolicy.blockReason(this, "voice")
+                if (blocked != null) {
+                    appendConversation("حكيم", blocked)
+                    status.text = "مقيّد بسياسة المؤسسة"
+                } else {
+                    startSpeechInput()
+                }
+            },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
@@ -320,6 +328,13 @@ class CommandCenterActivity : Activity() {
             }
             HakimModelToolRouter.Channel.LOCAL_ARTIFACT ->
                 executeLocalArtifact(text)
+            HakimModelToolRouter.Channel.POLICY_BLOCKED -> {
+                appendConversation("حكيم", decision.reason)
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, decision.reason)
+                status.text = "مقيّد بسياسة المؤسسة"
+                recordRoute("enterprise_policy", false)
+                refreshOperations()
+            }
             HakimModelToolRouter.Channel.DIRECT_MODEL ->
                 executeDirectModel(text, directed.instruction, decision.engineId)
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP ->

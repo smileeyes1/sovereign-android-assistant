@@ -41,7 +41,14 @@ object HakimArtifactFormatRegistry {
     )
 
     /** What the current Android app can deterministically create without an external account. */
-    val localDeterministicNow: Set<Format> = setOf(Format.PDF)
+    val localDeterministicNow: Set<Format> = linkedSetOf(
+        Format.PDF,
+        Format.HTML,
+        Format.DOCX,
+        Format.PPTX,
+        Format.XLSX,
+        Format.PNG
+    )
 
     fun requested(prompt: String): Set<Format> {
         val q = prompt.lowercase()

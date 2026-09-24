@@ -15,7 +15,8 @@ import { pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { AndroidPairStore,androidPairHref } from "./android_pair.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
-requireProductionOAuthConfig(process.env);
+const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";
+if (!androidPreviewMode) requireProductionOAuthConfig(process.env);
 
 const app=express();
 app.set("trust proxy",true);
@@ -27,7 +28,7 @@ app.use(express.json({limit:"256kb"}));
 app.use(express.urlencoded({extended:false,limit:"64kb"}));
 
 const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
-const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
+const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),androidPreviewMode?"hakim-android-preview":"hakim-oauth-dev");
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();

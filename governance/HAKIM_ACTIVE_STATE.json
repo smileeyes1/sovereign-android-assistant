@@ -19,25 +19,39 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20109,
-      "commit": "744e803ef10cd4ac56f9af75a5c4c005f69ce19c",
-      "ci_run_number": 912,
+      "version_code": 20110,
+      "commit": "04a2d9e9ccb3c6e8166a4bba23cb23f17fc62f36",
+      "ci_run_number": 918,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20110,
-      "branch": "feature/hakim-20110-execution-fabric-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20111,
+      "branch": "feature/hakim-20111-self-improvement-loop-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
-      "source_ci_verified_code_commit": "7b798ebeeb0076c39b5c88f23dba9f1f8ab69762",
-      "source_ci_run_number": 915
+      "source_ci_verified_code_commit": null,
+      "source_ci_run_number": null
+    },
+    "field_observed_current": {
+      "observed_at": "2026-09-24",
+      "version_code": 20106,
+      "version_name": "2.1.06-resilient-free-completion",
+      "apk_sha256": "c8e43143f41d19f26a43c3d1a74a15620a5748f1af1f5d9a49c2797b28fb8794",
+      "package": "ps.hakim.stable",
+      "service_running": true,
+      "service_connected": true,
+      "recovery_state": "healthy",
+      "evidence": "signed_health_on_stateless_pairing",
+      "current_signer_reobserved": false,
+      "exact_public_source_mapping": "NOT_PROVEN",
+      "promoted_as_source_baseline": false
     }
   },
   "local_execution": {
-    "phone_channel": "OFFLINE_EXTERNAL_CONNECTOR",
+    "phone_channel": "ONLINE_SIGNED_HEALTH_OBSERVED",
     "termux_channel": "NOT_PROVEN_CURRENTLY",
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
@@ -45,11 +59,12 @@
     "production_bridge_contract": "relay_result_topic+HR1",
     "current_installed_field_transport": {
       "observed_at": "2026-09-24",
-      "status": "ONLINE_OBSERVED",
+      "status": "ONLINE_SIGNED_HEALTH_OBSERVED",
       "network": "mobile_data",
-      "ui_evidence": "الحالة: متصل فعليًا — حكيم جاهز",
       "transport": "legacy_ntfy_websocket",
-      "cloud_to_ntfy_roundtrip_verified": false,
+      "stateless_pairing": true,
+      "signed_health_verified": true,
+      "service_connected": true,
       "preserve_pairing": true
     }
   },
@@ -75,5 +90,15 @@
     "autonomous_clinical_action": false,
     "direct_intervention_requires_qualified_gate": true,
     "field_clinical_validation": false
+  },
+  "self_improvement": {
+    "version": "SELF-IMPROVEMENT-LOOP-2026-09-24-v1",
+    "source_integrated": true,
+    "current_field_source_mapping": "NOT_PROVEN",
+    "automatic_downgrade": false,
+    "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
+    "d1_gate": "REQUIRED",
+    "recurring_external_guard": "ENABLED",
+    "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE"
   }
 }

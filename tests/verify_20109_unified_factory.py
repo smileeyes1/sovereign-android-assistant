@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 factory = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimMaterialFactory.kt").read_text(encoding="utf-8")
@@ -29,7 +30,8 @@ req('.put("material_factory", materialFactory)' in self_check, "self_check_repor
 builder = intent.find('listOf("اصنع تطبيق", "أنشئ تطبيق", "ابن تطبيق"')
 material = intent.find("HakimMaterialFactory.matches(effectiveText)")
 req(builder >= 0 and material >= 0 and builder < material, "builder_must_precede_material_route")
-req("versionCode 20109" in gradle, "candidate_version")
+m = re.search(r"versionCode\s+(\d+)", gradle)
+req(bool(m) and int(m.group(1)) >= 20109, "candidate_version")
 
 mutant = factory.replace(" && proof.sameArtifact", "", 1)
 req("proof.fabricated && proof.measured && proof.acceptancePassed && proof.sameArtifact" not in mutant,

@@ -2,13 +2,29 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import https from "node:https";
+import dns from "node:dns/promises";
 import {randomSecret} from "./protocol.js";
 
-const ipv4Agent=new https.Agent({keepAlive:true,family:4});
-
-async function httpsText(url:string,opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={}){
+async function httpsOnce(
+  url:string,
+  opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={},
+  forcedAddress?:string
+){
+  const u=new URL(url);
+  const requestOptions:https.RequestOptions={
+    protocol:"https:",
+    hostname:forcedAddress??u.hostname,
+    port:u.port?Number(u.port):443,
+    path:u.pathname+u.search,
+    method:opts.method??"GET",
+    headers:{...(opts.headers??{}),...(forcedAddress?{Host:u.hostname}:{})},
+    servername:u.hostname,
+    family:forcedAddress?4:undefined,
+    agent:false,
+    timeout:opts.timeoutMs??3500
+  };
   return await new Promise<{status:number;body:string}>((resolve,reject)=>{
-    const req=https.request(url,{method:opts.method??"GET",headers:opts.headers,agent:ipv4Agent,timeout:opts.timeoutMs??10_000},res=>{
+    const req=https.request(requestOptions,res=>{
       const chunks:Buffer[]=[];
       res.on("data",chunk=>chunks.push(Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk)));
       res.on("end",()=>resolve({status:res.statusCode??0,body:Buffer.concat(chunks).toString("utf8")}));
@@ -18,6 +34,26 @@ async function httpsText(url:string,opts:{method?:"GET"|"POST";headers?:Record<s
     if(opts.body) req.write(opts.body);
     req.end();
   });
+}
+
+async function httpsText(url:string,opts:{method?:"GET"|"POST";headers?:Record<string,string>;body?:string;timeoutMs?:number}={}){
+  const u=new URL(url);
+  const errors:string[]=[];
+  let addresses:string[]=[];
+  try{ addresses=await dns.resolve4(u.hostname); }catch(e){ errors.push("dns4:"+(e instanceof Error?e.message:String(e))); }
+  const candidates=[...new Set(addresses)].slice(0,4);
+  for(const address of candidates){
+    try{
+      const r=await httpsOnce(url,{...opts,timeoutMs:Math.min(opts.timeoutMs??3500,3500)},address);
+      if(r.status>0) return r;
+    }catch(e){ errors.push(address+":"+(e instanceof Error?e.message:String(e))); }
+  }
+  try{
+    return await httpsOnce(url,{...opts,timeoutMs:opts.timeoutMs??5000});
+  }catch(e){
+    errors.push("host:"+(e instanceof Error?e.message:String(e)));
+    throw new Error("ntfy_all_routes_failed:"+errors.slice(-5).join("|"));
+  }
 }
 
 export type LegacyAndroidSession={

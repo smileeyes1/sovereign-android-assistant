@@ -50,9 +50,9 @@ for fmt in ["PDF", "HTML", "DOCX", "PPTX", "XLSX", "PNG", "GOOGLE_DOC", "GOOGLE_
 req("localDeterministicNow: Set<Format> = setOf(Format.PDF)" in FORMATS, "no_fake_local_formats")
 
 req("python3 tests/verify_20202_user_owned_free_factory.py" in WORKFLOW, "ci_gate")
-req(state["android"]["candidate"]["version_code"] == 20202, "state_candidate")
-req(state["android"]["candidate"]["field_verified"] is False, "state_field")
-req(state["android"]["candidate"]["promoted"] is False, "state_promoted")
+req(STATE["android"]["candidate"]["version_code"] == 20202, "state_candidate")
+req(STATE["android"]["candidate"]["field_verified"] is False, "state_field")
+req(STATE["android"]["candidate"]["promoted"] is False, "state_promoted")
 req(PROMOTION["candidate_version"] == 20202 and PROMOTION["promoted"] is False, "promotion")
 req(SELLABLE["candidate_version"] == 20202 and SELLABLE["sellable"] is False, "sellable")
 req("لا مفتاح ذكاء مركزي مشترك" in CONTRACT, "contract_central_key")

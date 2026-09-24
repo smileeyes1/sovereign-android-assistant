@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction
+        android:key="allow_external_ai"
+        android:title="السماح بخدمات الذكاء الخارجية"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+    <restriction
+        android:key="allow_web"
+        android:title="السماح باستخدام الويب"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+    <restriction
+        android:key="allow_attachments"
+        android:title="السماح بالمرفقات"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+    <restriction
+        android:key="allow_voice"
+        android:title="السماح بالإدخال الصوتي"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+    <restriction
+        android:key="allow_diagnostics"
+        android:title="السماح بالتشخيصات المتقدمة"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+</restrictions>

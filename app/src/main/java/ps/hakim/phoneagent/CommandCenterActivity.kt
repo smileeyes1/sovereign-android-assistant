@@ -5,6 +5,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.View
@@ -19,6 +21,8 @@ import android.text.TextUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
+import org.json.JSONObject
+import java.util.UUID
 
 class CommandCenterActivity : Activity() {
     companion object {
@@ -41,6 +45,7 @@ class CommandCenterActivity : Activity() {
     private var streamingBase = ""
     private val streamingBuffer = StringBuilder()
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
+    private val browserHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -327,10 +332,117 @@ class CommandCenterActivity : Activity() {
                 executeDirectModel(text, directed.instruction, decision.engineId)
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP ->
                 beginFreeEngineSetup(text)
+            HakimModelToolRouter.Channel.SILENT_BROWSER ->
+                executeSilentBrowser(text, directed.instruction)
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
             HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
             HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
             HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
+        }
+    }
+
+    private fun executeSilentBrowser(text: String, baseInstruction: String) {
+        val taskId = "browser-" + UUID.randomUUID().toString().take(12)
+        val taskPrefs = getSharedPreferences("hakim_browser_tasks", MODE_PRIVATE)
+        taskPrefs.edit()
+            .remove(taskId + "_state")
+            .remove(taskId + "_result")
+            .remove(taskId + "_error")
+            .apply()
+
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "استخدام المتصفح المدمج في الخلفية؛ فتح الصفحة وحده ليس نجاحًا"
+        )
+        refreshOperations()
+        status.text = "يبحث صامتًا"
+
+        val intent = Intent(this, HakimService::class.java)
+            .setAction(HakimService.ACTION_BROWSER_TASK)
+            .putExtra(HakimService.EXTRA_BROWSER_TASK_ID, taskId)
+            .putExtra(HakimService.EXTRA_BROWSER_QUERY, text)
+
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }.onFailure {
+            appendConversation("حكيم", "تعذر تشغيل المتصفح المدمج في الخلفية.")
+            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "تعذر بدء خدمة المتصفح المدمج")
+            status.text = "تعذر مسار المتصفح"
+            return
+        }
+
+        pollSilentBrowser(taskId, text, baseInstruction, 0)
+    }
+
+    private fun pollSilentBrowser(taskId: String, text: String, baseInstruction: String, attempt: Int) {
+        val taskPrefs = getSharedPreferences("hakim_browser_tasks", MODE_PRIVATE)
+        when (taskPrefs.getString(taskId + "_state", "").orEmpty()) {
+            "COMPLETE" -> {
+                val raw = taskPrefs.getString(taskId + "_result", "{}").orEmpty()
+                val page = runCatching { JSONObject(raw) }.getOrElse { JSONObject().put("text", raw) }
+                val pageText = page.optString("text").trim()
+                val title = page.optString("title").trim()
+                val url = page.optString("url").trim()
+
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.VERIFYING,
+                    "استلم حكيم أثر المتصفح وأعاد إدخاله في مسار المهمة"
+                )
+                refreshOperations()
+
+                val engine = HakimEngineRegistry.bestGeneralChat(this, text, attachments)
+                if (engine != null && pageText.isNotBlank()) {
+                    val evidence = pageText.take(8_000)
+                    val augmented = buildString {
+                        appendLine(baseInstruction)
+                        appendLine()
+                        appendLine("أداة المتصفح المدمج عادت بالأدلة الآتية. استخدمها لإكمال مقصد المستخدم، ولا تطلب منه فتح الصفحة أو نسخ المحتوى:")
+                        if (title.isNotBlank()) appendLine("العنوان: " + title)
+                        if (url.isNotBlank()) appendLine("الرابط: " + url)
+                        appendLine("المحتوى المرئي:")
+                        append(evidence)
+                    }.take(14_000)
+                    status.text = "يصوغ النتيجة النهائية"
+                    executeDirectModel(text, augmented, engine.id)
+                } else {
+                    val ready = pageText.ifBlank {
+                        if (url.isNotBlank()) "وصل حكيم إلى: $url" else "اكتمل التصفح دون نص قابل للاستخراج."
+                    }.take(10_000)
+                    appendConversation("حكيم", ready)
+                    HakimExecutiveLoop.complete(this, "عاد أثر المتصفح إلى محادثة حكيم نفسها")
+                    recordRoute("silent_browser", true)
+                    command.setText("")
+                    status.text = "اكتمل"
+                    refreshOperations()
+                }
+            }
+            "FAILED" -> {
+                val reason = taskPrefs.getString(taskId + "_error", "تعذر التصفح").orEmpty()
+                appendConversation("حكيم", "تعذر مسار المتصفح المدمج: $reason")
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, reason)
+                recordRoute("silent_browser", false)
+                status.text = "تعذر التصفح"
+                refreshOperations()
+            }
+            else -> {
+                if (attempt >= 30) {
+                    appendConversation("حكيم", "انتهت مهلة المتصفح المدمج قبل تحقق أثر نهائي.")
+                    HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "مهلة التصفح الصامت")
+                    recordRoute("silent_browser", false)
+                    status.text = "انتهت مهلة التصفح"
+                    refreshOperations()
+                } else {
+                    browserHandler.postDelayed({
+                        pollSilentBrowser(taskId, text, baseInstruction, attempt + 1)
+                    }, 500L)
+                }
+            }
         }
     }
 

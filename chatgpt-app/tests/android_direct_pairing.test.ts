@@ -106,3 +106,13 @@ test("stable pairing routes derive credentials and do not depend on legacy store
   assert.match(statusBlock,/statelessLegacySession\(String\(req\.params\.id/);
   assert.doesNotMatch(statusBlock,/legacyAndroidStore\.get/);
 });
+
+
+test("ntfy transport rotates IPv4 routes without sticky keep-alive",async()=>{
+  const source=await fs.readFile(new URL("../src/legacy_android.ts",import.meta.url),"utf8");
+  assert.match(source,/dns\.resolve4\(u\.hostname\)/);
+  assert.match(source,/agent:false/);
+  assert.match(source,/ntfy_all_routes_failed/);
+  assert.doesNotMatch(source,/keepAlive:true/);
+  assert.match(source,/payloadObj\.request_id=requestId/);
+});

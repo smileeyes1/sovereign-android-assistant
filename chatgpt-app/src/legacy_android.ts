@@ -67,7 +67,7 @@ export function legacyPairCode(s:LegacyAndroidSession){
 }
 
 export async function publishLegacyCommand(s:LegacyAndroidSession,command:Record<string,unknown>){
-  const payloadObj={...command,issued_at:Date.now()};
+  const payloadObj:Record<string,unknown>={...command,issued_at:Date.now()};
   const requestId=String(payloadObj.request_id??("legacy-"+randomSecret(10)));
   payloadObj.request_id=requestId;
   const payload=Buffer.from(JSON.stringify(payloadObj),"utf8").toString("base64url");

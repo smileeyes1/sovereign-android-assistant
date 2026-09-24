@@ -62,6 +62,7 @@ jobs:
           python3 tests/verify_sellable_product_candidate.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
+          python3 tests/verify_product_copy.py
           python3 tests/verify_active_state_consistency.py
           python3 tests/verify_product_v1_candidate_gate.py
           set +e

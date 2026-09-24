@@ -13,7 +13,8 @@ import {
 } from "./oauth.js";
 import { pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { AndroidPairStore,androidPairHref } from "./android_pair.js";
-import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,probeNtfyIpv4,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
+import { LegacyAndroidStore,legacyPairCode,pollLegacyResult,publishLegacyCommand,statelessLegacySession,newStatelessLegacyId } from "./legacy_android.js";
+import {probeNtfyIpv4} from "./ntfy_transport.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
 const androidPreviewMode = process.env.RAILWAY_SERVICE_NAME === "hakim-android-pair-preview";

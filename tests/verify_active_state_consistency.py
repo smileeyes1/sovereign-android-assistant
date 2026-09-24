@@ -29,7 +29,7 @@ req(state["local_execution"]["termux_channel"] == "NOT_PROVEN_CURRENTLY", "termu
 req(state["android"]["field_observed_current"]["version_code"] == 20106, "field_observed_version")
 req(state["android"]["field_observed_current"]["exact_public_source_mapping"] == "NOT_PROVEN", "field_source_mapping")
 req(state["self_improvement"]["rollback_strategy"] == "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE", "rollback_strategy")
-req(state["self_improvement"]["d1_gate"] == "REQUIRED", "d1_gate")
+req(state["self_improvement"]["d1_gate"] == "REQUIRED_MATERIAL_NOT_AVAILABLE_IN_CI", "d1_gate")
 req(state["material_factory"]["physical_output_verified"] is False, "physical_claim")
 req(state["human_biology"]["whole_body_systems_covered"] is True, "biology_coverage")
 req(state["human_biology"]["brain_covered"] is True, "brain_coverage")

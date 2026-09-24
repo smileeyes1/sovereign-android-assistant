@@ -13,7 +13,7 @@ object HakimProductOutput {
             .replace(Regex("(?m)^\\s{0,3}#{1,6}\\s*"), "")
             .replace("**", "")
             .replace("__", "")
-            .replace("\`", "")
+            .replace("\u0060", "")
             .replace(Regex("(?m)^\\s*[-*]\\s+"), "• ")
             .replace(Regex("[ \\t]+\\n"), "\n")
             .replace(Regex("\\n{3,}"), "\n\n")

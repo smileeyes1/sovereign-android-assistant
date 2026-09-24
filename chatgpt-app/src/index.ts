@@ -11,7 +11,8 @@ import {
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
-import { pollPairAck } from "./relay.js";
+import { pollPairAck,pollResult,publishCommand } from "./relay.js";
+import { AndroidPairStore,androidPairHref } from "./android_pair.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 
 requireProductionOAuthConfig(process.env);
@@ -30,7 +31,9 @@ const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-d
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
-const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
+const androidPairStore=new AndroidPairStore(dataDir);
+await androidPairStore.init();
+const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();void androidPairStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
@@ -96,6 +99,52 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
 
 app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
 
+
+app.get("/android",async(_req,res)=>{
+  try{
+    const session=await androidPairStore.create();
+    noStore(res);
+    return res.redirect(302,"/android/session/"+encodeURIComponent(session.id));
+  }catch(e){
+    return oauthError(res,500,"android_pairing_unavailable",e instanceof Error?e.message:"pairing_failed");
+  }
+});
+
+app.get("/android/session/:id",async(req,res)=>{
+  try{
+    const session=await androidPairStore.get(String(req.params.id??""));
+    const pair=androidPairHref(session);
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    res.setHeader("X-Frame-Options","DENY");
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ربط حكيم — أندرويد</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:28px;line-height:1.9;background:#fafafa}.card{background:white;border:1px solid #ddd;border-radius:18px;padding:20px;margin:16px 0}.btn{display:block;text-align:center;padding:15px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-size:19px}.secondary{background:#e9e9e9;color:#111}.muted{color:#666;font-size:14px}</style>
+<h1>حكيم — ربط أندرويد مباشرة</h1>
+<div class="card"><strong>هذا المسار للهاتف فقط.</strong><br>لا يحتاج حاسوبًا ولا إضافة سطح المكتب ولا مفتاح OpenAI API.</div>
+<a class="btn" href="${html(pair)}">١) افتح تطبيق حكيم واربط الهاتف</a>
+<a class="btn secondary" href="/android/session/${encodeURIComponent(session.id)}/status">٢) تحقق أن الهاتف Online</a>
+<p class="muted">جلسة الاقتران مؤقتة وخاصة. لا تشارك رابط هذه الصفحة مع أي شخص.</p>
+</html>`);
+  }catch(e){
+    return oauthError(res,404,"android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
+
+app.get("/android/session/:id/status",async(req,res)=>{
+  try{
+    const session=await androidPairStore.get(String(req.params.id??""));
+    noStore(res);
+    res.setHeader("Referrer-Policy","no-referrer");
+    const paired=await pollPairAck(session.credential,2500);
+    if(!paired) return res.status(409).json({ok:false,paired:false,status:"waiting_for_phone"});
+    const requestId=await publishCommand(session.credential,"status",{});
+    const result=await pollResult(session.credential,requestId,8000);
+    if(!result) return res.status(202).json({ok:false,paired:true,status:"phone_paired_result_pending"});
+    return res.json({ok:true,paired:true,status:"online",device:result});
+  }catch(e){
+    return oauthError(res,404,"android_session_unavailable",e instanceof Error?e.message:"session_not_found");
+  }
+});
 
 app.get("/health",(_req,res)=>res.json({
   ok:true,

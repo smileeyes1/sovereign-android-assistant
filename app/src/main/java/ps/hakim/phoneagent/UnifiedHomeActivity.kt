@@ -80,6 +80,14 @@ class UnifiedHomeActivity : Activity() {
             showPrivacy()
         })
 
+        root.addView(button("مسح سجل المحادثة المحلي") {
+            confirmClearLocalData()
+        })
+
+        root.addView(button("إلغاء ربط خدمات الذكاء") {
+            confirmDisconnectIntelligence()
+        })
+
         root.addView(button("إعدادات التطبيق في أندرويد") {
             runCatching {
                 startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -132,6 +140,34 @@ class UnifiedHomeActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun confirmClearLocalData() {
+        AlertDialog.Builder(this)
+            .setTitle("مسح البيانات المحلية")
+            .setMessage("سيُمسح سجل المحادثة وسجل التدقيق المحلي وذاكرة آخر مخرج. لن تُحذف ملفاتك المحفوظة في التنزيلات.")
+            .setPositiveButton("مسح") { _, _ ->
+                getSharedPreferences("hakim_conversation", MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences("hakim_local_artifacts", MODE_PRIVATE).edit().clear().apply()
+                HakimAuditTrail.clear(this)
+                intelligenceStatus.text = "مُسحت البيانات المحلية."
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun confirmDisconnectIntelligence() {
+        AlertDialog.Builder(this)
+            .setTitle("إلغاء الربط")
+            .setMessage("سيُحذف اعتماد خدمات الذكاء المحفوظ من هذا الجهاز.")
+            .setPositiveButton("إلغاء الربط") { _, _ ->
+                HakimSecretStore.remove(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
+                HakimSecretStore.remove(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
+                HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
+                refresh()
+            }
+            .setNegativeButton("رجوع", null)
+            .show()
     }
 
     private fun showPrivacy() {

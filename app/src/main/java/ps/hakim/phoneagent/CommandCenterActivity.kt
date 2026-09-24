@@ -131,17 +131,9 @@ class CommandCenterActivity : Activity() {
         root.addView(status)
 
         operations = TextView(this).apply {
-            text = "جاهز"
-            textSize = 13f
-            gravity = Gravity.RIGHT
-            setPadding(12, 6, 12, 6)
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            contentDescription = "حالة التنفيذ؛ اضغط لعرض أو إخفاء التفاصيل"
-            setOnClickListener {
-                operationsExpanded = !operationsExpanded
-                refreshOperations()
-            }
+            text = ""
+            visibility = View.GONE
+            contentDescription = "تفاصيل تشغيل داخلية"
         }
         root.addView(operations)
 
@@ -239,13 +231,7 @@ class CommandCenterActivity : Activity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("المتصفح") {
-                openInHakim(command.text.toString().trim())
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
-            actionButton("إدارة") {
+            actionButton("الإعدادات") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -362,7 +348,7 @@ class CommandCenterActivity : Activity() {
             "استخدام المتصفح المدمج في الخلفية؛ فتح الصفحة وحده ليس نجاحًا"
         )
         refreshOperations()
-        status.text = "يبحث صامتًا"
+        status.text = "يعمل على طلبك…"
 
         val intent = Intent(this, HakimService::class.java)
             .setAction(HakimService.ACTION_BROWSER_TASK)
@@ -376,7 +362,7 @@ class CommandCenterActivity : Activity() {
                 startService(intent)
             }
         }.onFailure {
-            appendConversation("حكيم", "تعذر تشغيل المتصفح المدمج في الخلفية.")
+            appendConversation("حكيم", HakimProductUx.publicError("تعذر الاتصال بمسار الويب"))
             HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "تعذر بدء خدمة المتصفح المدمج")
             status.text = "تعذر مسار المتصفح"
             return
@@ -418,7 +404,7 @@ class CommandCenterActivity : Activity() {
                         appendLine("المحتوى المرئي:")
                         append(evidence)
                     }.take(14_000)
-                    status.text = "يصوغ النتيجة النهائية"
+                    status.text = "يجهّز النتيجة…"
                     executeDirectModel(text, augmented, engine.id)
                 } else {
                     val ready = pageText.ifBlank {
@@ -434,7 +420,7 @@ class CommandCenterActivity : Activity() {
             }
             "FAILED" -> {
                 val reason = taskPrefs.getString(taskId + "_error", "تعذر التصفح").orEmpty()
-                appendConversation("حكيم", "تعذر مسار المتصفح المدمج: $reason")
+                appendConversation("حكيم", HakimProductUx.publicError(reason))
                 HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, reason)
                 recordRoute("silent_browser", false)
                 status.text = "تعذر التصفح"
@@ -442,7 +428,7 @@ class CommandCenterActivity : Activity() {
             }
             else -> {
                 if (attempt >= 30) {
-                    appendConversation("حكيم", "انتهت مهلة المتصفح المدمج قبل تحقق أثر نهائي.")
+                    appendConversation("حكيم", "استغرق التنفيذ وقتًا أطول من المتوقع. لم أعتبر المهمة مكتملة.")
                     HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "مهلة التصفح الصامت")
                     recordRoute("silent_browser", false)
                     status.text = "انتهت مهلة التصفح"
@@ -463,7 +449,7 @@ class CommandCenterActivity : Activity() {
             "إنشاء الملف محليًا داخل الهاتف دون OpenRouter أو نموذج خارجي"
         )
         refreshOperations()
-        status.text = "ينشئ PDF محليًا"
+        status.text = "يجهّز الملف…"
 
         Thread {
             val result = HakimLocalArtifactFactory.create(this, text)
@@ -517,7 +503,7 @@ class CommandCenterActivity : Activity() {
         status.text = "ربط الذكاء المجاني"
         appendConversation(
             "حكيم",
-            "سأربط الآن محركًا مجانيًا رسميًا لمرة واحدة. بعد موافقتك سيعود الرد إلى حكيم نفسه، ولن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT."
+            "تحتاج هذه الميزة ربط خدمة ذكاء لمرة واحدة. بعد موافقتك سيعود العمل إلى حكيم ويكمل طلبك هنا."
         )
         OpenRouterOAuthManager.start(this, pendingPrompt = text)
     }
@@ -534,7 +520,7 @@ class CommandCenterActivity : Activity() {
             ?: run {
                 appendConversation(
                     "حكيم",
-                    "لا يوجد الآن محرك ذكاء مباشر مجاني ومهيأ لهذا الطلب. افتح «إدارة» لإعداد محرك مجاني."
+                    "تحتاج هذه الميزة إعدادًا لمرة واحدة. افتح «الإعدادات» لإكمال الربط."
                 )
                 HakimExecutiveLoop.record(
                     this,
@@ -553,7 +539,7 @@ class CommandCenterActivity : Activity() {
             "إجابة مباشرة داخل حكيم عبر " + engine.displayName
         )
         refreshOperations()
-        status.text = "يجيب " + engine.displayName
+        status.text = "يعمل على طلبك…"
         beginStreamingReply()
 
         val snapshot = attachments.toList()
@@ -627,7 +613,7 @@ class CommandCenterActivity : Activity() {
                             )
                         } else {
                             discardEmptyStreamingReply()
-                            appendConversation("حكيم", result.reason)
+                            appendConversation("حكيم", HakimProductUx.publicError(result.reason))
                             HakimExecutiveLoop.record(
                                 this,
                                 HakimExecutiveLoop.Phase.GATED,
@@ -667,7 +653,7 @@ class CommandCenterActivity : Activity() {
                 "المحرك البديل: " + fallback.displayName
             )
             refreshOperations()
-            status.text = "المحرك بطيء/متعثر؛ يحوّل إلى " + fallback.displayName
+            status.text = "يجرّب مسارًا آخر…"
             executeDirectModel(text, instruction, fallback.id, nextExcluded)
             return
         }
@@ -737,7 +723,7 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.waitExternal(this, provider.label)
         refreshOperations()
         appendConversation("حكيم", "فتحت القناة الرسمية المختارة. لن أعتبر المهمة ناجحة قبل تحقق الأثر.")
-        status.text = "قناة خارجية"
+        status.text = "بانتظار موافقتك"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -764,7 +750,7 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.waitExternal(this, "المتصفح")
         refreshOperations()
         appendConversation("حكيم", "فتحت المتصفح للمسار الذي يحتاج الويب.")
-        status.text = "المتصفح"
+        status.text = "يعمل على طلبك…"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -858,7 +844,7 @@ class CommandCenterActivity : Activity() {
             .getString("recent", "")
             .orEmpty()
         conversation.text = if (saved.isBlank()) {
-            "حكيم:\nجاهز. اكتب مقصدك وسأعرض الرد هنا بوضوح."
+            "حكيم:\nمرحبًا. اكتب ما تريد، وسأتولى التنفيذ وأعيد لك النتيجة هنا."
         } else {
             saved
         }

@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import {AndroidPairStore,androidPairHref} from "../src/android_pair.js";
-import {LegacyAndroidStore,legacyPairCode,statelessLegacySession,newStatelessLegacyId} from "../src/legacy_android.js";
+import {LegacyAndroidStore,legacyPairCode,statelessLegacySession,newStatelessLegacyId,extractLatestSignedHealth} from "../src/legacy_android.js";
 
 test("android direct pairing store is private, temporary, and produces a Hakim deep link",async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),"hakim-android-pair-"));
@@ -115,4 +116,50 @@ test("ntfy transport rotates IPv4 routes without sticky keep-alive",async()=>{
   assert.match(source,/ntfy_all_routes_failed/);
   assert.doesNotMatch(source,/keepAlive:true/);
   assert.match(source,/payloadObj\.request_id=requestId/);
+});
+
+
+test("signed recent connected health is accepted as online evidence",()=>{
+  const s=statelessLegacySession("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+  const now=1_790_241_500_000;
+  const data=JSON.stringify({
+    request_id:"health-"+now,
+    status:"health",
+    time:now,
+    package:"ps.hakim.stable",
+    version_code:20106,
+    service_running:true,
+    service_connected:true,
+    recovery:{state:"healthy"}
+  });
+  const requestId="health-"+now;
+  const sig=crypto.createHmac("sha256",Buffer.from(s.authKey,"hex"))
+    .update(requestId+"\n1\n1\n"+data,"utf8").digest("hex");
+  const body=JSON.stringify({message:JSON.stringify({request_id:requestId,chunk:1,total:1,data,sig})});
+  const health=extractLatestSignedHealth(s,body,now,120_000);
+  assert.equal(health?.service_connected,true);
+  assert.equal(health?.status,"health");
+});
+
+test("health fallback rejects tampered, stale, or disconnected evidence",()=>{
+  const s=statelessLegacySession("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+  const now=1_790_241_500_000;
+  const make=(time:number,connected:boolean,tamper=false)=>{
+    const requestId="health-"+time;
+    const data=JSON.stringify({request_id:requestId,status:"health",time,service_connected:connected});
+    let sig=crypto.createHmac("sha256",Buffer.from(s.authKey,"hex"))
+      .update(requestId+"\n1\n1\n"+data,"utf8").digest("hex");
+    if(tamper) sig="0".repeat(64);
+    return JSON.stringify({message:JSON.stringify({request_id:requestId,chunk:1,total:1,data,sig})});
+  };
+  assert.equal(extractLatestSignedHealth(s,make(now,true,true),now,120_000),null);
+  assert.equal(extractLatestSignedHealth(s,make(now-121_000,true),now,120_000),null);
+  assert.equal(extractLatestSignedHealth(s,make(now,false),now,120_000),null);
+});
+
+test("stable status route falls back only to signed recent health",async()=>{
+  const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
+  assert.match(source,/pollLegacyHealth\(session,120_000\)/);
+  assert.match(source,/evidence:"signed_recent_health"/);
+  assert.match(source,/evidence:"signed_ping"/);
 });

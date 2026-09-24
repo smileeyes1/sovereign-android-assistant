@@ -30,7 +30,13 @@ for x in [
 ]:
     assert x not in p, x
 
-assert ("لم يُعتمد النجاح" in p) or ("لن أعتبر المهمة ناجحة" in p) or ("ليس نجاحًا للمهمة" in p)
+assert (
+    ("لم يُعتمد النجاح" in p)
+    or ("لن أعتبر المهمة ناجحة" in p)
+    or ("ليس نجاحًا للمهمة" in p)
+    or ("لن أعتبر المهمة مكتملة حتى يتحقق الأثر" in p)
+    or ("لن أعتبرها مكتملة قبل تحقق النتيجة" in p)
+)
 assert "ScrollView" in p
 assert "appendConversation" in p
 print("CALM_UI_POLICY=PASS visible_conversation=true")

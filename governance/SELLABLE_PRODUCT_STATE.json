@@ -29,5 +29,19 @@
   "intelligence_disconnect": true,
   "raw_markdown_hidden": true,
   "artifact_refusal_not_success": true,
-  "contextual_addition_within_10_restored": true
+  "contextual_addition_within_10_restored": true,
+  "source_ci": {
+    "run_number": 984,
+    "commit": "a2db0ddebd18c46ca419f5515924c542bb094420",
+    "conclusion": "success"
+  },
+  "signed_candidate": {
+    "file": "Hakim-20201-Product-D1.apk",
+    "sha256": "45f33dd36488199bfbc5cf9048d78a6ea78204c5e1f8ee5cafac103364808275",
+    "signer_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
+    "v2": true,
+    "v3": true,
+    "signers": 1,
+    "field_verified": false
+  }
 }

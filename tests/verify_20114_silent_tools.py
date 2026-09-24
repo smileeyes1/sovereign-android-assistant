@@ -58,7 +58,7 @@ for phrase in [
     req(phrase in DIRECTOR, "director:" + phrase)
 
 # Failure injection: replacing silent browser channel with visible browser must be detected.
-mutant = ROUTER.replace("channel = Channel.SILENT_BROWSER", "channel = Channel.LOCAL_BROWSER", 1)
+mutant = ROUTER.replace("channel = Channel.SILENT_BROWSER", "channel = Channel.LOCAL_BROWSER")
 try:
     req("channel = Channel.SILENT_BROWSER" in mutant, "known_failure_visible_browser")
 except SystemExit:

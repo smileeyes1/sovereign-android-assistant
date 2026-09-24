@@ -17,7 +17,10 @@ object HakimEnterprisePolicy {
         val webAllowed: Boolean,
         val attachmentsAllowed: Boolean,
         val voiceAllowed: Boolean,
-        val diagnosticsAllowed: Boolean
+        val diagnosticsAllowed: Boolean,
+        val studentExternalAiAllowed: Boolean,
+        val studentExternalAttachmentsAllowed: Boolean,
+        val externalStudentDataAllowed: Boolean
     )
 
     fun current(context: Context): Policy {
@@ -30,8 +33,21 @@ object HakimEnterprisePolicy {
             webAllowed = b.getBoolean("allow_web", true),
             attachmentsAllowed = b.getBoolean("allow_attachments", true),
             voiceAllowed = b.getBoolean("allow_voice", true),
-            diagnosticsAllowed = b.getBoolean("allow_diagnostics", false)
+            diagnosticsAllowed = b.getBoolean("allow_diagnostics", false),
+            studentExternalAiAllowed = b.getBoolean("allow_student_external_ai", false),
+            studentExternalAttachmentsAllowed = b.getBoolean("allow_student_external_attachments", false),
+            externalStudentDataAllowed = b.getBoolean("allow_external_student_data", false)
         )
+    }
+
+
+    fun forcedEducationRole(context: Context): HakimEducationProfile.Role? {
+        val manager = context.getSystemService(RestrictionsManager::class.java)
+        val b: Bundle = manager?.applicationRestrictions ?: Bundle.EMPTY
+        if (b.isEmpty) return null
+        val raw = b.getString("education_role", "").orEmpty().trim()
+        if (raw.isBlank()) return null
+        return HakimEducationProfile.Role.values().firstOrNull { it.wire == raw }
     }
 
     fun blockReason(context: Context, capability: String): String? {

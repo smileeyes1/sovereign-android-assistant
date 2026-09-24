@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20203
-        versionName '3.0.3-multiformat-teacher-factory-v1-candidate'
+        versionCode 20204
+        versionName '3.0.4-education-roles-privacy-v1-candidate'
     }
 
     compileOptions {

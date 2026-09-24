@@ -18,6 +18,7 @@ import android.widget.TextView
 class UnifiedHomeActivity : Activity() {
     private lateinit var intelligenceStatus: TextView
     private lateinit var organizationStatus: TextView
+    private lateinit var educationStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,9 +57,20 @@ class UnifiedHomeActivity : Activity() {
         organizationStatus = TextView(this).apply {
             textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(12, 4, 12, 18)
+            setPadding(12, 4, 12, 8)
         }
         root.addView(organizationStatus)
+
+        educationStatus = TextView(this).apply {
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(12, 4, 12, 14)
+        }
+        root.addView(educationStatus)
+
+        root.addView(button("اختيار دوري التعليمي") {
+            showEducationRolePicker()
+        })
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
@@ -119,6 +131,37 @@ class UnifiedHomeActivity : Activity() {
         } else {
             "الوضع الشخصي — الصلاحيات والبيانات بأقل نطاق افتراضيًا."
         }
+
+        val role = HakimEducationProfile.current(this)
+        educationStatus.text = "الدور: " + role.arabicLabel +
+            if (HakimEnterprisePolicy.forcedEducationRole(this) != null) " — محدد من المؤسسة" else ""
+    }
+
+    private fun showEducationRolePicker() {
+        val forced = HakimEnterprisePolicy.forcedEducationRole(this)
+        if (forced != null) {
+            AlertDialog.Builder(this)
+                .setTitle("الدور التعليمي")
+                .setMessage("حددت المؤسسة هذا الدور: " + forced.arabicLabel)
+                .setPositiveButton("حسنًا", null)
+                .show()
+            return
+        }
+
+        val roles = HakimEducationProfile.Role.values()
+        val labels = roles.map { it.arabicLabel }.toTypedArray()
+        val current = HakimEducationProfile.current(this)
+        val selected = roles.indexOf(current).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle("اختر دورك التعليمي")
+            .setSingleChoiceItems(labels, selected) { dialog, which ->
+                HakimEducationProfile.set(this, roles[which])
+                dialog.dismiss()
+                refresh()
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     private fun testConnection() {
@@ -178,7 +221,8 @@ class UnifiedHomeActivity : Activity() {
             .setTitle("الخصوصية والأمان")
             .setMessage(
                 "يعالج حكيم ما يستطيع محليًا أولًا. لا تُرسل المرفقات أو النصوص إلى خدمة خارجية إلا عندما تحتاج المهمة ذلك، " +
-                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
+                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. بيانات الطلبة الحساسة تُمنع من الخروج افتراضيًا، " +
+                    "ووضع الطالب يمنع الذكاء الخارجي والمرفقات الخارجية ما لم تسمح المؤسسة صراحة. قد تفرض مؤسستك قيودًا إضافية."
             )
             .setPositiveButton("حسنًا", null)
             .show()

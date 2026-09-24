@@ -25,4 +25,26 @@
         android:title="السماح بالتشخيصات المتقدمة"
         android:restrictionType="bool"
         android:defaultValue="false" />
+    <restriction
+        android:key="education_role"
+        android:title="دور المستخدم التعليمي"
+        android:restrictionType="choice"
+        android:entries="@array/education_role_entries"
+        android:entryValues="@array/education_role_values"
+        android:defaultValue="general" />
+    <restriction
+        android:key="allow_student_external_ai"
+        android:title="السماح للطالب بالذكاء الخارجي"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="allow_student_external_attachments"
+        android:title="السماح للطالب بإرسال مرفقات خارجية"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="allow_external_student_data"
+        android:title="السماح بإرسال بيانات طلبة إلى خدمات خارجية"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
 </restrictions>

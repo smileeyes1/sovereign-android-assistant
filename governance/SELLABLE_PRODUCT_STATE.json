@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20203,
-  "candidate_name": "3.0.3-multiformat-teacher-factory-v1-candidate",
+  "candidate_version": 20204,
+  "candidate_name": "3.0.4-education-roles-privacy-v1-candidate",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,8 +31,8 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": 991,
-    "commit": "58c370fdc844e3a3c1e5866ade2b18f886cd602f",
+    "run_number": 997,
+    "commit": "aeebf586d6f42a307030a3c025fdc03307001031",
     "conclusion": "success"
   },
   "signed_candidate": {

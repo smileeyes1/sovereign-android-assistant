@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="education_role_entries">
+        <item>استخدام عام</item>
+        <item>معلم/ة</item>
+        <item>طالب/ة</item>
+        <item>إدارة مدرسية</item>
+        <item>إشراف تربوي</item>
+        <item>موظف/ة</item>
+        <item>ولي أمر</item>
+    </string-array>
+    <string-array name="education_role_values">
+        <item>general</item>
+        <item>teacher</item>
+        <item>student</item>
+        <item>school_admin</item>
+        <item>supervisor</item>
+        <item>staff</item>
+        <item>guardian</item>
+    </string-array>
+</resources>

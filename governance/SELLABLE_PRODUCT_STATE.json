@@ -31,9 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": null,
-    "commit": null,
-    "conclusion": "PENDING"
+    "run_number": 993,
+    "commit": "cc97eb7ca1945d04ac6fde65f1ed1cedd62c23e9",
+    "conclusion": "success"
   },
   "signed_candidate": {
     "file": null,

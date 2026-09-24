@@ -52,13 +52,13 @@ if "HakimNetworkGuardian.install(context)" not in boot:
 if 'android:name=".HakimNetworkGuardianJobService"' not in manifest:
     print("NETWORK_GUARDIAN_GATE=FAIL reason=job_not_manifested")
     sys.exit(1)
-if "versionCode 20109" not in gradle:
+if "versionCode 20110" not in gradle:
     print("NETWORK_GUARDIAN_GATE=FAIL reason=wrong_version")
     sys.exit(1)
 if "verify_20108_network_guardian.py" not in workflow:
     print("NETWORK_GUARDIAN_GATE=FAIL reason=ci_not_wired")
     sys.exit(1)
-if 'test "$VERSION_CODE" = "20109"' not in workflow:
+if 'test "$VERSION_CODE" = "20110"' not in workflow:
     print("NETWORK_GUARDIAN_GATE=FAIL reason=ci_version_not_pinned")
     sys.exit(1)
 

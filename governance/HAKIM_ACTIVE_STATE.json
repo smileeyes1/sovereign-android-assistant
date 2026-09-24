@@ -28,12 +28,12 @@
     "candidate": {
       "version_code": 20111,
       "branch": "feature/hakim-20111-self-improvement-loop-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
-      "source_ci_verified_code_commit": null,
-      "source_ci_run_number": null
+      "source_ci_verified_code_commit": "8e006b6f844aa59187fd763e8ce6aae6036a5680",
+      "source_ci_run_number": 925
     },
     "field_observed_current": {
       "observed_at": "2026-09-24",
@@ -97,8 +97,13 @@
     "current_field_source_mapping": "NOT_PROVEN",
     "automatic_downgrade": false,
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
-    "d1_gate": "REQUIRED",
+    "d1_gate": "REQUIRED_MATERIAL_NOT_AVAILABLE_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE"
+    "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
+    "last_source_ci": {
+      "run_number": 925,
+      "commit": "8e006b6f844aa59187fd763e8ce6aae6036a5680",
+      "conclusion": "success"
+    }
   }
 }

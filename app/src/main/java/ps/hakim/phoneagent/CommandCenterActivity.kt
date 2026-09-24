@@ -585,17 +585,31 @@ class CommandCenterActivity : Activity() {
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
+                        if (
+                            HakimProductOutput.requestsPdfArtifact(text) &&
+                            HakimProductOutput.looksLikeCapabilityRefusal(result.text) &&
+                            HakimLocalArtifactFactory.canHandle(this, text)
+                        ) {
+                            discardEmptyStreamingReply()
+                            HakimExecutiveLoop.record(
+                                this,
+                                HakimExecutiveLoop.Phase.ROUTING,
+                                "رفض نصي غير مقبول لمهمة ملف؛ تحويل إلى مصنع الملفات المحلي"
+                            )
+                            executeLocalArtifact(text)
+                            return@runOnUiThread
+                        }
                         HakimResiliencePolicy.recordSuccess(this, engine.id)
                         finishStreamingReply(result.text)
                         HakimExecutiveLoop.complete(
                             this,
-                            "عاد الرد من " + engine.displayName + " إلى محادثة حكيم نفسها"
+                            "عاد الرد النهائي إلى محادثة حكيم"
                         )
                         recordRoute("direct:" + engine.id, true)
                         command.setText("")
                         attachments.clear()
                         refreshAttachmentStatus()
-                        status.text = "اكتمل"
+                        status.text = "جاهز"
                     }
 
                     is HakimInferenceEngine.Result.NeedsAuthorization -> {
@@ -885,13 +899,13 @@ class CommandCenterActivity : Activity() {
 
     private fun renderStreamingReply() {
         val prefix = if (streamingBase.isBlank()) "" else streamingBase + "\n\n"
-        conversation.text = prefix + "حكيم:\n" + streamingBuffer.toString()
+        conversation.text = prefix + "حكيم:\n" + HakimProductOutput.clean(streamingBuffer.toString())
         scrollConversationToBottom()
     }
 
     private fun finishStreamingReply(finalText: String) {
         if (streamingBuffer.isEmpty() && finalText.isNotBlank()) {
-            streamingBuffer.append(finalText)
+            streamingBuffer.append(HakimProductOutput.clean(finalText))
             renderStreamingReply()
         }
         persistConversation()
@@ -929,7 +943,7 @@ class CommandCenterActivity : Activity() {
     private fun appendConversation(role: String, message: String) {
         if (!::conversation.isInitialized || message.isBlank()) return
         val current = conversation.text.toString().trim()
-        val entry = role + ":\n" + message.trim()
+        val visible = if (role == "حكيم") HakimProductOutput.clean(message) else message.trim()\n        val entry = role + ":\n" + visible
         val next = if (current.isBlank()) entry else current + "\n\n" + entry
         val kept = next.takeLast(12_000)
         conversation.text = kept

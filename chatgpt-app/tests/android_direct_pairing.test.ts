@@ -95,6 +95,14 @@ test("different stateless Android ids derive isolated channels",()=>{
 test("stable pairing routes derive credentials and do not depend on legacy store files",async()=>{
   const source=await fs.readFile(new URL("../src/index.ts",import.meta.url),"utf8");
   assert.match(source,/app\.get\("\/android\/legacy\/stable"/);
-  assert.match(source,/statelessLegacySession\(String\(req\.params\.id/);
-  assert.doesNotMatch(source,/stable\/:id.*legacyAndroidStore\.get/s);
+  const pageStart=source.indexOf('app.get("/android/legacy/stable/:id"');
+  const statusStart=source.indexOf('app.get("/android/legacy/stable/:id/status"');
+  assert.ok(pageStart>=0&&statusStart>pageStart);
+  const pageBlock=source.slice(pageStart,statusStart);
+  assert.match(pageBlock,/statelessLegacySession\(id\)/);
+  assert.doesNotMatch(pageBlock,/legacyAndroidStore\.get/);
+  const statusEnd=source.indexOf('app.get("/android/legacy"',statusStart+1);
+  const statusBlock=source.slice(statusStart,statusEnd>statusStart?statusEnd:undefined);
+  assert.match(statusBlock,/statelessLegacySession\(String\(req\.params\.id/);
+  assert.doesNotMatch(statusBlock,/legacyAndroidStore\.get/);
 });

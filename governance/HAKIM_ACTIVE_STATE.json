@@ -26,9 +26,9 @@
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20202,
-      "branch": "feature/hakim-20202-user-owned-free-factory-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20203,
+      "branch": "feature/hakim-20203-multiformat-teacher-factory-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -105,7 +105,7 @@
     }
   },
   "local_artifacts": {
-    "version": "LOCAL-PDF-2026-09-24-v2",
+    "version": "LOCAL-MULTIFORMAT-2026-09-24-v1",
     "source_integrated": true,
     "worksheet_addition_within_10": true,
     "local_before_external_models": true,
@@ -126,8 +126,8 @@
     "field_verified": false
   },
   "productization": {
-    "version": "PRODUCT-V1-2026-09-24-v3",
-    "candidate_version": 20202,
+    "version": "PRODUCT-V1-2026-09-24-v4",
+    "candidate_version": 20203,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -160,12 +160,34 @@
       "GOOGLE_SHEET"
     ],
     "local_deterministic_formats": [
-      "PDF"
+      "PDF",
+      "HTML",
+      "DOCX",
+      "PPTX",
+      "XLSX",
+      "PNG"
     ],
     "source_ci": {
       "run_number": 988,
       "commit": "b66cf68118273bf130ddc6c0c856529939bcc8e3",
       "conclusion": "success"
     }
+  },
+  "multi_format_factory": {
+    "version": "MULTIFORMAT-TEACHER-FACTORY-2026-09-24-v1",
+    "source_integrated": true,
+    "canonical_spec": "TEACHER-ARTIFACT-SPEC-2026-09-24-v1",
+    "local_source_formats": [
+      "PDF",
+      "HTML",
+      "DOCX",
+      "PPTX",
+      "XLSX",
+      "PNG"
+    ],
+    "office_packages_structurally_verified_before_save": true,
+    "same_semantic_spec_across_formats": true,
+    "field_verified": false,
+    "source_ci": null
   }
 }

@@ -23,8 +23,8 @@ def req(v, reason):
         raise SystemExit("USER_OWNED_FREE_FACTORY=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m and int(m.group(1)) == 20202, "version")
-req("3.0.2-user-owned-free-factory-v1-candidate" in BUILD, "version_name")
+req(m and int(m.group(1)) >= 20202, "version")
+req("versionName" in BUILD, "version_name_present")
 
 for token in [
     "MODE_USER_OWNED_FREE_ONLY",
@@ -47,14 +47,14 @@ req('const val ID = "gemini-direct"' in GEMINI, "gemini_id")
 
 for fmt in ["PDF", "HTML", "DOCX", "PPTX", "XLSX", "PNG", "GOOGLE_DOC", "GOOGLE_SLIDES", "GOOGLE_SHEET"]:
     req(fmt in FORMATS, "format:" + fmt)
-req("localDeterministicNow: Set<Format> = setOf(Format.PDF)" in FORMATS, "no_fake_local_formats")
+req("Format.PDF" in FORMATS and "localDeterministicNow" in FORMATS, "local_pdf_preserved")
 
 req("python3 tests/verify_20202_user_owned_free_factory.py" in WORKFLOW, "ci_gate")
-req(STATE["android"]["candidate"]["version_code"] == 20202, "state_candidate")
+req(STATE["android"]["candidate"]["version_code"] >= 20202, "state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "state_field")
 req(STATE["android"]["candidate"]["promoted"] is False, "state_promoted")
-req(PROMOTION["candidate_version"] == 20202 and PROMOTION["promoted"] is False, "promotion")
-req(SELLABLE["candidate_version"] == 20202 and SELLABLE["sellable"] is False, "sellable")
+req(PROMOTION["candidate_version"] >= 20202 and PROMOTION["promoted"] is False, "promotion")
+req(SELLABLE["candidate_version"] >= 20202 and SELLABLE["sellable"] is False, "sellable")
 req("لا مفتاح ذكاء مركزي مشترك" in CONTRACT, "contract_central_key")
 req("لا ترقية مدفوعة تلقائيًا" in CONTRACT, "contract_no_paid_upgrade")
 

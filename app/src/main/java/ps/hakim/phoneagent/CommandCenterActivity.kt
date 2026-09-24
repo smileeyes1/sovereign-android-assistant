@@ -321,6 +321,8 @@ class CommandCenterActivity : Activity() {
                 command.setText("")
                 recordRoute("local_response", true)
             }
+            HakimModelToolRouter.Channel.LOCAL_ARTIFACT ->
+                executeLocalArtifact(text)
             HakimModelToolRouter.Channel.DIRECT_MODEL ->
                 executeDirectModel(text, directed.instruction, decision.engineId)
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP ->
@@ -330,6 +332,57 @@ class CommandCenterActivity : Activity() {
             HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
             HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
         }
+    }
+
+    private fun executeLocalArtifact(text: String) {
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "إنشاء الملف محليًا داخل الهاتف دون OpenRouter أو نموذج خارجي"
+        )
+        refreshOperations()
+        status.text = "ينشئ PDF محليًا"
+
+        Thread {
+            val result = HakimLocalArtifactFactory.create(this, text)
+            runOnUiThread {
+                result.onSuccess { created ->
+                    appendConversation(
+                        "حكيم",
+                        "أنشأت ورقة العمل PDF محليًا وحفظتها في ${created.savedAt}. لا يحتاج هذا الطلب إلى OpenRouter."
+                    )
+                    HakimExecutiveLoop.complete(this, "تم إنشاء ملف PDF وحفظه محليًا")
+                    recordRoute("local_artifact_pdf", true)
+                    status.text = "اكتمل PDF"
+                    command.setText("")
+                    refreshOperations()
+
+                    if (created.uri != null) {
+                        val view = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(created.uri, created.kind)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        runCatching { startActivity(view) }
+                            .onFailure {
+                                toast("تم حفظ PDF في ${created.savedAt}")
+                            }
+                    }
+                }.onFailure { error ->
+                    appendConversation(
+                        "حكيم",
+                        "تعذر إنشاء PDF محليًا: " + (error.message ?: "خطأ غير معروف")
+                    )
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        "فشل مصنع الملفات المحلي؛ لم يُفتح OAuth ولم يُرسل الطلب خارجيًا"
+                    )
+                    recordRoute("local_artifact_pdf", false)
+                    status.text = "تعذر إنشاء PDF"
+                    refreshOperations()
+                }
+            }
+        }.start()
     }
 
     private fun beginFreeEngineSetup(text: String) {

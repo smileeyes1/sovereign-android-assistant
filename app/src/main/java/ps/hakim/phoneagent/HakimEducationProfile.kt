@@ -26,7 +26,7 @@ object HakimEducationProfile {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_ROLE, Role.GENERAL.wire)
             .orEmpty()
-        return Role.entries.firstOrNull { it.wire == raw } ?: Role.GENERAL
+        return Role.values().firstOrNull { it.wire == raw } ?: Role.GENERAL
     }
 
     fun set(context: Context, role: Role) {

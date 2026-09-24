@@ -38,7 +38,10 @@ object HakimLocalArtifactFactory {
 
     fun canHandle(context: Context, prompt: String): Boolean {
         if (explicitAdditionWithinTen(prompt)) return true
-        if (!isPdfWorksheetFollowUp(prompt)) return false
+
+        val directPdfAddition = isPdfAdditionWorksheet(prompt)
+        val contextualFollowUp = isPdfWorksheetFollowUp(prompt)
+        if (!directPdfAddition && !contextualFollowUp) return false
 
         val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
             .getString("recent", "")
@@ -46,7 +49,7 @@ object HakimLocalArtifactFactory {
             .takeLast(8_000)
 
         if (explicitAdditionWithinTen(recent)) return true
-        if (isPdfAdditionWorksheet(prompt) && mentionsAdditionWithinTen(recent)) return true
+        if (directPdfAddition && mentionsAdditionWithinTen(recent)) return true
 
         val lastKind = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(LAST_KIND, "")

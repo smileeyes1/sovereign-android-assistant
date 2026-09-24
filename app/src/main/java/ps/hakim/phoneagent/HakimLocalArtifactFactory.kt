@@ -46,6 +46,7 @@ object HakimLocalArtifactFactory {
             .takeLast(8_000)
 
         if (explicitAdditionWithinTen(recent)) return true
+        if (isPdfAdditionWorksheet(prompt) && mentionsAdditionWithinTen(recent)) return true
 
         val lastKind = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(LAST_KIND, "")
@@ -67,9 +68,24 @@ object HakimLocalArtifactFactory {
     private fun explicitAdditionWithinTen(text: String): Boolean {
         val q = normalize(text)
         val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
-        val addition = q.contains("الجمع") || q.contains("جمع")
-        val withinTen = listOf("ضمن ١٠", "ضمن 10", "حتى ١٠", "حتى 10", "إلى ١٠", "الى ١٠").any { q.contains(it) }
-        return worksheet && addition && withinTen
+        val addition = q.contains("الجمع") || q.contains("جمع") || q.contains("addition") || q.contains("joining")
+        return worksheet && addition && mentionsAdditionWithinTen(q)
+    }
+
+    private fun mentionsAdditionWithinTen(text: String): Boolean {
+        val q = normalize(text)
+        return listOf(
+            "ضمن ١٠", "ضمن 10", "حتى ١٠", "حتى 10", "إلى ١٠", "الى ١٠",
+            "within 10", "joining within 10", "addition within 10"
+        ).any { q.contains(it) }
+    }
+
+    private fun isPdfAdditionWorksheet(text: String): Boolean {
+        val q = normalize(text)
+        val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
+        val addition = q.contains("الجمع") || q.contains("جمع") || q.contains("addition") || q.contains("joining")
+        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "للتحميل", "للطباعة", "الطباعة").any { q.contains(it) }
+        return worksheet && addition && pdf
     }
 
     private fun isPdfWorksheetFollowUp(text: String): Boolean {

@@ -71,6 +71,9 @@ class CommandCenterActivity : Activity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (HakimGoogleWorkspaceAuthorization.handleActivityResult(this, requestCode, resultCode, data)) {
+            return
+        }
         if (requestCode == SPEECH_REQUEST) {
             if (resultCode == RESULT_OK) {
                 val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
@@ -333,6 +336,8 @@ class CommandCenterActivity : Activity() {
             }
             HakimModelToolRouter.Channel.LOCAL_ARTIFACT ->
                 executeLocalArtifact(text)
+            HakimModelToolRouter.Channel.GOOGLE_WORKSPACE ->
+                executeGoogleWorkspace(text)
             HakimModelToolRouter.Channel.POLICY_BLOCKED -> {
                 appendConversation("حكيم", decision.reason)
                 HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, decision.reason)
@@ -521,6 +526,98 @@ class CommandCenterActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun executeGoogleWorkspace(text: String) {
+        val target = HakimGoogleWorkspaceIntent.target(text)
+        if (target == null) {
+            appendConversation("حكيم", "لم أستطع تحديد نوع Google Workspace المطلوب.")
+            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "تعذر تحديد هدف Workspace")
+            recordRoute("google_workspace", false)
+            status.text = "تعذر تحديد الصيغة"
+            refreshOperations()
+            return
+        }
+
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "Google Workspace: إنشاء المصدر محليًا أولًا ثم طلب drive.file لحساب المستخدم"
+        )
+        status.text = "يجهّز Google Workspace…"
+        refreshOperations()
+
+        HakimGoogleWorkspaceAuthorization.authorize(this) { auth ->
+            runOnUiThread {
+                auth.onSuccess { token ->
+                    Thread {
+                        val result = runCatching {
+                            val localPrompt = text + target.localSourceHint
+                            val created = HakimMultiFormatArtifactFactory.createAll(this, localPrompt)
+                                .getOrThrow()
+                                .firstOrNull()
+                                ?: error("لم يُنشأ المصدر المحلي.")
+                            val uploaded = HakimGoogleDriveBridge.upload(
+                                this,
+                                token,
+                                created,
+                                target
+                            ).getOrThrow()
+                            created to uploaded
+                        }
+
+                        runOnUiThread {
+                            result.onSuccess { pair ->
+                                val created = pair.first
+                                val uploaded = pair.second
+                                val link = uploaded.webViewLink?.let { "\n" + it }.orEmpty()
+                                appendConversation(
+                                    "حكيم",
+                                    "تم إنشاء المصدر محليًا ثم حفظه في حساب Google الخاص بك: " +
+                                        uploaded.name + link
+                                )
+                                HakimExecutiveLoop.complete(
+                                    this,
+                                    "Google Workspace أعاد معرّف ملف صالح بعد رفع المصدر المحلي " +
+                                        created.displayName
+                                )
+                                recordRoute("google_workspace", true)
+                                status.text = "اكتمل Google Workspace"
+                                command.setText("")
+                                refreshOperations()
+                            }.onFailure { error ->
+                                appendConversation(
+                                    "حكيم",
+                                    "تعذر إكمال Google Workspace: " +
+                                        (error.message ?: "تعذر تنفيذ الرفع.")
+                                )
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.GATED,
+                                    "تعذر رفع الملف إلى حساب Google؛ بقي المصدر المحلي محفوظًا"
+                                )
+                                recordRoute("google_workspace", false)
+                                status.text = "تعذر Google Workspace"
+                                refreshOperations()
+                            }
+                        }
+                    }.start()
+                }.onFailure { error ->
+                    appendConversation(
+                        "حكيم",
+                        "يحتاج Google Workspace موافقتك على الوصول المحدود للملفات التي ينشئها حكيم."
+                    )
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        error.message ?: "لم تكتمل موافقة Google"
+                    )
+                    recordRoute("google_workspace", false)
+                    status.text = "لم تكتمل موافقة Google"
+                    refreshOperations()
+                }
+            }
+        }
     }
 
     private fun beginFreeEngineSetup(text: String) {

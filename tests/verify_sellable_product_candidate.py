@@ -17,8 +17,8 @@ def req(v,reason):
     if not v: raise SystemExit("SELLABLE_PRODUCT_CANDIDATE=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))>=20200,"version")
-req("3.0.0-product-v1-candidate" in BUILD,"version_name")
+req(m and int(m.group(1))>=20201,"version")
+req("3.0.1-product-v1-candidate" in BUILD,"version_name")
 
 # Primary surface must be user-facing, not an engineering console.
 req('actionButton("المتصفح")' not in CENTER,"browser_button_visible")

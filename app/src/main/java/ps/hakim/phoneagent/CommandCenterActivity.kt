@@ -466,47 +466,57 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(
             this,
             HakimExecutiveLoop.Phase.EXECUTING,
-            "إنشاء الملف محليًا داخل الهاتف دون OpenRouter أو نموذج خارجي"
+            "إنشاء الملف أو الملفات محليًا داخل الهاتف من مواصفة واحدة دون نموذج خارجي"
         )
         refreshOperations()
-        status.text = "يجهّز الملف…"
+        status.text = "يجهّز الملفات…"
 
         Thread {
-            val result = HakimLocalArtifactFactory.create(this, text)
+            val result: Result<List<HakimLocalArtifactFactory.Created>> =
+                if (HakimMultiFormatArtifactFactory.canHandle(this, text)) {
+                    HakimMultiFormatArtifactFactory.createAll(this, text)
+                } else {
+                    HakimLocalArtifactFactory.create(this, text).map { listOf(it) }
+                }
+
             runOnUiThread {
                 result.onSuccess { created ->
+                    val details = created.joinToString("\n") { "• " + it.displayName + " — " + it.savedAt }
                     appendConversation(
                         "حكيم",
-                        HakimProductUx.completionMessage("pdf", created.savedAt)
+                        (if (created.size == 1) "تم إنشاء الملف وحفظه محليًا:" else "تم إنشاء الملفات وحفظها محليًا:") +
+                            "\n" + details
                     )
-                    HakimExecutiveLoop.complete(this, "تم إنشاء ملف PDF وحفظه محليًا")
-                    recordRoute("local_artifact_pdf", true)
-                    status.text = "اكتمل PDF"
+                    HakimExecutiveLoop.complete(
+                        this,
+                        "أُنشئت نفس المادة من المصدر الدلالي نفسه إلى " +
+                            created.joinToString(", ") { it.displayName.substringAfterLast('.', "") }
+                    )
+                    val pdfOnly = created.size == 1 && created.first().kind == "application/pdf"
+                    recordRoute(if (pdfOnly) "local_artifact_pdf" else "local_artifact_multiformat", true)
+                    status.text = if (created.size == 1) "اكتمل الملف" else "اكتملت الملفات"
                     command.setText("")
                     refreshOperations()
 
-                    if (created.uri != null) {
+                    created.firstOrNull { it.uri != null }?.let { first ->
                         val view = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(created.uri, created.kind)
+                            setDataAndType(first.uri, first.kind)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         runCatching { startActivity(view) }
-                            .onFailure {
-                                toast("تم حفظ PDF في ${created.savedAt}")
-                            }
                     }
                 }.onFailure { error ->
                     appendConversation(
                         "حكيم",
-                        "تعذر إنشاء PDF محليًا: " + (error.message ?: "خطأ غير معروف")
+                        "تعذر إنشاء الملفات محليًا: " + (error.message ?: "خطأ غير معروف")
                     )
                     HakimExecutiveLoop.record(
                         this,
                         HakimExecutiveLoop.Phase.GATED,
                         "فشل مصنع الملفات المحلي؛ لم يُفتح OAuth ولم يُرسل الطلب خارجيًا"
                     )
-                    recordRoute("local_artifact_pdf", false)
-                    status.text = "تعذر إنشاء PDF"
+                    recordRoute("local_artifact_multiformat", false)
+                    status.text = "تعذر إنشاء الملفات"
                     refreshOperations()
                 }
             }

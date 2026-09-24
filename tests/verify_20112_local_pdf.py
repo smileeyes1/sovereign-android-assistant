@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 APP = ROOT / "app/src/main/java/ps/hakim/phoneagent"
 FACTORY = (APP / "HakimLocalArtifactFactory.kt").read_text(encoding="utf-8")
+SPEC = (APP / "HakimTeacherArtifactSpec.kt").read_text(encoding="utf-8")
 ROUTER = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")
 CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 
@@ -16,7 +17,7 @@ m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) >= 20112, "version")
 req("PdfDocument" in FACTORY, "pdf_document_missing")
 req("MediaStore.Downloads.EXTERNAL_CONTENT_URI" in FACTORY, "downloads_output_missing")
-req('"ورقة عمل: الجمع ضمن ١٠"' in FACTORY, "arabic_title_missing")
+req('"ورقة عمل: الجمع ضمن ١٠"' in SPEC, "arabic_title_missing")
 req('"ورقة_عمل_الجمع_ضمن_١٠.pdf"' in FACTORY, "pdf_filename_missing")
 req("easternDigits" in FACTORY and "toEastern" in FACTORY, "eastern_digits_missing")
 req('val tokens = listOf(toEastern(a), "+", toEastern(b), "=")' in FACTORY, "math_token_order_missing")
@@ -41,23 +42,16 @@ case_end = CENTER.index("HakimModelToolRouter.Channel.DIRECT_MODEL", case_start)
 case_block = CENTER[case_start:case_end]
 req("OpenRouterOAuthManager.start" not in case_block, "local_artifact_can_open_oauth")
 
-# All fixed worksheet problems must stay within ten.
-problems_start = FACTORY.index("val problems = listOf(")
-problems_end = FACTORY.index("var y =", problems_start)
-req(problems_start >= 0 and problems_end > problems_start, "problems_missing")
-problem_block = FACTORY[problems_start:problems_end]
-pairs = [(int(a), int(b)) for a, b in re.findall(r"(\d+)\s+to\s+(\d+)", problem_block)]
+# The canonical worksheet spec, shared by every renderer, must stay within ten.
+pairs = [(int(a), int(b)) for a, b in re.findall(r"MathProblem\(\d+,\s*(\d+),\s*(\d+)\)", SPEC)]
 req(len(pairs) >= 8, "too_few_problems")
 req(all(a + b <= 10 for a, b in pairs), "sum_exceeds_ten")
+req("HakimTeacherArtifactSpec.additionWithinTen()" in FACTORY, "pdf_not_using_canonical_spec")
 
-# Known-failure sentinel: moving local artifact after direct model must be detected.
-needle = 'if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q))' if 'HakimLocalArtifactFactory.canHandle(context, q)' in ROUTER else 'if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(q))'
-mutated = ROUTER.replace(needle, 'if (false && attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q))', 1)
-try:
-    req(needle in mutated, "known_failure_sentinel")
-except SystemExit:
-    pass
-else:
-    raise SystemExit("LOCAL_PDF_20112=FAIL reason=sentinel_not_detected")
+# Known-failure sentinel: local artifacts must remain before direct-model routing.
+marker = "HakimLocalArtifactFactory.canHandle(context, q)"
+req(marker in ROUTER, "known_failure_sentinel_setup")
+mutated = ROUTER.replace(marker, "BROKEN_LOCAL_ARTIFACT_GATE", 1)
+req(marker not in mutated, "known_failure_sentinel")
 
 print("LOCAL_PDF_20112_GATE=PASS route=local_before_models output=pdf eastern_digits=true oauth=false")

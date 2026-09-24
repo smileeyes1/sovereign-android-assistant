@@ -146,3 +146,20 @@ export async function pollLegacyResult(s:LegacyAndroidSession,requestId:string|u
   }
   return null;
 }
+
+
+export async function probeNtfyIpv4(){
+  const topic="hakim_diag_"+randomSecret(8);
+  const started=Date.now();
+  try{
+    const response=await httpsText("https://ntfy.sh/"+encodeURIComponent(topic),{
+      method:"POST",
+      headers:{"Content-Type":"text/plain; charset=utf-8"},
+      body:"hakim-ipv4-probe",
+      timeoutMs:5_000
+    });
+    return {ok:response.status>=200&&response.status<300,status:response.status,latency_ms:Date.now()-started,body:response.body.slice(0,300)};
+  }catch(e){
+    return {ok:false,status:0,latency_ms:Date.now()-started,error:e instanceof Error?e.message:String(e)};
+  }
+}

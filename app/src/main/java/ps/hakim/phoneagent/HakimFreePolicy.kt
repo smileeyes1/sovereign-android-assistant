@@ -33,7 +33,7 @@ object HakimFreePolicy {
         if (!freeOnly(context)) return true
         return when (engineId) {
             OpenRouterFreeEngine.ID -> true
-            "gemini-direct" -> geminiFreeTierConfirmed(context)
+            GeminiDirectEngine.ID -> geminiFreeTierConfirmed(context)
             else -> false
         }
     }

@@ -221,3 +221,31 @@ export function statelessLegacySession(id:string):LegacyAndroidSession{
 export function newStatelessLegacyId(){
   return randomSecret(32);
 }
+
+
+export async function pollLegacyHealth(s:LegacyAndroidSession,maxAgeMs=120_000){
+  const u=new URL("https://ntfy.sh/"+encodeURIComponent(s.resultTopic)+"/json");
+  u.searchParams.set("poll","1");
+  u.searchParams.set("since","10m");
+  const response=await httpsText(u.toString(),{timeoutMs:8_000});
+  if(response.status<200||response.status>=300) return null;
+  const now=Date.now();
+  let latest:any=null;
+  let latestTime=0;
+  for(const line of response.body.split("\n")){
+    if(!line.trim()) continue;
+    try{
+      const evt=JSON.parse(line);
+      const value=JSON.parse(String(evt.message??""));
+      if(!verifyChunk(s,value)) continue;
+      const raw=String(value.data??"");
+      const parsed=JSON.parse(raw);
+      if(parsed?.status!=="health") continue;
+      const time=Number(parsed?.time??0);
+      if(!Number.isFinite(time)||time<=0||Math.abs(now-time)>maxAgeMs) continue;
+      if(parsed?.service_connected!==true) continue;
+      if(time>latestTime){ latest=parsed; latestTime=time; }
+    }catch{}
+  }
+  return latest;
+}

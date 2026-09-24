@@ -58,6 +58,7 @@ jobs:
           python3 tests/verify_20111_self_improvement_loop.py
           python3 tests/verify_20112_local_pdf.py
           python3 tests/verify_20113_contextual_pdf.py
+          python3 tests/verify_20114_silent_tools.py
           python3 tests/verify_active_state_consistency.py
           python3 tests/verify_product_v1_candidate_gate.py
           set +e
@@ -106,7 +107,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20113"
+          test "$VERSION_CODE" = "20114"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

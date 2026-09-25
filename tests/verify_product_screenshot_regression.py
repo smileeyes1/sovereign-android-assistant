@@ -27,6 +27,8 @@ for token in [
     req(token in OUT,"output:"+token)
 
 req('HakimProductOutput.clean(streamingBuffer.toString())' in CENTER,"stream_not_sanitized")
+req('unwrapStructuredPayload' in OUT and 'JSONObject(t)' in OUT,"json_html_wrapper_not_unwrapped")
+req('HakimProductOutput.containsRawMarkup(saved)' in CENTER,"persisted_raw_markup_not_migrated")
 req('if (role == "حكيم") HakimProductOutput.clean(message)' in CENTER,"messages_not_sanitized")
 req('HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"pdf_acceptance_missing")
 req('val artifactMode = HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"artifact_mode_missing")

@@ -57,7 +57,6 @@ object HakimArtifactPipeline {
             .firstOrNull { block ->
                 topicTokens.isEmpty() || topicTokens.any { token -> block.contains(token, ignoreCase = true) }
             }
-            ?: assistantBlocks.lastOrNull()
             ?: return null
 
         val validated = validateContent(request, best).getOrNull() ?: return null

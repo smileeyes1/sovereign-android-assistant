@@ -57,31 +57,6 @@ object HakimCapabilityKernel {
         return true
     }
 
-    fun grantPersistent(context: Context, capabilityId: String, target: String): Boolean {
-        if (capabilityId != "install_candidate") return false
-        if (builtIns.none { it.id == capabilityId }) return false
-        val key = grantKey(capabilityId, target)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putBoolean(key + "_persistent", true)
-            .putLong(key + "_granted_at", System.currentTimeMillis())
-            .apply()
-        return true
-    }
-
-    fun revokePersistent(context: Context, capabilityId: String, target: String) {
-        val key = grantKey(capabilityId, target)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .remove(key + "_persistent")
-            .remove(key + "_granted_at")
-            .apply()
-    }
-
-    fun hasPersistentGrant(context: Context, capabilityId: String, target: String): Boolean {
-        val key = grantKey(capabilityId, target)
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(key + "_persistent", false)
-    }
-
     /**
      * القرار: allow للأعمال المحلية منخفضة الأثر فقط، gate للحساسة/غير القابلة للعكس،
      * deny للقدرة غير المعروفة. لا يوجد fallback إلى سماح.
@@ -95,7 +70,6 @@ object HakimCapabilityKernel {
         val now = System.currentTimeMillis()
         val onceUntil = prefs.getLong(key + "_once_until", 0L)
         val oneTimeGrant = onceUntil >= now
-        val persistentGrant = prefs.getBoolean(key + "_persistent", false)
 
         val sensitiveProbe = (target + " " + detail).lowercase()
         val containsSecret = Regex(
@@ -108,7 +82,7 @@ object HakimCapabilityKernel {
 
         val verdict = when {
             containsSecret && !oneTimeGrant -> "gate"
-            cap.sensitive || !cap.reversible -> if (oneTimeGrant || persistentGrant) "allow" else "gate"
+            cap.sensitive || !cap.reversible -> if (oneTimeGrant) "allow" else "gate"
             else -> "allow"
         }
         val reason = when {
@@ -116,7 +90,6 @@ object HakimCapabilityKernel {
             verdict == "gate" && containsSecret -> "sensitive_material_requires_explicit_once"
             verdict == "gate" -> "high_impact_or_irreversible"
             oneTimeGrant -> "explicit_user_grant_once"
-            persistentGrant -> "explicit_user_grant_persistent"
             else -> "low_impact_reversible"
         }
         return decision(context, capabilityId, target, verdict, reason, if (containsSecret) "[redacted]" else detail)

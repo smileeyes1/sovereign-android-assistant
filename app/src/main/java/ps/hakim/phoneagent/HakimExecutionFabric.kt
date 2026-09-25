@@ -81,7 +81,7 @@ object HakimExecutionFabric {
         val adbPaired = prefs.getBoolean("local_adb_paired", false)
 
         val legacyOnline = legacyConfigured && HakimService.connected
-        val secureOnline = secureConfigured && HakimUnifiedRelay.isConnected()
+        val secureOnline = secureConfigured && HakimUnifiedRelay.isFreshConnected(app)
         val adbOnline = adbPaired && prefs.getBoolean("local_adb_connected", false)
 
         val onlinePaths = JSONArray()
@@ -95,9 +95,12 @@ object HakimExecutionFabric {
         if (adbPaired) configuredPaths.put("local_adb")
 
         val online = onlinePaths.length() > 0
+        val pendingOutbox = HakimRelayOutbox.pendingCount(app)
         val state = when {
             prefs.getBoolean("pairing_disabled_by_user", false) -> "DISABLED_BY_USER"
+            online && configuredPaths.length() > 1 && onlinePaths.length() < configuredPaths.length() -> "DEGRADED"
             online -> "ONLINE"
+            pendingOutbox > 0 -> "OFFLINE_QUEUED"
             configuredPaths.length() == 0 -> "UNCONFIGURED"
             else -> "RECOVERING"
         }
@@ -117,6 +120,9 @@ object HakimExecutionFabric {
             .put("secure_relay_configured", secureConfigured)
             .put("secure_relay_running", HakimUnifiedRelay.isRunning())
             .put("secure_relay_connected", secureOnline)
+            .put("secure_relay_socket_open", HakimUnifiedRelay.isConnected())
+            .put("relay_outbox_pending", pendingOutbox)
+            .put("connectivity", HakimConnectivityState.status(app))
             .put("legacy_configured", legacyConfigured)
             .put("legacy_service_running", HakimService.running)
             .put("legacy_connected", legacyOnline)
@@ -128,5 +134,7 @@ object HakimExecutionFabric {
             .put("last_start_error", prefs.getString("execution_fabric_last_start_error", ""))
             .put("online_requires_live_path", true)
             .put("single_path_failure_does_not_close_goal", true)
+            .put("offline_store_and_forward", true)
+            .put("freshness_lease_required", true)
     }
 }

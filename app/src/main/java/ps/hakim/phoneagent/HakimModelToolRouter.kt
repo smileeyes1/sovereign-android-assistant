@@ -165,19 +165,13 @@ object HakimModelToolRouter {
             )
         }
 
-        if (HakimFreePolicy.freeOnly(context)) {
-            return Decision(
-                channel = Channel.FREE_ENGINE_SETUP,
-                provider = null,
-                fallbacks = emptyList(),
-                reason = "لا يوجد محرك مجاني مباشر مهيأ؛ يتوقف حكيم مغلقًا بدل فتح تطبيق نموذج خارجي أو إنشاء تكلفة."
-            )
-        }
-
         val installed = providers.filter { p ->
             p.packageName?.let { isInstalled(context, it) } == true
         }
 
+        // An attachment is an explicit user-selected payload. In FREE_ONLY, handing that payload
+        // to an already-installed provider app uses the user's own account/session and does not
+        // silently create a paid API dependency. This remains an external handoff, never task completion.
         if (attachments.isNotEmpty()) {
             val preferred = bestObservedProvider(context, installed)
             if (preferred != null) {
@@ -185,15 +179,24 @@ object HakimModelToolRouter {
                     channel = Channel.PROVIDER_APP,
                     provider = preferred,
                     fallbacks = providers.filterNot { it.id == preferred.id },
-                    reason = "هناك مرفقات، وتوجد قناة تطبيق مثبتة تستطيع استلام URI بصلاحية قراءة محدودة."
+                    reason = "لا يوجد محرك داخلي مناسب للمرفق؛ توجد قناة تطبيق مثبتة بحساب المستخدم تستطيع استلام URI بصلاحية قراءة محدودة دون افتراض API مدفوع."
                 )
             }
             return Decision(
                 channel = Channel.SYSTEM_SHARE,
                 provider = null,
                 fallbacks = providers,
-                reason = "هناك مرفقات ولا توجد قناة مزود مثبتة موثقة؛ يستخدم حكيم مشاركة أندرويد الآمنة لتسليمها لتطبيق متوافق.",
+                reason = "لا يوجد محرك داخلي مناسب للمرفق ولا تطبيق مزود مثبت موثوق؛ يستخدم حكيم مشاركة أندرويد المحدودة بدل إسقاط المرفق.",
                 requiresUserChoice = true
+            )
+        }
+
+        if (HakimFreePolicy.freeOnly(context)) {
+            return Decision(
+                channel = Channel.FREE_ENGINE_SETUP,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "لا يوجد محرك مجاني مباشر مهيأ؛ يتوقف حكيم مغلقًا بدل فتح تطبيق نموذج خارجي للمحادثة العادية أو إنشاء تكلفة."
             )
         }
 

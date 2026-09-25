@@ -168,6 +168,9 @@ object HakimLocalArtifactFactory {
         val content = HakimProductOutput.clean(rawContent).trim()
         require(content.isNotBlank()) { "لا يوجد محتوى صالح لإنشاء PDF." }
         require(!HakimProductOutput.containsRawMarkup(content)) { "بقيت وسوم خام بعد التنظيف." }
+        require(!HakimProductOutput.looksLikeManualConversionInstructions(content)) {
+            "المحتوى يصف تحويلًا يدويًا بدل أن يكون مستندًا نهائيًا."
+        }
 
         val displayName = "حكيم_مستند.pdf"
         val document = PdfDocument()

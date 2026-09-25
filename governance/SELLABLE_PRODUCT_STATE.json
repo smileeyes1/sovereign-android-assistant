@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20202,
-  "candidate_name": "3.0.2-product-v1-candidate",
+  "candidate_version": 20206,
+  "candidate_name": "3.0.6-verified-teacher-artifacts-v1-candidate",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,11 +31,15 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": 1013,
-    "commit": "051e3bac7e80ed83d2105751ebd79586734c8780",
-    "conclusion": "success"
+    "run_number": null,
+    "commit": null,
+    "conclusion": "pending"
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
-  "generic_pdf_fallback": true
+  "generic_pdf_fallback": true,
+  "structured_teacher_artifacts": true,
+  "subtraction_within_10_source_verified": true,
+  "worksheet_generic_pdf_fallback": false,
+  "field_bad_dump_regression_blocked_in_source": true
 }

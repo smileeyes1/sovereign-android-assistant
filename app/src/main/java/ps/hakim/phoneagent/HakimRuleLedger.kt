@@ -125,7 +125,7 @@ object HakimRuleLedger {
             Regex(
                 "(?i)(password|passcode|secret|token|api[_ -]?key|access[_ -]?key|كلمة\\s*المرور|رمز\\s*الدخول|رمز\\s*التحقق|مفتاح\\s*(?:api|واجهة|الوصول))\\s*[:=]\\s*[^\\s,;]+"
             ),
-            "$1=[محجوب]"
+            "\$1=[محجوب]"
         )
 
         // Common API/token shapes and long opaque credentials.
@@ -138,7 +138,7 @@ object HakimRuleLedger {
         // Remove sensitive query values while retaining the rule context.
         s = s.replace(
             Regex("(?i)([?&](?:token|key|secret|password|code)=)[^&#\\s]+"),
-            "$1[محجوب]"
+            "\$1[محجوب]"
         )
 
         return s.replace(Regex("\\s+"), " ").trim()

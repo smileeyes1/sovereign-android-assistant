@@ -382,7 +382,7 @@ class CommandCenterActivity : Activity() {
             )
             refreshOperations()
             status.text = "يستخدم تمثيلًا متحققًا…"
-            val verifiedInstruction = (directed.instruction + intake.modelEnvelope()).take(120_000)
+            val verifiedInstruction = directed.instruction + intake.modelEnvelope()
             executeDirectModel(
                 text = text,
                 instruction = verifiedInstruction,

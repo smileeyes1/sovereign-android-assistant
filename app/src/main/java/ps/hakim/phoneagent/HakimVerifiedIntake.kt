@@ -61,6 +61,8 @@ object HakimVerifiedIntake {
                 append(p.displayName)
                 append(" | ")
                 append(p.mimeType)
+                append(" | detected=")
+                append(p.detectedContentKind)
                 append(" | bytes=")
                 append(p.verifiedBytes)
                 append(" | sha256=")

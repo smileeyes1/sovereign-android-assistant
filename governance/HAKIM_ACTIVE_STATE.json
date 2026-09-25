@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20202,
-      "commit": "31a6366ad092ea4ff108bb5782f8d671ef3568ee",
-      "ci_run_number": 1014,
+      "version_code": 20206,
+      "commit": "f6a87d000936b248faee3fb40129f22a88ed720a",
+      "ci_run_number": 1015,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20206,
-      "branch": "feature/hakim-20206-verified-teacher-artifacts-v1",
+      "version_code": 20207,
+      "branch": "feature/hakim-20207-universal-artifact-pipeline-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,13 +99,13 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1014,
-      "commit": "31a6366ad092ea4ff108bb5782f8d671ef3568ee",
+      "run_number": 1015,
+      "commit": "f6a87d000936b248faee3fb40129f22a88ed720a",
       "conclusion": "success"
     }
   },
   "local_artifacts": {
-    "version": "VERIFIED-TEACHER-ARTIFACTS-2026-09-25-v1",
+    "version": "UNIVERSAL-ARTIFACT-PIPELINE-2026-09-25-v1",
     "source_integrated": true,
     "worksheet_addition_within_10": true,
     "local_before_external_models": true,
@@ -116,10 +116,15 @@
     "last_artifact_memory": true,
     "worksheet_subtraction_within_10": true,
     "worksheet_mixed_within_10": true,
-    "structured_spec_required": true,
-    "worksheet_generic_pdf_fallback": false,
+    "structured_spec_required": false,
+    "worksheet_generic_pdf_fallback": true,
     "raw_model_dump_forbidden": true,
-    "manual_conversion_instructions_forbidden": true
+    "manual_conversion_instructions_forbidden": true,
+    "universal_artifact_pipeline": true,
+    "content_render_separation": true,
+    "same_file_pdf_verification": true,
+    "generic_topic_support": true,
+    "observed_number_one_failure_root_fixed_in_source": true
   },
   "tool_orchestration": {
     "version": "SILENT-TOOLS-2026-09-24-v1",
@@ -133,7 +138,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v2",
-    "candidate_version": 20206,
+    "candidate_version": 20207,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -143,12 +148,13 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "45f33dd36488199bfbc5cf9048d78a6ea78204c5e1f8ee5cafac103364808275",
-    "signed_candidate_d1_verified": true,
+    "signed_candidate_sha256": null,
+    "signed_candidate_d1_verified": false,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
-    "worksheet_generic_pdf_fallback": false,
-    "field_screenshot_failure_2026_09_25": "BLOCKED_BY_STRUCTURED_FACTORY"
+    "worksheet_generic_pdf_fallback": true,
+    "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
+    "universal_artifact_pipeline": true
   }
 }

@@ -30,7 +30,9 @@ object HakimUnifiedRelay {
     const val PREFS = "hakim"
     const val KEY_TOPIC = "relay_topic"
     const val KEY_RESULT_TOPIC = "relay_result_topic"
+    /** Legacy plaintext preference key retained only for one-time migration. */
     const val KEY_RELAY_KEY = "relay_hmac_key"
+    private const val SECRET_RELAY_KEY = "hakim-secure-relay-key-v1"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
     private const val ACTION_APPROVE = "ps.hakim.stable.REMOTE_APPROVE"
@@ -76,24 +78,44 @@ object HakimUnifiedRelay {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return p.getString(KEY_TOPIC, null) == topic &&
             p.getString(KEY_RESULT_TOPIC, null) == resultTopic &&
-            p.getString(KEY_RELAY_KEY, null) == relayKey
+            relayKey(context) == relayKey
     }
 
     fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?): Boolean {
         if (!validConfigurationInput(topic, resultTopic, relayKey)) return false
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_TOPIC, topic)
-            .putString(KEY_RESULT_TOPIC, resultTopic)
-            .putString(KEY_RELAY_KEY, relayKey)
-            .putBoolean("secure_relay_configured", true)
-            .commit()
+        return runCatching {
+            HakimSecretStore.put(context, SECRET_RELAY_KEY, relayKey!!)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_TOPIC, topic)
+                .putString(KEY_RESULT_TOPIC, resultTopic)
+                .remove(KEY_RELAY_KEY)
+                .putBoolean("secure_relay_configured", true)
+                .commit()
+        }.getOrDefault(false)
     }
 
     fun isConfigured(context: Context): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return !p.getString(KEY_TOPIC, "").isNullOrBlank() &&
             !p.getString(KEY_RESULT_TOPIC, "").isNullOrBlank() &&
-            !p.getString(KEY_RELAY_KEY, "").isNullOrBlank()
+            !relayKey(context).isNullOrBlank()
+    }
+
+    private fun relayKey(context: Context): String? {
+        HakimSecretStore.get(context, SECRET_RELAY_KEY)?.takeIf { RELAY_KEY.matches(it) }?.let {
+            return it
+        }
+
+        // One-time migration from the legacy plaintext SharedPreferences slot.
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val legacy = prefs.getString(KEY_RELAY_KEY, null)?.trim()
+        if (legacy.isNullOrBlank() || !RELAY_KEY.matches(legacy)) return null
+
+        return runCatching {
+            HakimSecretStore.put(context, SECRET_RELAY_KEY, legacy)
+            prefs.edit().remove(KEY_RELAY_KEY).apply()
+            legacy
+        }.getOrNull()
     }
 
     fun start(context: Context) {
@@ -109,7 +131,7 @@ object HakimUnifiedRelay {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val topic = prefs.getString(KEY_TOPIC, null)
             val resultTopic = prefs.getString(KEY_RESULT_TOPIC, null)
-            val relayKey = prefs.getString(KEY_RELAY_KEY, null)
+            val relayKey = relayKey(context)
             if (topic.isNullOrBlank() || resultTopic.isNullOrBlank() || relayKey.isNullOrBlank()) {
                 connected = false
                 prefs.edit().putString("secure_relay_state", "unconfigured").apply()
@@ -404,8 +426,7 @@ object HakimUnifiedRelay {
 
     private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {
         return try {
-            val relayKey = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getString(KEY_RELAY_KEY, null) ?: return false
+            val relayKey = relayKey(context) ?: return false
             val payload = JSONObject()
                 .put("request_id", requestId)
                 .put("status", status)

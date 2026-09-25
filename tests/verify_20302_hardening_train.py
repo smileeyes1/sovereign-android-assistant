@@ -36,7 +36,7 @@ req("class HakimFileProvider : FileProvider()" in PROVIDER, "dedicated_provider_
 req('android:name=".HakimFileProvider"' in MANIFEST, "manifest_provider")
 req('android:name="androidx.core.content.FileProvider"' not in MANIFEST, "direct_fileprovider_forbidden")
 req('android.permission.CAMERA' in MANIFEST, "camera_capability_missing")
-MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")
+MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")\nSERVICE = (APP / "HakimService.kt").read_text(encoding="utf-8")
 req("requestSpecificPermissions" in MAIN, "targeted_permission_escalation_missing")
 req("requestSpecificPermissions(needed)" in MAIN, "web_media_still_requests_blanket_permissions")
 
@@ -80,9 +80,17 @@ req("object HakimAttachmentSessionStore" in SESSION, "attachment_session_store_m
 req("HakimAttachmentSessionStore.restore(this)" in CENTER, "attachment_session_restore_missing")
 req("HakimAttachmentSessionStore.save(this, attachments)" in CENTER, "attachment_session_save_missing")
 req('value.startsWith("content://")' in SESSION, "attachment_session_scheme_guard_missing")
+req("HakimSecretStore.put(context, SECRET_RELAY_KEY" in RELAY, "relay_key_not_keystore_backed")
+req(".remove(KEY_RELAY_KEY)" in RELAY, "legacy_relay_key_not_removed")
+req(".putString(KEY_RELAY_KEY" not in RELAY, "relay_key_plaintext_write_forbidden")
+for web in [MAIN, SERVICE]:
+    req("allowFileAccess = false" in web, "webview_file_access_enabled")
+    req("allowFileAccessFromFileURLs = false" in web, "webview_file_url_access_enabled")
+    req("allowUniversalAccessFromFileURLs = false" in web, "webview_universal_file_access_enabled")
+    req("safeBrowsingEnabled = true" in web, "webview_safe_browsing_missing")
 req("fun externalHandoff(context: Context, providerLabel: String)" in LOOP, "external_handoff_state_missing")
 req("HakimExecutiveLoop.externalHandoff(this, provider.label)" in CENTER, "provider_app_false_wait_regression")
 req("HakimExecutiveLoop.externalHandoff(this, \"مشاركة أندرويد\")" in CENTER, "system_share_false_wait_regression")
 req("Channel.SYSTEM_SHARE" in ROUTER and "requiresUserChoice = true" in ROUTER, "attachment_user_choice_share_missing")
 
-print("HARDENING_20302=PASS photo_picker=true scoped_provider=true mime_evidence=true cache_bound=true page16k_gate=true signing_structure=true pairing_takeover_guard=true external_share=false_wait_eliminated attachment_session=true pairing_token=minimized")
+print("HARDENING_20302=PASS photo_picker=true scoped_provider=true mime_evidence=true cache_bound=true page16k_gate=true signing_structure=true pairing_takeover_guard=true external_share=false_wait_eliminated attachment_session=true pairing_token=minimized relay_key=keystore webview=file_origin_hardened")

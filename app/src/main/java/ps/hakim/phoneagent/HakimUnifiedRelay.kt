@@ -59,10 +59,28 @@ object HakimUnifiedRelay {
         connected = false
     }
 
-    fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?): Boolean {
+    fun validConfigurationInput(topic: String?, resultTopic: String?, relayKey: String?): Boolean {
         if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return false
         if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return false
         if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return false
+        return true
+    }
+
+    fun configurationMatches(
+        context: Context,
+        topic: String?,
+        resultTopic: String?,
+        relayKey: String?
+    ): Boolean {
+        if (!validConfigurationInput(topic, resultTopic, relayKey)) return false
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return p.getString(KEY_TOPIC, null) == topic &&
+            p.getString(KEY_RESULT_TOPIC, null) == resultTopic &&
+            p.getString(KEY_RELAY_KEY, null) == relayKey
+    }
+
+    fun configure(context: Context, topic: String?, resultTopic: String?, relayKey: String?): Boolean {
+        if (!validConfigurationInput(topic, resultTopic, relayKey)) return false
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOPIC, topic)
             .putString(KEY_RESULT_TOPIC, resultTopic)

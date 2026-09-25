@@ -17,7 +17,11 @@ class HakimConnectionRecoveryJobService : JobService() {
                 HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
             } catch (_: Exception) {
             } finally {
-                jobFinished(params, false)
+                val fabric = HakimExecutionFabric.status(applicationContext)
+                val shouldRetry = params?.jobId == HakimConnectionResilience.RETRY_JOB_ID &&
+                    !fabric.optBoolean("online") &&
+                    fabric.optString("state") !in setOf("UNCONFIGURED", "DISABLED_BY_USER")
+                jobFinished(params, shouldRetry)
             }
         }.start()
         return true

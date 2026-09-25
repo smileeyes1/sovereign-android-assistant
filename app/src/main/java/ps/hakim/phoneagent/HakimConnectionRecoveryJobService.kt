@@ -7,6 +7,9 @@ class HakimConnectionRecoveryJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         Thread {
             try {
+                if (HakimConnectivityState.hasValidatedInternet(applicationContext)) {
+                    HakimUnifiedRelay.flushOutboxAsync(applicationContext)
+                }
                 HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")
                 HakimConstraintDoctor.run(applicationContext, "periodic_watchdog")
                 HakimSelfCheck.runAsync(applicationContext)

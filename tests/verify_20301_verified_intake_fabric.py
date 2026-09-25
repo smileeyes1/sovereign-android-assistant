@@ -14,7 +14,7 @@ def req(value, reason):
     if not value:
         raise SystemExit("VERIFIED_INTAKE_20301=FAIL reason=" + reason)
 
-m = re.search(r"versionCode\\s+(\\d+)", BUILD)
+m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) == 20301, "version")
 req("3.1.1-final-installable-verified-intake-v1" in BUILD, "version_name")
 

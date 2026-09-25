@@ -228,6 +228,29 @@ object HakimModelToolRouter {
         )
     }
 
+    fun attachmentFallback(context: Context): Decision {
+        val installed = providers.filter { p ->
+            p.packageName?.let { isInstalled(context, it) } == true
+        }
+        val preferred = bestObservedProvider(context, installed)
+        return if (preferred != null) {
+            Decision(
+                channel = Channel.PROVIDER_APP,
+                provider = preferred,
+                fallbacks = providers.filterNot { it.id == preferred.id },
+                reason = "تعذرت المحركات الداخلية للمرفق؛ الانتقال إلى تطبيق مثبت بحساب المستخدم مع URI محدود القراءة."
+            )
+        } else {
+            Decision(
+                channel = Channel.SYSTEM_SHARE,
+                provider = null,
+                fallbacks = providers,
+                reason = "تعذرت المحركات الداخلية للمرفق؛ لا يُسقط حكيم الأصل بل ينتقل إلى مشاركة أندرويد المحدودة.",
+                requiresUserChoice = true
+            )
+        }
+    }
+
     fun recordOutcome(context: Context, providerId: String?, success: Boolean) {
         if (providerId.isNullOrBlank()) return
         val prefs = context.getSharedPreferences("hakim_router", Context.MODE_PRIVATE)

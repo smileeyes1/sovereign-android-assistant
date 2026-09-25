@@ -14,8 +14,8 @@ def req(v,reason):
     if not v: raise SystemExit("VERIFIED_TEACHER_ARTIFACTS_20206=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))==20206,"version")
-req("3.0.6-verified-teacher-artifacts-v1-candidate" in BUILD,"version_name")
+req(m and int(m.group(1))>=20206,"version")
+req("verified-teacher-artifacts" in BUILD or "universal-artifact-pipeline" in BUILD,"version_name")
 
 for token in [
     "ADDITION_ID",

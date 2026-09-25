@@ -331,6 +331,8 @@ class CommandCenterActivity : Activity() {
                 command.setText("")
                 recordRoute("local_response", true)
             }
+            HakimModelToolRouter.Channel.ARTIFACT_PIPELINE ->
+                executeArtifactPipeline(text)
             HakimModelToolRouter.Channel.LOCAL_ARTIFACT ->
                 executeLocalArtifact(text)
             HakimModelToolRouter.Channel.POLICY_BLOCKED -> {
@@ -460,6 +462,290 @@ class CommandCenterActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun executeArtifactPipeline(text: String) {
+        val request = HakimArtifactRequest.resolve(this, text)
+        if (request == null) {
+            appendConversation("حكيم", "تعذر تحديد نوع الملف المطلوب.")
+            status.text = "تعذر تحديد الملف"
+            return
+        }
+
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.PLANNING,
+            "خط إنتاج الملف: محتوى -> تصيير محلي -> تحقق من نفس الملف -> تسليم"
+        )
+        refreshOperations()
+        status.text = "يجهّز الملف…"
+
+        val deterministic = HakimArtifactPipeline.deterministicSpec(this, text)
+        if (deterministic != null) {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.ROUTING,
+                "توجد مواصفة محلية موثقة؛ استخدامها كتحسين داخل خط الإنتاج العام"
+            )
+            executeLocalArtifact(text)
+            return
+        }
+
+        val recent = HakimArtifactPipeline.recentUsableContent(this, request)
+        if (recent != null) {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.ROUTING,
+                "استعادة محتوى صالح من سياق حكيم ثم تصييره محليًا"
+            )
+            renderUniversalArtifact(request, recent.text, "recent_context")
+            return
+        }
+
+        generateArtifactContent(request, text)
+    }
+
+    private fun generateArtifactContent(
+        request: HakimArtifactRequest,
+        originalText: String,
+        preferredEngineId: String? = null,
+        excluded: Set<String> = emptySet(),
+        repairFrom: String? = null
+    ) {
+        val engine = HakimEngineRegistry.directEngines(this)
+            .firstOrNull { it.id == preferredEngineId && it.id !in excluded }
+            ?: HakimWisdomMatrix.choose(this, request.topic, attachments, excluded)?.engine
+
+        if (engine == null) {
+            if (!HakimEngineRegistry.hasConfiguredGeneralChat(this)) {
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.GATED,
+                    "لا يوجد محرك محتوى مباشر مهيأ؛ يلزم ربط لمرة واحدة"
+                )
+                beginFreeEngineSetup(originalText)
+            } else {
+                appendConversation(
+                    "حكيم",
+                    "تعذر توليد محتوى الملف بالمسارات المتاحة الآن. لم أُنشئ ملفًا ناقصًا."
+                )
+                status.text = "تعذر إكمال الملف"
+            }
+            return
+        }
+
+        currentDirectEngine = engine
+        status.text = "يُعدّ المحتوى…"
+        val instruction = if (repairFrom == null) {
+            HakimArtifactPipeline.contentInstruction(this, request)
+        } else {
+            HakimArtifactPipeline.repairInstruction(request, repairFrom)
+        }
+        val snapshot = attachments.toList()
+        val startedAt = System.currentTimeMillis()
+
+        Thread {
+            val result = engine.complete(instruction, snapshot) { _ ->
+                // محتوى وسيط لا يُعرض؛ الملف النهائي هو سطح التسليم.
+            }
+            val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
+            HakimEngineTelemetry.record(
+                this,
+                engine.id,
+                success = result is HakimInferenceEngine.Result.Success,
+                latencyMs = latency
+            )
+
+            runOnUiThread {
+                if (currentDirectEngine !== engine) return@runOnUiThread
+                currentDirectEngine = null
+
+                when (result) {
+                    is HakimInferenceEngine.Result.Success -> {
+                        val validated = HakimArtifactPipeline.validateContent(request, result.text)
+                        validated.onSuccess { content ->
+                            HakimResiliencePolicy.recordSuccess(this, engine.id)
+                            renderUniversalArtifact(request, content, "model_content")
+                        }.onFailure {
+                            HakimResiliencePolicy.recordFailure(
+                                this,
+                                engine.id,
+                                true,
+                                "artifact_content_invalid"
+                            )
+                            if (repairFrom == null && HakimExecutiveLoop.advanceCycle(
+                                    this,
+                                    "المحتوى الأول غير صالح للتصيير؛ إعادة طلب محتوى فقط دون ملف"
+                                )
+                            ) {
+                                generateArtifactContent(
+                                    request = request,
+                                    originalText = originalText,
+                                    preferredEngineId = engine.id,
+                                    excluded = excluded,
+                                    repairFrom = result.text
+                                )
+                            } else {
+                                val nextExcluded = excluded + engine.id
+                                val fallback = HakimWisdomMatrix.choose(
+                                    this,
+                                    request.topic,
+                                    attachments,
+                                    nextExcluded
+                                )?.engine
+                                if (fallback != null && HakimExecutiveLoop.advanceCycle(
+                                        this,
+                                        "تغيير محرك المحتوى بدل تسليم ملف ناقص"
+                                    )
+                                ) {
+                                    generateArtifactContent(
+                                        request = request,
+                                        originalText = originalText,
+                                        preferredEngineId = fallback.id,
+                                        excluded = nextExcluded
+                                    )
+                                } else {
+                                    appendConversation(
+                                        "حكيم",
+                                        "تعذر توليد محتوى صالح للملف بهذه المسارات. لم أعتبر النص الوسيط ملفًا مكتملًا."
+                                    )
+                                    status.text = "تعذر إكمال الملف"
+                                }
+                            }
+                        }
+                    }
+
+                    is HakimInferenceEngine.Result.NeedsAuthorization -> {
+                        if (excluded.isEmpty()) beginFreeEngineSetup(originalText)
+                        else {
+                            appendConversation("حكيم", "تحتاج هذه المهمة ربط خدمة ذكاء لمرة واحدة.")
+                            status.text = "تحتاج موافقتك"
+                        }
+                    }
+
+                    is HakimInferenceEngine.Result.Unavailable -> {
+                        retryArtifactEngine(
+                            request,
+                            originalText,
+                            engine,
+                            excluded,
+                            result.reason
+                        )
+                    }
+
+                    is HakimInferenceEngine.Result.Failure -> {
+                        HakimResiliencePolicy.recordFailure(
+                            this,
+                            engine.id,
+                            result.retryable,
+                            result.reason
+                        )
+                        retryArtifactEngine(
+                            request,
+                            originalText,
+                            engine,
+                            excluded,
+                            result.reason
+                        )
+                    }
+                }
+                refreshOperations()
+            }
+        }.start()
+    }
+
+    private fun retryArtifactEngine(
+        request: HakimArtifactRequest,
+        originalText: String,
+        failedEngine: HakimInferenceEngine,
+        excluded: Set<String>,
+        reason: String
+    ) {
+        val nextExcluded = excluded + failedEngine.id
+        val fallback = HakimWisdomMatrix.choose(
+            this,
+            request.topic,
+            attachments,
+            nextExcluded
+        )?.engine
+
+        if (fallback != null && HakimExecutiveLoop.advanceCycle(
+                this,
+                "تعذر مسار محتوى؛ الانتقال إلى مسار آخر"
+            )
+        ) {
+            generateArtifactContent(
+                request = request,
+                originalText = originalText,
+                preferredEngineId = fallback.id,
+                excluded = nextExcluded
+            )
+        } else {
+            appendConversation(
+                "حكيم",
+                HakimProductUx.publicError(reason) + " لم أُنشئ ملفًا غير متحقق."
+            )
+            status.text = "تعذر إكمال الملف"
+        }
+    }
+
+    private fun renderUniversalArtifact(
+        request: HakimArtifactRequest,
+        content: String,
+        source: String
+    ) {
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "تصيير المحتوى إلى PDF محليًا ثم إعادة فتح نفس الملف للتحقق"
+        )
+        status.text = "يجهّز الملف…"
+        refreshOperations()
+
+        Thread {
+            val result = HakimUniversalPdfRenderer.render(this, request, content)
+            runOnUiThread {
+                result.onSuccess { rendered ->
+                    require(rendered.verified)
+                    appendConversation(
+                        "حكيم",
+                        HakimProductUx.completionMessage("pdf", rendered.savedAt)
+                    )
+                    HakimExecutiveLoop.complete(
+                        this,
+                        "تم إنشاء PDF والتحقق من بنيته وعدد صفحاته قبل التسليم"
+                    )
+                    recordRoute("universal_artifact_pdf:$source", true)
+                    command.setText("")
+                    attachments.clear()
+                    refreshAttachmentStatus()
+                    status.text = "جاهز"
+                    refreshOperations()
+
+                    if (rendered.uri != null) {
+                        val view = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(rendered.uri, "application/pdf")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        runCatching { startActivity(view) }
+                            .onFailure { toast("الملف جاهز في " + rendered.savedAt) }
+                    }
+                }.onFailure { error ->
+                    appendConversation(
+                        "حكيم",
+                        HakimProductUx.publicError(error.message ?: "تعذر إنشاء الملف")
+                    )
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        "فشل تحقق PDF؛ يمنع التسليم"
+                    )
+                    recordRoute("universal_artifact_pdf:$source", false)
+                    status.text = "تعذر إنشاء الملف"
+                    refreshOperations()
+                }
+            }
+        }.start()
     }
 
     private fun executeLocalArtifact(text: String) {

@@ -20,6 +20,7 @@ object HakimModelToolRouter {
 
     enum class Channel {
         LOCAL_RESPONSE,
+        ARTIFACT_PIPELINE,
         LOCAL_ARTIFACT,
         POLICY_BLOCKED,
         DIRECT_MODEL,
@@ -80,6 +81,16 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>
     ): Decision {
         val q = prompt.trim()
+
+        val artifactRequest = HakimArtifactRequest.resolve(context, q)
+        if (artifactRequest != null) {
+            return Decision(
+                channel = Channel.ARTIFACT_PIPELINE,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "طلب ملف؛ يفصل حكيم المحتوى عن صيغة التسليم ثم ينشئ الملف محليًا ويتحقق منه."
+            )
+        }
 
         if (attachments.isEmpty() && HakimLocalArtifactFactory.canHandle(context, q)) {
             return Decision(

@@ -28,7 +28,10 @@ req(tuple(map(int, agp.group(1).split("."))) >= (8,5,1), "agp_below_16k_floor")
 req("class HakimFileProvider : FileProvider()" in PROVIDER, "dedicated_provider_class")
 req('android:name=".HakimFileProvider"' in MANIFEST, "manifest_provider")
 req('android:name="androidx.core.content.FileProvider"' not in MANIFEST, "direct_fileprovider_forbidden")
-req('android.permission.CAMERA' not in MANIFEST, "unused_camera_permission")
+req('android.permission.CAMERA' in MANIFEST, "camera_capability_missing")
+MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")
+req("requestSpecificPermissions" in MAIN, "targeted_permission_escalation_missing")
+req("requestSpecificPermissions(needed)" in MAIN, "web_media_still_requests_blanket_permissions")
 
 for token in [
     "ComponentActivity()",

@@ -181,6 +181,12 @@
     "d1_v2_structure_ci_gate": true,
     "hardening_field_verified": false,
     "pairing_takeover_local_confirmation": true,
-    "same_pairing_idempotent": true
+    "same_pairing_idempotent": true,
+    "photo_picker": true,
+    "scoped_file_provider": true,
+    "content_type_evidence_gate": true,
+    "bounded_attachment_cache": true,
+    "external_share_never_claims_return": true,
+    "page_16k_gate": true
   }
 }

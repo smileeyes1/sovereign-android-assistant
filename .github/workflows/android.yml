@@ -8,6 +8,7 @@ on:
       - 'tests/**'
       - 'governance/**'
       - 'scripts/**'
+      - 'tools/**'
       - 'build.gradle'
       - 'settings.gradle'
       - '.github/workflows/android.yml'
@@ -65,6 +66,7 @@ jobs:
           python3 tests/verify_20207_universal_artifact_pipeline.py
           python3 tests/verify_20300_installability.py
           python3 tests/verify_20301_verified_intake_fabric.py
+          python3 tests/verify_20302_hardening_train.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py
@@ -126,10 +128,14 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20301"
+          test "$VERSION_CODE" = "20302"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace
+      - name: بوابة توافق صفحات الذاكرة 16KB
+        run: |
+          ZIPALIGN_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/zipalign"
+          "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/release/app-release-unsigned.apk
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
         run: |
           APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
@@ -174,6 +180,8 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
           APKSIGNER="$APKSIGNER_BIN" \
             bash scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+          python3 tools/verify_hakim_d1_v2_structure.py \
+            app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           echo "signed=true" >> "$GITHUB_OUTPUT"
       - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v4

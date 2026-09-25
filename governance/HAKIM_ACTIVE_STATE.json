@@ -28,10 +28,12 @@
     "candidate": {
       "version_code": 20304,
       "branch": "feature/hakim-20304-sovereign-constitution-v4",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SUCCESS_1108",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "source_ci_run_number": 1108,
+      "source_ci_commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d"
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
@@ -99,8 +101,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1091,
-      "commit": "43ecd8b83c9894dbace1d03a36c6c1b290c1b444",
+      "run_number": 1108,
+      "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
       "conclusion": "success"
     }
   },
@@ -206,6 +208,7 @@
     "self_installer": false,
     "verified_update_export_to_downloads": true,
     "request_install_packages": false,
-    "persistent_high_impact_grants": false
+    "persistent_high_impact_grants": false,
+    "sovereign_constitution_source_ci_verified": true
   }
 }

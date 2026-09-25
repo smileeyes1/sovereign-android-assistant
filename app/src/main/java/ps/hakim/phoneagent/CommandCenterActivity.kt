@@ -1306,10 +1306,13 @@ class CommandCenterActivity : ComponentActivity() {
                 HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "توجيه المهمة إلى " + provider.label)
                 refreshOperations()
                 startActivity(out)
-                HakimExecutiveLoop.waitExternal(this, provider.label)
+                HakimExecutiveLoop.externalHandoff(this, provider.label)
                 refreshOperations()
-                appendConversation("حكيم", "تحتاج هذه المهمة تطبيقًا آخر لإكمال خطوة لا يستطيع حكيم تنفيذها داخليًا. لن أعتبر المهمة مكتملة حتى يتحقق الأثر.")
-                status.text = "بانتظار أثر القناة الخارجية"
+                appendConversation(
+                    "حكيم",
+                    "سُلِّم المحتوى إلى تطبيق خارجي. هذا التسليم لا يعيد جوابًا إلى حكيم تلقائيًا، لذلك لم أعتبر المهمة مكتملة ولم أترك حالة انتظار وهمية."
+                )
+                status.text = "تم التسليم الخارجي"
                 return
             } catch (_: Exception) {
                 HakimModelToolRouter.recordOutcome(this, provider.id, false)

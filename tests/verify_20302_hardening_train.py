@@ -21,7 +21,7 @@ def req(value, reason):
 m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) == 20302, "version")
 req("3.1.2-hardening-train-v1" in BUILD, "version_name")
-req("androidx.activity:activity-ktx:1.13.0" in BUILD, "stable_activity_dependency")
+req("androidx.activity:activity-ktx:1.12.4" in BUILD, "sdk35_activity_dependency")
 
 agp = re.search(r"com\.android\.application' version '([0-9.]+)'", ROOT_BUILD)
 req(agp is not None, "agp_missing")

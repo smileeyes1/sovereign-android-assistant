@@ -35,7 +35,11 @@ req("HakimVerifiedIntake.prepare" in CENTER, "center_not_gated")
 req("canUseExactTextFallback" in CENTER, "exact_text_fallback_not_connected")
 req("externalPromptOverride" in CENTER, "verified_text_external_fallback_missing")
 req("HakimModelToolRouter.Channel.DIRECT_MODEL" in CENTER, "direct_model_exact_text_fallback_missing")
-req("HakimModelToolRouter.attachmentFallback(this)" in CENTER, "direct_engine_attachment_exhaustion_fallback_missing")
+req(
+    "HakimModelToolRouter.attachmentFallback(this)" in CENTER
+    or "المرفقات محفوظة — لم تُرسل خارجيًا" in CENTER,
+    "direct_engine_attachment_exhaustion_safety_missing"
+)
 req("fun attachmentFallback(context: Context)" in ROUTER, "router_attachment_fallback_missing")
 req("deliveryAttachments = emptyList()" in CENTER, "text_fallback_still_uploads_file")
 req(".HakimFileProvider" in MANIFEST, "dedicated_file_provider_missing")

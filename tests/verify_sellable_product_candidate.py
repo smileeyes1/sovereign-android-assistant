@@ -21,7 +21,8 @@ req(m and int(m.group(1))>=20202,"version")
 req(
     "universal-artifact-pipeline" in BUILD or
     "final-installable" in BUILD or
-    "hardening-train" in BUILD,
+    "hardening-train" in BUILD or
+    "core-product" in BUILD,
     "version_name"
 )
 

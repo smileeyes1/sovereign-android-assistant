@@ -174,11 +174,22 @@ object HakimModelToolRouter {
         // The user explicitly chooses an external receiver only after all returnable direct
         // engines and verified text fallbacks are exhausted.
         if (attachments.isNotEmpty()) {
+            if (
+                HakimFreePolicy.freeOnly(context) &&
+                HakimEngineRegistry.directEngines(context).isEmpty()
+            ) {
+                return Decision(
+                    channel = Channel.FREE_ENGINE_SETUP,
+                    provider = null,
+                    fallbacks = emptyList(),
+                    reason = "لا يوجد محرك مباشر يعيد نتيجة المرفق داخل حكيم؛ يبدأ الربط المجاني لمرة واحدة قبل التفكير بأي تسليم خارجي."
+                )
+            }
             return Decision(
                 channel = Channel.SYSTEM_SHARE,
                 provider = null,
                 fallbacks = installed,
-                reason = "لا يوجد محرك داخلي يعيد نتيجة المرفق إلى حكيم؛ يقتصر البديل على مشاركة أندرويد الصريحة، ولا يُعتبر فتح تطبيق آخر تنفيذًا أو اكتمالًا.",
+                reason = "المحركات المباشرة المهيأة لا تستقبل هذا النوع بصورته الحالية؛ يبقى المرفق محفوظًا ويُعرض التسليم الخارجي فقط كخيار يدوي.",
                 requiresUserChoice = true
             )
         }

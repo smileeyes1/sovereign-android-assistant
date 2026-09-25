@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20301,
-      "commit": "400fa406ba97208e02be157d1a13d5df1b713dec",
-      "ci_run_number": 1042,
+      "version_code": 20302,
+      "commit": "18db7a9234681ce0f887965d1bb7ace261756f6a",
+      "ci_run_number": 1087,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20302,
-      "branch": "feature/hakim-20302-hardening-train-v1",
+      "version_code": 20303,
+      "branch": "feature/hakim-20303-core-product-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1042,
-      "commit": "400fa406ba97208e02be157d1a13d5df1b713dec",
+      "run_number": 1087,
+      "commit": "18db7a9234681ce0f887965d1bb7ace261756f6a",
       "conclusion": "success"
     }
   },
@@ -138,7 +138,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20302,
+    "candidate_version": 20303,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -157,7 +157,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20302",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20303",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -189,6 +189,9 @@
     "external_share_never_claims_return": true,
     "page_16k_gate": true,
     "relay_key_keystore_backed": true,
-    "webview_file_origin_hardened": true
+    "webview_file_origin_hardened": true,
+    "in_app_first": true,
+    "pdf_visual_adapter": true,
+    "external_share_manual_only": true
   }
 }

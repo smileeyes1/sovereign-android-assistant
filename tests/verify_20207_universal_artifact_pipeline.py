@@ -16,7 +16,7 @@ def req(v,reason):
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m and int(m.group(1))>=20207,"version")
-req("universal-artifact-pipeline" in BUILD or "final-installable" in BUILD or "hardening-train" in BUILD,"version_name")
+req("universal-artifact-pipeline" in BUILD or "final-installable" in BUILD or "hardening-train" in BUILD or "core-product" in BUILD,"version_name")
 
 # Request model is topic-agnostic: kinds and file intent are separate from subject.
 for token in [

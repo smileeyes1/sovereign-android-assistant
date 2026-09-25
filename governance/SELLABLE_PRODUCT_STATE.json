@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20202,
-  "candidate_name": "3.0.2-product-v1-candidate",
+  "candidate_version": 20203,
+  "candidate_name": "3.0.3-product-v1-worksheet-quality",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -37,5 +37,11 @@
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
-  "generic_pdf_fallback": true
+  "generic_pdf_fallback": true,
+  "structured_math_worksheet": true,
+  "one_page_student_sheet": true,
+  "arabic_visible_copy_only": true,
+  "eastern_digits_required": true,
+  "no_answer_leak": true,
+  "screenshot_failure_regression": true
 }

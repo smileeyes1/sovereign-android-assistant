@@ -20,7 +20,7 @@ for token in [
     'fun canHandle(context: Context, prompt: String): Boolean',
     'getSharedPreferences("hakim_conversation"',
     '.takeLast(8_000)',
-    'if (explicitAdditionWithinTen(recent)) return true',
+    'if (explicitAdditionWithinTen(recent)) return true' if 'if (explicitAdditionWithinTen(recent)) return true' in FACTORY else 'if (explicitAdditionWithinTen(recent) || isPdfAdditionWorksheet(recent)) return true',
     'isPdfWorksheetFollowUp(prompt)',
     '.putString(LAST_KIND, KIND_ADD_WITHIN_10)',
 ]:
@@ -45,9 +45,10 @@ req(artifact_pos < direct_pos < free_pos, "contextual_local_not_before_models")
 req("http://" not in FACTORY and "https://" not in FACTORY and "OpenRouter" not in FACTORY, "factory_external_dependency")
 
 # Known failure injection: if context lookup is disabled, the gate must detect it.
-mutant = FACTORY.replace('if (explicitAdditionWithinTen(recent)) return true', 'if (false) return true', 1)
+recent_guard = 'if (explicitAdditionWithinTen(recent)) return true' if 'if (explicitAdditionWithinTen(recent)) return true' in FACTORY else 'if (explicitAdditionWithinTen(recent) || isPdfAdditionWorksheet(recent)) return true'
+mutant = FACTORY.replace(recent_guard, 'if (false) return true', 1)
 try:
-    req('if (explicitAdditionWithinTen(recent)) return true' in mutant, "known_failure_context_sentinel")
+    req(recent_guard in mutant, "known_failure_context_sentinel")
 except SystemExit:
     pass
 else:

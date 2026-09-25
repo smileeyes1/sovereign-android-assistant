@@ -17,8 +17,8 @@ def req(v,reason):
     if not v: raise SystemExit("SELLABLE_PRODUCT_CANDIDATE=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))>=20202,"version")
-req("3.0.2-product-v1-candidate" in BUILD,"version_name")
+req(m and int(m.group(1))>=20203,"version")
+req("3.0.3-product-v1-worksheet-quality" in BUILD,"version_name")
 
 # Primary surface must be user-facing, not an engineering console.
 req('actionButton("المتصفح")' not in CENTER,"browser_button_visible")
@@ -53,6 +53,11 @@ for key in [
 req(STATE.get("raw_html_hidden") is True,"raw_html_not_hidden")
 req(STATE.get("artifact_stream_hidden") is True,"artifact_stream_not_hidden")
 req(STATE.get("generic_pdf_fallback") is True,"generic_pdf_fallback_missing")
+req(STATE.get("structured_math_worksheet") is True,"structured_math_worksheet_missing")
+req(STATE.get("one_page_student_sheet") is True,"one_page_student_sheet_missing")
+req(STATE.get("arabic_visible_copy_only") is True,"arabic_visible_copy_only_missing")
+req(STATE.get("eastern_digits_required") is True,"eastern_digits_required_missing")
+req(STATE.get("no_answer_leak") is True,"no_answer_leak_missing")
 req(STATE.get("sellable") is False,"premature_sellable")
 
 print("SELLABLE_PRODUCT_CANDIDATE=PASS ui=productized least_privilege=true diagnostics=hidden sellable=false")

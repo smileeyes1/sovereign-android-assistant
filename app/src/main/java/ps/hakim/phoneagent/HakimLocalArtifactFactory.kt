@@ -34,22 +34,19 @@ object HakimLocalArtifactFactory {
     private const val LAST_KIND = "last_kind"
     private const val KIND_ADD_WITHIN_10 = "worksheet_addition_within_10"
 
-    fun canHandle(prompt: String): Boolean = explicitAdditionWithinTen(prompt)
+    fun canHandle(prompt: String): Boolean =
+        explicitAdditionWithinTen(prompt) || isPdfAdditionWorksheet(prompt)
 
     fun canHandle(context: Context, prompt: String): Boolean {
-        if (explicitAdditionWithinTen(prompt)) return true
-
-        val directPdfAddition = isPdfAdditionWorksheet(prompt)
-        val contextualFollowUp = isPdfWorksheetFollowUp(prompt)
-        if (!directPdfAddition && !contextualFollowUp) return false
+        if (explicitAdditionWithinTen(prompt) || isPdfAdditionWorksheet(prompt)) return true
+        if (!isPdfWorksheetFollowUp(prompt)) return false
 
         val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
             .getString("recent", "")
             .orEmpty()
             .takeLast(8_000)
 
-        if (explicitAdditionWithinTen(recent)) return true
-        if (directPdfAddition && mentionsAdditionWithinTen(recent)) return true
+        if (explicitAdditionWithinTen(recent) || isPdfAdditionWorksheet(recent)) return true
 
         val lastKind = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(LAST_KIND, "")
@@ -59,7 +56,12 @@ object HakimLocalArtifactFactory {
 
     fun create(context: Context, prompt: String): Result<Created> = runCatching {
         require(canHandle(context, prompt)) { "المخرج المحلي المطلوب غير مدعوم بعد." }
-        val created = createAdditionWithinTenPdf(context)
+        val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
+            .getString("recent", "")
+            .orEmpty()
+            .takeLast(8_000)
+        val maxSum = resolveMaxSum(prompt, recent)
+        val created = createAdditionWorksheetPdf(context, maxSum)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(LAST_KIND, KIND_ADD_WITHIN_10)
@@ -87,7 +89,7 @@ object HakimLocalArtifactFactory {
         val q = normalize(text)
         val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
         val addition = q.contains("الجمع") || q.contains("جمع") || q.contains("addition") || q.contains("joining")
-        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "للتحميل", "للطباعة", "الطباعة").any { q.contains(it) }
+        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "للتحميل", "للطباعة", "الطباعة", "ملف").any { q.contains(it) }
         return worksheet && addition && pdf
     }
 
@@ -98,12 +100,22 @@ object HakimLocalArtifactFactory {
         return pdf && referent
     }
 
+    private fun resolveMaxSum(prompt: String, recent: String): Int {
+        val q = normalize(prompt + " " + recent)
+        return when {
+            listOf("ضمن ١٨", "ضمن 18", "حتى ١٨", "حتى 18").any { q.contains(it) } -> 18
+            listOf("ضمن ٢٠", "ضمن 20", "حتى ٢٠", "حتى 20").any { q.contains(it) } -> 20
+            else -> 10
+        }
+    }
+
     private fun normalize(text: String): String =
         text.trim().lowercase().replace(Regex("\\s+"), " ")
 
 
-    private fun createAdditionWithinTenPdf(context: Context): Created {
-        val displayName = "ورقة_عمل_الجمع_ضمن_١٠.pdf"
+    private fun createAdditionWorksheetPdf(context: Context, maxSum: Int): Created {
+        val easternLimit = toEastern(maxSum)
+        val displayName = "ورقة_عمل_الجمع_ضمن_${easternLimit}.pdf"
         val document = PdfDocument()
         try {
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
@@ -111,86 +123,62 @@ object HakimLocalArtifactFactory {
             val canvas = page.canvas
 
             val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 26f
+                textSize = 27f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.RIGHT
             }
-            val body = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = 18f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                 textAlign = Paint.Align.RIGHT
             }
+            val instruction = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 21f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.RIGHT
+            }
             val math = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 30f
+                textSize = 31f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
             }
-            val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 1.2f
+                strokeWidth = 1.6f
             }
 
-            canvas.drawText("ورقة عمل: الجمع ضمن ١٠", 545f, 58f, title)
-            canvas.drawText("الاسم: ____________________    الصف: ______    التاريخ: ______", 545f, 96f, body)
-            canvas.drawLine(50f, 112f, 545f, 112f, line)
-            canvas.drawText("أوجد ناتج الجمع، ثم اكتب الإجابة في المربع.", 545f, 145f, body)
+            canvas.drawText("ورقة عمل: الجمع ضمن $easternLimit", 545f, 58f, title)
+            canvas.drawText("الاسم: __________________________", 545f, 96f, label)
+            canvas.drawText("الصف: __________      التاريخ: __________", 545f, 126f, label)
+            canvas.drawLine(50f, 146f, 545f, 146f, stroke)
+            canvas.drawText("أوجد ناتج الجمع، ثم اكتب الإجابة في المربع.", 545f, 182f, instruction)
 
-            val problems = listOf(
-                1 to 2,
-                3 to 4,
-                5 to 2,
-                6 to 3,
-                4 to 4,
-                7 to 2,
-                1 to 8,
-                5 to 5,
-                2 to 6,
-                3 to 6
-            )
-
-            var y = 205f
+            val problems = problemsFor(maxSum)
+            var y = 240f
             problems.forEachIndexed { index, pair ->
-                drawQuestion(canvas, index + 1, pair.first, pair.second, y, math, body, line)
-                y += 60f
+                drawQuestion(canvas, index + 1, pair.first, pair.second, y, math, label, stroke)
+                y += 68f
             }
 
-            canvas.drawLine(50f, 792f, 545f, 792f, line)
-            canvas.drawText("أحسنت المحاولة.", 545f, 820f, body)
+            canvas.drawLine(50f, 790f, 545f, 790f, stroke)
+            canvas.drawText("أحسنت المحاولة.", 545f, 820f, label)
 
             document.finishPage(page)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val resolver = context.contentResolver
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/حكيم")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: error("تعذر إنشاء ملف PDF في التنزيلات.")
-                try {
-                    resolver.openOutputStream(uri, "w")?.use { out ->
-                        document.writeTo(out)
-                    } ?: error("تعذر فتح ملف PDF للكتابة.")
-                    values.clear()
-                    values.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                    resolver.update(uri, values, null, null)
-                } catch (e: Exception) {
-                    resolver.delete(uri, null, null)
-                    throw e
-                }
-                return Created(uri, displayName, "التنزيلات/حكيم/$displayName")
-            }
-
-            val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "حكيم").apply { mkdirs() }
-            val file = File(dir, displayName)
-            FileOutputStream(file).use { document.writeTo(it) }
-            return Created(null, displayName, file.absolutePath)
+            return savePdfDocument(context, document, displayName)
         } finally {
             document.close()
         }
     }
+
+    private fun problemsFor(maxSum: Int): List<Pair<Int, Int>> {
+        val base = if (maxSum <= 10) {
+            listOf(1 to 2, 3 to 4, 5 to 2, 6 to 3, 4 to 4, 7 to 2, 1 to 8, 5 to 5)
+        } else {
+            listOf(4 to 5, 7 to 6, 8 to 5, 9 to 7, 6 to 8, 10 to 4, 11 to 5, 9 to 9)
+        }
+        return base.filter { it.first + it.second <= maxSum }.take(8)
+    }
+
 
 
     fun createTextPdf(context: Context, title: String, rawContent: String): Result<Created> = runCatching {
@@ -305,21 +293,18 @@ object HakimLocalArtifactFactory {
         body: Paint,
         line: Paint
     ) {
-        // مهم: نرسم الرموز واحدًا واحدًا من اليمين إلى اليسار كي يرى الطالب:
-        // ٤ + ٣ = □
-        // ولا نترك BiDi يعكس المعنى الرياضي.
-        canvas.drawText(toEastern(number) + ")", 555f, y, body)
+        // عين الطالب هي الحكم: يظهر بصريًا «٤ + ٣ = □».
+        canvas.drawText(toEastern(number) + ")", 548f, y, body)
 
         val tokens = listOf(toEastern(a), "+", toEastern(b), "=")
-        var x = 485f
+        var x = 455f
         tokens.forEach { token ->
             canvas.drawText(token, x, y, math)
-            x -= 65f
+            x -= 62f
         }
 
-        val box = RectF(x - 25f, y - 32f, x + 25f, y + 14f)
+        val box = RectF(x - 30f, y - 36f, x + 30f, y + 18f)
         canvas.drawRect(box, line)
-        canvas.drawLine(65f, y + 25f, 525f, y + 25f, line)
     }
 
     fun toEastern(value: Int): String = value.toString().map { ch ->

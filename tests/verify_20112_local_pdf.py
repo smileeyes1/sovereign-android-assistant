@@ -16,8 +16,8 @@ m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) >= 20112, "version")
 req("PdfDocument" in FACTORY, "pdf_document_missing")
 req("MediaStore.Downloads.EXTERNAL_CONTENT_URI" in FACTORY, "downloads_output_missing")
-req('"ورقة عمل: الجمع ضمن ١٠"' in FACTORY, "arabic_title_missing")
-req('"ورقة_عمل_الجمع_ضمن_١٠.pdf"' in FACTORY, "pdf_filename_missing")
+req('"ورقة عمل: الجمع ضمن $easternLimit"' in FACTORY or '"ورقة عمل: الجمع ضمن ١٠"' in FACTORY, "arabic_title_missing")
+req('"ورقة_عمل_الجمع_ضمن_${easternLimit}.pdf"' in FACTORY or '"ورقة_عمل_الجمع_ضمن_١٠.pdf"' in FACTORY, "pdf_filename_missing")
 req("easternDigits" in FACTORY and "toEastern" in FACTORY, "eastern_digits_missing")
 req('val tokens = listOf(toEastern(a), "+", toEastern(b), "=")' in FACTORY, "math_token_order_missing")
 req("canvas.drawRect(box, line)" in FACTORY, "answer_box_missing")
@@ -42,10 +42,16 @@ case_block = CENTER[case_start:case_end]
 req("OpenRouterOAuthManager.start" not in case_block, "local_artifact_can_open_oauth")
 
 # All fixed worksheet problems must stay within ten.
-problems_start = FACTORY.index("val problems = listOf(")
-problems_end = FACTORY.index("var y =", problems_start)
-req(problems_start >= 0 and problems_end > problems_start, "problems_missing")
-problem_block = FACTORY[problems_start:problems_end]
+if "val problems = listOf(" in FACTORY:
+    problems_start = FACTORY.index("val problems = listOf(")
+    problems_end = FACTORY.index("var y =", problems_start)
+    req(problems_end > problems_start, "problems_missing")
+    problem_block = FACTORY[problems_start:problems_end]
+else:
+    problems_start = FACTORY.index("val base = if (maxSum <= 10)")
+    problems_end = FACTORY.index("} else", problems_start)
+    req(problems_start >= 0 and problems_end > problems_start, "problems_missing")
+    problem_block = FACTORY[problems_start:problems_end]
 pairs = [(int(a), int(b)) for a, b in re.findall(r"(\d+)\s+to\s+(\d+)", problem_block)]
 req(len(pairs) >= 8, "too_few_problems")
 req(all(a + b <= 10 for a, b in pairs), "sum_exceeds_ten")

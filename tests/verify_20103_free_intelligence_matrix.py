@@ -26,7 +26,8 @@ req('private const val MODEL = "openrouter/free"' in OPENROUTER, "paid_model_slu
 req('"token_price=0"' in OPENROUTER, "zero_price_evidence_missing")
 req("retryDirectOrBlock" in CENTER, "failover_missing")
 req("nextExcluded" in CENTER and "fallback" in CENTER, "bounded_engine_switch_missing")
-req("سياق المحادثة الحديث داخل حكيم" in DIRECTOR, "multiturn_context_missing")
+req("HakimAuthorityBoundary.externalData" in DIRECTOR, "multiturn_context_authority_boundary_missing")
+req("سياق محادثة سابق داخل حكيم" in DIRECTOR, "multiturn_context_missing")
 req("takeLast(8_000)" in DIRECTOR, "context_bound_missing")
 
-print("FREE_INTELLIGENCE_GATE=PASS candidate>=20103 cost=fail_closed matrix=adaptive failover=automatic context=bounded")
+print("FREE_INTELLIGENCE_GATE=PASS candidate>=20103 cost=fail_closed matrix=adaptive failover=automatic context=bounded_untrusted")

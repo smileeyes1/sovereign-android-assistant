@@ -34,18 +34,21 @@ req('HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"pdf_acceptance_mis
 req('val artifactMode = HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"artifact_mode_missing")
 req('if (artifactMode) streamingBuffer.append(delta) else appendStreamingDelta(delta)' in CENTER,"artifact_stream_not_suppressed")
 req('executeGeneratedPdfArtifact(text, artifactText)' in CENTER,"generic_pdf_delivery_missing")
+req('HakimProductOutput.worksheetMustUseStructuredFactory(text)' in CENTER,"worksheet_structured_gate_missing")
+req(CENTER.index('HakimProductOutput.worksheetMustUseStructuredFactory(text)') < CENTER.index('executeGeneratedPdfArtifact(text, artifactText)'),"worksheet_guard_after_generic_pdf")
 req('HakimLocalArtifactFactory.createTextPdf(this, title, rawContent)' in CENTER,"generic_pdf_factory_not_used")
 req('HakimLocalArtifactFactory.canHandle(this, text)' in CENTER,"pdf_local_fallback_missing")
 req('fun createTextPdf(' in FACTORY,"generic_text_pdf_missing")
 req('HakimProductOutput.containsRawMarkup(content)' in FACTORY,"raw_markup_guard_missing")
 
-for phrase in ['"joining within 10"','"addition within 10"','isPdfAdditionWorksheet(prompt)','val directPdfAddition = isPdfAdditionWorksheet(prompt)','val contextualFollowUp = isPdfWorksheetFollowUp(prompt)']:
-    req(phrase in FACTORY,"context:"+phrase)
+SPEC=(APP/"HakimTeacherArtifactSpec.kt").read_text(encoding="utf-8")
+for phrase in ['"within 10"','"الجمع"','"الطرح"','"بي دي اف"','"للتحميل"','"للطباعة"']:
+    req(phrase in SPEC or phrase in FACTORY,"context:"+phrase)
 
-# Exact field regression: «انشئ لي ورقة عمل بي دي اف الجمع» must be allowed
-# to recover «ضمن ١٠» from the recent conversation instead of falling to a text model.
-req('if (!directPdfAddition && !contextualFollowUp) return false' in FACTORY,"field_prompt_blocked_before_context")
-req('if (!isPdfWorksheetFollowUp(prompt)) return false' not in FACTORY,"old_early_return_regression")
+# Exact field regression: «انشئ لي ملف بي دي اف الجمع ضمن ١٠» must resolve directly.
+req('fun resolveSpec(context: Context, prompt: String)' in FACTORY,"resolve_spec_missing")
+req('HakimTeacherArtifactSpec.resolveExplicit(prompt)' in FACTORY,"explicit_topic_resolution_missing")
+req('HakimTeacherArtifactSpec.looksLikeArtifactFollowUp(prompt)' in FACTORY,"context_followup_missing")
 
 for phrase in [
     "لا تعرض Markdown خامًا مثل ### أو **",
@@ -59,5 +62,7 @@ raw_html_field_failure = r'class=\\"answer-cell\\"'
 req('class=\\\\\\"' in OUT,"raw_html_sentinel_missing")
 field_failure = "لا أملك القدرة على توليد ملفات PDF مباشرة"
 req("لا أملك القدرة على توليد ملفات" in OUT,"field_refusal_sentinel_missing")
+for phrase in ["save as pdf","ctrl + p","انسخ الكود","collection within 10"]:
+    req(phrase in OUT.lower(),"field_bad_dump_sentinel:"+phrase)
 
 print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden html=hidden artifact_stream=silent pdf=file context=restored")

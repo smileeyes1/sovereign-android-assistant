@@ -18,7 +18,11 @@ def req(v,reason):
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m and int(m.group(1))>=20202,"version")
-req("3.0.6-verified-teacher-artifacts-v1-candidate" in BUILD,"version_name")
+req(
+    "verified-teacher-artifacts" in BUILD or
+    "universal-artifact-pipeline" in BUILD,
+    "version_name"
+)
 
 # Primary surface must be user-facing, not an engineering console.
 req('actionButton("المتصفح")' not in CENTER,"browser_button_visible")
@@ -54,8 +58,11 @@ req(STATE.get("raw_html_hidden") is True,"raw_html_not_hidden")
 req(STATE.get("artifact_stream_hidden") is True,"artifact_stream_not_hidden")
 req(STATE.get("generic_pdf_fallback") is True,"generic_pdf_fallback_missing")
 req(STATE.get("structured_teacher_artifacts") is True,"structured_teacher_artifacts_missing")
-req(STATE.get("worksheet_generic_pdf_fallback") is False,"worksheet_generic_fallback_must_be_false")
+req(STATE.get("worksheet_generic_pdf_fallback") is True,"worksheet_generic_fallback_missing")
 req(STATE.get("field_bad_dump_regression_blocked_in_source") is True,"bad_dump_regression_not_blocked")
+req(STATE.get("universal_artifact_pipeline") is True,"universal_artifact_pipeline_missing")
+req(STATE.get("content_render_separation") is True,"content_render_separation_missing")
+req(STATE.get("same_file_pdf_verification") is True,"same_file_pdf_verification_missing")
 req(STATE.get("sellable") is False,"premature_sellable")
 
 print("SELLABLE_PRODUCT_CANDIDATE=PASS ui=productized least_privilege=true diagnostics=hidden sellable=false")

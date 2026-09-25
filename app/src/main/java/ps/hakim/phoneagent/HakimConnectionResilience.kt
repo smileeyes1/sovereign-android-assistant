@@ -54,12 +54,20 @@ object HakimConnectionResilience {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     prefs(context).edit().putLong("last_network_available_at", System.currentTimeMillis()).apply()
-                    recover(context, "network_available")
+                    if (HakimConnectivityState.hasValidatedInternet(context)) {
+                        HakimUnifiedRelay.flushOutboxAsync(context)
+                        recover(context, "validated_network_available")
+                    }
                 }
 
                 override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                        recover(context, "network_capabilities")
+                    if (
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    ) {
+                        prefs(context).edit().putLong("last_network_validated_at", System.currentTimeMillis()).apply()
+                        HakimUnifiedRelay.flushOutboxAsync(context)
+                        recover(context, "network_validated")
                     }
                 }
 
@@ -82,6 +90,8 @@ object HakimConnectionResilience {
         val state = result.optString("state", "RECOVERING")
         val mapped = when (state) {
             "ONLINE" -> "healthy"
+            "DEGRADED" -> "degraded"
+            "OFFLINE_QUEUED" -> "offline_queued"
             "DISABLED_BY_USER" -> "disabled_by_user"
             "UNCONFIGURED" -> "unpaired"
             else -> "restart_requested"
@@ -114,7 +124,10 @@ object HakimConnectionResilience {
             .put("execution_fabric", fabric)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
-            .put("secure_relay_connected", HakimUnifiedRelay.isConnected())
+            .put("secure_relay_connected", HakimUnifiedRelay.isFreshConnected(context))
+            .put("secure_relay_socket_open", HakimUnifiedRelay.isConnected())
+            .put("validated_internet", HakimConnectivityState.hasValidatedInternet(context))
+            .put("relay_outbox", HakimRelayOutbox.status(context))
             .put("local_adb_connected", p.getBoolean("local_adb_connected", false))
             .put("last_connected_at", p.getLong("last_connected_at", 0L))
             .put("last_recovery_attempt_at", p.getLong("last_recovery_attempt_at", 0L))

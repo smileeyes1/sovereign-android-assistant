@@ -258,6 +258,17 @@ class CommandCenterActivity : ComponentActivity() {
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
+        toolsRow.addView(
+            actionButton("مشاركة") {
+                val text = command.text.toString().trim()
+                if (text.isBlank() && attachments.isEmpty()) {
+                    toast("لا يوجد محتوى لمشاركته")
+                } else {
+                    shareToAny(text)
+                }
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
         composerArea.addView(toolsRow)
 
         root.addView(
@@ -415,6 +426,64 @@ class CommandCenterActivity : ComponentActivity() {
         val decision = HakimModelToolRouter.decide(this, text, attachments)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
 
+        if (
+            decision.channel in setOf(
+                HakimModelToolRouter.Channel.SYSTEM_SHARE,
+                HakimModelToolRouter.Channel.FREE_ENGINE_SETUP
+            ) &&
+            HakimPdfVisualAdapter.canAdapt(attachments)
+        ) {
+            val visualEngine = HakimEngineRegistry.bestImageGeneralChat(this, text)
+            if (visualEngine != null) {
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.ROUTING,
+                    "PDF قابل للتحويل محليًا؛ سيُستخدم تمثيل صفحات بصري كامل مع محرك يعيد النتيجة داخل حكيم."
+                )
+                refreshOperations()
+                status.text = "يحضّر صفحات PDF…"
+                val sourceSnapshot = attachments.toList()
+                Thread {
+                    val adapted = HakimPdfVisualAdapter.adapt(this, sourceSnapshot)
+                    runOnUiThread {
+                        adapted.onSuccess { visual ->
+                            val instruction = buildString {
+                                appendLine(directed.instruction)
+                                appendLine()
+                                appendLine(visual.note)
+                                appendLine("الصفحات مرتبة حسب أسمائها؛ حلّل جميع الصفحات ولا تفترض سقوط أي صفحة.")
+                                intake?.let {
+                                    appendLine()
+                                    append(it.modelEnvelope())
+                                }
+                            }
+                            executeDirectModel(
+                                text = text,
+                                instruction = instruction,
+                                engineId = visualEngine.id,
+                                deliveryAttachments = visual.attachments
+                            )
+                        }.onFailure { error ->
+                            HakimExecutiveLoop.record(
+                                this,
+                                HakimExecutiveLoop.Phase.GATED,
+                                "تعذر التحويل البصري الكامل للـPDF دون فقد: " +
+                                    (error.message ?: "سبب غير معروف")
+                            )
+                            refreshOperations()
+                            appendConversation(
+                                "حكيم",
+                                "لم أحوّل PDF تحويلًا جزئيًا أو أسقط صفحات. " +
+                                    (error.message ?: "تعذر إعداد تمثيل بصري كامل وآمن.")
+                            )
+                            status.text = "PDF محفوظ — لم يحدث فقد صامت"
+                        }
+                    }
+                }.start()
+                return
+            }
+        }
+
         val exactTextFallbackChannels = setOf(
             HakimModelToolRouter.Channel.DIRECT_MODEL,
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP,
@@ -519,7 +588,19 @@ class CommandCenterActivity : ComponentActivity() {
                 executeSilentBrowser(text, directed.instruction)
             HakimModelToolRouter.Channel.LOCAL_BROWSER -> openInHakim(text)
             HakimModelToolRouter.Channel.PROVIDER_APP -> sendToProviderApp(text, decision)
-            HakimModelToolRouter.Channel.SYSTEM_SHARE -> shareToAny(text)
+            HakimModelToolRouter.Channel.SYSTEM_SHARE -> {
+                appendConversation(
+                    "حكيم",
+                    "لا يوجد حاليًا مسار داخلي يعيد نتيجة هذا النوع إلى حكيم دون فقد. أبقيت المرفق محفوظًا؛ استخدم «مشاركة» فقط إذا أردت تسليمه يدويًا لتطبيق آخر."
+                )
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.GATED,
+                    "المرفق محفوظ داخل حكيم؛ التسليم الخارجي يتطلب اختيار المستخدم الصريح."
+                )
+                refreshOperations()
+                status.text = "المرفق محفوظ داخل حكيم"
+            }
             HakimModelToolRouter.Channel.PROVIDER_WEB -> openProviderWeb(text, decision)
         }
     }
@@ -1254,24 +1335,18 @@ class CommandCenterActivity : ComponentActivity() {
         discardEmptyStreamingReply()
 
         if (deliveryAttachments.isNotEmpty()) {
-            val handoff = HakimModelToolRouter.attachmentFallback(this)
-            if (HakimExecutiveLoop.advanceCycle(
-                    this,
-                    "استنفدت المحركات الداخلية المؤهلة للمرفق؛ حفظ الأصل والانتقال إلى قناة حساب المستخدم بدل إسقاطه."
-                )
-            ) {
-                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, handoff.reason)
-                refreshOperations()
-                status.text = "ينتقل لمسار مرفق آخر…"
-                when (handoff.channel) {
-                    HakimModelToolRouter.Channel.PROVIDER_APP ->
-                        sendToProviderApp(text, handoff, deliveryAttachments)
-                    HakimModelToolRouter.Channel.SYSTEM_SHARE ->
-                        shareToAny(text, deliveryAttachments)
-                    else -> Unit
-                }
-                return
-            }
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "استنفدت المحركات الداخلية؛ حُفظت المرفقات ولم يُفتح تطبيق خارجي تلقائيًا."
+            )
+            refreshOperations()
+            appendConversation(
+                "حكيم",
+                reason + " أبقيت المرفقات محفوظة هنا. يمكنك إعادة المحاولة أو استخدام «مشاركة» يدويًا."
+            )
+            status.text = "المرفقات محفوظة — لم تُرسل خارجيًا"
+            return
         }
 
         appendConversation(

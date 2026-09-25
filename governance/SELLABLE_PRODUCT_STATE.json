@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20303,
-  "candidate_name": "3.2.0-core-product-v1",
+  "candidate_version": 20304,
+  "candidate_name": "3.3.0-sovereign-constitution-v4",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,9 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": null,
-    "commit": null,
-    "conclusion": "pending"
+    "run_number": 1108,
+    "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
+    "conclusion": "success"
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
@@ -72,5 +72,16 @@
   "webview_file_origin_hardened": true,
   "in_app_first": true,
   "pdf_visual_adapter": true,
-  "external_share_manual_only": true
+  "external_share_manual_only": true,
+  "sovereign_constitution_v4": true,
+  "authority_boundary": true,
+  "external_content_data_not_commands": true,
+  "adaptive_value_budget": true,
+  "evidence_aware_closure": true,
+  "temporary_tasks_not_persisted": true,
+  "rule_secret_redaction": true,
+  "self_installer": false,
+  "verified_update_export_to_downloads": true,
+  "request_install_packages": false,
+  "persistent_high_impact_grants": false
 }

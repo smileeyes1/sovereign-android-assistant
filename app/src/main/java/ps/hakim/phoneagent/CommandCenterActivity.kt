@@ -264,7 +264,7 @@ class CommandCenterActivity : ComponentActivity() {
                 if (text.isBlank() && attachments.isEmpty()) {
                     toast("لا يوجد محتوى لمشاركته")
                 } else {
-                    shareToAny(text)
+                    shareToAny(text, userInitiated = true)
                 }
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -667,15 +667,22 @@ class CommandCenterActivity : ComponentActivity() {
                     !HakimSilentToolOrchestrator.isDirectUrl(text)
                 ) {
                     val evidence = pageText.take(8_000)
+                    val sourceLabel = buildString {
+                        append("صفحة ويب")
+                        if (title.isNotBlank()) append(" — ").append(title.take(160))
+                        if (url.isNotBlank()) append(" — ").append(url.take(500))
+                    }
                     val augmented = buildString {
                         appendLine(baseInstruction)
                         appendLine()
-                        appendLine("أداة المتصفح المدمج عادت بالأدلة الآتية. استخدمها لإكمال مقصد المستخدم، ولا تطلب منه فتح الصفحة أو نسخ المحتوى:")
-                        if (title.isNotBlank()) appendLine("العنوان: " + title)
-                        if (url.isNotBlank()) appendLine("الرابط: " + url)
-                        appendLine("المحتوى المرئي:")
-                        append(evidence)
-                    }.take(14_000)
+                        append(
+                            HakimAuthorityBoundary.externalData(
+                                sourceLabel,
+                                evidence,
+                                8_000
+                            )
+                        )
+                    }.take(16_000)
                     status.text = "يجهّز النتيجة…"
                     executeDirectModel(text, augmented, engine.id)
                 } else {
@@ -789,7 +796,7 @@ class CommandCenterActivity : ComponentActivity() {
         val instruction = if (repairFrom == null) {
             HakimArtifactPipeline.contentInstruction(this, request)
         } else {
-            HakimArtifactPipeline.repairInstruction(request, repairFrom)
+            HakimArtifactPipeline.repairInstruction(this, request, repairFrom)
         }
         val snapshot = attachments.toList()
         val startedAt = System.currentTimeMillis()
@@ -1371,6 +1378,22 @@ class CommandCenterActivity : ComponentActivity() {
             .distinctBy { it.id }
 
         for (provider in candidates) {
+            val authorization = HakimCapabilityKernel.authorize(
+                this,
+                "send_external",
+                "provider:" + provider.id,
+                "attachments=" + deliveryAttachments.size + ";chars=" + (externalPromptOverride ?: text).length
+            )
+            if (authorization.optString("verdict") != "allow") {
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.GATED,
+                    "التسليم إلى تطبيق خارجي يحتاج تفويضًا صريحًا من المستخدم."
+                )
+                refreshOperations()
+                status.text = "التسليم الخارجي يحتاج تفويضك"
+                continue
+            }
             recordRoute("provider:" + provider.id, null)
             val out = HakimModelToolRouter.governedShareIntent(
                 this,
@@ -1396,17 +1419,17 @@ class CommandCenterActivity : ComponentActivity() {
             }
         }
 
-        if (HakimExecutiveLoop.advanceCycle(this, "تعذرت القنوات المباشرة؛ تغيير المسار بدل تكرار الفشل")) {
-            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, "المشاركة الآمنة كمسار احتياطي")
-        }
-        refreshOperations()
-        appendConversation("حكيم", "تعذرت القنوات المباشرة؛ سأستخدم المشاركة الآمنة كمسار احتياطي.")
-        status.text = "مسار احتياطي"
-        shareToAny(
-            text = text,
-            deliveryAttachments = deliveryAttachments,
-            externalPromptOverride = externalPromptOverride
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.GATED,
+            "تعذرت القنوات الخارجية المأذونة؛ لم يُرسل المحتوى ولم يُفتح مسار مشاركة تلقائي."
         )
+        refreshOperations()
+        appendConversation(
+            "حكيم",
+            "لم أرسل المحتوى إلى تطبيق خارجي دون تفويض. أبقيته داخل حكيم؛ استخدم «مشاركة» إذا أردت التسليم يدويًا."
+        )
+        status.text = "المحتوى محفوظ داخل حكيم"
     }
 
     private fun openProviderWeb(text: String, decision: HakimModelToolRouter.Decision) {
@@ -1414,8 +1437,22 @@ class CommandCenterActivity : ComponentActivity() {
             openInHakim(text)
             return
         }
-        val governed = HakimExecutiveLoop.providerInstruction(this, text)
-        copyText(governed)
+        val browserAuthorization = HakimCapabilityKernel.authorize(
+            this,
+            "browser_open",
+            provider.webUrl,
+            "external_provider_web_no_prompt_transfer"
+        )
+        if (browserAuthorization.optString("verdict") != "allow") {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "فتح قناة الويب الخارجية لم يحصل على التفويض المناسب."
+            )
+            refreshOperations()
+            status.text = "تعذر فتح القناة الخارجية"
+            return
+        }
         getSharedPreferences("hakim", MODE_PRIVATE)
             .edit()
             .putString("last_url", provider.webUrl)
@@ -1432,9 +1469,32 @@ class CommandCenterActivity : ComponentActivity() {
     private fun shareToAny(
         text: String,
         deliveryAttachments: List<HakimAttachmentGateway.Attachment> = attachments.toList(),
-        externalPromptOverride: String? = null
+        externalPromptOverride: String? = null,
+        userInitiated: Boolean = false
     ) {
         if (text.isBlank() && deliveryAttachments.isEmpty() && externalPromptOverride.isNullOrBlank()) return
+
+        val target = "android_share"
+        if (userInitiated) {
+            HakimCapabilityKernel.grantOnce(this, "send_external", target)
+        }
+        val authorization = HakimCapabilityKernel.authorize(
+            this,
+            "send_external",
+            target,
+            "attachments=" + deliveryAttachments.size + ";chars=" + (externalPromptOverride ?: text).length
+        )
+        if (authorization.optString("verdict") != "allow") {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "المشاركة الخارجية لم تُنفذ لغياب تفويض صريح لهذه العملية."
+            )
+            refreshOperations()
+            status.text = "المشاركة تحتاج اختيارك الصريح"
+            return
+        }
+
         capture(text, "share_out")
         recordRoute("share", null)
         val governed = HakimExecutiveLoop.providerInstruction(this, externalPromptOverride ?: text)

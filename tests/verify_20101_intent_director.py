@@ -17,7 +17,7 @@ req(m is not None and int(m.group(1)) >= 20101, "version")
 req("applicationId 'ps.hakim.stable'" in BUILD, "package_identity")
 
 for needed in [
-    "MAX_INTERNAL_REVISIONS = 3",
+    "HakimConstitution.promptPrefix(context)",
     "صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل",
     "لا تعرض سلسلة التفكير",
     "لا تكتفِ بالخطة أو الاقتراح",
@@ -34,4 +34,6 @@ req("صياغة أمر تنفيذي أعلى للمحرك" in CENTER, "visible_p
 req("HakimExecutiveLoop.providerInstruction(context, prompt)" in ROUTER, "router_bypasses_director")
 req("HakimAttachmentGateway.buildShareIntent(context, prompt, attachments)" not in ROUTER, "raw_prompt_leak")
 
-print("INTENT_DIRECTOR_GATE=PASS candidate>=20101 self_direction=private revisions=3")
+req("حتى 3 مراجعات" not in DIRECTOR, "fixed_revision_count_regression")
+req("HakimAuthorityBoundary.externalData" in DIRECTOR, "recent_context_authority_boundary_missing")
+print("INTENT_DIRECTOR_GATE=PASS candidate>=20101 self_direction=private revisions=adaptive constitution=v4")

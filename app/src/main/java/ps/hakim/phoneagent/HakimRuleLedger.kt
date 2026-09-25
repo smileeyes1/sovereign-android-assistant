@@ -13,36 +13,69 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+/**
+ * Minimal encrypted rule ledger.
+ *
+ * Temporary task text is never persisted. Only explicit rules, corrections and
+ * preferences are stored, after secret redaction and size bounding.
+ */
 object HakimRuleLedger {
     private const val KEY_ALIAS = "hakim_rule_ledger_v1"
     private const val FILE_NAME = "hakim-rule-ledger.enc"
     private const val PREFS = "hakim_rule_ledger_meta"
     private const val MAX_CONTEXT_RULES = 12
     private const val MAX_CONTEXT_CHARS = 3600
+    private const val MAX_STORED_RULE_CHARS = 2400
+    private const val MAX_LEDGER_LINES = 200
+    private const val MAX_LEDGER_BYTES = 512L * 1024L
 
     fun capture(context: Context, raw: String, source: String = "command_center") {
         val text = raw.trim()
         if (text.isBlank()) return
 
-        val hash = sha256(text)
         val meta = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
+        val category = classify(text)
+
+        // A temporary task is intentionally not persisted, not even as a content hash.
+        if (category == "task") {
+            meta.edit()
+                .putLong("last_task_seen_at", now)
+                .putString("last_category", category)
+                .remove("last_hash")
+                .apply()
+            return
+        }
+
+        val minimized = minimizeRuleText(text)
+        if (minimized.isBlank()) {
+            meta.edit()
+                .putLong("last_at", now)
+                .putString("last_category", category)
+                .putBoolean("last_rule_suppressed_sensitive", true)
+                .remove("last_hash")
+                .apply()
+            return
+        }
+
+        val hash = sha256(minimized)
         if (meta.getString("last_hash", "") == hash && now - meta.getLong("last_at", 0L) < 300_000L) return
 
-        val category = classify(text)
-        val event = JSONObject()
-            .put("time", now)
-            .put("source", source.take(40))
-            .put("category", category)
-            .put("sha256", hash)
-            .put("text", text.take(12_000))
-
-        appendEncrypted(context, event.toString())
         meta.edit()
             .putString("last_hash", hash)
             .putLong("last_at", now)
             .putString("last_category", category)
             .apply()
+
+        val event = JSONObject()
+            .put("time", now)
+            .put("source", source.take(40))
+            .put("category", category)
+            .put("sha256", hash)
+            .put("text", minimized.take(MAX_STORED_RULE_CHARS))
+
+        appendEncrypted(context, event.toString())
+        compact(context)
     }
 
     fun recentRuleContext(context: Context): String {
@@ -55,14 +88,13 @@ object HakimRuleLedger {
             val plain = decryptLine(line) ?: continue
             val obj = try { JSONObject(plain) } catch (_: Exception) { continue }
             val category = obj.optString("category")
-            if (category != "rule" && category != "correction" && category != "preference") continue
+            if (category !in setOf("rule", "correction", "preference")) continue
             val text = obj.optString("text").trim()
             if (text.isBlank()) continue
             rules += "• $text"
         }
         if (rules.isEmpty()) return ""
-        val ordered = rules.asReversed().joinToString("\n")
-        return ordered.takeLast(MAX_CONTEXT_CHARS)
+        return rules.asReversed().joinToString("\n").takeLast(MAX_CONTEXT_CHARS)
     }
 
     fun status(context: Context): JSONObject {
@@ -70,8 +102,12 @@ object HakimRuleLedger {
         val meta = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return JSONObject()
             .put("encrypted_local_ledger", true)
+            .put("temporary_tasks_persisted", false)
+            .put("secret_redaction_enabled", true)
             .put("entries_file_exists", file.exists())
             .put("bytes", if (file.exists()) file.length() else 0L)
+            .put("max_bytes", MAX_LEDGER_BYTES)
+            .put("max_lines", MAX_LEDGER_LINES)
             .put("last_at", meta.getLong("last_at", 0L))
             .put("last_category", meta.getString("last_category", ""))
             .put("precedence", "الأحدث الصريح يعلو عند التعارض، والتصحيح يعلو على السابق، والمهمة المؤقتة لا تصبح قاعدة عامة")
@@ -85,10 +121,41 @@ object HakimRuleLedger {
         val rule = listOf("ثبت", "ثبّت", "قاعدة", "دستور", "افتراضيا", "افتراضيًا", "دائما", "دائمًا", "من الآن", "كقاعدة", "اجعلها افتراضية", "اجعله افتراضي", "كل ما اقوله", "كل ما أقوله")
         if (rule.any { s.contains(it) }) return "rule"
 
-        val preference = listOf("أفضل", "افضل", "أفضّل", "افضل دائما", "اريد عادة", "أريد عادة")
+        val preference = listOf(
+            "أفضّل", "افضّل", "أفضل دائمًا", "افضل دائما",
+            "أريد عادة", "اريد عادة", "أفضل أن", "افضل ان",
+            "اجعل تفضيلي", "هذا تفضيلي"
+        )
         if (preference.any { s.contains(it) }) return "preference"
 
         return "task"
+    }
+
+    private fun minimizeRuleText(raw: String): String {
+        var s = raw.trim().take(MAX_STORED_RULE_CHARS)
+
+        // Secret-like assignments in Arabic/English.
+        s = s.replace(
+            Regex(
+                "(?i)(password|passcode|secret|token|api[_ -]?key|access[_ -]?key|كلمة\\s*المرور|رمز\\s*الدخول|رمز\\s*التحقق|مفتاح\\s*(?:api|واجهة|الوصول))\\s*[:=]\\s*[^\\s,;]+"
+            ),
+            "\$1=[محجوب]"
+        )
+
+        // Common API/token shapes and long opaque credentials.
+        s = s.replace(Regex("(?i)\\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}\\b"), "[سر محجوب]")
+        s = s.replace(Regex("\\bAIza[0-9A-Za-z_-]{20,}\\b"), "[سر محجوب]")
+        s = s.replace(Regex("(?i)\\bBearer\\s+[A-Za-z0-9._~+/-]{16,}=*"), "Bearer [محجوب]")
+        s = s.replace(Regex("\\b[0-9a-fA-F]{40,}\\b"), "[قيمة حساسة محجوبة]")
+        s = s.replace(Regex("\\b[A-Za-z0-9+/]{64,}={0,2}\\b"), "[قيمة حساسة محجوبة]")
+
+        // Remove sensitive query values while retaining the rule context.
+        s = s.replace(
+            Regex("(?i)([?&](?:token|key|secret|password|code)=)[^&#\\s]+"),
+            "\$1[محجوب]"
+        )
+
+        return s.replace(Regex("\\s+"), " ").trim()
     }
 
     private fun appendEncrypted(context: Context, plain: String) {
@@ -100,9 +167,31 @@ object HakimRuleLedger {
             val packed = ByteArray(iv.size + encrypted.size)
             System.arraycopy(iv, 0, packed, 0, iv.size)
             System.arraycopy(encrypted, 0, packed, iv.size, encrypted.size)
-            File(context.filesDir, FILE_NAME).appendText(Base64.encodeToString(packed, Base64.NO_WRAP) + "\n", Charsets.UTF_8)
+            File(context.filesDir, FILE_NAME).appendText(
+                Base64.encodeToString(packed, Base64.NO_WRAP) + "\n",
+                Charsets.UTF_8
+            )
         } catch (_: Exception) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("last_write_failed", true).apply()
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean("last_write_failed", true).apply()
+        }
+    }
+
+    private fun compact(context: Context) {
+        val file = File(context.filesDir, FILE_NAME)
+        if (!file.exists()) return
+        val lines = runCatching { file.readLines(Charsets.UTF_8) }.getOrNull() ?: return
+        if (lines.size <= MAX_LEDGER_LINES && file.length() <= MAX_LEDGER_BYTES) return
+
+        val kept = lines.takeLast(MAX_LEDGER_LINES).toMutableList()
+        while (kept.isNotEmpty() && kept.sumOf { it.toByteArray(Charsets.UTF_8).size.toLong() + 1L } > MAX_LEDGER_BYTES) {
+            kept.removeAt(0)
+        }
+        runCatching {
+            file.writeText(
+                if (kept.isEmpty()) "" else kept.joinToString("\n", postfix = "\n"),
+                Charsets.UTF_8
+            )
         }
     }
 

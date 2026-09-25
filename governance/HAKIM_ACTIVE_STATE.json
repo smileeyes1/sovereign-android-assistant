@@ -19,19 +19,21 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20302,
-      "commit": "18db7a9234681ce0f887965d1bb7ace261756f6a",
-      "ci_run_number": 1087,
+      "version_code": 20303,
+      "commit": "43ecd8b83c9894dbace1d03a36c6c1b290c1b444",
+      "ci_run_number": 1091,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20303,
-      "branch": "feature/hakim-20303-core-product-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "version_code": 20304,
+      "branch": "feature/hakim-20304-sovereign-constitution-v4",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "source_ci_run_number": 1108,
+      "source_ci_commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d"
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
@@ -99,8 +101,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1087,
-      "commit": "18db7a9234681ce0f887965d1bb7ace261756f6a",
+      "run_number": 1108,
+      "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
       "conclusion": "success"
     }
   },
@@ -138,7 +140,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20303,
+    "candidate_version": 20304,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -157,7 +159,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20303",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20304",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -192,6 +194,21 @@
     "webview_file_origin_hardened": true,
     "in_app_first": true,
     "pdf_visual_adapter": true,
-    "external_share_manual_only": true
+    "external_share_manual_only": true,
+    "sovereign_constitution_v4": true,
+    "quran_sunnah_values_governance_v2": true,
+    "authority_boundary": true,
+    "external_content_data_not_commands": true,
+    "adaptive_value_budget": true,
+    "fixed_cycle_ceiling": false,
+    "evidence_aware_closure": true,
+    "temporary_tasks_not_persisted": true,
+    "rule_secret_redaction": true,
+    "sovereign_constitution_field_verified": false,
+    "self_installer": false,
+    "verified_update_export_to_downloads": true,
+    "request_install_packages": false,
+    "persistent_high_impact_grants": false,
+    "sovereign_constitution_source_ci_verified": true
   }
 }

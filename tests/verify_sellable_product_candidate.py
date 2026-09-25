@@ -22,7 +22,8 @@ req(
     "universal-artifact-pipeline" in BUILD or
     "final-installable" in BUILD or
     "hardening-train" in BUILD or
-    "core-product" in BUILD,
+    "core-product" in BUILD or
+    "sovereign-constitution" in BUILD,
     "version_name"
 )
 

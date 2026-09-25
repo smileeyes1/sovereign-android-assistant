@@ -239,15 +239,11 @@ class MainActivity : Activity() {
 
         if (allowed.isEmpty()) {
             request.deny()
-            val needed = mutableListOf<String>()
-            if (request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
-                needed += Manifest.permission.CAMERA
-            }
-            if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
-                needed += Manifest.permission.RECORD_AUDIO
-            }
-            requestSpecificPermissions(needed)
-            Toast.makeText(this, "اطلب الصلاحية المطلوبة فقط ثم أعد المحاولة", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "الموقع لا يستطيع طلب صلاحية أندرويد نيابةً عنك. استخدم «منح الصلاحيات» واختر المطلوب ثم أعد المحاولة.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
 
@@ -269,12 +265,11 @@ class MainActivity : Activity() {
         val locationGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) || hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (!locationGranted) {
             callback.invoke(origin, false, false)
-            requestSpecificPermissions(
-                listOf(
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            )
+            Toast.makeText(
+                this,
+                "الموقع لا يستطيع فتح صلاحية النظام تلقائيًا. استخدم «منح الصلاحيات» واختر الموقع ثم أعد المحاولة.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
         AlertDialog.Builder(this)
@@ -385,7 +380,7 @@ class MainActivity : Activity() {
         }
         permissionRow.addView(Button(this).apply {
             text = "منح الصلاحيات"
-            setOnClickListener { requestUsefulPermissions() }
+            setOnClickListener { showPermissionChooser() }
         })
         permissionRow.addView(Button(this).apply {
             text = "إعدادات التطبيق"
@@ -464,22 +459,69 @@ class MainActivity : Activity() {
         return list.distinct().toTypedArray()
     }
 
-    private fun requestSpecificPermissions(requested: Collection<String>) {
-        val missing = requested.distinct().filterNot { hasPermission(it) }
-        if (missing.isNotEmpty()) {
-            requestPermissions(missing.toTypedArray(), APP_PERMISSIONS_REQUEST)
-        } else {
-            refreshPermissionStatus()
+    private fun showPermissionChooser() {
+        val choices = mutableListOf<Pair<String, List<String>>>()
+        if (!hasPermission(Manifest.permission.CAMERA)) {
+            choices += "الكاميرا" to listOf(Manifest.permission.CAMERA)
         }
-    }
+        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
+            choices += "الميكروفون" to listOf(Manifest.permission.RECORD_AUDIO)
+        }
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
+            !hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        ) {
+            choices += "الموقع" to listOf(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        }
+        if (Build.VERSION.SDK_INT >= 33 && !hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+            choices += "الإشعارات" to listOf(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (Build.VERSION.SDK_INT <= 28 && !hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            choices += "حفظ التنزيلات" to listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
 
-    private fun requestUsefulPermissions() {
-        val missing = usefulRuntimePermissions().filterNot { hasPermission(it) }
-        if (missing.isEmpty()) {
+        if (choices.isEmpty()) {
             refreshPermissionStatus()
-            Toast.makeText(this, "كل الصلاحيات النافعة ممنوحة", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "لا توجد صلاحيات لازمة غير ممنوحة", Toast.LENGTH_SHORT).show()
             return
         }
+
+        AlertDialog.Builder(this)
+            .setTitle("اختر صلاحية واحدة")
+            .setItems(choices.map { it.first }.toTypedArray()) { _, which ->
+                requestSpecificPermissions(choices[which].second, explicitUserGrant = true)
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun requestSpecificPermissions(
+        requested: Collection<String>,
+        explicitUserGrant: Boolean = false
+    ) {
+        val missing = requested.distinct().filterNot { hasPermission(it) }
+        if (missing.isEmpty()) {
+            refreshPermissionStatus()
+            return
+        }
+
+        val target = missing.sorted().joinToString("|")
+        if (explicitUserGrant) {
+            HakimCapabilityKernel.grantOnce(this, "grant_permission", target)
+        }
+        val authorization = HakimCapabilityKernel.authorize(
+            this,
+            "grant_permission",
+            target,
+            "count=" + missing.size
+        )
+        if (authorization.optString("verdict") != "allow") {
+            Toast.makeText(this, "لم تُطلب صلاحية جديدة دون اختيارك الصريح.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         requestPermissions(missing.toTypedArray(), APP_PERMISSIONS_REQUEST)
     }
 

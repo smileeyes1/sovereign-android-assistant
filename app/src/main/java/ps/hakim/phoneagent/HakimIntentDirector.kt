@@ -7,8 +7,6 @@ import android.content.Context
  * لا يطلب من النموذج إظهار سلسلة التفكير؛ بل أفضل نتيجة قابلة للتحقق فقط.
  */
 object HakimIntentDirector {
-    private const val MAX_INTERNAL_REVISIONS = 3
-
     data class Contract(
         val userIntent: String,
         val acceptance: String,
@@ -25,10 +23,10 @@ object HakimIntentDirector {
             .takeLast(8_000)
 
         val instruction = buildString {
+            append(HakimConstitution.promptPrefix(context))
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
-            appendLine(HakimQuranicGovernance.compactInstruction())
             appendLine("افهم مقصد المستخدم قبل الإجابة، ثم صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل يحقق المقصد.")
-            appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه داخليًا عند الحاجة حتى 3 مراجعات.")
+            appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه ما دام هناك عيب مادي قابل للإصلاح دون تكرار غير منتج.")
             appendLine("لا تعرض سلسلة التفكير أو المسودة الداخلية أو الأمر الذاتي الذي صغته لنفسك.")
             appendLine("لا تكتفِ بالخطة أو الاقتراح إذا كان بإمكانك إنتاج الناتج المطلوب فعليًا ضمن قدراتك.")
             appendLine("اعتبر المتصفح المدمج والأدوات والخدمات وسائل داخلية ضمن التنفيذ، لا محطات تسليم للمستخدم.")
@@ -43,12 +41,17 @@ object HakimIntentDirector {
             appendLine("معيار الاكتمال: " + acceptance)
             appendLine("دورة إشراف حكيم: " + cycle)
             if (recentContext.isNotBlank()) {
-                appendLine("سياق المحادثة الحديث داخل حكيم:")
-                appendLine(recentContext)
+                appendLine(
+                    HakimAuthorityBoundary.externalData(
+                        "سياق محادثة سابق داخل حكيم",
+                        recentContext,
+                        8_000
+                    )
+                )
             }
             appendLine("مقصد المستخدم الحالي:")
             append(goal)
-        }.take(6000)
+        }.take(12_000)
 
         return Contract(goal, acceptance, instruction)
     }

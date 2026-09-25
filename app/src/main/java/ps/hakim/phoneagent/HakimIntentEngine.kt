@@ -19,7 +19,7 @@ object HakimIntentEngine {
         val needsUserGate: Boolean,
         val completion: List<String>,
         val nextAction: String,
-        val depthPolicy: String = "ADAPTIVE_N_STAR"
+        val depthPolicy: String = "ADAPTIVE_VALUE_BUDGET"
     ) {
         fun asJson(): JSONObject = JSONObject()
             .put("intent", intent)
@@ -138,7 +138,7 @@ object HakimIntentEngine {
         return JSONObject()
             .put("intent_engine", true)
             .put("adaptive_nstar", true)
-            .put("depth_policy", p.getString("depth_policy", "ADAPTIVE_N_STAR"))
+            .put("depth_policy", p.getString("depth_policy", "ADAPTIVE_VALUE_BUDGET"))
             .put("default_auto_completion", true)
             .put("safe_auto_continue", true)
             .put("material_gap_blocks_complete", true)

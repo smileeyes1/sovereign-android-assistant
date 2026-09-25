@@ -18,6 +18,7 @@ import android.widget.TextView
 class UnifiedHomeActivity : Activity() {
     private lateinit var intelligenceStatus: TextView
     private lateinit var organizationStatus: TextView
+    private lateinit var updateStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +60,21 @@ class UnifiedHomeActivity : Activity() {
             setPadding(12, 4, 12, 18)
         }
         root.addView(organizationStatus)
+
+        updateStatus = TextView(this).apply {
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(12, 4, 12, 8)
+        }
+        root.addView(updateStatus)
+
+        root.addView(button("فحص تحديث حكيم") {
+            updateStatus.text = "يفحص وجود تحديث موثّق…"
+            AutoUpdater.checkAsync(this)
+            updateStatus.postDelayed({
+                updateStatus.text = AutoUpdater.statusSummary(this)
+            }, 1800L)
+        })
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
@@ -112,6 +128,8 @@ class UnifiedHomeActivity : Activity() {
         } else {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
+
+        updateStatus.text = AutoUpdater.statusSummary(this)
 
         val policy = HakimEnterprisePolicy.current(this)
         organizationStatus.text = if (policy.managed) {

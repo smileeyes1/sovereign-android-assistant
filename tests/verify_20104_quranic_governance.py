@@ -41,10 +41,13 @@ for forbidden_claim in [
 for needed in [
     "لا تجعل أسماء الله أو حروف القرآن آلية تقنية أو غيبية",
     "اختر الوسائل الدنيوية بالعلم والدليل والاختبار",
+    "USER_FAITH_ANCHOR",
+    "sahih_sunnah_is_explanatory_with_verification",
+    "recognized_scholarly_disagreement_respected",
 ]:
     req(needed in CODE, "boundary:" + needed)
 
-req("HakimQuranicGovernance.compactInstruction()" in DIRECTOR, "director_not_governed")
+req("HakimConstitution.promptPrefix(context)" in DIRECTOR, "director_not_governed_by_constitution")
 req("HakimQuranicGovernance.compactInstruction()" in CONSTITUTION, "constitution_prompt_not_governed")
 req("HakimQuranicGovernance.canonicalJson()" in CONSTITUTION, "canonical_state_missing")
 req("حروفها إلى أوزان أو طلاسم" in REL, "religious_integrity_boundary_missing")
@@ -56,4 +59,5 @@ for needed in [
 ]:
     req(needed in DOC + REL, "integrity:" + needed)
 
-print("QURANIC_GOVERNANCE_GATE=PASS candidate>=20104 values=true occult=false technical_means=evidence")
+req("SOVEREIGN-QURAN-V4" in CONSTITUTION, "sovereign_constitution_v4_missing")
+print("QURANIC_GOVERNANCE_GATE=PASS candidate>=20104 quran_sunnah=true occult=false technical_means=evidence constitution=v4")

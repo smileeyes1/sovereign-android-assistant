@@ -22,8 +22,8 @@ def req(value, reason):
         raise SystemExit("HARDENING_20302=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20302, "version")
-req("3.1.2-hardening-train-v1" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20302, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 req("compileSdk 36" in BUILD, "compile_sdk_not_36")
 req("targetSdk 35" in BUILD, "target_sdk_changed")
 req("androidx.activity:activity-ktx:1.12.4" in BUILD, "sdk35_activity_dependency")

@@ -2,6 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
+import {
+  SOVEREIGN_GOVERNANCE_VERSION,actionRequested,governedReadDescription,
+  tagDeviceEvidence,tagExternalData
+} from "./governance.js";
 
 function text(value:unknown){
   return {content:[{type:"text" as const,text:JSON.stringify(value)}],structuredContent:value as Record<string,unknown>};
@@ -152,7 +156,7 @@ function limitedRequestResult(result:unknown,requestId:string){
 export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   const readCatalog=publicSafe?PUBLIC_READ_CATALOG:PRIVATE_READ_CATALOG;
   const readTools=readCatalog.map(([name,_op,title,description])=>({
-    name,title,description,
+    name,title,description:governedReadDescription(description),
     inputSchema:{type:"object",properties:{},additionalProperties:false},
     annotations:READ_ANNOTATIONS,
     securitySchemes:readSecurity,
@@ -164,7 +168,7 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
     {
       name:"open_target",
       title:"فتح تطبيق أو رابط",
-      description:"افتح تطبيقًا محددًا أو رابط HTTP/HTTPS على جهاز حكيم المرتبط بعد موافقة أندرويد. لا ينفذ أي معاملة أو إرسال بذاته.",
+      description:"افتح تطبيقًا محددًا أو رابط HTTP/HTTPS على جهاز حكيم المرتبط. النتيجة approval_requested تعني طلب موافقة فقط وليست نجاحًا أو اكتمالًا، ولا ينفذ أي معاملة أو إرسال بذاته.",
       inputSchema:{
         type:"object",
         properties:{
@@ -184,7 +188,7 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
     tools.push({
       name:"navigate_device",
       title:"تنقل آمن على الجهاز",
-      description:"نفّذ فقط تنقل Android العام: الرئيسية أو رجوع أو التطبيقات الحديثة، بعد موافقة أندرويد. لا ينقر عناصر محتوى ولا يكتب نصًا.",
+      description:"اطلب فقط تنقل Android العام: الرئيسية أو رجوع أو التطبيقات الحديثة. approval_requested ليس نجاحًا؛ الأثر يحتاج نتيجة لاحقة من الجهاز. لا ينقر عناصر محتوى ولا يكتب نصًا.",
       inputSchema:{
         type:"object",
         properties:{kind:{type:"string",enum:PUBLIC_NAV_KINDS}},
@@ -199,7 +203,7 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
     tools.push({
       name:"perform_ui_action",
       title:"تنفيذ فعل واجهة مأذون — وضع خاص",
-      description:"وضع خاص فقط: اطلب فعل واجهة محددًا من القائمة المدعومة على جهاز حكيم بعد موافقة أندرويد.",
+      description:"وضع خاص فقط: اطلب فعل واجهة محددًا من القائمة المدعومة. الطلب لا يثبت الأثر ولا اكتمال مقصد المستخدم؛ النتيجة اللاحقة من الجهاز تبقى دليلًا ضمن نطاقها.",
       inputSchema:{
         type:"object",
         properties:{
@@ -240,7 +244,7 @@ export function createHakimServer(
   resourceMetadataUrl:string,
   publicSafe=isPublicSafeDefault()
 ){
-  const server=new McpServer({name:"Hakim Executive Bridge",version:publicSafe?"0.5.0-public-safe":"0.5.0-private"});
+  const server=new McpServer({name:"Hakim Executive Bridge",version:publicSafe?"0.6.0-sovereign-public-safe":"0.6.0-sovereign-private"});
   const has=(scope:string)=>scopes.includes(scope);
   const reviewMode=credential.topic.startsWith("hakim_review_");
   const reviewId=()=>("review-"+Date.now().toString(36));
@@ -248,25 +252,25 @@ export function createHakimServer(
 
   for(const [name,internalOp,title,description] of readCatalog){
     server.registerTool(name,{
-      title,description,inputSchema:{},
+      title,description:governedReadDescription(description),inputSchema:{},
       annotations:READ_ANNOTATIONS
     },async()=>{
       if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
-      if(reviewMode) return text({
+      if(reviewMode) return text(tagExternalData({
         ok:true,demo:true,tool:name,
         device:{name:"Hakim Review Device",connected:true},
         ...(publicSafe?{privacy:"content_redacted"}:{message:"Safe reviewer fixture; no real device was accessed."})
-      });
+      },name));
       const requestId=await publishCommand(credential,internalOp as HakimOp,{});
       const result=await pollResult(credential,requestId,8_000);
-      if(publicSafe&&name==="get_device_status") return text(limitedStatus(result,requestId));
-      return text(result??{ok:false,status:"pending",request_id:requestId});
+      if(publicSafe&&name==="get_device_status") return text(tagExternalData(limitedStatus(result,requestId),name));
+      return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
   }
 
   server.registerTool("open_target",{
     title:"فتح تطبيق أو رابط",
-    description:"افتح تطبيقًا محددًا أو رابط HTTP/HTTPS على جهاز حكيم المرتبط بعد موافقة أندرويد.",
+    description:"اطلب فتح تطبيق أو رابط على جهاز حكيم. approval_requested ليس نجاحًا أو اكتمالًا؛ الأثر يحتاج نتيجة لاحقة من الجهاز.",
     inputSchema:{package:z.string().max(255).optional(),url:z.string().url().optional()},
     annotations:OPEN_ANNOTATIONS
   },async({package:pkg,url})=>{
@@ -279,11 +283,9 @@ export function createHakimServer(
       const u=new URL(url!);
       if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
     }
-    if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",operation_token:reviewId(),note:"No real device action occurs in reviewer mode."});
+    if(reviewMode) return text(actionRequested(reviewId(),{demo:true,note:"No real device action occurs in reviewer mode."}));
     const requestId=await publishCommand(credential,"launch",{package:hasPkg?pkg!.trim():"",url:hasUrl?url!.trim():""});
-    return text(publicSafe
-      ?{ok:true,status:"approval_requested",operation_token:requestId}
-      :{ok:true,status:"approval_requested",request_id:requestId});
+    return text(actionRequested(requestId,publicSafe?{}:{request_id:requestId}));
   });
 
   if(publicSafe){
@@ -294,9 +296,9 @@ export function createHakimServer(
       annotations:NAV_ANNOTATIONS
     },async({kind})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
-      if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",operation_token:reviewId(),validated_action:kind,note:"No real device action occurs in reviewer mode."});
+      if(reviewMode) return text(actionRequested(reviewId(),{demo:true,validated_action:kind,note:"No real device action occurs in reviewer mode."}));
       const requestId=await publishCommand(credential,"action",{action:kind});
-      return text({ok:true,status:"approval_requested",operation_token:requestId});
+      return text(actionRequested(requestId,{validated_action:kind}));
     });
   }else{
     server.registerTool("perform_ui_action",{
@@ -307,9 +309,12 @@ export function createHakimServer(
     },async({kind,args})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       const payload=buildActionPayload(kind,args);
-      if(reviewMode) return text({ok:true,demo:true,status:"approval_requested",request_id:reviewId(),validated_action:payload.action,note:"No real device action occurs in reviewer mode."});
+      if(reviewMode) {
+        const id=reviewId();
+        return text(actionRequested(id,{demo:true,request_id:id,validated_action:payload.action,note:"No real device action occurs in reviewer mode."}));
+      }
       const requestId=await publishCommand(credential,"action",payload);
-      return text({ok:true,status:"approval_requested",request_id:requestId});
+      return text(actionRequested(requestId,{request_id:requestId,validated_action:payload.action}));
     });
   }
 
@@ -323,13 +328,18 @@ export function createHakimServer(
   },async({operation_token})=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
     const request_id=operation_token;
-    if(reviewMode) return text(publicSafe
-      ?{ok:true,demo:true,status:"complete",operation_token,effect:"result_available",privacy:"content_redacted"}
-      :{ok:true,demo:true,status:"complete",request_id,result:{message:"Safe reviewer fixture."}});
+    if(reviewMode) return text(tagDeviceEvidence(
+      publicSafe
+        ?{ok:true,demo:true,status:"complete",operation_token,effect:"result_available",privacy:"content_redacted"}
+        :{ok:true,demo:true,status:"complete",request_id,result:{message:"Safe reviewer fixture."}},
+      request_id
+    ));
     const result=await pollResult(credential,request_id,8_000);
-    if(publicSafe) return text(limitedRequestResult(result,operation_token));
-    return text(result??{ok:false,status:"pending",request_id});
+    if(publicSafe) return text(tagDeviceEvidence(limitedRequestResult(result,operation_token),request_id));
+    return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id},request_id));
   });
 
   return server;
 }
+
+export const BRIDGE_GOVERNANCE_VERSION=SOVEREIGN_GOVERNANCE_VERSION;

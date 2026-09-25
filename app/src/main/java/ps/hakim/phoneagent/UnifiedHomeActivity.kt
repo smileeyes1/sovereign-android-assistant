@@ -19,7 +19,6 @@ class UnifiedHomeActivity : Activity() {
     private lateinit var intelligenceStatus: TextView
     private lateinit var organizationStatus: TextView
     private lateinit var updateStatus: TextView
-    private lateinit var updateAuthorizationButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,10 +68,13 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(updateStatus)
 
-        updateAuthorizationButton = button("") {
-            toggleAutoUpdateAuthorization()
-        }
-        root.addView(updateAuthorizationButton)
+        root.addView(button("فحص تحديث حكيم") {
+            updateStatus.text = "يفحص وجود تحديث موثّق…"
+            AutoUpdater.checkAsync(this)
+            updateStatus.postDelayed({
+                updateStatus.text = AutoUpdater.statusSummary(this)
+            }, 1800L)
+        })
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
@@ -127,17 +129,7 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
-        val autoUpdate = AutoUpdater.autoUpdateAuthorized(this)
-        updateStatus.text = if (autoUpdate) {
-            "التحديثات التلقائية: مفوضة لحكيم نفسه فقط"
-        } else {
-            "التحديثات التلقائية: تحتاج موافقة مرة واحدة"
-        }
-        updateAuthorizationButton.text = if (autoUpdate) {
-            "إيقاف التحديثات التلقائية"
-        } else {
-            "تفعيل التحديثات التلقائية"
-        }
+        updateStatus.text = AutoUpdater.statusSummary(this)
 
         val policy = HakimEnterprisePolicy.current(this)
         organizationStatus.text = if (policy.managed) {
@@ -167,43 +159,6 @@ class UnifiedHomeActivity : Activity() {
                 }
             }
         }.start()
-    }
-
-    private fun toggleAutoUpdateAuthorization() {
-        if (AutoUpdater.autoUpdateAuthorized(this)) {
-            HakimCapabilityKernel.revokePersistent(
-                this,
-                "install_candidate",
-                packageName
-            )
-            updateStatus.text = "أُوقف تفويض التحديثات التلقائية."
-            refresh()
-            return
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("تفعيل التحديثات التلقائية")
-            .setMessage(
-                "سيسمح هذا لحكيم بتثبيت تحديثات حكيم نفسه فقط بعد التحقق من أن الحزمة نفسها، والإصدار أعلى، " +
-                    "وشهادة D1 مطابقة، وبصمة الملف مطابقة للمصدر. لا يمنح هذا تفويضًا لتثبيت تطبيقات أخرى."
-            )
-            .setPositiveButton("تفعيل") { _, _ ->
-                val granted = HakimCapabilityKernel.grantPersistent(
-                    this,
-                    "install_candidate",
-                    packageName
-                )
-                if (granted) {
-                    if (!AutoUpdater.canInstallPackages(this)) {
-                        AutoUpdater.openInstallPermissionSettings(this)
-                    } else {
-                        AutoUpdater.checkAsync(this)
-                    }
-                }
-                refresh()
-            }
-            .setNegativeButton("إلغاء", null)
-            .show()
     }
 
     private fun confirmClearLocalData() {

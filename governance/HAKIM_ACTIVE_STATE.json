@@ -28,7 +28,7 @@
     "candidate": {
       "version_code": 20304,
       "branch": "feature/hakim-20304-sovereign-constitution-v4",
-      "source_ci_state": "SUCCESS_1108",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,

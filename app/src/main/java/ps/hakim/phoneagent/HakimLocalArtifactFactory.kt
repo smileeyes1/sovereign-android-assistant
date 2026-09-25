@@ -192,6 +192,109 @@ object HakimLocalArtifactFactory {
         }
     }
 
+
+    fun createTextPdf(context: Context, title: String, rawContent: String): Result<Created> = runCatching {
+        val content = HakimProductOutput.clean(rawContent).trim()
+        require(content.isNotBlank()) { "لا يوجد محتوى صالح لإنشاء PDF." }
+        require(!HakimProductOutput.containsRawMarkup(content)) { "بقيت وسوم خام بعد التنظيف." }
+
+        val displayName = "حكيم_مستند.pdf"
+        val document = PdfDocument()
+        try {
+            val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 24f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.RIGHT
+            }
+            val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 17f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+                textAlign = Paint.Align.RIGHT
+            }
+
+            var pageNumber = 1
+            var page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, pageNumber).create())
+            var canvas = page.canvas
+            var y = 58f
+            canvas.drawText(title.ifBlank { "مستند حكيم" }.take(70), 545f, y, titlePaint)
+            y += 42f
+
+            fun newPage() {
+                document.finishPage(page)
+                pageNumber += 1
+                page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, pageNumber).create())
+                canvas = page.canvas
+                y = 58f
+            }
+
+            for (paragraph in content.lines()) {
+                if (paragraph.isBlank()) {
+                    y += 16f
+                    if (y > 790f) newPage()
+                    continue
+                }
+
+                val words = paragraph.trim().split(Regex("\\s+"))
+                var line = ""
+                for (word in words) {
+                    val candidate = if (line.isBlank()) word else "$line $word"
+                    if (bodyPaint.measureText(candidate) <= 490f) {
+                        line = candidate
+                    } else {
+                        if (line.isNotBlank()) {
+                            if (y > 790f) newPage()
+                            canvas.drawText(line, 545f, y, bodyPaint)
+                            y += 27f
+                        }
+                        line = word
+                    }
+                }
+                if (line.isNotBlank()) {
+                    if (y > 790f) newPage()
+                    canvas.drawText(line, 545f, y, bodyPaint)
+                    y += 27f
+                }
+                y += 6f
+            }
+
+            document.finishPage(page)
+            savePdfDocument(context, document, displayName)
+        } finally {
+            document.close()
+        }
+    }
+
+    private fun savePdfDocument(context: Context, document: PdfDocument, displayName: String): Created {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/حكيم")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: error("تعذر إنشاء ملف PDF في التنزيلات.")
+            try {
+                resolver.openOutputStream(uri, "w")?.use { out ->
+                    document.writeTo(out)
+                } ?: error("تعذر فتح ملف PDF للكتابة.")
+                values.clear()
+                values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                throw e
+            }
+            return Created(uri, displayName, "التنزيلات/حكيم/$displayName")
+        }
+
+        val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "حكيم").apply { mkdirs() }
+        val file = File(dir, displayName)
+        FileOutputStream(file).use { document.writeTo(it) }
+        return Created(null, displayName, file.absolutePath)
+    }
+
     private fun drawQuestion(
         canvas: android.graphics.Canvas,
         number: Int,

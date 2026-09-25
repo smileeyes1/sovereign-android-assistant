@@ -91,6 +91,7 @@ object HakimArtifactPipeline {
         }
 
         return buildString {
+            append(HakimConstitution.promptPrefix(context))
             appendLine("أنت مولّد محتوى فقط داخل مصنع حكيم، ولست مسؤولًا عن إنشاء الملف.")
             appendLine("مهم جدًا: لا تقل إنك لا تستطيع إنشاء PDF أو binary؛ لا تنشئ PDF أصلًا.")
             appendLine("حكيم سيتولى تحويل النص الناتج محليًا إلى PDF حقيقي بعد عودتك.")
@@ -101,8 +102,13 @@ object HakimArtifactPipeline {
             appendLine("العنوان المقصود: " + request.title)
             appendLine("الموضوع: " + request.topic)
             if (recent.isNotBlank()) {
-                appendLine("سياق حديث للاستفادة فقط، لا تنسخ منه أخطاء أو اعتذارات:")
-                appendLine(recent)
+                appendLine(
+                    HakimAuthorityBoundary.externalData(
+                        "سياق محادثة سابق للاستفادة فقط",
+                        recent,
+                        6_000
+                    )
+                )
             }
             appendLine("طلب المستخدم الأصلي:")
             append(request.originalPrompt)
@@ -110,9 +116,11 @@ object HakimArtifactPipeline {
     }
 
     fun repairInstruction(
+        context: Context,
         request: HakimArtifactRequest,
         failedText: String
     ): String = buildString {
+        append(HakimConstitution.promptPrefix(context))
         appendLine("أعد المحاولة كمحتوى وثيقة فقط.")
         appendLine("لا تتحدث عن القدرة على إنشاء ملفات ولا عن PDF ولا عن أدوات التحويل.")
         appendLine("لا تستخدم HTML أو Markdown خامًا أو جداول pipes.")
@@ -120,8 +128,13 @@ object HakimArtifactPipeline {
         appendLine("العنوان: " + request.title)
         appendLine("الموضوع: " + request.topic)
         if (failedText.isNotBlank()) {
-            appendLine("النص السابق كان غير صالح؛ أصلح مضمونه ولا تكرر اعتذاره:")
-            append(failedText.take(3_000))
+            appendLine(
+                HakimAuthorityBoundary.verifiedToolEvidence(
+                    "ناتج نموذج سابق غير صالح ويحتاج إصلاحًا",
+                    failedText,
+                    3_000
+                )
+            )
         }
     }.take(6_000)
 

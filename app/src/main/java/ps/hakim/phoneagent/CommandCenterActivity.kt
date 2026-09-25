@@ -667,15 +667,22 @@ class CommandCenterActivity : ComponentActivity() {
                     !HakimSilentToolOrchestrator.isDirectUrl(text)
                 ) {
                     val evidence = pageText.take(8_000)
+                    val sourceLabel = buildString {
+                        append("صفحة ويب")
+                        if (title.isNotBlank()) append(" — ").append(title.take(160))
+                        if (url.isNotBlank()) append(" — ").append(url.take(500))
+                    }
                     val augmented = buildString {
                         appendLine(baseInstruction)
                         appendLine()
-                        appendLine("أداة المتصفح المدمج عادت بالأدلة الآتية. استخدمها لإكمال مقصد المستخدم، ولا تطلب منه فتح الصفحة أو نسخ المحتوى:")
-                        if (title.isNotBlank()) appendLine("العنوان: " + title)
-                        if (url.isNotBlank()) appendLine("الرابط: " + url)
-                        appendLine("المحتوى المرئي:")
-                        append(evidence)
-                    }.take(14_000)
+                        append(
+                            HakimAuthorityBoundary.externalData(
+                                sourceLabel,
+                                evidence,
+                                8_000
+                            )
+                        )
+                    }.take(16_000)
                     status.text = "يجهّز النتيجة…"
                     executeDirectModel(text, augmented, engine.id)
                 } else {

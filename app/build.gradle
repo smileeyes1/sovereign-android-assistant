@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20207
-        versionName '3.0.7-universal-artifact-pipeline-v1-candidate'
+        versionCode 20300
+        versionName '3.1.0-final-installable-v1'
     }
 
     compileOptions {

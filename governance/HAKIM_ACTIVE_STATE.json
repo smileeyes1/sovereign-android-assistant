@@ -202,6 +202,10 @@
     "evidence_aware_closure": true,
     "temporary_tasks_not_persisted": true,
     "rule_secret_redaction": true,
-    "sovereign_constitution_field_verified": false
+    "sovereign_constitution_field_verified": false,
+    "self_installer": false,
+    "verified_update_export_to_downloads": true,
+    "request_install_packages": false,
+    "persistent_high_impact_grants": false
   }
 }

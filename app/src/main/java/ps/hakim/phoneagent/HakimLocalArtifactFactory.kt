@@ -31,79 +31,69 @@ object HakimLocalArtifactFactory {
     private val easternDigits = charArrayOf('٠','١','٢','٣','٤','٥','٦','٧','٨','٩')
 
     private const val PREFS = "hakim_local_artifacts"
-    private const val LAST_KIND = "last_kind"
-    private const val KIND_ADD_WITHIN_10 = "worksheet_addition_within_10"
+    private const val LAST_SPEC_ID = "last_spec_id"
 
-    fun canHandle(prompt: String): Boolean = explicitAdditionWithinTen(prompt)
+    /**
+     * يعيد مواصفة تعليمية فقط عندما يكون مقصد المستخدم «مخرجًا/ملفًا»،
+     * لا عندما يسأل سؤالًا تعليميًا عاديًا.
+     */
+    fun resolveSpec(context: Context, prompt: String): HakimTeacherArtifactSpec? {
+        val explicit = HakimTeacherArtifactSpec.resolveExplicit(prompt)
+        if (explicit != null && isArtifactIntent(prompt)) return explicit
 
-    fun canHandle(context: Context, prompt: String): Boolean {
-        if (explicitAdditionWithinTen(prompt)) return true
+        if (!HakimTeacherArtifactSpec.looksLikeArtifactFollowUp(prompt)) return null
 
-        val directPdfAddition = isPdfAdditionWorksheet(prompt)
-        val contextualFollowUp = isPdfWorksheetFollowUp(prompt)
-        if (!directPdfAddition && !contextualFollowUp) return false
+        val lastId = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(LAST_SPEC_ID, "")
+            .orEmpty()
+        HakimTeacherArtifactSpec.byId(lastId)?.let { return it }
 
         val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
             .getString("recent", "")
             .orEmpty()
             .takeLast(8_000)
-
-        if (explicitAdditionWithinTen(recent)) return true
-        if (directPdfAddition && mentionsAdditionWithinTen(recent)) return true
-
-        val lastKind = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(LAST_KIND, "")
-            .orEmpty()
-        return lastKind == KIND_ADD_WITHIN_10
+        return HakimTeacherArtifactSpec.resolveExplicit(recent)
     }
 
+    fun canHandle(prompt: String): Boolean =
+        HakimTeacherArtifactSpec.resolveExplicit(prompt) != null && isArtifactIntent(prompt)
+
+    fun canHandle(context: Context, prompt: String): Boolean =
+        resolveSpec(context, prompt) != null
+
     fun create(context: Context, prompt: String): Result<Created> = runCatching {
-        require(canHandle(context, prompt)) { "المخرج المحلي المطلوب غير مدعوم بعد." }
-        val created = createAdditionWithinTenPdf(context)
+        val spec = resolveSpec(context, prompt)
+            ?: error("لا توجد مواصفة تعليمية محلية مطابقة لهذا الطلب.")
+        val created = createWorksheetPdf(context, spec)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putString(LAST_KIND, KIND_ADD_WITHIN_10)
+            .putString(LAST_SPEC_ID, spec.id)
             .putLong("last_created_at", System.currentTimeMillis())
             .apply()
         created
     }
 
-    private fun explicitAdditionWithinTen(text: String): Boolean {
+    private fun isArtifactIntent(text: String): Boolean {
         val q = normalize(text)
-        val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
-        val addition = q.contains("الجمع") || q.contains("جمع") || q.contains("addition") || q.contains("joining")
-        return worksheet && addition && mentionsAdditionWithinTen(q)
-    }
-
-    private fun mentionsAdditionWithinTen(text: String): Boolean {
-        val q = normalize(text)
-        return listOf(
-            "ضمن ١٠", "ضمن 10", "حتى ١٠", "حتى 10", "إلى ١٠", "الى ١٠",
-            "within 10", "joining within 10", "addition within 10"
+        val artifact = listOf(
+            "ورقة عمل", "ورقه عمل", "worksheet",
+            "pdf", "بي دي اف", "بى دى اف", "ملف",
+            "للتحميل", "تحميل", "للطباعة", "طباعة",
+            "word", "وورد", "docx", "html", "png", "صورة"
         ).any { q.contains(it) }
-    }
-
-    private fun isPdfAdditionWorksheet(text: String): Boolean {
-        val q = normalize(text)
-        val worksheet = q.contains("ورقة عمل") || q.contains("ورقه عمل") || q.contains("worksheet")
-        val addition = q.contains("الجمع") || q.contains("جمع") || q.contains("addition") || q.contains("joining")
-        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "للتحميل", "للطباعة", "الطباعة").any { q.contains(it) }
-        return worksheet && addition && pdf
-    }
-
-    private fun isPdfWorksheetFollowUp(text: String): Boolean {
-        val q = normalize(text)
-        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "ملف", "للتحميل", "تحميل", "للطباعة", "الطباعة").any { q.contains(it) }
-        val referent = listOf("ورقة العمل", "ورقه العمل", "الورقة", "الورقه", "هذه", "هذي", "نفسها", "حولها", "حوّلها", "اريدها", "أريدها").any { q.contains(it) }
-        return pdf && referent
+        val creation = listOf("أنشئ", "انشئ", "اصنع", "صمم", "صمّم", "جهز", "جهّز").any { q.contains(it) }
+        return artifact || creation
     }
 
     private fun normalize(text: String): String =
         text.trim().lowercase().replace(Regex("\\s+"), " ")
 
-
-    private fun createAdditionWithinTenPdf(context: Context): Created {
-        val displayName = "ورقة_عمل_الجمع_ضمن_١٠.pdf"
+    private fun createWorksheetPdf(
+        context: Context,
+        spec: HakimTeacherArtifactSpec
+    ): Created {
+        verifyStudentSpec(spec)
+        val displayName = spec.fileStem + ".pdf"
         val document = PdfDocument()
         try {
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
@@ -111,12 +101,12 @@ object HakimLocalArtifactFactory {
             val canvas = page.canvas
 
             val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 26f
+                textSize = 25f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.RIGHT
             }
             val body = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 18f
+                textSize = 17f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                 textAlign = Paint.Align.RIGHT
             }
@@ -130,68 +120,49 @@ object HakimLocalArtifactFactory {
                 strokeWidth = 1.2f
             }
 
-            canvas.drawText("ورقة عمل: الجمع ضمن ١٠", 545f, 58f, title)
-            canvas.drawText("الاسم: ____________________    الصف: ______    التاريخ: ______", 545f, 96f, body)
-            canvas.drawLine(50f, 112f, 545f, 112f, line)
-            canvas.drawText("أوجد ناتج الجمع، ثم اكتب الإجابة في المربع.", 545f, 145f, body)
-
-            val problems = listOf(
-                1 to 2,
-                3 to 4,
-                5 to 2,
-                6 to 3,
-                4 to 4,
-                7 to 2,
-                1 to 8,
-                5 to 5,
-                2 to 6,
-                3 to 6
+            canvas.drawText(spec.title, 545f, 56f, title)
+            canvas.drawText(
+                "الاسم: ____________________    الصف: ______    التاريخ: ______",
+                545f,
+                94f,
+                body
             )
+            canvas.drawLine(50f, 110f, 545f, 110f, line)
+            canvas.drawText(spec.instruction, 545f, 142f, body)
 
             var y = 205f
-            problems.forEachIndexed { index, pair ->
-                drawQuestion(canvas, index + 1, pair.first, pair.second, y, math, body, line)
-                y += 60f
+            spec.problems.forEach { problem ->
+                drawQuestion(canvas, problem, y, math, body, line)
+                y += 66f
             }
 
-            canvas.drawLine(50f, 792f, 545f, 792f, line)
-            canvas.drawText("أحسنت المحاولة.", 545f, 820f, body)
-
+            canvas.drawLine(50f, 760f, 545f, 760f, line)
+            canvas.drawText("أحسنت المحاولة.", 545f, 795f, body)
             document.finishPage(page)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val resolver = context.contentResolver
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/حكيم")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: error("تعذر إنشاء ملف PDF في التنزيلات.")
-                try {
-                    resolver.openOutputStream(uri, "w")?.use { out ->
-                        document.writeTo(out)
-                    } ?: error("تعذر فتح ملف PDF للكتابة.")
-                    values.clear()
-                    values.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                    resolver.update(uri, values, null, null)
-                } catch (e: Exception) {
-                    resolver.delete(uri, null, null)
-                    throw e
-                }
-                return Created(uri, displayName, "التنزيلات/حكيم/$displayName")
-            }
-
-            val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "حكيم").apply { mkdirs() }
-            val file = File(dir, displayName)
-            FileOutputStream(file).use { document.writeTo(it) }
-            return Created(null, displayName, file.absolutePath)
+            return savePdfDocument(context, document, displayName)
         } finally {
             document.close()
         }
     }
 
+    private fun verifyStudentSpec(spec: HakimTeacherArtifactSpec) {
+        val visible = buildString {
+            append(spec.title)
+            append(spec.subject)
+            append(spec.grade)
+            append(spec.instruction)
+        }
+        require(!visible.contains(Regex("[A-Za-z]"))) {
+            "تسربت لغة أجنبية إلى ورقة الطالب."
+        }
+        require(spec.problems.all { it.result() in 0..10 }) {
+            "وجدت مسألة خارج نطاق ١٠."
+        }
+        require(spec.problems.size <= 8) {
+            "عدد الأسئلة يتجاوز سعة الصفحة الآمنة."
+        }
+    }
 
     fun createTextPdf(context: Context, title: String, rawContent: String): Result<Created> = runCatching {
         val content = HakimProductOutput.clean(rawContent).trim()

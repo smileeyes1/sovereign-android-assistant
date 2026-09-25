@@ -134,7 +134,7 @@ class MainActivity : Activity() {
         }
     }
 
-    @Suppress("SetJavaScriptEnabled")
+    @Suppress("SetJavaScriptEnabled", "DEPRECATION")
     private fun configureBrowser() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -145,9 +145,7 @@ class MainActivity : Activity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             allowFileAccess = false
             allowContentAccess = true
-            @Suppress("DEPRECATION")
             allowFileAccessFromFileURLs = false
-            @Suppress("DEPRECATION")
             allowUniversalAccessFromFileURLs = false
             safeBrowsingEnabled = true
             setSupportZoom(true)

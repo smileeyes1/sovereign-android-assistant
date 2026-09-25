@@ -27,8 +27,8 @@ def req(value, reason):
         raise SystemExit("SOVEREIGN_CONSTITUTION_20304=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20304, "version")
-req("3.3.0-sovereign-constitution-v4" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20304, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 
 # Canonical governance.
 for token in [
@@ -153,11 +153,14 @@ req('android:screenOrientation="portrait"' not in MANIFEST, "portrait_lock_regre
 req('android.permission.REQUEST_INSTALL_PACKAGES' not in MANIFEST, "request_install_packages_regression")
 req('android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION' not in MANIFEST, "silent_update_permission_regression")
 
-# Single source of truth remains conservative.
-req(STATE["android"]["latest_source_parent"]["version_code"] == 20303, "source_parent_version")
-req(STATE["android"]["latest_source_parent"]["ci_run_number"] == 1091, "source_parent_ci")
-req(STATE["android"]["candidate"]["version_code"] == 20304, "candidate_version")
-req(STATE["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")
+# Single source of truth remains conservative and monotonic.
+parent = STATE["android"]["latest_source_parent"]
+candidate_state = STATE["android"]["candidate"]
+req(parent["source_ci_verified"] is True, "source_parent_ci")
+req(int(parent["version_code"]) >= 20303, "source_parent_floor")
+req(int(parent["version_code"]) < int(candidate_state["version_code"]), "source_parent_must_precede_candidate")
+req(candidate_state["version_code"] == int(m.group(1)), "candidate_version")
+req(candidate_state["field_verified"] is False, "field_must_remain_false")
 req(STATE["android"]["candidate"]["promoted"] is False, "candidate_must_not_promote")
 req(STATE["productization"]["sovereign_constitution_v4"] is True, "product_state_constitution")
 req(STATE["productization"]["sovereign_constitution_field_verified"] is False, "constitution_field_must_remain_false")

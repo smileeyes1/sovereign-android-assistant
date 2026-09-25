@@ -7,13 +7,21 @@ class HakimConnectionRecoveryJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         Thread {
             try {
+                if (HakimConnectivityState.hasValidatedInternet(applicationContext)) {
+                    HakimUnifiedRelay.pollCachedOnce(applicationContext)
+                    HakimUnifiedRelay.flushOutboxAsync(applicationContext)
+                }
                 HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")
                 HakimConstraintDoctor.run(applicationContext, "periodic_watchdog")
                 HakimSelfCheck.runAsync(applicationContext)
                 HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
             } catch (_: Exception) {
             } finally {
-                jobFinished(params, false)
+                val fabric = HakimExecutionFabric.status(applicationContext)
+                val shouldRetry = params?.jobId == HakimConnectionResilience.RETRY_JOB_ID &&
+                    !fabric.optBoolean("online") &&
+                    fabric.optString("state") !in setOf("UNCONFIGURED", "DISABLED_BY_USER")
+                jobFinished(params, shouldRetry)
             }
         }.start()
         return true

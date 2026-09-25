@@ -115,12 +115,16 @@ class HakimService : Service() {
         socket?.cancel()
         socket = null
         if (::webView.isInitialized) webView.destroy()
-        if (!explicitStop) HakimConnectionResilience.schedule(applicationContext)
+        if (!explicitStop) {
+            HakimConnectionResilience.schedule(applicationContext)
+            HakimConnectionResilience.scheduleImmediate(applicationContext, "service_destroyed")
+        }
         super.onDestroy()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         HakimConnectionResilience.schedule(applicationContext)
+        HakimConnectionResilience.scheduleImmediate(applicationContext, "task_removed")
         HakimExecutionFabric.recover(applicationContext, "task_removed")
         super.onTaskRemoved(rootIntent)
     }

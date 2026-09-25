@@ -14,6 +14,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -44,6 +45,7 @@ object HakimUnifiedRelay {
     private const val RESULT_AAD = "HAKIM-RESULT-v1"
     private const val GCM_NONCE_BYTES = 12
     private const val GCM_TAG_BITS = 128
+    private const val CONNECTION_LEASE_MS = 120_000L
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
@@ -52,9 +54,33 @@ object HakimUnifiedRelay {
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     private val executor = Executors.newSingleThreadExecutor()
+    private val outboxExecutor = Executors.newSingleThreadExecutor()
 
     fun isRunning(): Boolean = running.get()
     fun isConnected(): Boolean = connected
+
+    fun isFreshConnected(context: Context): Boolean {
+        val seenAt = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong("secure_relay_seen_at", 0L)
+        return connected &&
+            seenAt > 0L &&
+            System.currentTimeMillis() - seenAt <= CONNECTION_LEASE_MS &&
+            HakimConnectivityState.hasValidatedInternet(context)
+    }
+
+    fun flushOutboxAsync(context: Context) {
+        val app = context.applicationContext
+        if (!HakimConnectivityState.hasValidatedInternet(app)) return
+        outboxExecutor.execute {
+            val sent = HakimRelayOutbox.flush(app) { topic, carrier ->
+                postCarrier(app, topic, carrier)
+            }
+            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt("secure_relay_outbox_last_flushed", sent)
+                .putLong("secure_relay_outbox_flush_at", System.currentTimeMillis())
+                .apply()
+        }
+    }
 
     fun stop() {
         running.set(false)
@@ -125,6 +151,57 @@ object HakimUnifiedRelay {
         executor.execute { loop(app) }
     }
 
+    fun pollCachedOnce(context: Context): Int {
+        val app = context.applicationContext
+        if (!isConfigured(app) || !HakimConnectivityState.hasValidatedInternet(app)) return 0
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val topic = prefs.getString(KEY_TOPIC, "").orEmpty()
+        val resultTopic = prefs.getString(KEY_RESULT_TOPIC, "").orEmpty()
+        val key = relayKey(app) ?: return 0
+        if (topic.isBlank() || resultTopic.isBlank()) return 0
+
+        val lastId = prefs.getString("secure_relay_last_ntfy_id", "").orEmpty()
+        val since = if (lastId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) lastId else "30m"
+        val url = "https://ntfy.sh/$topic/json?poll=1&since=" +
+            URLEncoder.encode(since, "UTF-8")
+
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 12_000
+            conn.readTimeout = 20_000
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "application/x-ndjson")
+            var handled = 0
+            conn.inputStream.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).useLines { lines ->
+                    lines.forEach { line ->
+                        val event = runCatching { JSONObject(line) }.getOrNull() ?: return@forEach
+                        if (event.optString("event") != "message") return@forEach
+                        handleNtfyLine(app, line, resultTopic, key)
+                        val eventId = event.optString("id")
+                        if (eventId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) {
+                            prefs.edit().putString("secure_relay_last_ntfy_id", eventId).apply()
+                        }
+                        handled++
+                    }
+                }
+            }
+            conn.disconnect()
+            prefs.edit()
+                .putLong("secure_relay_last_cached_poll_at", System.currentTimeMillis())
+                .putInt("secure_relay_last_cached_poll_count", handled)
+                .apply()
+            flushOutboxAsync(app)
+            handled
+        } catch (e: Exception) {
+            prefs.edit()
+                .putString("secure_relay_cached_poll_error", e.javaClass.simpleName)
+                .putLong("secure_relay_last_cached_poll_at", System.currentTimeMillis())
+                .apply()
+            0
+        }
+    }
+
     private fun loop(context: Context) {
         var retryMs = 2_000L
         while (running.get()) {
@@ -138,7 +215,17 @@ object HakimUnifiedRelay {
                 sleep(10_000L)
                 continue
             }
+            if (!HakimConnectivityState.hasValidatedInternet(context)) {
+                connected = false
+                prefs.edit()
+                    .putString("secure_relay_state", "waiting_validated_network")
+                    .putLong("secure_relay_waiting_network_at", System.currentTimeMillis())
+                    .apply()
+                sleep(5_000L)
+                continue
+            }
             try {
+                pollCachedOnce(context)
                 val conn = URL("https://ntfy.sh/$topic/json").openConnection() as HttpURLConnection
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 75_000
@@ -149,10 +236,18 @@ object HakimUnifiedRelay {
                         retryMs = 2_000L
                         connected = true
                         prefs.edit().putString("secure_relay_state", "connected").putLong("secure_relay_seen_at", System.currentTimeMillis()).remove("secure_relay_error").apply()
+                        flushOutboxAsync(context)
                         while (running.get()) {
                             val line = reader.readLine() ?: break
+                            val event = runCatching { JSONObject(line) }.getOrNull()
                             prefs.edit().putLong("secure_relay_seen_at", System.currentTimeMillis()).apply()
                             handleNtfyLine(context, line, resultTopic, relayKey)
+                            if (event?.optString("event") == "message") {
+                                val eventId = event.optString("id")
+                                if (eventId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) {
+                                    prefs.edit().putString("secure_relay_last_ntfy_id", eventId).apply()
+                                }
+                            }
                         }
                     }
                 }
@@ -161,7 +256,8 @@ object HakimUnifiedRelay {
             } catch (e: Exception) {
                 connected = false
                 prefs.edit().putString("secure_relay_state", "recovering").putString("secure_relay_error", e.javaClass.simpleName).apply()
-                sleep(retryMs)
+                val jitter = java.security.SecureRandom().nextLong(retryMs / 4L + 1L)
+                sleep(retryMs + jitter)
                 retryMs = (retryMs * 2).coerceAtMost(60_000L)
             }
         }
@@ -368,7 +464,15 @@ object HakimUnifiedRelay {
             .put("secure_relay", isConfigured(context))
             .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
             .put("secure_relay_running", isRunning())
-            .put("secure_relay_connected", isConnected())
+            .put("secure_relay_connected", isFreshConnected(context))
+            .put("secure_relay_socket_open", isConnected())
+            .put("secure_relay_seen_at", p.getLong("secure_relay_seen_at", 0L))
+            .put("connectivity", HakimConnectivityState.status(context))
+            .put("relay_outbox", HakimRelayOutbox.status(context))
+            .put("cached_catchup_enabled", true)
+            .put("last_ntfy_id_present", p.getString("secure_relay_last_ntfy_id", "").orEmpty().isNotBlank())
+            .put("last_cached_poll_at", p.getLong("secure_relay_last_cached_poll_at", 0L))
+            .put("last_cached_poll_count", p.getInt("secure_relay_last_cached_poll_count", 0))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
             .put("accessibility", HakimAccessibilityService.instance != null)
@@ -425,14 +529,37 @@ object HakimUnifiedRelay {
     }
 
     private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {
+        val relayKey = relayKey(context) ?: return false
+        val payload = JSONObject()
+            .put("request_id", requestId)
+            .put("status", status)
+            .put("received_at_ms", System.currentTimeMillis())
+            .put("result", result)
+        val carrier = encryptResult(relayKey, payload)
+
+        val sent = postCarrier(context, resultTopic, carrier)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (sent) {
+            prefs.edit()
+                .putLong("secure_relay_last_result_at", System.currentTimeMillis())
+                .putString("secure_relay_last_result_state", "sent")
+                .remove("secure_relay_last_result_error")
+                .apply()
+            flushOutboxAsync(context)
+            return true
+        }
+
+        val queued = HakimRelayOutbox.enqueue(context, resultTopic, carrier)
+        prefs.edit()
+            .putString("secure_relay_last_result_state", if (queued) "queued" else "queue_failed")
+            .putInt("secure_relay_outbox_pending", HakimRelayOutbox.pendingCount(context))
+            .apply()
+        return queued
+    }
+
+    private fun postCarrier(context: Context, resultTopic: String, carrier: String): Boolean {
+        if (!HakimConnectivityState.hasValidatedInternet(context)) return false
         return try {
-            val relayKey = relayKey(context) ?: return false
-            val payload = JSONObject()
-                .put("request_id", requestId)
-                .put("status", status)
-                .put("received_at_ms", System.currentTimeMillis())
-                .put("result", result)
-            val carrier = encryptResult(relayKey, payload)
             val conn = URL("https://ntfy.sh/$resultTopic").openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 20_000
@@ -443,14 +570,9 @@ object HakimUnifiedRelay {
             val ok = conn.responseCode in 200..299
             runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
             conn.disconnect()
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putLong("secure_relay_last_result_at", System.currentTimeMillis())
-                .putString("secure_relay_last_result_state", if (ok) "sent" else "http_error")
-                .apply()
             ok
         } catch (e: Exception) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putString("secure_relay_last_result_state", "failed")
                 .putString("secure_relay_last_result_error", e.javaClass.simpleName)
                 .apply()
             false

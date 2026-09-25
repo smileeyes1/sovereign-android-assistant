@@ -37,6 +37,18 @@ object HakimEngineRegistry {
     fun hasConfiguredGeneralChat(context: Context): Boolean =
         bestGeneralChat(context, "", emptyList()) != null
 
+    fun bestImageGeneralChat(
+        context: Context,
+        prompt: String,
+        excluded: Set<String> = emptySet()
+    ): HakimInferenceEngine? =
+        HakimWisdomMatrix.rank(context, prompt, emptyList(), excluded)
+            .map { it.engine }
+            .firstOrNull {
+                HakimInferenceEngine.Capability.GENERAL_CHAT in it.capabilities &&
+                    HakimInferenceEngine.Capability.IMAGES in it.capabilities
+            }
+
     fun attachmentsSupported(
         engine: HakimInferenceEngine,
         attachments: List<HakimAttachmentGateway.Attachment>

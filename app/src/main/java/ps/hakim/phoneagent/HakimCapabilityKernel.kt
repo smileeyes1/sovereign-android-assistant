@@ -45,6 +45,43 @@ object HakimCapabilityKernel {
         }
     }
 
+    private const val ONE_TIME_GRANT_TTL_MS = 5L * 60L * 1000L
+
+    fun grantOnce(context: Context, capabilityId: String, target: String): Boolean {
+        if (builtIns.none { it.id == capabilityId }) return false
+        val key = grantKey(capabilityId, target)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong(key + "_once_until", System.currentTimeMillis() + ONE_TIME_GRANT_TTL_MS)
+            .putLong(key + "_granted_at", System.currentTimeMillis())
+            .apply()
+        return true
+    }
+
+    fun grantPersistent(context: Context, capabilityId: String, target: String): Boolean {
+        if (capabilityId != "install_candidate") return false
+        if (builtIns.none { it.id == capabilityId }) return false
+        val key = grantKey(capabilityId, target)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(key + "_persistent", true)
+            .putLong(key + "_granted_at", System.currentTimeMillis())
+            .apply()
+        return true
+    }
+
+    fun revokePersistent(context: Context, capabilityId: String, target: String) {
+        val key = grantKey(capabilityId, target)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(key + "_persistent")
+            .remove(key + "_granted_at")
+            .apply()
+    }
+
+    fun hasPersistentGrant(context: Context, capabilityId: String, target: String): Boolean {
+        val key = grantKey(capabilityId, target)
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(key + "_persistent", false)
+    }
+
     /**
      * القرار: allow للأعمال المحلية منخفضة الأثر فقط، gate للحساسة/غير القابلة للعكس،
      * deny للقدرة غير المعروفة. لا يوجد fallback إلى سماح.
@@ -53,15 +90,36 @@ object HakimCapabilityKernel {
         val cap = builtIns.firstOrNull { it.id == capabilityId }
             ?: return decision(context, capabilityId, target, "deny", "unknown_capability", detail)
 
+        val key = grantKey(capabilityId, target)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val onceUntil = prefs.getLong(key + "_once_until", 0L)
+        val oneTimeGrant = onceUntil >= now
+        val persistentGrant = prefs.getBoolean(key + "_persistent", false)
+
         val sensitiveProbe = (target + " " + detail).lowercase()
         val containsSecret = Regex(
             "password|passcode|otp|pin|cvv|cvc|secret|token|private.?key|كلمة.?المرور|رمز.?التحقق|رقم.?البطاقة|مفتاح.?خاص"
         ).containsMatchIn(sensitiveProbe)
-        if (containsSecret) return decision(context, capabilityId, target, "gate", "sensitive_material", "[redacted]")
 
-        val verdict = if (cap.sensitive || !cap.reversible) "gate" else "allow"
-        val reason = if (verdict == "gate") "high_impact_or_irreversible" else "low_impact_reversible"
-        return decision(context, capabilityId, target, verdict, reason, detail)
+        if (oneTimeGrant) {
+            prefs.edit().remove(key + "_once_until").apply()
+        }
+
+        val verdict = when {
+            containsSecret && !oneTimeGrant -> "gate"
+            cap.sensitive || !cap.reversible -> if (oneTimeGrant || persistentGrant) "allow" else "gate"
+            else -> "allow"
+        }
+        val reason = when {
+            verdict == "deny" -> "unknown_capability"
+            verdict == "gate" && containsSecret -> "sensitive_material_requires_explicit_once"
+            verdict == "gate" -> "high_impact_or_irreversible"
+            oneTimeGrant -> "explicit_user_grant_once"
+            persistentGrant -> "explicit_user_grant_persistent"
+            else -> "low_impact_reversible"
+        }
+        return decision(context, capabilityId, target, verdict, reason, if (containsSecret) "[redacted]" else detail)
     }
 
     fun status(context: Context): JSONObject {
@@ -99,6 +157,9 @@ object HakimCapabilityKernel {
             .apply()
         return obj
     }
+
+    private fun grantKey(capabilityId: String, target: String): String =
+        "grant_" + capabilityId.take(80) + "_" + sha256(target).take(24)
 
     private fun sha256(text: String): String = MessageDigest.getInstance("SHA-256")
         .digest(text.toByteArray(Charsets.UTF_8))

@@ -1,5 +1,6 @@
 package ps.hakim.phoneagent
 
+import android.app.DownloadManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,16 +8,16 @@ import android.app.PendingIntent
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
-import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
+import android.provider.MediaStore
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -27,6 +28,13 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
+/**
+ * مُحضّر تحديثات حكيم الآمن.
+ *
+ * يكتشف وينزّل ويتحقق من تحديث حكيم، ثم يصدّر APK المتحقق إلى مجلد التنزيلات.
+ * لا يملك هذا المكوّن قدرة تثبيت الحزم ولا يطلب صلاحية "مصادر غير معروفة".
+ * التثبيت نفسه يبقى فعلًا صريحًا للمستخدم عبر أندرويد/مدير الملفات.
+ */
 object AutoUpdater {
     private const val UPDATE_TOPIC = "hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1"
     private const val UPDATE_TITLE = "HAKIM_UPDATE"
@@ -82,7 +90,7 @@ object AutoUpdater {
         val currentVersion = currentVersionCode(context)
         val request = Request.Builder()
             .url("https://ntfy.sh/$UPDATE_TOPIC/json?poll=1&since=6h")
-            .header("User-Agent", "HAKIM-AutoUpdater/2")
+            .header("User-Agent", "HAKIM-SafeUpdate/3")
             .build()
 
         val response = try { client.newCall(request).execute() } catch (e: Exception) {
@@ -121,34 +129,37 @@ object AutoUpdater {
                         .put("size", size)
                 }
             }
+
             val update = chosen
             if (update == null) {
                 state(context, "up_to_date")
                 return
             }
+
             prefs(context).edit()
                 .putLong("last_update_discovered_at", System.currentTimeMillis())
                 .putLong("last_update_discovered_version", update.optLong("version_code", -1L))
                 .apply()
             state(context, "update_found", "v=${update.optLong("version_code")}")
-            downloadVerifyAndInstall(context, update)
+            downloadVerifyAndPrepare(context, update)
         }
     }
 
-    private fun downloadVerifyAndInstall(context: Context, update: JSONObject) {
+    private fun downloadVerifyAndPrepare(context: Context, update: JSONObject) {
         val url = update.getString("url")
         val expectedSha = update.getString("sha256")
         val expectedVersion = update.getLong("version_code")
         val expectedSize = update.getLong("size")
-        val target = File(context.cacheDir, "hakim-update.apk")
+        val target = File(context.cacheDir, "hakim-update-$expectedVersion.apk")
         if (target.exists()) target.delete()
 
         state(context, "downloading", "v=$expectedVersion")
-        val req = Request.Builder().url(url).header("User-Agent", "HAKIM-AutoUpdater/2").build()
+        val req = Request.Builder().url(url).header("User-Agent", "HAKIM-SafeUpdate/3").build()
         val response = try { client.newCall(req).execute() } catch (e: Exception) {
             state(context, "download_failed", e.message.orEmpty(), true)
             return
         }
+
         response.use { r ->
             if (!r.isSuccessful) {
                 state(context, "download_http_failed", "HTTP ${r.code}", true)
@@ -189,53 +200,39 @@ object AutoUpdater {
         }
 
         prefs(context).edit().putLong("last_update_download_at", System.currentTimeMillis()).apply()
+
         if (target.length() != expectedSize) {
-            target.delete(); state(context, "verify_size_failed", "${target.length()}/$expectedSize", true); return
+            target.delete()
+            state(context, "verify_size_failed", "${target.length()}/$expectedSize", true)
+            return
         }
         if (sha256(target) != expectedSha) {
-            target.delete(); state(context, "verify_sha_failed", "", true); return
+            target.delete()
+            state(context, "verify_sha_failed", "", true)
+            return
         }
         if (!verifyApkIdentity(context, target, expectedVersion)) {
-            target.delete(); state(context, "verify_identity_failed", "v=$expectedVersion", true); return
+            target.delete()
+            state(context, "verify_identity_failed", "v=$expectedVersion", true)
+            return
         }
+
         prefs(context).edit().putLong("last_update_verified_at", System.currentTimeMillis()).apply()
         state(context, "verified", "v=$expectedVersion")
 
-        if (!canInstallPackages(context)) {
-            state(context, "install_permission_required")
-            notifyInstallPermission(context)
+        val exported = exportVerifiedUpdate(context, target, expectedVersion)
+        if (!exported) {
+            state(context, "export_failed", "v=$expectedVersion", true)
             return
         }
 
-        val authorization = HakimCapabilityKernel.authorize(
-            context,
-            "install_candidate",
-            context.packageName,
-            "verified_d1_update_version=$expectedVersion"
-        )
-        if (authorization.optString("verdict") != "allow") {
-            state(context, "install_user_authorization_required", "v=$expectedVersion")
-            notifyInstallAuthorization(context)
-            return
-        }
-
-        stageInstall(context, target, expectedVersion)
-    }
-
-    fun canInstallPackages(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
-
-    fun openInstallPermissionSettings(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        try {
-            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-            prefs(context).edit().putLong("last_install_permission_opened_at", System.currentTimeMillis()).apply()
-            state(context, "awaiting_install_permission")
-        } catch (e: Exception) {
-            state(context, "permission_settings_failed", e.message.orEmpty(), true)
-        }
+        target.delete()
+        prefs(context).edit()
+            .putLong("last_update_exported_at", System.currentTimeMillis())
+            .putLong("last_update_exported_version", expectedVersion)
+            .apply()
+        state(context, "ready_in_downloads", "v=$expectedVersion")
+        notifyVerifiedUpdate(context, expectedVersion)
     }
 
     fun startRealtimeListener(context: Context) {
@@ -244,7 +241,7 @@ object AutoUpdater {
         realtimeStarting = true
         val req = Request.Builder()
             .url("wss://ntfy.sh/$UPDATE_TOPIC/ws")
-            .header("User-Agent", "HAKIM-Update-Realtime/1")
+            .header("User-Agent", "HAKIM-SafeUpdate-Realtime/2")
             .build()
         updateSocket = client.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -287,8 +284,7 @@ object AutoUpdater {
         val p = prefs(context)
         return JSONObject()
             .put("current_version", currentVersionCode(context))
-            .put("can_install_packages", canInstallPackages(context))
-            .put("auto_update_authorized", autoUpdateAuthorized(context))
+            .put("installer_capability", false)
             .put("state", p.getString("last_update_state", "unknown"))
             .put("detail", p.getString("last_update_detail", ""))
             .put("error", p.getString("last_update_error", ""))
@@ -296,21 +292,81 @@ object AutoUpdater {
             .put("last_push_at", p.getLong("last_update_push_at", 0L))
             .put("last_discovered_version", p.getLong("last_update_discovered_version", -1L))
             .put("last_verified_at", p.getLong("last_update_verified_at", 0L))
-            .put("last_commit_at", p.getLong("last_update_commit_at", 0L))
-            .put("last_success_at", p.getLong("last_update_success_at", 0L))
+            .put("last_exported_at", p.getLong("last_update_exported_at", 0L))
+            .put("last_exported_version", p.getLong("last_update_exported_version", -1L))
     }
 
     fun statusSummary(context: Context): String {
         val d = diagnostics(context)
-        val permission = if (d.optBoolean("can_install_packages")) "إذن التثبيت: جاهز" else "إذن التثبيت: يحتاج تفعيل مرة واحدة"
-        val authorization = if (d.optBoolean("auto_update_authorized")) "التفويض: مفعّل" else "التفويض: غير مفعّل"
-        val state = d.optString("state", "unknown")
         val version = d.optLong("current_version", 0L)
-        return "التحديث التلقائي — الإصدار $version\n$permission\n$authorization\nالحالة: $state"
+        val state = when (d.optString("state", "unknown")) {
+            "checking" -> "يجري فحص التحديث"
+            "up_to_date" -> "أنت على أحدث إصدار معروف"
+            "downloading" -> "ينزّل تحديثًا جديدًا للتحقق منه"
+            "verified" -> "تم التحقق من التحديث"
+            "ready_in_downloads" -> "تحديث موثّق جاهز في التنزيلات"
+            "update_found" -> "وُجد تحديث جديد"
+            else -> d.optString("state", "unknown")
+        }
+        return "التحديث الآمن — الإصدار $version\nالحالة: $state"
     }
 
-    fun autoUpdateAuthorized(context: Context): Boolean =
-        HakimCapabilityKernel.hasPersistentGrant(context, "install_candidate", context.packageName)
+    private fun exportVerifiedUpdate(context: Context, apk: File, expectedVersion: Long): Boolean {
+        val name = "HAKIM-$expectedVersion-D1-VERIFIED.apk"
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, name)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/vnd.android.package-archive")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Hakim")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+                val copied = runCatching {
+                    resolver.openOutputStream(uri, "w")?.use { out ->
+                        apk.inputStream().use { input -> input.copyTo(out) }
+                    } ?: return@runCatching false
+                    true
+                }.getOrElse {
+                    runCatching { resolver.delete(uri, null, null) }
+                    false
+                }
+                if (!copied) return false
+                val ready = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+                resolver.update(uri, ready, null, null)
+                true
+            } else {
+                @Suppress("DEPRECATION")
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!dir.exists() && !dir.mkdirs()) return false
+                apk.copyTo(File(dir, name), overwrite = true)
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun notifyVerifiedUpdate(context: Context, expectedVersion: Long) {
+        createUpdateChannel(context)
+        val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pi = PendingIntent.getActivity(
+            context,
+            4410,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("تحديث حكيم $expectedVersion موثّق وجاهز")
+            .setContentText("افتح التنزيلات ثم اضغط ملف HAKIM-$expectedVersion-D1-VERIFIED.apk لتثبيته عبر أندرويد.")
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(4410, notification)
+    }
 
     private fun verifyApkIdentity(context: Context, apk: File, expectedVersion: Long): Boolean {
         val pm = context.packageManager
@@ -328,7 +384,10 @@ object AutoUpdater {
     @Suppress("DEPRECATION")
     private fun packageArchive(pm: PackageManager, path: String): PackageInfo? =
         if (Build.VERSION.SDK_INT >= 33) {
-            pm.getPackageArchiveInfo(path, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()))
+            pm.getPackageArchiveInfo(
+                path,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong())
+            )
         } else {
             pm.getPackageArchiveInfo(path, PackageManager.GET_SIGNING_CERTIFICATES)
         }
@@ -336,11 +395,16 @@ object AutoUpdater {
     @Suppress("DEPRECATION")
     private fun installedPackage(pm: PackageManager, name: String): PackageInfo? = try {
         if (Build.VERSION.SDK_INT >= 33) {
-            pm.getPackageInfo(name, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()))
+            pm.getPackageInfo(
+                name,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong())
+            )
         } else {
             pm.getPackageInfo(name, PackageManager.GET_SIGNING_CERTIFICATES)
         }
-    } catch (_: Exception) { null }
+    } catch (_: Exception) {
+        null
+    }
 
     @Suppress("DEPRECATION")
     private fun certDigests(info: PackageInfo): Set<String> {
@@ -359,7 +423,9 @@ object AutoUpdater {
     @Suppress("DEPRECATION")
     private fun currentVersionCode(context: Context): Long = try {
         versionCode(context.packageManager.getPackageInfo(context.packageName, 0))
-    } catch (_: Exception) { 0L }
+    } catch (_: Exception) {
+        0L
+    }
 
     @Suppress("DEPRECATION")
     private fun versionCode(info: PackageInfo): Long =
@@ -378,107 +444,14 @@ object AutoUpdater {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private fun stageInstall(context: Context, apk: File, expectedVersion: Long) {
-        try {
-            state(context, "install_staging", "v=$expectedVersion")
-            val installer = context.packageManager.packageInstaller
-            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-                setAppPackageName(context.packageName)
-                setSize(apk.length())
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-                }
-            }
-            val id = installer.createSession(params)
-            installer.openSession(id).use { session ->
-                session.openWrite("hakim-update.apk", 0, apk.length()).use { out ->
-                    apk.inputStream().use { it.copyTo(out) }
-                    session.fsync(out)
-                }
-                val resultIntent = Intent(context, UpdateInstallReceiver::class.java)
-                    .setAction(UpdateInstallReceiver.ACTION_INSTALL_RESULT)
-                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-                val pending = PendingIntent.getBroadcast(context, 4401, resultIntent, flags)
-                prefs(context).edit()
-                    .putLong("last_update_commit_at", System.currentTimeMillis())
-                    .putLong("last_update_commit_version", expectedVersion)
-                    .apply()
-                state(context, "install_committed", "session=$id v=$expectedVersion")
-                session.commit(pending.intentSender)
-            }
-        } catch (e: Exception) {
-            state(context, "install_exception", e.message.orEmpty(), true)
-        }
-    }
-
-    private fun notifyInstallAuthorization(context: Context) {
-        val intent = Intent(context, UnifiedHomeActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val pi = PendingIntent.getActivity(
-            context, 4404, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("تحديث حكيم موثّق وجاهز")
-            .setContentText("افتح الإعدادات وفعّل التحديثات التلقائية إذا أردت السماح بالتثبيت.")
-            .setAutoCancel(true)
-            .setContentIntent(pi)
-            .build()
-        context.getSystemService(NotificationManager::class.java).notify(4404, notification)
-    }
-
-    private fun notifyInstallPermission(context: Context) {
-        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
-        val pi = PendingIntent.getActivity(
-            context, 4402, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("خطوة واحدة لتفعيل تحديث حكيم تلقائيًا")
-            .setContentText("اضغط وفعّل السماح من هذا المصدر؛ بعدها يحاول حكيم تثبيت تحديثاته تلقائيًا")
-            .setAutoCancel(true)
-            .setContentIntent(pi)
-            .build()
-        context.getSystemService(NotificationManager::class.java).notify(4402, notification)
-    }
-
-    fun notifyConfirmation(context: Context, confirmIntent: Intent) {
-        createUpdateChannel(context)
-        state(context, "pending_android_confirmation")
-        confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val pi = PendingIntent.getActivity(
-            context, 4403, confirmIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("تحديث حكيم جاهز")
-            .setContentText("أندرويد يطلب تأكيد التثبيت لهذه المرة")
-            .setAutoCancel(true)
-            .setContentIntent(pi)
-            .build()
-        context.getSystemService(NotificationManager::class.java).notify(4403, notification)
-    }
-
-    fun recordInstallSuccess(context: Context) {
-        prefs(context).edit()
-            .putLong("last_update_success_at", System.currentTimeMillis())
-            .remove("last_update_error")
-            .apply()
-        state(context, "installed")
-    }
-
-    fun recordInstallFailure(context: Context, status: Int, message: String) {
-        state(context, "install_failed", "status=$status ${message.take(220)}", true)
-    }
-
     private fun createUpdateChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "تحديثات حكيم", NotificationManager.IMPORTANCE_HIGH)
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "تحديثات حكيم",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
             )
         }
     }
@@ -490,8 +463,11 @@ object AutoUpdater {
             .putString("last_update_state", value)
             .putString("last_update_detail", detail.take(300))
             .putLong("last_update_state_at", System.currentTimeMillis())
-        if (error) e.putString("last_update_error", "$value ${detail.take(240)}")
-        else if (value == "installed" || value == "up_to_date" || value == "verified") e.remove("last_update_error")
+        if (error) {
+            e.putString("last_update_error", "$value ${detail.take(240)}")
+        } else if (value in setOf("up_to_date", "verified", "ready_in_downloads")) {
+            e.remove("last_update_error")
+        }
         e.apply()
     }
 }

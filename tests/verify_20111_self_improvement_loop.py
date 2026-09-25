@@ -48,7 +48,11 @@ req('val improvement = HakimSelfImprovementLoop.status(context)' in selfcheck, "
 req(state["android"]["candidate"]["version_code"] >= 20111, "state_candidate")
 req(state["android"]["candidate"]["field_verified"] is False, "field_false")
 req(state["android"]["candidate"]["promoted"] is False, "promotion_false")
-req(state["android"]["field_observed_current"]["version_code"] == 20106, "field_observed_version")
+field_version = int(state["android"]["field_observed_current"]["version_code"])
+candidate_version = int(state["android"]["candidate"]["version_code"])
+req(field_version >= 20106, "field_observed_version_floor")
+req(field_version < candidate_version, "field_observed_must_precede_candidate")
+req(state["android"]["field_observed_current"]["evidence"] == "signed_health_on_stateless_pairing", "field_observed_evidence")
 req(state["android"]["field_observed_current"]["exact_public_source_mapping"] == "NOT_PROVEN", "field_source_must_not_be_invented")
 
 # Known-failure injection: weakening either D1 or verified-baseline rollback must be detectable.

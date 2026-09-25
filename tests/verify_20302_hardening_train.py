@@ -39,7 +39,16 @@ req('android.permission.CAMERA' in MANIFEST, "camera_capability_missing")
 MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")
 SERVICE = (APP / "HakimService.kt").read_text(encoding="utf-8")
 req("requestSpecificPermissions" in MAIN, "targeted_permission_escalation_missing")
-req("requestSpecificPermissions(needed)" in MAIN, "web_media_still_requests_blanket_permissions")
+req("explicitUserGrant: Boolean = false" in MAIN, "permission_explicit_grant_contract_missing")
+req("requestSpecificPermissions(choices[which].second, explicitUserGrant = true)" in MAIN, "manual_permission_choice_missing")
+media_start = MAIN.index("private fun handleWebMediaPermission")
+media_end = MAIN.index("private fun handleWebLocationPermission", media_start)
+media_block = MAIN[media_start:media_end]
+loc_start = media_end
+loc_end = MAIN.index("private fun enqueueDownload", loc_start)
+loc_block = MAIN[loc_start:loc_end]
+req("requestSpecificPermissions(" not in media_block, "web_media_permission_escalation_regression")
+req("requestSpecificPermissions(" not in loc_block, "web_location_permission_escalation_regression")
 
 for token in [
     "ComponentActivity()",

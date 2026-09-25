@@ -618,7 +618,7 @@ class CommandCenterActivity : Activity() {
         } else {
             HakimArtifactPipeline.repairInstruction(request, repairFrom)
         }
-        val snapshot = routedAttachments
+        val snapshot = attachments.toList()
         val startedAt = System.currentTimeMillis()
 
         Thread {

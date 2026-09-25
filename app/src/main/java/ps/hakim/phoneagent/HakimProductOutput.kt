@@ -101,6 +101,49 @@ object HakimProductOutput {
         ).any { q.contains(it.lowercase()) }
     }
 
+
+    fun looksLikeManualConversionInstructions(text: String): Boolean {
+        val q = normalize(text)
+        return listOf(
+            "كيف تحوله إلى pdf",
+            "كيف تحوله الى pdf",
+            "save as pdf",
+            "ctrl + p",
+            "ctrl+p",
+            "انسخ الكود",
+            "الصق الكود",
+            "افتح محرر نصوص",
+            "احفظ الملف باسم",
+            "لا أستطيع إنتاج ملف",
+            "لا استطيع انتاج ملف"
+        ).any { q.contains(it) }
+    }
+
+    fun looksLikeBrokenWorksheetDump(text: String): Boolean {
+        val q = text.lowercase()
+        val pipeCount = text.count { it == '|' }
+        val westernDigitCount = text.count { it in '0'..'9' }
+        val foreignLeak = listOf(
+            "collection within 10",
+            "joining within 10",
+            "addition subtraction",
+            "notepad",
+            "chrome",
+            "firefox",
+            "edge"
+        ).any { q.contains(it) }
+        val markdownLeak = q.contains("###") || q.contains("**") || q.contains("```")
+        return looksLikeManualConversionInstructions(text) ||
+            foreignLeak ||
+            markdownLeak ||
+            pipeCount >= 8 ||
+            westernDigitCount >= 12
+    }
+
+    fun worksheetMustUseStructuredFactory(prompt: String): Boolean =
+        HakimTeacherArtifactSpec.looksLikeWorksheetArtifactRequest(prompt) ||
+            HakimTeacherArtifactSpec.looksLikeArtifactFollowUp(prompt)
+
     private fun unwrapStructuredPayload(raw: String): String {
         val t = raw.trim()
         if (!t.startsWith("{") || !t.endsWith("}")) return raw

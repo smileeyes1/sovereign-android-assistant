@@ -88,3 +88,5 @@ req(state["productization"]["attachment_cache_bound"] is True, "attachment_cache
 req(state["productization"]["page_16k_ci_gate"] is True, "page_16k_ci_gate")
 req(state["productization"]["d1_v2_structure_ci_gate"] is True, "d1_v2_structure_ci_gate")
 req(state["productization"]["hardening_field_verified"] is False, "hardening_field_must_remain_false")
+req(state["productization"]["pairing_takeover_local_confirmation"] is True, "pairing_takeover_local_confirmation")
+req(state["productization"]["same_pairing_idempotent"] is True, "same_pairing_idempotent")

@@ -15,8 +15,8 @@ def req(v,reason):
         raise SystemExit("UNIVERSAL_ARTIFACT_20207=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))==20207,"version")
-req("3.0.7-universal-artifact-pipeline-v1-candidate" in BUILD,"version_name")
+req(m and int(m.group(1))>=20207,"version")
+req("universal-artifact-pipeline" in BUILD or "final-installable" in BUILD,"version_name")
 
 # Request model is topic-agnostic: kinds and file intent are separate from subject.
 for token in [

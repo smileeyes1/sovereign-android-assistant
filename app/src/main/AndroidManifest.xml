@@ -31,6 +31,9 @@
         android:usesCleartextTraffic="false"
         android:label="حكيم"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <meta-data
+            android:name="android.content.APP_RESTRICTIONS"
+            android:resource="@xml/app_restrictions" />
 
         <activity
             android:name=".UnifiedHomeActivity"

@@ -112,6 +112,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(24, 24, 24, 18)
             clipToPadding = false
+            setBackgroundColor(android.graphics.Color.WHITE)
         }
 
         titleView = TextView(this).apply {
@@ -120,6 +121,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(8, 4, 8, 4)
         }
+        HakimUiKit.title(titleView)
         root.addView(titleView)
 
         status = TextView(this).apply {
@@ -128,20 +130,13 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(8, 0, 8, 8)
         }
+        HakimUiKit.status(status)
         root.addView(status)
 
         operations = TextView(this).apply {
-            text = "جاهز"
-            textSize = 13f
-            gravity = Gravity.RIGHT
-            setPadding(12, 6, 12, 6)
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            contentDescription = "حالة التنفيذ؛ اضغط لعرض أو إخفاء التفاصيل"
-            setOnClickListener {
-                operationsExpanded = !operationsExpanded
-                refreshOperations()
-            }
+            text = ""
+            visibility = View.GONE
+            contentDescription = "تفاصيل تشغيل داخلية"
         }
         root.addView(operations)
 
@@ -153,6 +148,7 @@ class CommandCenterActivity : Activity() {
             gravity = Gravity.TOP or Gravity.RIGHT
             setPadding(16, 14, 16, 14)
         }
+        HakimUiKit.conversation(conversation)
         conversationScroll.addView(conversation)
         root.addView(
             conversationScroll,
@@ -187,6 +183,7 @@ class CommandCenterActivity : Activity() {
                 }
             }
         }
+        HakimUiKit.composer(command)
         composerArea.addView(
             command,
             LinearLayout.LayoutParams(
@@ -208,7 +205,7 @@ class CommandCenterActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
         executeRow.addView(
-            actionButton("أنجز") { executeBestRoute(command.text.toString().trim()) },
+            actionButton("أنجز", primary = true) { executeBestRoute(command.text.toString().trim()) },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 3f)
         )
         executeRow.addView(
@@ -235,17 +232,19 @@ class CommandCenterActivity : Activity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("صوت") { startSpeechInput() },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
-            actionButton("المتصفح") {
-                openInHakim(command.text.toString().trim())
+            actionButton("صوت") {
+                val blocked = HakimEnterprisePolicy.blockReason(this, "voice")
+                if (blocked != null) {
+                    appendConversation("حكيم", blocked)
+                    status.text = "مقيّد بسياسة المؤسسة"
+                } else {
+                    startSpeechInput()
+                }
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("إدارة") {
+            actionButton("الإعدادات") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -334,6 +333,13 @@ class CommandCenterActivity : Activity() {
             }
             HakimModelToolRouter.Channel.LOCAL_ARTIFACT ->
                 executeLocalArtifact(text)
+            HakimModelToolRouter.Channel.POLICY_BLOCKED -> {
+                appendConversation("حكيم", decision.reason)
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, decision.reason)
+                status.text = "مقيّد بسياسة المؤسسة"
+                recordRoute("enterprise_policy", false)
+                refreshOperations()
+            }
             HakimModelToolRouter.Channel.DIRECT_MODEL ->
                 executeDirectModel(text, directed.instruction, decision.engineId)
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP ->
@@ -362,7 +368,7 @@ class CommandCenterActivity : Activity() {
             "استخدام المتصفح المدمج في الخلفية؛ فتح الصفحة وحده ليس نجاحًا"
         )
         refreshOperations()
-        status.text = "يبحث صامتًا"
+        status.text = "يعمل على طلبك…"
 
         val intent = Intent(this, HakimService::class.java)
             .setAction(HakimService.ACTION_BROWSER_TASK)
@@ -376,9 +382,9 @@ class CommandCenterActivity : Activity() {
                 startService(intent)
             }
         }.onFailure {
-            appendConversation("حكيم", "تعذر تشغيل المتصفح المدمج في الخلفية.")
+            appendConversation("حكيم", HakimProductUx.publicError("تعذر الاتصال بمسار الويب"))
             HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "تعذر بدء خدمة المتصفح المدمج")
-            status.text = "تعذر مسار المتصفح"
+            status.text = "تعذر إكمال الطلب"
             return
         }
 
@@ -418,7 +424,7 @@ class CommandCenterActivity : Activity() {
                         appendLine("المحتوى المرئي:")
                         append(evidence)
                     }.take(14_000)
-                    status.text = "يصوغ النتيجة النهائية"
+                    status.text = "يجهّز النتيجة…"
                     executeDirectModel(text, augmented, engine.id)
                 } else {
                     val ready = pageText.ifBlank {
@@ -434,7 +440,7 @@ class CommandCenterActivity : Activity() {
             }
             "FAILED" -> {
                 val reason = taskPrefs.getString(taskId + "_error", "تعذر التصفح").orEmpty()
-                appendConversation("حكيم", "تعذر مسار المتصفح المدمج: $reason")
+                appendConversation("حكيم", HakimProductUx.publicError(reason))
                 HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, reason)
                 recordRoute("silent_browser", false)
                 status.text = "تعذر التصفح"
@@ -442,7 +448,7 @@ class CommandCenterActivity : Activity() {
             }
             else -> {
                 if (attempt >= 30) {
-                    appendConversation("حكيم", "انتهت مهلة المتصفح المدمج قبل تحقق أثر نهائي.")
+                    appendConversation("حكيم", "استغرق التنفيذ وقتًا أطول من المتوقع. لم أعتبر المهمة مكتملة.")
                     HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.GATED, "مهلة التصفح الصامت")
                     recordRoute("silent_browser", false)
                     status.text = "انتهت مهلة التصفح"
@@ -463,7 +469,7 @@ class CommandCenterActivity : Activity() {
             "إنشاء الملف محليًا داخل الهاتف دون OpenRouter أو نموذج خارجي"
         )
         refreshOperations()
-        status.text = "ينشئ PDF محليًا"
+        status.text = "يجهّز الملف…"
 
         Thread {
             val result = HakimLocalArtifactFactory.create(this, text)
@@ -471,7 +477,7 @@ class CommandCenterActivity : Activity() {
                 result.onSuccess { created ->
                     appendConversation(
                         "حكيم",
-                        "أنشأت ورقة العمل PDF محليًا وحفظتها في ${created.savedAt}. لا يحتاج هذا الطلب إلى OpenRouter."
+                        HakimProductUx.completionMessage("pdf", created.savedAt)
                     )
                     HakimExecutiveLoop.complete(this, "تم إنشاء ملف PDF وحفظه محليًا")
                     recordRoute("local_artifact_pdf", true)
@@ -507,6 +513,53 @@ class CommandCenterActivity : Activity() {
         }.start()
     }
 
+    private fun executeGeneratedPdfArtifact(text: String, rawContent: String) {
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "تحويل محتوى المهمة إلى PDF فعلي محليًا دون عرض الوسوم الخام"
+        )
+        status.text = "يجهّز الملف…"
+        refreshOperations()
+
+        val title = if (text.contains("ورقة عمل") || text.contains("ورقه عمل")) "ورقة عمل" else "مستند حكيم"
+
+        Thread {
+            val result = HakimLocalArtifactFactory.createTextPdf(this, title, rawContent)
+            runOnUiThread {
+                result.onSuccess { created ->
+                    appendConversation("حكيم", HakimProductUx.completionMessage("pdf", created.savedAt))
+                    HakimExecutiveLoop.complete(this, "تم تسليم ملف PDF فعلي بعد تنظيف المحتوى")
+                    recordRoute("generated_pdf_artifact", true)
+                    command.setText("")
+                    attachments.clear()
+                    refreshAttachmentStatus()
+                    status.text = "جاهز"
+                    refreshOperations()
+
+                    if (created.uri != null) {
+                        val view = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(created.uri, created.kind)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        runCatching { startActivity(view) }
+                            .onFailure { toast("تم حفظ PDF في ${created.savedAt}") }
+                    }
+                }.onFailure { error ->
+                    appendConversation("حكيم", HakimProductUx.publicError(error.message ?: "تعذر إنشاء الملف"))
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        "فشل تحويل المحتوى المنظف إلى PDF"
+                    )
+                    recordRoute("generated_pdf_artifact", false)
+                    status.text = "تعذر إنشاء الملف"
+                    refreshOperations()
+                }
+            }
+        }.start()
+    }
+
     private fun beginFreeEngineSetup(text: String) {
         HakimExecutiveLoop.record(
             this,
@@ -517,7 +570,7 @@ class CommandCenterActivity : Activity() {
         status.text = "ربط الذكاء المجاني"
         appendConversation(
             "حكيم",
-            "سأربط الآن محركًا مجانيًا رسميًا لمرة واحدة. بعد موافقتك سيعود الرد إلى حكيم نفسه، ولن تُرسل المهمة تلقائيًا إلى تطبيق ChatGPT."
+            "تحتاج هذه الميزة ربط خدمة ذكاء لمرة واحدة. بعد موافقتك سيعود العمل إلى حكيم ويكمل طلبك هنا."
         )
         OpenRouterOAuthManager.start(this, pendingPrompt = text)
     }
@@ -534,7 +587,7 @@ class CommandCenterActivity : Activity() {
             ?: run {
                 appendConversation(
                     "حكيم",
-                    "لا يوجد الآن محرك ذكاء مباشر مجاني ومهيأ لهذا الطلب. افتح «إدارة» لإعداد محرك مجاني."
+                    "تحتاج هذه الميزة إعدادًا لمرة واحدة. افتح «الإعدادات» لإكمال الربط."
                 )
                 HakimExecutiveLoop.record(
                     this,
@@ -542,7 +595,7 @@ class CommandCenterActivity : Activity() {
                     "لا يوجد محرك مباشر مجاني مؤهل للمقصد والمدخلات الحالية"
                 )
                 refreshOperations()
-                status.text = "يلزم إعداد محرك مجاني"
+                status.text = "تحتاج هذه الميزة ربطًا لمرة واحدة"
                 return
             }
 
@@ -553,8 +606,15 @@ class CommandCenterActivity : Activity() {
             "إجابة مباشرة داخل حكيم عبر " + engine.displayName
         )
         refreshOperations()
-        status.text = "يجيب " + engine.displayName
-        beginStreamingReply()
+        val artifactMode = HakimProductOutput.requestsPdfArtifact(text)
+        if (artifactMode) {
+            streamingBase = conversation.text.toString().trim()
+            streamingBuffer.setLength(0)
+            status.text = "يجهّز الملف…"
+        } else {
+            status.text = "يعمل على طلبك…"
+            beginStreamingReply()
+        }
 
         val snapshot = attachments.toList()
         val startedAt = System.currentTimeMillis()
@@ -562,7 +622,9 @@ class CommandCenterActivity : Activity() {
         Thread {
             val result = engine.complete(instruction, snapshot) { delta ->
                 runOnUiThread {
-                    if (currentDirectEngine === engine) appendStreamingDelta(delta)
+                    if (currentDirectEngine === engine) {
+                        if (artifactMode) streamingBuffer.append(delta) else appendStreamingDelta(delta)
+                    }
                 }
             }
             val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
@@ -579,17 +641,49 @@ class CommandCenterActivity : Activity() {
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
+                        if (artifactMode) {
+                            val artifactText = result.text.ifBlank { streamingBuffer.toString() }
+                            conversation.text = streamingBase
+                            streamingBase = ""
+                            streamingBuffer.setLength(0)
+                            scrollConversationToBottom()
+
+                            if (HakimLocalArtifactFactory.canHandle(this, text)) {
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.ROUTING,
+                                    "مهمة ملف معروفة؛ استخدام المصنع المحلي الحتمي"
+                                )
+                                executeLocalArtifact(text)
+                                return@runOnUiThread
+                            }
+
+                            if (HakimProductOutput.looksLikeCapabilityRefusal(artifactText)) {
+                                appendConversation("حكيم", "تعذر إنشاء الملف بهذه الوسيلة، ولم أعتبر الرد النصي ملفًا مكتملًا.")
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.GATED,
+                                    "رفض محرك لمهمة ملف؛ يمنع اعتبار الرد نجاحًا"
+                                )
+                                recordRoute("direct_artifact_refusal:" + engine.id, false)
+                                status.text = "تعذر إنشاء الملف"
+                                return@runOnUiThread
+                            }
+
+                            executeGeneratedPdfArtifact(text, artifactText)
+                            return@runOnUiThread
+                        }
                         HakimResiliencePolicy.recordSuccess(this, engine.id)
                         finishStreamingReply(result.text)
                         HakimExecutiveLoop.complete(
                             this,
-                            "عاد الرد من " + engine.displayName + " إلى محادثة حكيم نفسها"
+                            "عاد الرد النهائي إلى محادثة حكيم"
                         )
                         recordRoute("direct:" + engine.id, true)
                         command.setText("")
                         attachments.clear()
                         refreshAttachmentStatus()
-                        status.text = "اكتمل"
+                        status.text = "جاهز"
                     }
 
                     is HakimInferenceEngine.Result.NeedsAuthorization -> {
@@ -599,7 +693,7 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "يلزم تفويض محرك مجاني"
+                            finalStatus = "تحتاج هذه الميزة موافقتك"
                         )
                     }
 
@@ -610,7 +704,7 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "لا يوجد مسار مجاني مباشر لهذا الإدخال"
+                            finalStatus = "تعذر إكمال هذا النوع من الطلب الآن"
                         )
                     }
 
@@ -623,11 +717,11 @@ class CommandCenterActivity : Activity() {
                                 failedEngine = engine,
                                 excluded = excluded,
                                 reason = result.reason,
-                                finalStatus = "انتهت المسارات المجانية المتاحة"
+                                finalStatus = "تعذر إكمال الطلب الآن"
                             )
                         } else {
                             discardEmptyStreamingReply()
-                            appendConversation("حكيم", result.reason)
+                            appendConversation("حكيم", HakimProductUx.publicError(result.reason))
                             HakimExecutiveLoop.record(
                                 this,
                                 HakimExecutiveLoop.Phase.GATED,
@@ -667,7 +761,7 @@ class CommandCenterActivity : Activity() {
                 "المحرك البديل: " + fallback.displayName
             )
             refreshOperations()
-            status.text = "المحرك بطيء/متعثر؛ يحوّل إلى " + fallback.displayName
+            status.text = "يجرّب مسارًا آخر…"
             executeDirectModel(text, instruction, fallback.id, nextExcluded)
             return
         }
@@ -703,7 +797,7 @@ class CommandCenterActivity : Activity() {
                 startActivity(out)
                 HakimExecutiveLoop.waitExternal(this, provider.label)
                 refreshOperations()
-                appendConversation("حكيم", "احتاجت هذه المهمة قناة خارجية؛ فتحتها الآن. فتح التطبيق وحده ليس نجاحًا للمهمة.")
+                appendConversation("حكيم", "تحتاج هذه المهمة تطبيقًا آخر لإكمال خطوة لا يستطيع حكيم تنفيذها داخليًا. لن أعتبر المهمة مكتملة حتى يتحقق الأثر.")
                 status.text = "بانتظار أثر القناة الخارجية"
                 return
             } catch (_: Exception) {
@@ -736,8 +830,8 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح قناة ويب رسمية داخل حكيم")
         HakimExecutiveLoop.waitExternal(this, provider.label)
         refreshOperations()
-        appendConversation("حكيم", "فتحت القناة الرسمية المختارة. لن أعتبر المهمة ناجحة قبل تحقق الأثر.")
-        status.text = "قناة خارجية"
+        appendConversation("حكيم", "تحتاج هذه المهمة خدمة خارجية. لن أعتبرها مكتملة قبل تحقق النتيجة.")
+        status.text = "بانتظار موافقتك"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -763,8 +857,8 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح المتصفح للمسار الذي يحتاج الويب")
         HakimExecutiveLoop.waitExternal(this, "المتصفح")
         refreshOperations()
-        appendConversation("حكيم", "فتحت المتصفح للمسار الذي يحتاج الويب.")
-        status.text = "المتصفح"
+        appendConversation("حكيم", "بدأت معالجة هذا الطلب عبر الويب، ولم أعتبر المهمة مكتملة بعد.")
+        status.text = "يعمل على طلبك…"
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -857,10 +951,21 @@ class CommandCenterActivity : Activity() {
         val saved = getSharedPreferences("hakim_conversation", MODE_PRIVATE)
             .getString("recent", "")
             .orEmpty()
-        conversation.text = if (saved.isBlank()) {
-            "حكيم:\nجاهز. اكتب مقصدك وسأعرض الرد هنا بوضوح."
+        val migrated = if (saved.isNotBlank() && HakimProductOutput.containsRawMarkup(saved)) {
+            HakimProductOutput.clean(saved)
         } else {
             saved
+        }
+        conversation.text = if (migrated.isBlank()) {
+            "حكيم:\nمرحبًا. اكتب ما تريد، وسأتولى التنفيذ وأعيد لك النتيجة هنا."
+        } else {
+            migrated
+        }
+        if (migrated != saved) {
+            getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+                .edit()
+                .putString("recent", migrated)
+                .apply()
         }
         scrollConversationToBottom()
     }
@@ -879,13 +984,13 @@ class CommandCenterActivity : Activity() {
 
     private fun renderStreamingReply() {
         val prefix = if (streamingBase.isBlank()) "" else streamingBase + "\n\n"
-        conversation.text = prefix + "حكيم:\n" + streamingBuffer.toString()
+        conversation.text = prefix + "حكيم:\n" + HakimProductOutput.clean(streamingBuffer.toString())
         scrollConversationToBottom()
     }
 
     private fun finishStreamingReply(finalText: String) {
         if (streamingBuffer.isEmpty() && finalText.isNotBlank()) {
-            streamingBuffer.append(finalText)
+            streamingBuffer.append(HakimProductOutput.clean(finalText))
             renderStreamingReply()
         }
         persistConversation()
@@ -923,7 +1028,8 @@ class CommandCenterActivity : Activity() {
     private fun appendConversation(role: String, message: String) {
         if (!::conversation.isInitialized || message.isBlank()) return
         val current = conversation.text.toString().trim()
-        val entry = role + ":\n" + message.trim()
+        val visible = if (role == "حكيم") HakimProductOutput.clean(message) else message.trim()
+        val entry = role + ":\n" + visible
         val next = if (current.isBlank()) entry else current + "\n\n" + entry
         val kept = next.takeLast(12_000)
         conversation.text = kept
@@ -939,9 +1045,10 @@ class CommandCenterActivity : Activity() {
         conversationScroll.post { conversationScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
-    private fun actionButton(label: String, action: () -> Unit): Button = Button(this).apply {
+    private fun actionButton(label: String, primary: Boolean = false, action: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 16f
+        if (primary) HakimUiKit.primary(this) else HakimUiKit.secondary(this)
         setOnClickListener { action() }
     }
 
@@ -953,6 +1060,7 @@ class CommandCenterActivity : Activity() {
     private fun recordRoute(route: String, success: Boolean?) {
         if (success == null) HakimLearning.recordAttempt(this, route)
         else HakimLearning.recordResult(this, route, success)
+        HakimAuditTrail.record(this, route, success)
     }
 
     private fun copyText(text: String) {

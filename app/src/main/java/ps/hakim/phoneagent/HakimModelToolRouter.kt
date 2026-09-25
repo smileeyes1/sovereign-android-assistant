@@ -21,6 +21,7 @@ object HakimModelToolRouter {
     enum class Channel {
         LOCAL_RESPONSE,
         LOCAL_ARTIFACT,
+        POLICY_BLOCKED,
         DIRECT_MODEL,
         FREE_ENGINE_SETUP,
         SILENT_BROWSER,
@@ -98,7 +99,21 @@ object HakimModelToolRouter {
             )
         }
 
+        if (attachments.isNotEmpty()) {
+            HakimEnterprisePolicy.blockReason(context, "attachments")?.let { reason ->
+                return Decision(
+                    channel = Channel.POLICY_BLOCKED,
+                    provider = null,
+                    fallbacks = emptyList(),
+                    reason = reason
+                )
+            }
+        }
+
         if (isDirectUrl(q)) {
+            HakimEnterprisePolicy.blockReason(context, "web")?.let { reason ->
+                return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
+            }
             return Decision(
                 channel = Channel.SILENT_BROWSER,
                 provider = null,
@@ -108,11 +123,23 @@ object HakimModelToolRouter {
         }
 
         if (needsFreshWeb(q)) {
+            HakimEnterprisePolicy.blockReason(context, "web")?.let { reason ->
+                return Decision(Channel.POLICY_BLOCKED, null, emptyList(), reason)
+            }
             return Decision(
                 channel = Channel.SILENT_BROWSER,
                 provider = null,
                 fallbacks = providers,
                 reason = "المهمة تعتمد على معلومات حديثة؛ يبحث المتصفح المدمج صامتًا ثم يعود الأثر إلى حكيم."
+            )
+        }
+
+        HakimEnterprisePolicy.blockReason(context, "external_ai")?.let { reason ->
+            return Decision(
+                channel = Channel.POLICY_BLOCKED,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = reason
             )
         }
 

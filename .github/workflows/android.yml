@@ -59,6 +59,11 @@ jobs:
           python3 tests/verify_20112_local_pdf.py
           python3 tests/verify_20113_contextual_pdf.py
           python3 tests/verify_20114_silent_tools.py
+          python3 tests/verify_sellable_product_candidate.py
+          python3 tests/verify_product_screenshot_regression.py
+          python3 tests/verify_enterprise_policy.py
+          python3 tests/verify_product_privacy_controls.py
+          python3 tests/verify_product_copy.py
           python3 tests/verify_active_state_consistency.py
           python3 tests/verify_product_v1_candidate_gate.py
           set +e
@@ -71,6 +76,16 @@ jobs:
             exit 1
           fi
           grep -q 'PRODUCT_V1_FINAL_GATE=FAIL reason=field_state:' <<<"$FINAL_OUTPUT"
+          set +e
+          SELLABLE_OUTPUT="$(python3 tests/verify_sellable_product_final_gate.py 2>&1)"
+          SELLABLE_RC=$?
+          set -e
+          printf '%s\n' "$SELLABLE_OUTPUT"
+          if [[ $SELLABLE_RC -eq 0 ]]; then
+            echo "Sellable product unexpectedly promoted before field evidence" >&2
+            exit 1
+          fi
+          grep -q 'SELLABLE_PRODUCT_FINAL=FAIL reason=field_state:' <<<"$SELLABLE_OUTPUT"
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
@@ -107,7 +122,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20114"
+          test "$VERSION_CODE" = "20202"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

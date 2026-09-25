@@ -21,7 +21,12 @@ req("HakimIntentEngine.governedPrompt(context, prompt)" not in ROUTER, "full_gov
 req("HakimModelToolRouter.Channel.LOCAL_RESPONSE" in CENTER, "local_response_not_wired")
 req('recordRoute("local_response", true)' in CENTER, "local_completion_not_recorded")
 req("HakimModelToolRouter.recordOutcome(this, provider.id, true)" not in CENTER, "provider_launch_counted_as_success")
-req("فتح التطبيق وحده ليس نجاحًا للمهمة" in CENTER, "launch_not_explicitly_unverified")
+req(
+    "فتح التطبيق وحده ليس نجاحًا للمهمة" in CENTER
+    or "لن أعتبر المهمة مكتملة حتى يتحقق الأثر" in CENTER
+    or "لن أعتبرها مكتملة قبل تحقق النتيجة" in CENTER,
+    "launch_not_explicitly_unverified"
+)
 
 # Known failure sentinel: a provider launch must never be counted as task success.
 probe = CENTER + "\nHakimModelToolRouter.recordOutcome(this, provider.id, true)"

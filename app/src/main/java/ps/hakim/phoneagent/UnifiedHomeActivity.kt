@@ -1,291 +1,191 @@
 package ps.hakim.phoneagent
 
-import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
-import android.text.InputType
-import android.view.View
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
-import android.app.AlertDialog
 import android.widget.TextView
 
+/**
+ * إعدادات المنتج النهائية. التفاصيل الهندسية والمزودون والمفاتيح لا تظهر
+ * في الواجهة العادية؛ تبقى داخل طبقات التنفيذ والتشخيص.
+ */
 class UnifiedHomeActivity : Activity() {
-    private lateinit var adbStatus: TextView
-    private lateinit var directModelStatus: TextView
+    private lateinit var intelligenceStatus: TextView
+    private lateinit var organizationStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         HakimFreePolicy.setFreeOnly(this, true)
         buildUi()
-        maybeBootstrapLocalAdb()
     }
 
     override fun onResume() {
         super.onResume()
         refresh()
-        HakimLocalPairing.reconnectAsync(this)
-        adbStatus.postDelayed({ refresh() }, 1500L)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_NOTIFICATIONS) {
-            beginLocalAdbSetup()
-        }
     }
 
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            layoutDirection = android.view.View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(24, 28, 24, 24)
+            setPadding(28, 36, 28, 28)
+            setBackgroundColor(android.graphics.Color.WHITE)
         }
 
         root.addView(TextView(this).apply {
-            text = "حكيم — التطبيق الموحّد"
-            textSize = 27f
+            text = "الإعدادات"
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 18)
+            setPadding(8, 8, 8, 20)
+            HakimUiKit.title(this)
         })
 
-        adbStatus = TextView(this).apply {
+        intelligenceStatus = TextView(this).apply {
             textSize = 17f
             gravity = Gravity.CENTER
-            setPadding(8, 10, 8, 16)
+            setPadding(12, 10, 12, 8)
         }
-        root.addView(adbStatus)
+        root.addView(intelligenceStatus)
 
-        root.addView(button("تأسيس ADB المحلي") {
-            ensureNotificationPermissionThenSetup()
-        })
-
-        root.addView(button("إعادة الاتصال") {
-            HakimLocalPairing.reconnectAsync(this)
-            adbStatus.postDelayed({ refresh() }, 1200L)
-        })
-
-        directModelStatus = TextView(this).apply {
-            textSize = 16f
-            gravity = Gravity.CENTER
-            setPadding(8, 18, 8, 8)
-        }
-        root.addView(directModelStatus)
-
-        root.addView(TextView(this).apply {
-            text = "وضع الذكاء: مجاني فقط — لا يستخدم حكيم محركًا مدفوعًا تلقائيًا"
+        organizationStatus = TextView(this).apply {
             textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 10)
-        })
+            setPadding(12, 4, 12, 18)
+        }
+        root.addView(organizationStatus)
 
-        root.addView(button("فعّل الذكاء المجاني — مرة واحدة") {
+        root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
         })
 
-        root.addView(button("مفتاح OpenRouter يدوي — احتياطي") {
-            showOpenRouterKeyDialog()
+        root.addView(button("اختبار الاتصال") {
+            testConnection()
         })
 
-        root.addView(button("اختبار أفضل محرك مجاني") {
-            testBestFreeEngine()
-        })
-
-        root.addView(button("مسح مفتاح OpenRouter") {
-            HakimSecretStore.remove(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
-            refresh()
-        })
-
-        root.addView(button("إعداد Gemini Free Tier اختياري") {
-            showGeminiKeyDialog()
-        })
-
-        root.addView(button("تأكيد/إلغاء Gemini Free Tier") {
-            val next = !HakimFreePolicy.geminiFreeTierConfirmed(this)
-            HakimFreePolicy.setGeminiFreeTierConfirmed(this, next)
-            refresh()
-        })
-
-        root.addView(button("إنشاء/عرض مفتاح Gemini") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey")))
-        })
-
-        root.addView(button("مسح مفتاح Gemini") {
-            HakimSecretStore.remove(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
-            HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
-            getSharedPreferences(GeminiDirectEngine.PREFS, MODE_PRIVATE)
-                .edit()
-                .remove("gemini_direct_field_verified")
-                .apply()
-            refresh()
-        })
-
-        root.addView(button("محادثة جديدة للمحركات") {
+        root.addView(button("بدء محادثة جديدة") {
             GeminiDirectEngine(this).clearConversation()
-            android.widget.Toast.makeText(this, "تم بدء سياق مباشر جديد.", android.widget.Toast.LENGTH_SHORT).show()
+            getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+                .edit()
+                .remove("recent")
+                .apply()
+            intelligenceStatus.text = "بدأت محادثة جديدة."
         })
 
-        root.addView(button("مركز القيادة") {
-            startActivity(Intent(this, CommandCenterActivity::class.java))
+        root.addView(button("الخصوصية والأمان") {
+            showPrivacy()
         })
 
-        root.addView(button("متصفح حكيم") {
-            startActivity(Intent(this, MainActivity::class.java))
+        root.addView(button("مسح سجل المحادثة المحلي") {
+            confirmClearLocalData()
         })
 
-        root.addView(TextView(this).apply {
-            text = "الربط التلقائي يستخدم OAuth/PKCE الرسمي ويحفظ المفتاح داخل AndroidKeyStore. حكيم يرسل المحادثة العادية إلى openrouter/free فقط، فلا يختار نموذجًا مدفوعًا تلقائيًا. الحصة المجانية محدودة، وعند انتهائها يتوقف دون إنشاء تكلفة."
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setPadding(12, 22, 12, 8)
+        root.addView(button("إلغاء ربط خدمات الذكاء") {
+            confirmDisconnectIntelligence()
         })
+
+        root.addView(button("إعدادات التطبيق في أندرويد") {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                })
+            }
+        })
+
+        root.addView(button("العودة إلى حكيم") { finish() })
 
         setContentView(root)
         refresh()
     }
 
-    private fun showOpenRouterKeyDialog() {
-        val input = EditText(this).apply {
-            hint = "ألصق مفتاح OpenRouter"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            isSingleLine = true
+    private fun refresh() {
+        val openRouter = HakimSecretStore.has(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
+        val gemini = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY) &&
+            HakimFreePolicy.geminiFreeTierConfirmed(this)
+        intelligenceStatus.text = if (openRouter || gemini) {
+            "خدمة الذكاء: جاهزة"
+        } else {
+            "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
-        AlertDialog.Builder(this)
-            .setTitle("OpenRouter المجاني داخل حكيم")
-            .setMessage("يستخدم حكيم المسار openrouter/free فقط. يُحفظ المفتاح مشفّرًا ولا يُطبع في السجل.")
-            .setView(input)
-            .setPositiveButton("حفظ") { _, _ ->
-                val key = input.text.toString().trim()
-                if (key.isNotBlank()) {
-                    HakimSecretStore.put(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY, key)
-                    refresh()
-                    testBestFreeEngine()
-                }
-            }
-            .setNegativeButton("إلغاء", null)
-            .show()
+
+        val policy = HakimEnterprisePolicy.current(this)
+        organizationStatus.text = if (policy.managed) {
+            "هذا الجهاز مُدار بسياسة المؤسسة."
+        } else {
+            "الوضع الشخصي — الصلاحيات والبيانات بأقل نطاق افتراضيًا."
+        }
     }
 
-    private fun showGeminiKeyDialog() {
-        val input = EditText(this).apply {
-            hint = "ألصق مفتاح Gemini API"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            isSingleLine = true
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Gemini مباشر داخل حكيم")
-            .setMessage("يُحفظ المفتاح مشفّرًا في AndroidKeyStore ولا يظهر في المحادثة أو السجل.")
-            .setView(input)
-            .setPositiveButton("حفظ") { _, _ ->
-                val key = input.text.toString().trim()
-                if (key.isNotBlank()) {
-                    HakimSecretStore.put(this, GeminiDirectEngine.SECRET_GEMINI_KEY, key)
-                    refresh()
-                }
-            }
-            .setNegativeButton("إلغاء", null)
-            .show()
-    }
-
-    private fun testBestFreeEngine() {
-        val ranked = HakimWisdomMatrix.choose(
-            this,
-            "أجب بالعربية بكلمة واحدة فقط: جاهز",
-            emptyList()
-        )
+    private fun testConnection() {
+        val ranked = HakimWisdomMatrix.choose(this, "أجب بكلمة: جاهز", emptyList())
         val engine = ranked?.engine
         if (engine == null) {
-            directModelStatus.text = "لا يوجد محرك مجاني مباشر مهيأ. ابدأ بـ OpenRouter المجاني."
+            intelligenceStatus.text = "خدمة الذكاء غير جاهزة بعد."
             return
         }
 
-        directModelStatus.text = "يختبر حكيم " + engine.displayName + "…"
-        val started = System.currentTimeMillis()
+        intelligenceStatus.text = "يفحص الاتصال…"
         Thread {
-            val result = engine.complete(
-                "أجب بالعربية بكلمة واحدة فقط: جاهز",
-                emptyList(),
-                onDelta = {}
-            )
-            val latency = (System.currentTimeMillis() - started).coerceAtLeast(0L)
-            HakimEngineTelemetry.record(
-                this,
-                engine.id,
-                result is HakimInferenceEngine.Result.Success,
-                latency
-            )
+            val result = engine.complete("أجب بكلمة واحدة فقط: جاهز", emptyList(), onDelta = {})
             runOnUiThread {
-                directModelStatus.text = when (result) {
-                    is HakimInferenceEngine.Result.Success ->
-                        "✓ " + engine.displayName + " متصل؛ الرد يعود داخل حكيم"
-                    is HakimInferenceEngine.Result.NeedsAuthorization ->
-                        "تعذر التفويض: " + result.reason
-                    is HakimInferenceEngine.Result.Unavailable ->
-                        "غير متاح: " + result.reason
-                    is HakimInferenceEngine.Result.Failure ->
-                        "فشل الاختبار: " + result.reason
+                intelligenceStatus.text = when (result) {
+                    is HakimInferenceEngine.Result.Success -> "خدمة الذكاء: جاهزة"
+                    is HakimInferenceEngine.Result.NeedsAuthorization -> "تحتاج الخدمة ربطًا لمرة واحدة."
+                    is HakimInferenceEngine.Result.Unavailable -> "الخدمة غير متاحة مؤقتًا."
+                    is HakimInferenceEngine.Result.Failure -> "تعذر الاتصال مؤقتًا."
                 }
             }
         }.start()
     }
 
-    private fun maybeBootstrapLocalAdb() {
-        val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
-        if (prefs.getBoolean("local_adb_paired", false)) {
-            HakimLocalPairing.reconnectAsync(this)
-            return
-        }
-        if (prefs.getBoolean("local_adb_first_run_started", false)) return
-        prefs.edit().putBoolean("local_adb_first_run_started", true).apply()
-        ensureNotificationPermissionThenSetup()
-    }
-
-    private fun ensureNotificationPermissionThenSetup() {
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
-        } else {
-            beginLocalAdbSetup()
-        }
-    }
-
-    private fun beginLocalAdbSetup() {
-        HakimLocalPairing.openWirelessDebuggingSettings(this)
-        refresh()
-    }
-
-    private fun refresh() {
-        if (::adbStatus.isInitialized) adbStatus.text = HakimLocalPairing.currentSummary(this)
-        if (::directModelStatus.isInitialized) {
-            val openRouter = HakimSecretStore.has(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
-            val gemini = HakimSecretStore.has(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
-            val geminiFree = HakimFreePolicy.geminiFreeTierConfirmed(this)
-            val available = HakimWisdomMatrix.rank(this, "", emptyList())
-            directModelStatus.text = buildString {
-                append("المحركات المجانية المباشرة: ")
-                if (available.isEmpty()) append("غير مهيأة")
-                else append(available.joinToString(" ← ") { it.engine.displayName })
-                append("\nOpenRouter=")
-                append(if (openRouter) "متصل" else "غير متصل — اضغط «فعّل الذكاء المجاني»")
-                append(" | Gemini=")
-                append(if (gemini && geminiFree) "Free Tier مؤكد" else if (gemini) "مفتاح موجود غير مؤكد مجانيًا" else "غير مهيأ")
+    private fun confirmClearLocalData() {
+        AlertDialog.Builder(this)
+            .setTitle("مسح البيانات المحلية")
+            .setMessage("سيُمسح سجل المحادثة وسجل التدقيق المحلي وذاكرة آخر مخرج. لن تُحذف ملفاتك المحفوظة في التنزيلات.")
+            .setPositiveButton("مسح") { _, _ ->
+                getSharedPreferences("hakim_conversation", MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences("hakim_local_artifacts", MODE_PRIVATE).edit().clear().apply()
+                HakimAuditTrail.clear(this)
+                intelligenceStatus.text = "مُسحت البيانات المحلية."
             }
-        }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
-    private fun button(label: String, action: () -> Unit): Button = Button(this).apply {
+    private fun confirmDisconnectIntelligence() {
+        AlertDialog.Builder(this)
+            .setTitle("إلغاء الربط")
+            .setMessage("سيُحذف اعتماد خدمات الذكاء المحفوظ من هذا الجهاز.")
+            .setPositiveButton("إلغاء الربط") { _, _ ->
+                HakimSecretStore.remove(this, OpenRouterFreeEngine.SECRET_OPENROUTER_KEY)
+                HakimSecretStore.remove(this, GeminiDirectEngine.SECRET_GEMINI_KEY)
+                HakimFreePolicy.setGeminiFreeTierConfirmed(this, false)
+                refresh()
+            }
+            .setNegativeButton("رجوع", null)
+            .show()
+    }
+
+    private fun showPrivacy() {
+        AlertDialog.Builder(this)
+            .setTitle("الخصوصية والأمان")
+            .setMessage(
+                "يعالج حكيم ما يستطيع محليًا أولًا. لا تُرسل المرفقات أو النصوص إلى خدمة خارجية إلا عندما تحتاج المهمة ذلك، " +
+                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
+            )
+            .setPositiveButton("حسنًا", null)
+            .show()
+    }
+
+    private fun button(label: String, primary: Boolean = false, action: () -> Unit): Button = Button(this).apply {
         text = label
-        textSize = 18f
+        textSize = 17f
+        if (primary) HakimUiKit.primary(this) else HakimUiKit.secondary(this)
         setOnClickListener { action() }
-    }
-
-    companion object {
-        private const val REQ_NOTIFICATIONS = 42043
     }
 }

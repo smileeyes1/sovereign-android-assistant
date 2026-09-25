@@ -12,7 +12,7 @@ def req(cond: bool, reason: str):
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) >= 20107, "version")
-req(re.search(r"versionName\s+'2\.1\.\d+[-'][^\n]*", BUILD) is not None, "version_name")
+req(re.search(r"versionName\s+'[^']+'", BUILD) is not None, "version_name")
 
 # Official OpenRouter localhost PKCE flow stays intact in 20107 and later candidates.
 for needed in [

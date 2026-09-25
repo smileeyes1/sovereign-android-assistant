@@ -5,16 +5,17 @@ p=Path("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_te
 must=[
     "جاهز",
     "اكتب رسالتك إلى حكيم",
-    'actionButton("أنجز")',
+    'actionButton("أنجز", primary = true)',
     'actionButton("إرفاق")',
     'actionButton("صوت")',
-    'actionButton("المتصفح")',
-    'actionButton("إدارة")',
+    'actionButton("الإعدادات")',
 ]
 for x in must:
     assert x in p, x
 
 for x in [
+    'actionButton("المتصفح")',
+    'actionButton("إدارة")',
     'actionButton("شات جي بي تي")',
     'actionButton("جيميني")',
     'actionButton("كلود")',
@@ -29,7 +30,13 @@ for x in [
 ]:
     assert x not in p, x
 
-assert ("لم يُعتمد النجاح" in p) or ("لن أعتبر المهمة ناجحة" in p) or ("ليس نجاحًا للمهمة" in p)
+assert (
+    ("لم يُعتمد النجاح" in p)
+    or ("لن أعتبر المهمة ناجحة" in p)
+    or ("ليس نجاحًا للمهمة" in p)
+    or ("لن أعتبر المهمة مكتملة حتى يتحقق الأثر" in p)
+    or ("لن أعتبرها مكتملة قبل تحقق النتيجة" in p)
+)
 assert "ScrollView" in p
 assert "appendConversation" in p
 print("CALM_UI_POLICY=PASS visible_conversation=true")

@@ -70,7 +70,13 @@ object HakimVerifiedIntake {
             }
             if (exactTextEnvelope != null) {
                 appendLine()
-                append(exactTextEnvelope)
+                append(
+                    HakimAuthorityBoundary.externalData(
+                        "مرفقات نصية متحققة بايتًا",
+                        exactTextEnvelope,
+                        100_000
+                    )
+                )
             }
         }
     }

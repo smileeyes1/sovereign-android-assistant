@@ -35,6 +35,17 @@
             android:name="android.content.APP_RESTRICTIONS"
             android:resource="@xml/app_restrictions" />
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.hakim.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/hakim_file_paths" />
+        </provider>
+
+
         <activity
             android:name=".UnifiedHomeActivity"
             android:exported="false"

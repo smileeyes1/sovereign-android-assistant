@@ -179,6 +179,8 @@
     "attachment_cache_bound": true,
     "page_16k_ci_gate": true,
     "d1_v2_structure_ci_gate": true,
-    "hardening_field_verified": false
+    "hardening_field_verified": false,
+    "pairing_takeover_local_confirmation": true,
+    "same_pairing_idempotent": true
   }
 }

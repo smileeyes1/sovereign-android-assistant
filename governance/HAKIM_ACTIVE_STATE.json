@@ -19,16 +19,16 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20201,
-      "commit": "0dddf549281865dca3bb342acf81b160a0505348",
-      "ci_run_number": 986,
+      "version_code": 20202,
+      "commit": "31a6366ad092ea4ff108bb5782f8d671ef3568ee",
+      "ci_run_number": 1014,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20202,
-      "branch": "feature/hakim-product-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20206,
+      "branch": "feature/hakim-20206-verified-teacher-artifacts-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -99,13 +99,13 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1013,
-      "commit": "051e3bac7e80ed83d2105751ebd79586734c8780",
+      "run_number": 1014,
+      "commit": "31a6366ad092ea4ff108bb5782f8d671ef3568ee",
       "conclusion": "success"
     }
   },
   "local_artifacts": {
-    "version": "LOCAL-PDF-2026-09-24-v2",
+    "version": "VERIFIED-TEACHER-ARTIFACTS-2026-09-25-v1",
     "source_integrated": true,
     "worksheet_addition_within_10": true,
     "local_before_external_models": true,
@@ -113,7 +113,13 @@
     "field_verified": false,
     "contextual_followup": true,
     "recent_conversation_recovery": true,
-    "last_artifact_memory": true
+    "last_artifact_memory": true,
+    "worksheet_subtraction_within_10": true,
+    "worksheet_mixed_within_10": true,
+    "structured_spec_required": true,
+    "worksheet_generic_pdf_fallback": false,
+    "raw_model_dump_forbidden": true,
+    "manual_conversion_instructions_forbidden": true
   },
   "tool_orchestration": {
     "version": "SILENT-TOOLS-2026-09-24-v1",
@@ -127,7 +133,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v2",
-    "candidate_version": 20202,
+    "candidate_version": 20206,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -141,6 +147,8 @@
     "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
-    "generic_pdf_fallback": true
+    "generic_pdf_fallback": true,
+    "worksheet_generic_pdf_fallback": false,
+    "field_screenshot_failure_2026_09_25": "BLOCKED_BY_STRUCTURED_FACTORY"
   }
 }

@@ -84,7 +84,7 @@ class HakimPairingActivity : Activity() {
         }
 
         getSharedPreferences("hakim", MODE_PRIVATE).edit()
-            .putString("pair_token", token)
+            .remove("pair_token")
             .putBoolean("pairing_disabled_by_user", false)
             .putLong("secure_pairing_at", System.currentTimeMillis())
             .apply()

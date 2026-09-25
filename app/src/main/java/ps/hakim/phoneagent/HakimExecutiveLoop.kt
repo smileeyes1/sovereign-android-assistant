@@ -14,7 +14,8 @@ import java.util.UUID
 object HakimExecutiveLoop {
     private const val PREFS = "hakim_executive_loop"
     private const val MAX_EVENTS = 24
-    private const val MAX_CYCLES = 6
+    private const val MAX_EXECUTION_WINDOW_MS = 10L * 60L * 1000L
+    private const val MAX_SAME_UNCHANGED_REASON = 2
 
     enum class Phase {
         UNDERSTANDING,
@@ -50,6 +51,7 @@ object HakimExecutiveLoop {
             .putString("phase", Phase.UNDERSTANDING.name)
             .putBoolean("active", true)
             .putLong("started_at", System.currentTimeMillis())
+            .putLong("last_material_gain_at", System.currentTimeMillis())
             .putString("events", "[]")
             .apply()
         HakimGoalSupervisor.begin(context, id, criteria, "android-candidate")
@@ -93,27 +95,91 @@ object HakimExecutiveLoop {
 
     fun advanceCycle(context: Context, reason: String): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val next = p.getInt("cycle", 1) + 1
-        if (next > MAX_CYCLES) {
-            record(context, Phase.GATED, "بلغت الدورة الحد الآمن؛ يلزم أثر جديد أو قناة تنفيذ مختلفة")
+        val now = System.currentTimeMillis()
+        val startedAt = p.getLong("started_at", now)
+        if (now - startedAt > MAX_EXECUTION_WINDOW_MS) {
+            record(
+                context,
+                Phase.GATED,
+                "انتهت ميزانية التنفيذ الزمنية الحالية؛ تُحفظ الحالة ويحتاج الاستئناف إلى مسار/نافذة تنفيذ جديدة، لا إلى تكرار أعمى."
+            )
             return false
         }
-        p.edit().putInt("cycle", next).apply()
-        record(context, Phase.REPAIRING, reason.ifBlank { "إعادة التقدير وتغيير الوسيلة" })
+
+        val normalized = reason.trim().replace(Regex("\\s+"), " ").take(300)
+        val previous = p.getString("last_cycle_reason", "").orEmpty()
+        val sameCount = if (previous == normalized && normalized.isNotBlank()) {
+            p.getInt("same_cycle_reason_count", 0) + 1
+        } else {
+            1
+        }
+
+        if (sameCount > MAX_SAME_UNCHANGED_REASON) {
+            HakimGoalSupervisor.toolFailed(
+                context,
+                "repeated_without_causal_change:" + normalized
+            )
+            record(
+                context,
+                Phase.GATED,
+                "تكرر السبب نفسه دون تغيير سببي؛ يُمنع تكرار المحاولة ويلزم مسار مختلف أو دليل جديد."
+            )
+            p.edit()
+                .putString("last_cycle_reason", normalized)
+                .putInt("same_cycle_reason_count", sameCount)
+                .apply()
+            return false
+        }
+
+        val next = p.getInt("cycle", 1) + 1
+        p.edit()
+            .putInt("cycle", next)
+            .putString("last_cycle_reason", normalized)
+            .putInt("same_cycle_reason_count", sameCount)
+            .apply()
+        record(context, Phase.REPAIRING, normalized.ifBlank { "إعادة التقدير وتغيير الوسيلة" })
         return true
     }
 
-    fun complete(context: Context, evidence: String) {
+    fun noteMaterialGain(context: Context, evidence: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong("last_material_gain_at", System.currentTimeMillis())
+            .putString("last_material_gain", evidence.take(1000))
+            .putInt("same_cycle_reason_count", 0)
+            .apply()
+    }
+
+    fun complete(
+        context: Context,
+        evidence: String,
+        stage: HakimGoalSupervisor.EvidenceStage = HakimGoalSupervisor.EvidenceStage.UI_OBSERVED
+    ): Boolean {
         record(context, Phase.VERIFYING, "التحقق من الأثر")
+        val goal = current(context)?.goal.orEmpty()
+        val accepted = HakimEvidencePolicy.accepts(goal, stage)
+
         HakimGoalSupervisor.recordEvidence(
             context,
-            HakimGoalSupervisor.EvidenceStage.UI_OBSERVED.name,
+            stage.name,
             evidence.take(4000),
-            effectVerified = true
+            effectVerified = accepted
         )
-        record(context, Phase.COMPLETE, "تحقق معيار الاكتمال")
+
+        if (!accepted || !HakimGoalSupervisor.canClose(context)) {
+            record(
+                context,
+                Phase.GATED,
+                "الدليل الحالي لا يكفي لإغلاق هذا المقصد عالي الأثر؛ يلزم مستوى تحقق أعلى."
+            )
+            return false
+        }
+
+        noteMaterialGain(context, evidence)
+        record(context, Phase.COMPLETE, "تحقق معيار الاكتمال بالدليل المناسب")
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean("active", false).putLong("completed_at", System.currentTimeMillis()).apply()
+        return true
     }
 
     fun waitExternal(context: Context, providerLabel: String) {

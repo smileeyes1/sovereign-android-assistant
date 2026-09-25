@@ -222,9 +222,11 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   tools.push({
     name:"get_request_result",
     title:"قراءة حالة طلب سابق",
-    description:publicSafe
-      ?"تحقق من اكتمال طلب سابق دون إعادة تنفيذه. في الوضع العام تُحجب محتويات الجهاز ويعاد فقط نجاح/فشل/حالة الطلب."
-      :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي.",
+    description:governedReadDescription(
+      publicSafe
+        ?"تحقق من اكتمال طلب سابق دون إعادة تنفيذه. في الوضع العام تُحجب محتويات الجهاز ويعاد فقط نجاح/فشل/حالة الطلب."
+        :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي."
+    ),
     inputSchema:{
       type:"object",
       properties:{operation_token:{type:"string",minLength:8,maxLength:128}},
@@ -320,9 +322,11 @@ export function createHakimServer(
 
   server.registerTool("get_request_result",{
     title:"قراءة حالة طلب سابق",
-    description:publicSafe
-      ?"تحقق من اكتمال طلب سابق دون إعادة تنفيذه، مع حجب محتوى الجهاز."
-      :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي.",
+    description:governedReadDescription(
+      publicSafe
+        ?"تحقق من اكتمال طلب سابق دون إعادة تنفيذه، مع حجب محتوى الجهاز."
+        :"اقرأ نتيجة request_id سابق من حكيم دون إعادة تنفيذ الطلب الأصلي."
+    ),
     inputSchema:{operation_token:z.string().min(8).max(128)},
     annotations:READ_ANNOTATIONS
   },async({operation_token})=>{

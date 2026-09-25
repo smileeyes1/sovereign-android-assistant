@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20300,
-      "commit": "f9c4af943384cbd1b28fc6616ee385c1417080b6",
-      "ci_run_number": 1029,
+      "version_code": 20301,
+      "commit": "400fa406ba97208e02be157d1a13d5df1b713dec",
+      "ci_run_number": 1042,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20301,
-      "branch": "feature/hakim-20301-verified-intake-fabric-v1",
+      "version_code": 20302,
+      "branch": "feature/hakim-20302-hardening-train-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1029,
-      "commit": "f9c4af943384cbd1b28fc6616ee385c1417080b6",
+      "run_number": 1042,
+      "commit": "400fa406ba97208e02be157d1a13d5df1b713dec",
       "conclusion": "success"
     }
   },
@@ -137,8 +137,8 @@
     "field_verified": false
   },
   "productization": {
-    "version": "PRODUCT-V1-2026-09-25-v2",
-    "candidate_version": 20301,
+    "version": "PRODUCT-V1-2026-09-25-v3",
+    "candidate_version": 20302,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -148,7 +148,7 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "c2284f776643bb98b23a6dca47b0777352a49d139b408da5e3867a90d339ad88",
+    "signed_candidate_sha256": "347cb3e259625622519dd92070f20f4841b9ebfb3b4394d7484f61532878d255",
     "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
@@ -156,18 +156,29 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "Hakim-20300-FINAL-D1.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20301",
+    "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20302",
     "install_failure_2026_09_25": {
-      "observed": "Package Installer: يتعذر تثبيت التطبيق على جهازك",
-      "root_cause": "CONFIRMED: installed signed-health versionCode=20207; attempted 3.0.2 file carries versionCode=20202, so Android rejected the downgrade.",
-      "prevention": "Candidate versionCode 20300 + package/signing/installability gate"
+      "observed": "Android rejected the first two 20301 APK attempts before install.",
+      "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
+      "corrected_artifact": "HAKIM-20301-D1-FINAL-V2.apk",
+      "corrected_artifact_sha256": "347cb3e259625622519dd92070f20f4841b9ebfb3b4394d7484f61532878d255",
+      "corrected_artifact_structure_verified": true,
+      "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20300,
+    "signed_candidate_version": 20301,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,
     "free_account_attachment_handoff": true,
-    "intake_field_verified": false
+    "intake_field_verified": false,
+    "photo_picker_scoped_media": true,
+    "dedicated_file_provider": true,
+    "attachment_content_evidence": true,
+    "attachment_mime_conflict_gate": true,
+    "attachment_cache_bound": true,
+    "page_16k_ci_gate": true,
+    "d1_v2_structure_ci_gate": true,
+    "hardening_field_verified": false
   }
 }

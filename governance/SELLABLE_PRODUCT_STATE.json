@@ -67,5 +67,7 @@
   "content_type_evidence_gate": true,
   "bounded_attachment_cache": true,
   "external_share_never_claims_return": true,
-  "page_16k_gate": true
+  "page_16k_gate": true,
+  "relay_key_keystore_backed": true,
+  "webview_file_origin_hardened": true
 }

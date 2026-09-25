@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-24",
+  "snapshot_date": "2026-09-25",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -19,15 +19,15 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20207,
-      "commit": "e8bd8b0a668e26f4487e88a59a0a9c9b6ab1cf3c",
-      "ci_run_number": 1021,
+      "version_code": 20300,
+      "commit": "f9c4af943384cbd1b28fc6616ee385c1417080b6",
+      "ci_run_number": 1029,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20300,
-      "branch": "feature/hakim-20300-final-installable-v1",
+      "version_code": 20301,
+      "branch": "feature/hakim-20301-verified-intake-fabric-v1",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1021,
-      "commit": "e8bd8b0a668e26f4487e88a59a0a9c9b6ab1cf3c",
+      "run_number": 1029,
+      "commit": "f9c4af943384cbd1b28fc6616ee385c1417080b6",
       "conclusion": "success"
     }
   },
@@ -138,7 +138,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v2",
-    "candidate_version": 20300,
+    "candidate_version": 20301,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -157,11 +157,17 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "Hakim-20300-FINAL-D1.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20300",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20301",
     "install_failure_2026_09_25": {
       "observed": "Package Installer: يتعذر تثبيت التطبيق على جهازك",
       "root_cause": "CONFIRMED: installed signed-health versionCode=20207; attempted 3.0.2 file carries versionCode=20202, so Android rejected the downgrade.",
       "prevention": "Candidate versionCode 20300 + package/signing/installability gate"
-    }
+    },
+    "signed_candidate_version": 20300,
+    "verified_multimodal_intake": true,
+    "exact_text_no_upload_fallback": true,
+    "visual_original_required": true,
+    "free_account_attachment_handoff": true,
+    "intake_field_verified": false
   }
 }

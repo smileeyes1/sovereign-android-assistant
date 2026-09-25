@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20300,
-  "candidate_name": "3.1.0-final-installable-v1",
+  "candidate_version": 20301,
+  "candidate_name": "3.1.1-final-installable-verified-intake-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -47,5 +47,9 @@
   "same_file_pdf_verification": true,
   "generic_teacher_artifact_support": true,
   "installability_gate": true,
-  "install_upgrade_floor": 20207
+  "install_upgrade_floor": 20207,
+  "verified_multimodal_intake": true,
+  "exact_text_no_upload_fallback": true,
+  "visual_original_required": true,
+  "free_account_attachment_handoff": true
 }

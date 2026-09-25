@@ -51,13 +51,14 @@ attachment_handoff = ROUTER.index("if (attachments.isNotEmpty())", provider_scan
 free_gate = ROUTER.index("if (HakimFreePolicy.freeOnly(context))", attachment_handoff)
 normal_provider_handoff = ROUTER.index("val preferredInstalled", free_gate)
 
-# Narrow exception: an explicitly selected attachment may use an already-installed
-# provider app under the user's own account before FREE_ENGINE_SETUP. Ordinary
-# text chat must still hit the free-only fail-closed gate before provider handoff.
+# Stronger rule from 20302 onward: explicit attachments still may leave Hakim only
+# through a user-chosen Android share surface. No provider app is auto-opened as
+# if ACTION_SEND could return an AI answer to Hakim.
 req(provider_scan < attachment_handoff < free_gate < normal_provider_handoff, "free_only_boundary_broadened")
 attachment_block = ROUTER[attachment_handoff:free_gate]
-req("Channel.PROVIDER_APP" in attachment_block, "attachment_account_handoff_missing")
-req("attachments.isNotEmpty()" in attachment_block, "attachment_exception_not_scoped")
+req("Channel.SYSTEM_SHARE" in attachment_block, "attachment_share_gate_missing")
+req("Channel.PROVIDER_APP" not in attachment_block, "attachment_auto_provider_forbidden")
+req("requiresUserChoice = true" in attachment_block, "attachment_share_must_require_user_choice")
 normal_block = ROUTER[free_gate:normal_provider_handoff]
 req("FREE_ENGINE_SETUP" in normal_block, "ordinary_chat_free_gate_missing")
 
@@ -77,4 +78,4 @@ req("startActivity(" not in setup_block, "automatic_provider_handoff")
 req('private const val MODEL = "openrouter/free"' in OPENROUTER, "paid_model_risk")
 req("readAttachmentBounded" in OPENROUTER, "bounded_attachment_read_missing")
 
-print("FREE_OAUTH_NO_HANDOFF_GATE=PASS candidate>=20105 oauth=pkce_s256 free_only=fail_closed attachment_exception=scoped auto_resume=true")
+print("FREE_OAUTH_NO_HANDOFF_GATE=PASS candidate>=20105 oauth=pkce_s256 free_only=fail_closed attachment_share=user_choice auto_resume=true")

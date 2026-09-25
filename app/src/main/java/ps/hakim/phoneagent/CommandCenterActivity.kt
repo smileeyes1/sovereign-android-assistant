@@ -658,12 +658,30 @@ class CommandCenterActivity : Activity() {
                                 return@runOnUiThread
                             }
 
-                            if (HakimProductOutput.looksLikeCapabilityRefusal(artifactText)) {
+                            if (HakimProductOutput.worksheetMustUseStructuredFactory(text)) {
+                                appendConversation(
+                                    "حكيم",
+                                    "لم تُسلَّم ورقة غير موثقة. هذا النوع يجب أن يمر من مصنع أوراق العمل الحتمي."
+                                )
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.GATED,
+                                    "منع تحويل رد نموذج نصي إلى Worksheet؛ يلزم structured factory"
+                                )
+                                recordRoute("worksheet_unstructured_block:" + engine.id, false)
+                                status.text = "لم تُسلَّم ورقة غير موثقة"
+                                return@runOnUiThread
+                            }
+
+                            if (
+                                HakimProductOutput.looksLikeCapabilityRefusal(artifactText) ||
+                                HakimProductOutput.looksLikeBrokenWorksheetDump(artifactText)
+                            ) {
                                 appendConversation("حكيم", "تعذر إنشاء الملف بهذه الوسيلة، ولم أعتبر الرد النصي ملفًا مكتملًا.")
                                 HakimExecutiveLoop.record(
                                     this,
                                     HakimExecutiveLoop.Phase.GATED,
-                                    "رفض محرك لمهمة ملف؛ يمنع اعتبار الرد نجاحًا"
+                                    "رفض/تفريغ وسيط لمهمة ملف؛ يمنع اعتبار الرد نجاحًا"
                                 )
                                 recordRoute("direct_artifact_refusal:" + engine.id, false)
                                 status.text = "تعذر إنشاء الملف"

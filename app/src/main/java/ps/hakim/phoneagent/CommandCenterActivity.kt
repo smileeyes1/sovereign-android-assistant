@@ -392,6 +392,41 @@ class CommandCenterActivity : Activity() {
             return
         }
 
+        if (
+            intake?.canUseExactTextFallback == true &&
+            decision.channel in setOf(
+                HakimModelToolRouter.Channel.PROVIDER_APP,
+                HakimModelToolRouter.Channel.SYSTEM_SHARE
+            )
+        ) {
+            val verifiedTextPayload = buildString {
+                appendLine(text)
+                append(intake.modelEnvelope())
+            }
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.ROUTING,
+                "المرفق نصي كامل ومتحقق؛ استخدام النص الكامل بدل استهلاك رفع ملف عند الانتقال إلى حساب المستخدم."
+            )
+            refreshOperations()
+            status.text = "يجهّز المحتوى المتحقق…"
+            if (decision.channel == HakimModelToolRouter.Channel.PROVIDER_APP) {
+                sendToProviderApp(
+                    text = text,
+                    decision = decision,
+                    deliveryAttachments = emptyList(),
+                    externalPromptOverride = verifiedTextPayload
+                )
+            } else {
+                shareToAny(
+                    text = text,
+                    deliveryAttachments = emptyList(),
+                    externalPromptOverride = verifiedTextPayload
+                )
+            }
+            return
+        }
+
         refreshOperations()
         status.text = "يجري التنفيذ"
 
@@ -1172,7 +1207,12 @@ class CommandCenterActivity : Activity() {
         status.text = finalStatus
     }
 
-    private fun sendToProviderApp(text: String, decision: HakimModelToolRouter.Decision) {
+    private fun sendToProviderApp(
+        text: String,
+        decision: HakimModelToolRouter.Decision,
+        deliveryAttachments: List<HakimAttachmentGateway.Attachment> = attachments.toList(),
+        externalPromptOverride: String? = null
+    ) {
         val candidates = (listOfNotNull(decision.provider) + decision.fallbacks)
             .distinctBy { it.id }
 
@@ -1180,8 +1220,8 @@ class CommandCenterActivity : Activity() {
             recordRoute("provider:" + provider.id, null)
             val out = HakimModelToolRouter.governedShareIntent(
                 this,
-                text,
-                attachments,
+                externalPromptOverride ?: text,
+                deliveryAttachments,
                 provider.packageName
             )
             try {
@@ -1205,7 +1245,11 @@ class CommandCenterActivity : Activity() {
         refreshOperations()
         appendConversation("حكيم", "تعذرت القنوات المباشرة؛ سأستخدم المشاركة الآمنة كمسار احتياطي.")
         status.text = "مسار احتياطي"
-        shareToAny(text)
+        shareToAny(
+            text = text,
+            deliveryAttachments = deliveryAttachments,
+            externalPromptOverride = externalPromptOverride
+        )
     }
 
     private fun openProviderWeb(text: String, decision: HakimModelToolRouter.Decision) {
@@ -1228,12 +1272,16 @@ class CommandCenterActivity : Activity() {
         startActivity(Intent(this, MainActivity::class.java))
     }
 
-    private fun shareToAny(text: String) {
-        if (text.isBlank() && attachments.isEmpty()) return
+    private fun shareToAny(
+        text: String,
+        deliveryAttachments: List<HakimAttachmentGateway.Attachment> = attachments.toList(),
+        externalPromptOverride: String? = null
+    ) {
+        if (text.isBlank() && deliveryAttachments.isEmpty() && externalPromptOverride.isNullOrBlank()) return
         capture(text, "share_out")
         recordRoute("share", null)
-        val governed = HakimExecutiveLoop.providerInstruction(this, text)
-        val out = HakimAttachmentGateway.buildShareIntent(this, governed, attachments)
+        val governed = HakimExecutiveLoop.providerInstruction(this, externalPromptOverride ?: text)
+        val out = HakimAttachmentGateway.buildShareIntent(this, governed, deliveryAttachments)
         try {
             startActivity(Intent.createChooser(out, "اختر القناة المتوافقة"))
         } catch (_: Exception) {

@@ -181,6 +181,13 @@ class HakimService : Service() {
             cacheMode = WebSettings.LOAD_DEFAULT
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            allowFileAccess = false
+            allowContentAccess = true
+            @Suppress("DEPRECATION")
+            allowFileAccessFromFileURLs = false
+            @Suppress("DEPRECATION")
+            allowUniversalAccessFromFileURLs = false
+            safeBrowsingEnabled = true
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
             userAgentString = userAgentString.replace("; wv", "")

@@ -17,8 +17,8 @@ def req(v,reason):
     if not v: raise SystemExit("SELLABLE_PRODUCT_CANDIDATE=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))>=20201,"version")
-req("3.0.1-product-v1-candidate" in BUILD,"version_name")
+req(m and int(m.group(1))>=20202,"version")
+req("3.0.2-product-v1-candidate" in BUILD,"version_name")
 
 # Primary surface must be user-facing, not an engineering console.
 req('actionButton("المتصفح")' not in CENTER,"browser_button_visible")
@@ -50,6 +50,9 @@ for key in [
  "privacy_data_map_present","threat_model_present"
 ]:
     req(STATE.get(key) is True,"state:"+key)
+req(STATE.get("raw_html_hidden") is True,"raw_html_not_hidden")
+req(STATE.get("artifact_stream_hidden") is True,"artifact_stream_not_hidden")
+req(STATE.get("generic_pdf_fallback") is True,"generic_pdf_fallback_missing")
 req(STATE.get("sellable") is False,"premature_sellable")
 
 print("SELLABLE_PRODUCT_CANDIDATE=PASS ui=productized least_privilege=true diagnostics=hidden sellable=false")

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app/src/main/java/ps/hakim/phoneagent"
@@ -7,10 +8,15 @@ CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 ROUTER = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 PATHS = (ROOT / "app/src/main/res/xml/hakim_file_paths.xml").read_text(encoding="utf-8")
+BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 
 def req(value, reason):
     if not value:
         raise SystemExit("VERIFIED_INTAKE_20301=FAIL reason=" + reason)
+
+m = re.search(r"versionCode\\s+(\\d+)", BUILD)
+req(m is not None and int(m.group(1)) == 20301, "version")
+req("3.1.1-final-installable-verified-intake-v1" in BUILD, "version_name")
 
 for token in [
     'MessageDigest.getInstance("SHA-256")',

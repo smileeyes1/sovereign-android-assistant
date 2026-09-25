@@ -1,5 +1,7 @@
 package ps.hakim.phoneagent
 
+import org.json.JSONObject
+
 /**
  * آخر بوابة قبل أن يصل أي نص إلى عين المستخدم.
  * تنظف تنسيق النماذج، تمنع تسريب HTML/Markdown الخام، وتكشف مخرجات الملفات.
@@ -9,7 +11,7 @@ object HakimProductOutput {
     fun clean(raw: String): String {
         if (raw.isBlank()) return raw
 
-        var s = raw
+        var s = unwrapStructuredPayload(raw)
             .replace("\\r\\n", "\n")
             .replace("\\n", "\n")
             .replace("\\t", " ")
@@ -97,6 +99,19 @@ object HakimProductOutput {
             "binaries",
             "binary"
         ).any { q.contains(it.lowercase()) }
+    }
+
+    private fun unwrapStructuredPayload(raw: String): String {
+        val t = raw.trim()
+        if (!t.startsWith("{") || !t.endsWith("}")) return raw
+        return runCatching {
+            val obj = JSONObject(t)
+            listOf("html", "content", "text", "body")
+                .asSequence()
+                .map { obj.optString(it, "") }
+                .firstOrNull { it.isNotBlank() }
+                ?: raw
+        }.getOrDefault(raw)
     }
 
     private fun normalize(text: String): String =

@@ -19,16 +19,16 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20206,
-      "commit": "f6a87d000936b248faee3fb40129f22a88ed720a",
-      "ci_run_number": 1015,
+      "version_code": 20207,
+      "commit": "e8bd8b0a668e26f4487e88a59a0a9c9b6ab1cf3c",
+      "ci_run_number": 1021,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20207,
-      "branch": "feature/hakim-20207-universal-artifact-pipeline-v1",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20300,
+      "branch": "feature/hakim-20300-final-installable-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1018,
-      "commit": "cc04d2b0b929efc1912e6c350a1f471570b036ee",
+      "run_number": 1021,
+      "commit": "e8bd8b0a668e26f4487e88a59a0a9c9b6ab1cf3c",
       "conclusion": "success"
     }
   },
@@ -138,7 +138,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v2",
-    "candidate_version": 20207,
+    "candidate_version": 20300,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -156,7 +156,12 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "Hakim-20207-Product-V1-D1.apk",
-    "install_relation": "UPGRADE_20206_TO_20207"
+    "signed_candidate_file": "Hakim-20300-FINAL-D1.apk",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20300",
+    "install_failure_2026_09_25": {
+      "observed": "Package Installer: يتعذر تثبيت التطبيق على جهازك",
+      "root_cause": "A 20202 / 3.0.2 build was attempted after a >=20206 field build, so Android rejected the downgrade.",
+      "prevention": "Candidate versionCode 20300 + package/signing/installability gate"
+    }
   }
 }

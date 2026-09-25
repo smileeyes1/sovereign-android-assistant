@@ -206,6 +206,19 @@ object AutoUpdater {
             notifyInstallPermission(context)
             return
         }
+
+        val authorization = HakimCapabilityKernel.authorize(
+            context,
+            "install_candidate",
+            context.packageName,
+            "verified_d1_update_version=$expectedVersion"
+        )
+        if (authorization.optString("verdict") != "allow") {
+            state(context, "install_user_authorization_required", "v=$expectedVersion")
+            notifyInstallAuthorization(context)
+            return
+        }
+
         stageInstall(context, target, expectedVersion)
     }
 
@@ -275,6 +288,7 @@ object AutoUpdater {
         return JSONObject()
             .put("current_version", currentVersionCode(context))
             .put("can_install_packages", canInstallPackages(context))
+            .put("auto_update_authorized", autoUpdateAuthorized(context))
             .put("state", p.getString("last_update_state", "unknown"))
             .put("detail", p.getString("last_update_detail", ""))
             .put("error", p.getString("last_update_error", ""))
@@ -289,10 +303,14 @@ object AutoUpdater {
     fun statusSummary(context: Context): String {
         val d = diagnostics(context)
         val permission = if (d.optBoolean("can_install_packages")) "إذن التثبيت: جاهز" else "إذن التثبيت: يحتاج تفعيل مرة واحدة"
+        val authorization = if (d.optBoolean("auto_update_authorized")) "التفويض: مفعّل" else "التفويض: غير مفعّل"
         val state = d.optString("state", "unknown")
         val version = d.optLong("current_version", 0L)
-        return "التحديث التلقائي — الإصدار $version\n$permission\nالحالة: $state"
+        return "التحديث التلقائي — الإصدار $version\n$permission\n$authorization\nالحالة: $state"
     }
+
+    fun autoUpdateAuthorized(context: Context): Boolean =
+        HakimCapabilityKernel.hasPersistentGrant(context, "install_candidate", context.packageName)
 
     private fun verifyApkIdentity(context: Context, apk: File, expectedVersion: Long): Boolean {
         val pm = context.packageManager
@@ -392,6 +410,23 @@ object AutoUpdater {
         } catch (e: Exception) {
             state(context, "install_exception", e.message.orEmpty(), true)
         }
+    }
+
+    private fun notifyInstallAuthorization(context: Context) {
+        val intent = Intent(context, UnifiedHomeActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pi = PendingIntent.getActivity(
+            context, 4404, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("تحديث حكيم موثّق وجاهز")
+            .setContentText("افتح الإعدادات وفعّل التحديثات التلقائية إذا أردت السماح بالتثبيت.")
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(4404, notification)
     }
 
     private fun notifyInstallPermission(context: Context) {

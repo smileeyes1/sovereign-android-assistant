@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20302,
-  "candidate_name": "3.1.2-hardening-train-v1",
+  "candidate_version": 20303,
+  "candidate_name": "3.2.0-core-product-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -69,5 +69,8 @@
   "external_share_never_claims_return": true,
   "page_16k_gate": true,
   "relay_key_keystore_backed": true,
-  "webview_file_origin_hardened": true
+  "webview_file_origin_hardened": true,
+  "in_app_first": true,
+  "pdf_visual_adapter": true,
+  "external_share_manual_only": true
 }

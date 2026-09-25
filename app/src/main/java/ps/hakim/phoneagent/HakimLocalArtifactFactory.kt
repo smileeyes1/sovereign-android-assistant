@@ -268,20 +268,22 @@ object HakimLocalArtifactFactory {
 
     private fun drawQuestion(
         canvas: android.graphics.Canvas,
-        number: Int,
-        a: Int,
-        b: Int,
+        problem: HakimTeacherArtifactSpec.MathProblem,
         y: Float,
         math: Paint,
         body: Paint,
         line: Paint
     ) {
-        // مهم: نرسم الرموز واحدًا واحدًا من اليمين إلى اليسار كي يرى الطالب:
-        // ٤ + ٣ = □
-        // ولا نترك BiDi يعكس المعنى الرياضي.
-        canvas.drawText(toEastern(number) + ")", 555f, y, body)
+        // الحكم لما يراه الطالب: ٤ + ٣ = □ أو ٧ − ٣ = □.
+        // نرسم الرموز واحدًا واحدًا من اليمين إلى اليسار، ولا نترك BiDi يغيّر المعنى.
+        canvas.drawText(toEastern(problem.number) + ")", 555f, y, body)
 
-        val tokens = listOf(toEastern(a), "+", toEastern(b), "=")
+        val tokens = listOf(
+            toEastern(problem.a),
+            problem.operation.symbol,
+            toEastern(problem.b),
+            "="
+        )
         var x = 485f
         tokens.forEach { token ->
             canvas.drawText(token, x, y, math)

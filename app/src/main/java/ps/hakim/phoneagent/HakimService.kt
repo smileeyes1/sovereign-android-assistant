@@ -171,7 +171,7 @@ class HakimService : Service() {
         } catch (_: Exception) {}
     }
 
-    @Suppress("SetJavaScriptEnabled")
+    @Suppress("SetJavaScriptEnabled", "DEPRECATION")
     private fun createBrowser() {
         webView = WebView(applicationContext)
         webView.settings.apply {
@@ -183,9 +183,7 @@ class HakimService : Service() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             allowFileAccess = false
             allowContentAccess = true
-            @Suppress("DEPRECATION")
             allowFileAccessFromFileURLs = false
-            @Suppress("DEPRECATION")
             allowUniversalAccessFromFileURLs = false
             safeBrowsingEnabled = true
             javaScriptCanOpenWindowsAutomatically = false

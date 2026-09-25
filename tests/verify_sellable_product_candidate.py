@@ -19,8 +19,8 @@ def req(v,reason):
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m and int(m.group(1))>=20202,"version")
 req(
-    "verified-teacher-artifacts" in BUILD or
-    "universal-artifact-pipeline" in BUILD,
+    "universal-artifact-pipeline" in BUILD or
+    "final-installable" in BUILD,
     "version_name"
 )
 

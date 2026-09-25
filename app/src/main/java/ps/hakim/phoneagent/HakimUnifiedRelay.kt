@@ -14,6 +14,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -150,6 +151,57 @@ object HakimUnifiedRelay {
         executor.execute { loop(app) }
     }
 
+    fun pollCachedOnce(context: Context): Int {
+        val app = context.applicationContext
+        if (!isConfigured(app) || !HakimConnectivityState.hasValidatedInternet(app)) return 0
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val topic = prefs.getString(KEY_TOPIC, "").orEmpty()
+        val resultTopic = prefs.getString(KEY_RESULT_TOPIC, "").orEmpty()
+        val key = relayKey(app) ?: return 0
+        if (topic.isBlank() || resultTopic.isBlank()) return 0
+
+        val lastId = prefs.getString("secure_relay_last_ntfy_id", "").orEmpty()
+        val since = if (lastId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) lastId else "30m"
+        val url = "https://ntfy.sh/$topic/json?poll=1&since=" +
+            URLEncoder.encode(since, "UTF-8")
+
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 12_000
+            conn.readTimeout = 20_000
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "application/x-ndjson")
+            var handled = 0
+            conn.inputStream.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).useLines { lines ->
+                    lines.forEach { line ->
+                        val event = runCatching { JSONObject(line) }.getOrNull() ?: return@forEach
+                        if (event.optString("event") != "message") return@forEach
+                        handleNtfyLine(app, line, resultTopic, key)
+                        val eventId = event.optString("id")
+                        if (eventId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) {
+                            prefs.edit().putString("secure_relay_last_ntfy_id", eventId).apply()
+                        }
+                        handled++
+                    }
+                }
+            }
+            conn.disconnect()
+            prefs.edit()
+                .putLong("secure_relay_last_cached_poll_at", System.currentTimeMillis())
+                .putInt("secure_relay_last_cached_poll_count", handled)
+                .apply()
+            flushOutboxAsync(app)
+            handled
+        } catch (e: Exception) {
+            prefs.edit()
+                .putString("secure_relay_cached_poll_error", e.javaClass.simpleName)
+                .putLong("secure_relay_last_cached_poll_at", System.currentTimeMillis())
+                .apply()
+            0
+        }
+    }
+
     private fun loop(context: Context) {
         var retryMs = 2_000L
         while (running.get()) {
@@ -173,6 +225,7 @@ object HakimUnifiedRelay {
                 continue
             }
             try {
+                pollCachedOnce(context)
                 val conn = URL("https://ntfy.sh/$topic/json").openConnection() as HttpURLConnection
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 75_000
@@ -186,8 +239,15 @@ object HakimUnifiedRelay {
                         flushOutboxAsync(context)
                         while (running.get()) {
                             val line = reader.readLine() ?: break
+                            val event = runCatching { JSONObject(line) }.getOrNull()
                             prefs.edit().putLong("secure_relay_seen_at", System.currentTimeMillis()).apply()
                             handleNtfyLine(context, line, resultTopic, relayKey)
+                            if (event?.optString("event") == "message") {
+                                val eventId = event.optString("id")
+                                if (eventId.matches(Regex("^[A-Za-z0-9_-]{6,32}$"))) {
+                                    prefs.edit().putString("secure_relay_last_ntfy_id", eventId).apply()
+                                }
+                            }
                         }
                     }
                 }
@@ -409,6 +469,10 @@ object HakimUnifiedRelay {
             .put("secure_relay_seen_at", p.getLong("secure_relay_seen_at", 0L))
             .put("connectivity", HakimConnectivityState.status(context))
             .put("relay_outbox", HakimRelayOutbox.status(context))
+            .put("cached_catchup_enabled", true)
+            .put("last_ntfy_id_present", p.getString("secure_relay_last_ntfy_id", "").orEmpty().isNotBlank())
+            .put("last_cached_poll_at", p.getLong("secure_relay_last_cached_poll_at", 0L))
+            .put("last_cached_poll_count", p.getInt("secure_relay_last_cached_poll_count", 0))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
             .put("accessibility", HakimAccessibilityService.instance != null)

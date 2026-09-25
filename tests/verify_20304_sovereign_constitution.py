@@ -140,6 +140,8 @@ req("الموقع لا يستطيع فتح صلاحية النظام تلقائ�
 # Adaptive window quality: Hakim must resize instead of forcing a portrait-only task.
 req('android:resizeableActivity="true"' in MANIFEST, "resizable_activity_missing")
 req('android:screenOrientation="portrait"' not in MANIFEST, "portrait_lock_regression")
+req('android.permission.REQUEST_INSTALL_PACKAGES' in MANIFEST, "governed_self_update_permission_missing")
+req('android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION' in MANIFEST, "governed_no_user_action_permission_missing")
 
 # Single source of truth remains conservative.
 req(STATE["android"]["latest_source_parent"]["version_code"] == 20303, "source_parent_version")

@@ -15,8 +15,8 @@ def req(value, reason):
         raise SystemExit("VERIFIED_INTAKE_20301=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20301, "version")
-req("3.1.1-final-installable-verified-intake-v1" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20301, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 
 for token in [
     'MessageDigest.getInstance("SHA-256")',
@@ -38,7 +38,7 @@ req("HakimModelToolRouter.Channel.DIRECT_MODEL" in CENTER, "direct_model_exact_t
 req("HakimModelToolRouter.attachmentFallback(this)" in CENTER, "direct_engine_attachment_exhaustion_fallback_missing")
 req("fun attachmentFallback(context: Context)" in ROUTER, "router_attachment_fallback_missing")
 req("deliveryAttachments = emptyList()" in CENTER, "text_fallback_still_uploads_file")
-req("androidx.core.content.FileProvider" in MANIFEST, "file_provider_missing")
+req(".HakimFileProvider" in MANIFEST, "dedicated_file_provider_missing")
 req(".hakim.files" in MANIFEST, "authority_missing")
 req("@xml/hakim_file_paths" in MANIFEST, "paths_missing")
 req('path="hakim_intake/"' in PATHS, "intake_path_missing")

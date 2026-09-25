@@ -13,11 +13,14 @@ def req(v,reason):
     if not v: raise SystemExit("PRODUCT_SCREENSHOT_REGRESSION=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m and int(m.group(1))>=20201,"version")
+req(m and int(m.group(1))>=20202,"version")
 
 for token in [
     'Regex("(?m)^\\\\s{0,3}#{1,6}\\\\s*")',
     '.replace("**", "")',
+    'Regex("(?s)<[^>]+>")',
+    'fun containsRawMarkup',
+    'fun looksLikeHtmlArtifact',
     'fun requestsPdfArtifact',
     'fun looksLikeCapabilityRefusal',
 ]:
@@ -26,7 +29,13 @@ for token in [
 req('HakimProductOutput.clean(streamingBuffer.toString())' in CENTER,"stream_not_sanitized")
 req('if (role == "حكيم") HakimProductOutput.clean(message)' in CENTER,"messages_not_sanitized")
 req('HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"pdf_acceptance_missing")
+req('val artifactMode = HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"artifact_mode_missing")
+req('if (artifactMode) streamingBuffer.append(delta) else appendStreamingDelta(delta)' in CENTER,"artifact_stream_not_suppressed")
+req('executeGeneratedPdfArtifact(text, artifactText)' in CENTER,"generic_pdf_delivery_missing")
+req('HakimLocalArtifactFactory.createTextPdf(this, title, rawContent)' in CENTER,"generic_pdf_factory_not_used")
 req('HakimLocalArtifactFactory.canHandle(this, text)' in CENTER,"pdf_local_fallback_missing")
+req('fun createTextPdf(' in FACTORY,"generic_text_pdf_missing")
+req('HakimProductOutput.containsRawMarkup(content)' in FACTORY,"raw_markup_guard_missing")
 
 for phrase in ['"joining within 10"','"addition within 10"','isPdfAdditionWorksheet(prompt)','val directPdfAddition = isPdfAdditionWorksheet(prompt)','val contextualFollowUp = isPdfWorksheetFollowUp(prompt)']:
     req(phrase in FACTORY,"context:"+phrase)
@@ -43,8 +52,10 @@ for phrase in [
 ]:
     req(phrase in DIRECTOR,"director:"+phrase)
 
-# The real field-failure wording becomes a permanent sentinel.
+# The real field failures become permanent sentinels.
+raw_html_field_failure = r'class=\\"answer-cell\\"'
+req('class=\\\\\\"' in OUT,"raw_html_sentinel_missing")
 field_failure = "لا أملك القدرة على توليد ملفات PDF مباشرة"
 req("لا أملك القدرة على توليد ملفات" in OUT,"field_refusal_sentinel_missing")
 
-print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden pdf=file context=restored internal_details=hidden")
+print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden html=hidden artifact_stream=silent pdf=file context=restored")

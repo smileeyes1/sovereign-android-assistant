@@ -513,6 +513,53 @@ class CommandCenterActivity : Activity() {
         }.start()
     }
 
+    private fun executeGeneratedPdfArtifact(text: String, rawContent: String) {
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.EXECUTING,
+            "تحويل محتوى المهمة إلى PDF فعلي محليًا دون عرض الوسوم الخام"
+        )
+        status.text = "يجهّز الملف…"
+        refreshOperations()
+
+        val title = if (text.contains("ورقة عمل") || text.contains("ورقه عمل")) "ورقة عمل" else "مستند حكيم"
+
+        Thread {
+            val result = HakimLocalArtifactFactory.createTextPdf(this, title, rawContent)
+            runOnUiThread {
+                result.onSuccess { created ->
+                    appendConversation("حكيم", HakimProductUx.completionMessage("pdf", created.savedAt))
+                    HakimExecutiveLoop.complete(this, "تم تسليم ملف PDF فعلي بعد تنظيف المحتوى")
+                    recordRoute("generated_pdf_artifact", true)
+                    command.setText("")
+                    attachments.clear()
+                    refreshAttachmentStatus()
+                    status.text = "جاهز"
+                    refreshOperations()
+
+                    if (created.uri != null) {
+                        val view = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(created.uri, created.kind)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        runCatching { startActivity(view) }
+                            .onFailure { toast("تم حفظ PDF في ${created.savedAt}") }
+                    }
+                }.onFailure { error ->
+                    appendConversation("حكيم", HakimProductUx.publicError(error.message ?: "تعذر إنشاء الملف"))
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        "فشل تحويل المحتوى المنظف إلى PDF"
+                    )
+                    recordRoute("generated_pdf_artifact", false)
+                    status.text = "تعذر إنشاء الملف"
+                    refreshOperations()
+                }
+            }
+        }.start()
+    }
+
     private fun beginFreeEngineSetup(text: String) {
         HakimExecutiveLoop.record(
             this,

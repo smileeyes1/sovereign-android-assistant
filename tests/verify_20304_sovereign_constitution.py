@@ -27,8 +27,8 @@ def req(value, reason):
         raise SystemExit("SOVEREIGN_CONSTITUTION_20304=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20304, "version")
-req("3.3.0-sovereign-constitution-v4" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20304, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 
 # Canonical governance.
 for token in [

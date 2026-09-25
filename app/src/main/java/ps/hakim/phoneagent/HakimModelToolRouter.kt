@@ -21,6 +21,7 @@ object HakimModelToolRouter {
     enum class Channel {
         LOCAL_RESPONSE,
         LOCAL_ARTIFACT,
+        GOOGLE_WORKSPACE,
         POLICY_BLOCKED,
         DIRECT_MODEL,
         FREE_ENGINE_SETUP,
@@ -80,6 +81,15 @@ object HakimModelToolRouter {
         attachments: List<HakimAttachmentGateway.Attachment>
     ): Decision {
         val q = prompt.trim()
+
+        if (attachments.isEmpty() && HakimGoogleWorkspaceIntent.canHandle(context, q)) {
+            return Decision(
+                channel = Channel.GOOGLE_WORKSPACE,
+                provider = null,
+                fallbacks = emptyList(),
+                reason = "طلب المستخدم Google Workspace صراحة؛ ينشئ حكيم المصدر محليًا ثم يستخدم drive.file بحساب المستخدم نفسه."
+            )
+        }
 
         if (
             attachments.isEmpty() &&

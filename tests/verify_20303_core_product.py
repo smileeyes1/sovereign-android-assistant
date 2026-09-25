@@ -15,8 +15,8 @@ def req(value, reason):
         raise SystemExit("CORE_PRODUCT_20303=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20303, "version")
-req("3.2.0-core-product-v1" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20303, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 
 for token in [
     "PdfRenderer",

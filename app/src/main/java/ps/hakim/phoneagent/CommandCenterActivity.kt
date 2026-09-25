@@ -82,6 +82,7 @@ class CommandCenterActivity : ComponentActivity() {
         buildUi()
         loadConversation()
         refreshOperations()
+        attachments.addAll(HakimAttachmentSessionStore.restore(this))
         handleIntent(intent)
         refreshAttachmentStatus()
     }
@@ -1454,6 +1455,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun refreshAttachmentStatus() {
+        HakimAttachmentSessionStore.save(this, attachments)
         if (::attachmentStatus.isInitialized) {
             if (attachments.isEmpty()) {
                 attachmentStatus.text = ""

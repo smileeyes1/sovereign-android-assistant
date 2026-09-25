@@ -38,10 +38,15 @@ object HakimArtifactPipeline {
 
         if (recent.isBlank()) return null
 
-        val assistantBlocks = recent
-            .split(Regex("(?m)^حكيم:\s*"))
+        val assistantBlocks = Regex("(?m)^حكيم:\\s*")
+            .split(recent)
             .drop(1)
-            .map { it.substringBefore(Regex("(?m)^أنت:\s*")) }
+            .map { block ->
+                Regex("(?m)^أنت:\\s*")
+                    .split(block, 2)
+                    .firstOrNull()
+                    .orEmpty()
+            }
             .map { HakimProductOutput.clean(it).trim() }
             .filter { it.length >= 120 }
             .filterNot { HakimProductOutput.looksLikeCapabilityRefusal(it) }

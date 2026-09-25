@@ -11,7 +11,9 @@ GATEWAY = (APP / "HakimAttachmentGateway.kt").read_text(encoding="utf-8")
 INTAKE = (APP / "HakimVerifiedIntake.kt").read_text(encoding="utf-8")
 PROVIDER = (APP / "HakimFileProvider.kt").read_text(encoding="utf-8")
 PAIR = (APP / "HakimPairingActivity.kt").read_text(encoding="utf-8")
-RELAY = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")\nROUTER = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")\nLOOP = (APP / "HakimExecutiveLoop.kt").read_text(encoding="utf-8")
+RELAY = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
+ROUTER = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")
+LOOP = (APP / "HakimExecutiveLoop.kt").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
 
 def req(value, reason):

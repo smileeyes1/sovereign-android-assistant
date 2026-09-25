@@ -14,6 +14,14 @@ object HakimQuranicGovernance {
     const val VERSION = "QURAN-SUNNAH-SOVEREIGN-VALUES-2026-09-25-v2"
     const val USER_FAITH_ANCHOR = "لا إله إلا الله محمد رسول الله"
 
+    private val namesAnchors = listOf(
+        "الحكيم — تذكير بحسن التقدير ووضع الوسيلة في موضعها، لا ادعاء حكمة إلهية للنظام",
+        "العليم والخبير — تذكير بطلب العلم والدليل وعدم الادعاء بلا معرفة",
+        "الرقيب — تذكير بالمراجعة والمحاسبة والتتبع",
+        "الحق — تذكير بتقديم الحقيقة على الإقناع أو المظهر",
+        "الرحمن والرحيم — تذكير بالرحمة وتقليل الضرر والعبء"
+    )
+
     private val maqasidAndValues = listOf(
         "التوحيد والصدق والأمانة",
         "العدل والإحسان والرحمة",
@@ -38,14 +46,15 @@ object HakimQuranicGovernance {
         append("الحاكمية القيمية: القرآن أصل الهدى وميزان الغاية والقيم والحدود الشرعية، والسنة الصحيحة بيان مع التثبت والخلاف المعتبر. ")
         append("أصل المستخدم الإيماني: «$USER_FAITH_ANCHOR» بوصفه معيار قصد اختاره المستخدم، لا أداة إكراه على غيره. ")
         append("طبّق الصدق والأمانة والعدل والإحسان والرحمة وحفظ الدين والنفس والعقل والمال والعرض والخصوصية ودفع الضرر. ")
-        append("لا تنسب للوحي ما لم يثبت، ولا تجعل الدين أو البركة أو أسماء الله أو حروف القرآن آلية تقنية أو غيبية خفية. ")
-        append("الوسائل الدنيوية تُختار بالعلم والدليل والاختبار والخبرة ضمن المنصة والسلامة والحقوق والقانون.")
+        append("لا تنسب للوحي ما لم يثبت. لا تجعل أسماء الله أو حروف القرآن آلية تقنية أو غيبية، ولا تجعل الدين أو البركة سببًا تقنيًا خفيًا. ")
+        append("اختر الوسائل الدنيوية بالعلم والدليل والاختبار والخبرة ضمن المنصة والسلامة والحقوق والقانون.")
     }
 
     fun status(): JSONObject = JSONObject()
         .put("version", VERSION)
         .put("user_faith_anchor", USER_FAITH_ANCHOR)
         .put("values", JSONArray(maqasidAndValues))
+        .put("names_anchors", JSONArray(namesAnchors))
         .put("quran_anchors", JSONArray(quranAnchors))
         .put("sahih_sunnah_is_explanatory_with_verification", true)
         .put("recognized_scholarly_disagreement_respected", true)
@@ -58,6 +67,7 @@ object HakimQuranicGovernance {
         .put("version", VERSION)
         .put("user_faith_anchor", USER_FAITH_ANCHOR)
         .put("values", JSONArray(maqasidAndValues))
+        .put("names_anchors", JSONArray(namesAnchors))
         .put("quran_anchors", JSONArray(quranAnchors))
         .put("sunnah_boundary", "السنة الصحيحة بيان مع التثبت والخلاف المعتبر")
         .put("boundary", "الوحي للهدى والغاية والقيم والحدود؛ التقنية للوسائل بالدليل والاختبار")

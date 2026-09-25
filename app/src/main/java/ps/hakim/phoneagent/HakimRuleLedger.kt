@@ -33,29 +33,39 @@ object HakimRuleLedger {
         val text = raw.trim()
         if (text.isBlank()) return
 
-        val hash = sha256(text)
         val meta = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (meta.getString("last_hash", "") == hash && now - meta.getLong("last_at", 0L) < 300_000L) return
-
         val category = classify(text)
-        meta.edit()
-            .putString("last_hash", hash)
-            .putLong("last_at", now)
-            .putString("last_category", category)
-            .apply()
 
-        // A temporary task is intentionally not a persistent memory/rule.
+        // A temporary task is intentionally not persisted, not even as a content hash.
         if (category == "task") {
-            meta.edit().putLong("last_task_seen_at", now).apply()
+            meta.edit()
+                .putLong("last_task_seen_at", now)
+                .putString("last_category", category)
+                .remove("last_hash")
+                .apply()
             return
         }
 
         val minimized = minimizeRuleText(text)
         if (minimized.isBlank()) {
-            meta.edit().putBoolean("last_rule_suppressed_sensitive", true).apply()
+            meta.edit()
+                .putLong("last_at", now)
+                .putString("last_category", category)
+                .putBoolean("last_rule_suppressed_sensitive", true)
+                .remove("last_hash")
+                .apply()
             return
         }
+
+        val hash = sha256(minimized)
+        if (meta.getString("last_hash", "") == hash && now - meta.getLong("last_at", 0L) < 300_000L) return
+
+        meta.edit()
+            .putString("last_hash", hash)
+            .putLong("last_at", now)
+            .putString("last_category", category)
+            .apply()
 
         val event = JSONObject()
             .put("time", now)
@@ -111,7 +121,11 @@ object HakimRuleLedger {
         val rule = listOf("ثبت", "ثبّت", "قاعدة", "دستور", "افتراضيا", "افتراضيًا", "دائما", "دائمًا", "من الآن", "كقاعدة", "اجعلها افتراضية", "اجعله افتراضي", "كل ما اقوله", "كل ما أقوله")
         if (rule.any { s.contains(it) }) return "rule"
 
-        val preference = listOf("أفضل", "افضل", "أفضّل", "افضل دائما", "اريد عادة", "أريد عادة")
+        val preference = listOf(
+            "أفضّل", "افضّل", "أفضل دائمًا", "افضل دائما",
+            "أريد عادة", "اريد عادة", "أفضل أن", "افضل ان",
+            "اجعل تفضيلي", "هذا تفضيلي"
+        )
         if (preference.any { s.contains(it) }) return "preference"
 
         return "task"

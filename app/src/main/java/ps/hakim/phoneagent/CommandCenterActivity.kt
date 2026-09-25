@@ -360,6 +360,7 @@ class CommandCenterActivity : Activity() {
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
 
         val exactTextFallbackChannels = setOf(
+            HakimModelToolRouter.Channel.DIRECT_MODEL,
             HakimModelToolRouter.Channel.FREE_ENGINE_SETUP,
             HakimModelToolRouter.Channel.PROVIDER_APP,
             HakimModelToolRouter.Channel.SYSTEM_SHARE,
@@ -1195,9 +1196,31 @@ class CommandCenterActivity : Activity() {
         }
 
         discardEmptyStreamingReply()
+
+        if (deliveryAttachments.isNotEmpty()) {
+            val handoff = HakimModelToolRouter.attachmentFallback(this)
+            if (HakimExecutiveLoop.advanceCycle(
+                    this,
+                    "استنفدت المحركات الداخلية المؤهلة للمرفق؛ حفظ الأصل والانتقال إلى قناة حساب المستخدم بدل إسقاطه."
+                )
+            ) {
+                HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, handoff.reason)
+                refreshOperations()
+                status.text = "ينتقل لمسار مرفق آخر…"
+                when (handoff.channel) {
+                    HakimModelToolRouter.Channel.PROVIDER_APP ->
+                        sendToProviderApp(text, handoff, deliveryAttachments)
+                    HakimModelToolRouter.Channel.SYSTEM_SHARE ->
+                        shareToAny(text, deliveryAttachments)
+                    else -> Unit
+                }
+                return
+            }
+        }
+
         appendConversation(
             "حكيم",
-            reason + " لا يوجد محرك مجاني مباشر آخر مؤهل الآن."
+            reason + " لا يوجد مسار آخر مؤهل يحافظ على محتوى المرفق الآن."
         )
         HakimExecutiveLoop.record(
             this,

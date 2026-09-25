@@ -796,7 +796,7 @@ class CommandCenterActivity : ComponentActivity() {
         val instruction = if (repairFrom == null) {
             HakimArtifactPipeline.contentInstruction(this, request)
         } else {
-            HakimArtifactPipeline.repairInstruction(request, repairFrom)
+            HakimArtifactPipeline.repairInstruction(this, request, repairFrom)
         }
         val snapshot = attachments.toList()
         val startedAt = System.currentTimeMillis()

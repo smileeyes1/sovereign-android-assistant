@@ -300,6 +300,49 @@ class CommandCenterActivity : Activity() {
             toast("اكتب الغاية أو أرفق محتوى")
             return
         }
+
+        if (attachments.isEmpty()) {
+            executeBestRoutePrepared(text, appendUserMessage, null)
+            return
+        }
+
+        val sourceSnapshot = attachments.toList()
+        status.text = "يتحقق من سلامة المرفقات…"
+
+        Thread {
+            val prepared = HakimVerifiedIntake.prepare(this, text, sourceSnapshot)
+            runOnUiThread {
+                prepared.onSuccess { plan ->
+                    attachments.clear()
+                    attachments.addAll(plan.attachments)
+                    refreshAttachmentStatus()
+                    executeBestRoutePrepared(text, appendUserMessage, plan)
+                }.onFailure { error ->
+                    appendConversation(
+                        "حكيم",
+                        "تعذر التحقق من المرفق دون مخاطرة بفقد المعلومات. لم أرسل محتوى غير متحقق."
+                    )
+                    HakimExecutiveLoop.record(
+                        this,
+                        HakimExecutiveLoop.Phase.GATED,
+                        "بوابة المرفقات أغلقت المسار: " + (error.message ?: "فشل تحقق المصدر")
+                    )
+                    status.text = "تعذر التحقق من المرفق"
+                    refreshOperations()
+                }
+            }
+        }.start()
+    }
+
+    private fun executeBestRoutePrepared(
+        text: String,
+        appendUserMessage: Boolean = true,
+        intake: HakimVerifiedIntake.Plan? = null
+    ) {
+        if (text.isBlank() && attachments.isEmpty()) {
+            toast("اكتب الغاية أو أرفق محتوى")
+            return
+        }
         capture(text, "best_route")
         if (appendUserMessage) {
             appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
@@ -315,6 +358,40 @@ class CommandCenterActivity : Activity() {
         )
         val decision = HakimModelToolRouter.decide(this, text, attachments)
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, decision.reason)
+
+        val exactTextFallbackChannels = setOf(
+            HakimModelToolRouter.Channel.FREE_ENGINE_SETUP,
+            HakimModelToolRouter.Channel.PROVIDER_APP,
+            HakimModelToolRouter.Channel.SYSTEM_SHARE,
+            HakimModelToolRouter.Channel.PROVIDER_WEB
+        )
+        val exactTextEngine = if (
+            intake?.canUseExactTextFallback == true &&
+            decision.channel in exactTextFallbackChannels
+        ) {
+            HakimWisdomMatrix.choose(this, text, emptyList())?.engine
+        } else {
+            null
+        }
+
+        if (exactTextEngine != null && intake != null) {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.ROUTING,
+                "المحرك لا يستقبل نوع الملف خامًا؛ استخدام تمثيل نصي كامل متحقق بدل إسقاط المحتوى أو الادعاء بقراءة الملف."
+            )
+            refreshOperations()
+            status.text = "يستخدم تمثيلًا متحققًا…"
+            val verifiedInstruction = (directed.instruction + intake.modelEnvelope()).take(120_000)
+            executeDirectModel(
+                text = text,
+                instruction = verifiedInstruction,
+                engineId = exactTextEngine.id,
+                deliveryAttachments = emptyList()
+            )
+            return
+        }
+
         refreshOperations()
         status.text = "يجري التنفيذ"
 
@@ -541,7 +618,7 @@ class CommandCenterActivity : Activity() {
         } else {
             HakimArtifactPipeline.repairInstruction(request, repairFrom)
         }
-        val snapshot = attachments.toList()
+        val snapshot = routedAttachments
         val startedAt = System.currentTimeMillis()
 
         Thread {
@@ -865,11 +942,13 @@ class CommandCenterActivity : Activity() {
         text: String,
         instruction: String,
         engineId: String?,
-        excluded: Set<String> = emptySet()
+        excluded: Set<String> = emptySet(),
+        deliveryAttachments: List<HakimAttachmentGateway.Attachment>? = null
     ) {
+        val routedAttachments = deliveryAttachments ?: attachments.toList()
         val engine = HakimEngineRegistry.directEngines(this)
             .firstOrNull { it.id == engineId && it.id !in excluded }
-            ?: HakimWisdomMatrix.choose(this, text, attachments, excluded)?.engine
+            ?: HakimWisdomMatrix.choose(this, text, routedAttachments, excluded)?.engine
             ?: run {
                 appendConversation(
                     "حكيم",
@@ -997,7 +1076,8 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "تحتاج هذه الميزة موافقتك"
+                            finalStatus = "تحتاج هذه الميزة موافقتك",
+                            deliveryAttachments = routedAttachments
                         )
                     }
 
@@ -1008,7 +1088,8 @@ class CommandCenterActivity : Activity() {
                             failedEngine = engine,
                             excluded = excluded,
                             reason = result.reason,
-                            finalStatus = "تعذر إكمال هذا النوع من الطلب الآن"
+                            finalStatus = "تعذر إكمال هذا النوع من الطلب الآن",
+                            deliveryAttachments = routedAttachments
                         )
                     }
 
@@ -1021,8 +1102,9 @@ class CommandCenterActivity : Activity() {
                                 failedEngine = engine,
                                 excluded = excluded,
                                 reason = result.reason,
-                                finalStatus = "تعذر إكمال الطلب الآن"
-                            )
+                                finalStatus = "تعذر إكمال الطلب الآن",
+                            deliveryAttachments = routedAttachments
+                        )
                         } else {
                             discardEmptyStreamingReply()
                             appendConversation("حكيم", HakimProductUx.publicError(result.reason))
@@ -1047,11 +1129,12 @@ class CommandCenterActivity : Activity() {
         failedEngine: HakimInferenceEngine,
         excluded: Set<String>,
         reason: String,
-        finalStatus: String
+        finalStatus: String,
+        deliveryAttachments: List<HakimAttachmentGateway.Attachment>
     ) {
         recordRoute("direct:" + failedEngine.id, false)
         val nextExcluded = excluded + failedEngine.id
-        val fallback = HakimWisdomMatrix.choose(this, text, attachments, nextExcluded)?.engine
+        val fallback = HakimWisdomMatrix.choose(this, text, deliveryAttachments, nextExcluded)?.engine
 
         if (fallback != null && HakimExecutiveLoop.advanceCycle(
                 this,
@@ -1066,7 +1149,13 @@ class CommandCenterActivity : Activity() {
             )
             refreshOperations()
             status.text = "يجرّب مسارًا آخر…"
-            executeDirectModel(text, instruction, fallback.id, nextExcluded)
+            executeDirectModel(
+                text,
+                instruction,
+                fallback.id,
+                nextExcluded,
+                deliveryAttachments = deliveryAttachments
+            )
             return
         }
 

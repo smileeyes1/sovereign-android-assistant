@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'ps.hakim.phoneagent'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'ps.hakim.stable'

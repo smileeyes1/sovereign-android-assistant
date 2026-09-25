@@ -1,6 +1,6 @@
 package ps.hakim.phoneagent
 
-import android.app.Activity
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -18,15 +18,17 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import android.text.TextUtils
+import androidx.activity.ComponentActivity
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
 import org.json.JSONObject
 import java.util.UUID
 
-class CommandCenterActivity : Activity() {
+class CommandCenterActivity : ComponentActivity() {
     companion object {
-        private const val ATTACHMENT_PICKER_REQUEST = 7301
         private const val SPEECH_REQUEST = 7302
     }
 
@@ -46,6 +48,30 @@ class CommandCenterActivity : Activity() {
     private val streamingBuffer = StringBuilder()
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
     private val browserHandler = Handler(Looper.getMainLooper())
+
+    private val mediaPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(HakimAttachmentGateway.MAX_ATTACHMENTS_PER_TASK)
+    ) { uris ->
+        addPickedAttachments(
+            HakimAttachmentGateway.fromUris(
+                this,
+                uris,
+                persistReadAccess = true
+            )
+        )
+    }
+
+    private val documentPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        addPickedAttachments(
+            HakimAttachmentGateway.fromUris(
+                this,
+                uris,
+                persistReadAccess = true
+            )
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,24 +107,6 @@ class CommandCenterActivity : Activity() {
                     status.text = "تم تحويل الصوت إلى نص."
                     appendConversation("حكيم", "تم التقاط الصوت وتحويله إلى نص؛ يمكنك تعديله أو الضغط على «أنجز».")
                 }
-            }
-            return
-        }
-        if (requestCode == ATTACHMENT_PICKER_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                val picked = HakimAttachmentGateway.fromResult(this, data)
-                val known = attachments.map { it.uri }.toMutableSet()
-                picked.filter { known.add(it.uri) }.forEach { attachments += it }
-                refreshAttachmentStatus()
-                status.text = if (picked.isEmpty()) {
-                    "لم يصل مرفق صالح."
-                } else {
-                    "أضيفت المرفقات محليًا."
-                }
-                appendConversation(
-                    "حكيم",
-                    if (picked.isEmpty()) "لم يصل مرفق صالح." else "أضيفت المرفقات محليًا ولن تُرسل إلا عند الحاجة للمهمة."
-                )
             }
             return
         }
@@ -227,7 +235,7 @@ class CommandCenterActivity : Activity() {
         }
         toolsRow.addView(
             actionButton("إرفاق") {
-                startActivityForResult(HakimAttachmentGateway.pickerIntent(), ATTACHMENT_PICKER_REQUEST)
+                showAttachmentChooser()
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
@@ -293,6 +301,53 @@ class CommandCenterActivity : Activity() {
             insets
         }
         ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun showAttachmentChooser() {
+        AlertDialog.Builder(this)
+            .setTitle("إرفاق")
+            .setItems(arrayOf("صور وفيديو", "ملفات ومستندات")) { _, which ->
+                when (which) {
+                    0 -> mediaPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                    )
+                    1 -> documentPickerLauncher.launch(arrayOf("*/*"))
+                }
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun addPickedAttachments(picked: List<HakimAttachmentGateway.Attachment>) {
+        if (picked.isEmpty()) {
+            status.text = "لم يصل مرفق صالح."
+            return
+        }
+
+        val known = attachments.map { it.uri }.toMutableSet()
+        val capacity = (HakimAttachmentGateway.MAX_ATTACHMENTS_PER_TASK - attachments.size).coerceAtLeast(0)
+        val unique = picked.filter { known.add(it.uri) }
+        val accepted = unique.take(capacity)
+        attachments.addAll(accepted)
+        refreshAttachmentStatus()
+
+        val rejected = unique.size - accepted.size
+        status.text = when {
+            accepted.isEmpty() && rejected > 0 -> "وصلت للحد الآمن للمرفقات."
+            rejected > 0 -> "أضيفت المرفقات حتى الحد الآمن."
+            else -> "أضيفت المرفقات محليًا."
+        }
+        appendConversation(
+            "حكيم",
+            when {
+                accepted.isEmpty() && rejected > 0 ->
+                    "لم أضف مرفقات جديدة لأن المهمة وصلت إلى الحد الآمن للمرفقات."
+                rejected > 0 ->
+                    "أضفت ${accepted.size} مرفقًا محليًا؛ لم أضف ${rejected} مرفقًا زائدًا حتى لا تتحول المهمة إلى حمل غير مضبوط."
+                else ->
+                    "أضيفت المرفقات محليًا ولن تُرسل إلا عند الحاجة للمهمة."
+            }
+        )
     }
 
     private fun executeBestRoute(text: String, appendUserMessage: Boolean = true) {

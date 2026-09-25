@@ -62,6 +62,7 @@ jobs:
           python3 tests/verify_sellable_product_candidate.py
           python3 tests/verify_product_screenshot_regression.py
           python3 tests/verify_20206_verified_teacher_artifacts.py
+          python3 tests/verify_20207_universal_artifact_pipeline.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py
@@ -123,7 +124,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20206"
+          test "$VERSION_CODE" = "20207"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

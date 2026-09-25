@@ -1,15 +1,38 @@
 package ps.hakim.phoneagent
 
 /**
- * آخر بوابة قبل أن يصل نص إلى عين المستخدم.
- * لا تغيّر حقيقة النتيجة؛ تنظف تنسيق النموذج الخام وتمنع تسريب تفاصيل التنفيذ.
+ * آخر بوابة قبل أن يصل أي نص إلى عين المستخدم.
+ * تنظف تنسيق النماذج، تمنع تسريب HTML/Markdown الخام، وتكشف مخرجات الملفات.
  */
 object HakimProductOutput {
 
     fun clean(raw: String): String {
         if (raw.isBlank()) return raw
+
         var s = raw
+            .replace("\\r\\n", "\n")
+            .replace("\\n", "\n")
+            .replace("\\t", " ")
+            .replace("\\\"", "\"")
+            .replace("\\/", "/")
             .replace("\r\n", "\n")
+
+        s = s
+            .replace(Regex("(?is)<script\\b[^>]*>.*?</script>"), "")
+            .replace(Regex("(?is)<style\\b[^>]*>.*?</style>"), "")
+            .replace(Regex("(?i)<br\\s*/?>"), "\n")
+            .replace(Regex("(?i)</?(p|div|section|article|header|footer|h[1-6]|table|thead|tbody|tr)\\b[^>]*>"), "\n")
+            .replace(Regex("(?i)<li\\b[^>]*>"), "• ")
+            .replace(Regex("(?i)</li>"), "\n")
+            .replace(Regex("(?i)</?(td|th)\\b[^>]*>"), " | ")
+            .replace(Regex("(?s)<[^>]+>"), "")
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&apos;", "'")
             .replace(Regex("(?m)^\\s{0,3}#{1,6}\\s*"), "")
             .replace("**", "")
             .replace("__", "")
@@ -39,10 +62,26 @@ object HakimProductOutput {
         return s
     }
 
+    fun containsRawMarkup(text: String): Boolean {
+        val q = text.lowercase()
+        return listOf(
+            "<html", "</html", "<body", "</body", "<table", "</table",
+            "<tr", "</tr", "<td", "</td", "<div", "</div", "class=\\\"",
+            "\\n<tr", "\\n<td"
+        ).any { q.contains(it) }
+    }
+
+    fun looksLikeHtmlArtifact(text: String): Boolean {
+        val q = text.lowercase()
+        val hits = listOf("<html", "<body", "<table", "<tr", "<td", "<div", "<style", "class=\\\"")
+            .count { q.contains(it) }
+        return hits >= 2 || (q.contains("</") && q.contains("<"))
+    }
+
     fun requestsPdfArtifact(text: String): Boolean {
         val q = normalize(text)
-        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "ملف pdf", "للتحميل", "للطباعة").any { q.contains(it) }
-        val artifact = listOf("ورقة عمل", "ورقه عمل", "ملف", "نموذج", "مستند").any { q.contains(it) }
+        val pdf = listOf("pdf", "بي دي اف", "بى دى اف", "ملف pdf", "للتحميل", "للطباعة", "طباعة").any { q.contains(it) }
+        val artifact = listOf("ورقة عمل", "ورقه عمل", "الورقة", "الورقه", "ملف", "نموذج", "مستند").any { q.contains(it) }
         return pdf && artifact
     }
 

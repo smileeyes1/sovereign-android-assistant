@@ -1,13 +1,21 @@
 package ps.hakim.phoneagent
 
 import android.content.ClipData
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
 
+/**
+ * Narrow boundary between Android URI grants and Hakim's verified intake.
+ *
+ * It never asks for broad storage access. User-selected content is accepted only
+ * through content:// URIs and is deduplicated before it reaches the verifier.
+ */
 object HakimAttachmentGateway {
+    const val MAX_ATTACHMENTS_PER_TASK = 20
 
     data class Attachment(
         val uri: Uri,
@@ -16,11 +24,41 @@ object HakimAttachmentGateway {
         val sizeBytes: Long?
     )
 
+    /** Legacy/document fallback kept for callers outside CommandCenterActivity. */
     fun pickerIntent(): Intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
         addCategory(Intent.CATEGORY_OPENABLE)
         type = "*/*"
         putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+    }
+
+    fun fromUris(
+        context: Context,
+        sourceUris: Collection<Uri>,
+        persistReadAccess: Boolean
+    ): List<Attachment> {
+        val uris = LinkedHashSet<Uri>()
+        sourceUris.forEach { uri ->
+            if (uris.size < MAX_ATTACHMENTS_PER_TASK && uri.scheme == ContentResolver.SCHEME_CONTENT) {
+                uris += uri
+            }
+        }
+
+        if (persistReadAccess) {
+            uris.forEach { uri ->
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (_: Exception) {
+                    // Some providers grant transient access only. VerifiedIntake mirrors
+                    // the bytes immediately when possible, so no silent persistence claim is made.
+                }
+            }
+        }
+
+        return uris.mapNotNull { inspect(context, it) }
     }
 
     fun fromResult(context: Context, data: Intent?): List<Attachment> {
@@ -32,14 +70,7 @@ object HakimAttachmentGateway {
                 clip.getItemAt(i).uri?.let { uris += it }
             }
         }
-        uris.forEach { uri ->
-            try {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (_: Exception) {
-                // Some providers grant only transient read access; scoped sharing still works for this session.
-            }
-        }
-        return uris.mapNotNull { inspect(context, it) }
+        return fromUris(context, uris, persistReadAccess = true)
     }
 
     fun fromInboundShare(context: Context, intent: Intent?): List<Attachment> {
@@ -56,7 +87,7 @@ object HakimAttachmentGateway {
                 clip.getItemAt(index).uri?.let { uris += it }
             }
         }
-        return uris.mapNotNull { inspect(context, it) }
+        return fromUris(context, uris, persistReadAccess = false)
     }
 
     fun buildShareIntent(
@@ -71,8 +102,9 @@ object HakimAttachmentGateway {
             }
         }
 
-        val uris = ArrayList(attachments.map { it.uri })
-        val commonType = commonMimeType(attachments)
+        val bounded = attachments.take(MAX_ATTACHMENTS_PER_TASK)
+        val uris = ArrayList(bounded.map { it.uri })
+        val commonType = commonMimeType(bounded)
         val action = if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE
         return Intent(action).apply {
             type = commonType
@@ -97,9 +129,10 @@ object HakimAttachmentGateway {
     }
 
     private fun inspect(context: Context, uri: Uri): Attachment? {
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) return null
         return try {
             val resolver = context.contentResolver
-            val mime = resolver.getType(uri) ?: "*/*"
+            val mime = resolver.getType(uri)?.trim()?.lowercase().orEmpty().ifBlank { "*/*" }
             var name = uri.lastPathSegment ?: "مرفق"
             var size: Long? = null
             val cursor: Cursor? = resolver.query(
@@ -114,10 +147,12 @@ object HakimAttachmentGateway {
                     val nameIndex = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (nameIndex >= 0) name = c.getString(nameIndex) ?: name
                     val sizeIndex = c.getColumnIndex(OpenableColumns.SIZE)
-                    if (sizeIndex >= 0 && !c.isNull(sizeIndex)) size = c.getLong(sizeIndex)
+                    if (sizeIndex >= 0 && !c.isNull(sizeIndex)) {
+                        c.getLong(sizeIndex).takeIf { it >= 0L }?.let { size = it }
+                    }
                 }
             }
-            Attachment(uri = uri, mimeType = mime, displayName = name, sizeBytes = size)
+            Attachment(uri = uri, mimeType = mime, displayName = name.take(240), sizeBytes = size)
         } catch (_: Exception) {
             null
         }

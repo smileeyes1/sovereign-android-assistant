@@ -126,6 +126,24 @@ object HakimExecutiveLoop {
         )
     }
 
+    /**
+     * ACTION_SEND/share intents do not define a contract that returns an AI answer.
+     * Therefore a successful launch is a handoff, not an executing/waiting state.
+     */
+    fun externalHandoff(context: Context, providerLabel: String) {
+        record(
+            context,
+            Phase.GATED,
+            "تم تسليم المحتوى إلى " + providerLabel.take(80) +
+                "؛ لا توجد قناة رجوع مضمونة للنتيجة، لذلك لم تُعتبر المهمة مكتملة أو منتظرة."
+        )
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("active", false)
+            .putLong("external_handoff_at", System.currentTimeMillis())
+            .apply()
+    }
+
     fun cancel(context: Context) {
         record(context, Phase.CANCELLED, "ألغى المستخدم العملية")
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

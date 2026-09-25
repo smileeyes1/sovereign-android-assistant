@@ -134,7 +134,7 @@ class MainActivity : Activity() {
         }
     }
 
-    @Suppress("SetJavaScriptEnabled")
+    @Suppress("SetJavaScriptEnabled", "DEPRECATION")
     private fun configureBrowser() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -143,6 +143,11 @@ class MainActivity : Activity() {
             cacheMode = WebSettings.LOAD_DEFAULT
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            allowFileAccess = false
+            allowContentAccess = true
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
+            safeBrowsingEnabled = true
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -234,8 +239,15 @@ class MainActivity : Activity() {
 
         if (allowed.isEmpty()) {
             request.deny()
-            requestUsefulPermissions()
-            Toast.makeText(this, "امنح حكيم صلاحية الكاميرا/الميكروفون ثم أعد المحاولة", Toast.LENGTH_LONG).show()
+            val needed = mutableListOf<String>()
+            if (request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
+                needed += Manifest.permission.CAMERA
+            }
+            if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                needed += Manifest.permission.RECORD_AUDIO
+            }
+            requestSpecificPermissions(needed)
+            Toast.makeText(this, "اطلب الصلاحية المطلوبة فقط ثم أعد المحاولة", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -257,7 +269,12 @@ class MainActivity : Activity() {
         val locationGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) || hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (!locationGranted) {
             callback.invoke(origin, false, false)
-            requestUsefulPermissions()
+            requestSpecificPermissions(
+                listOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
             return
         }
         AlertDialog.Builder(this)
@@ -445,6 +462,15 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= 33) list += Manifest.permission.POST_NOTIFICATIONS
         if (Build.VERSION.SDK_INT <= 28) list += Manifest.permission.WRITE_EXTERNAL_STORAGE
         return list.distinct().toTypedArray()
+    }
+
+    private fun requestSpecificPermissions(requested: Collection<String>) {
+        val missing = requested.distinct().filterNot { hasPermission(it) }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), APP_PERMISSIONS_REQUEST)
+        } else {
+            refreshPermissionStatus()
+        }
     }
 
     private fun requestUsefulPermissions() {

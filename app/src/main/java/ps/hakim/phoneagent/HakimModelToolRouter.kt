@@ -169,24 +169,16 @@ object HakimModelToolRouter {
             p.packageName?.let { isInstalled(context, it) } == true
         }
 
-        // An attachment is an explicit user-selected payload. In FREE_ONLY, handing that payload
-        // to an already-installed provider app uses the user's own account/session and does not
-        // silently create a paid API dependency. This remains an external handoff, never task completion.
+        // A generic ACTION_SEND handoff has no guaranteed answer-return contract.
+        // In FREE_ONLY, never auto-open a provider app and pretend Hakim is still executing.
+        // The user explicitly chooses an external receiver only after all returnable direct
+        // engines and verified text fallbacks are exhausted.
         if (attachments.isNotEmpty()) {
-            val preferred = bestObservedProvider(context, installed)
-            if (preferred != null) {
-                return Decision(
-                    channel = Channel.PROVIDER_APP,
-                    provider = preferred,
-                    fallbacks = providers.filterNot { it.id == preferred.id },
-                    reason = "لا يوجد محرك داخلي مناسب للمرفق؛ توجد قناة تطبيق مثبتة بحساب المستخدم تستطيع استلام URI بصلاحية قراءة محدودة دون افتراض API مدفوع."
-                )
-            }
             return Decision(
                 channel = Channel.SYSTEM_SHARE,
                 provider = null,
-                fallbacks = providers,
-                reason = "لا يوجد محرك داخلي مناسب للمرفق ولا تطبيق مزود مثبت موثوق؛ يستخدم حكيم مشاركة أندرويد المحدودة بدل إسقاط المرفق.",
+                fallbacks = installed,
+                reason = "لا يوجد محرك داخلي يعيد نتيجة المرفق إلى حكيم؛ يقتصر البديل على مشاركة أندرويد الصريحة، ولا يُعتبر فتح تطبيق آخر تنفيذًا أو اكتمالًا.",
                 requiresUserChoice = true
             )
         }
@@ -232,23 +224,13 @@ object HakimModelToolRouter {
         val installed = providers.filter { p ->
             p.packageName?.let { isInstalled(context, it) } == true
         }
-        val preferred = bestObservedProvider(context, installed)
-        return if (preferred != null) {
-            Decision(
-                channel = Channel.PROVIDER_APP,
-                provider = preferred,
-                fallbacks = providers.filterNot { it.id == preferred.id },
-                reason = "تعذرت المحركات الداخلية للمرفق؛ الانتقال إلى تطبيق مثبت بحساب المستخدم مع URI محدود القراءة."
-            )
-        } else {
-            Decision(
-                channel = Channel.SYSTEM_SHARE,
-                provider = null,
-                fallbacks = providers,
-                reason = "تعذرت المحركات الداخلية للمرفق؛ لا يُسقط حكيم الأصل بل ينتقل إلى مشاركة أندرويد المحدودة.",
-                requiresUserChoice = true
-            )
-        }
+        return Decision(
+            channel = Channel.SYSTEM_SHARE,
+            provider = null,
+            fallbacks = installed,
+            reason = "استنفدت المحركات التي تعيد النتيجة إلى حكيم؛ يبقى الأصل محفوظًا ويُعرض تسليم خارجي صريح فقط، دون انتظار وهمي لنتيجة لا يضمنها Android.",
+            requiresUserChoice = true
+        )
     }
 
     fun recordOutcome(context: Context, providerId: String?, success: Boolean) {

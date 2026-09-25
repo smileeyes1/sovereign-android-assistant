@@ -27,8 +27,10 @@ import java.util.UUID
 object HakimVerifiedIntake {
     private const val AUTHORITY_SUFFIX = ".hakim.files"
     private const val MAX_PRIVATE_MIRROR_BYTES = 64L * 1024L * 1024L
+    private const val MAX_MIRROR_CACHE_BYTES = 256L * 1024L * 1024L
     private const val MAX_EXACT_TEXT_BYTES = 64L * 1024L
     private const val MAX_TOTAL_TEXT_BYTES = 96L * 1024L
+    private const val HEADER_PROBE_BYTES = 1024
 
     data class Provenance(
         val displayName: String,
@@ -36,7 +38,8 @@ object HakimVerifiedIntake {
         val sha256: String,
         val verifiedBytes: Long,
         val mirroredPrivately: Boolean,
-        val exactTextAvailable: Boolean
+        val exactTextAvailable: Boolean,
+        val detectedContentKind: String
     )
 
     data class Plan(
@@ -58,6 +61,8 @@ object HakimVerifiedIntake {
                 append(p.displayName)
                 append(" | ")
                 append(p.mimeType)
+                append(" | detected=")
+                append(p.detectedContentKind)
                 append(" | bytes=")
                 append(p.verifiedBytes)
                 append(" | sha256=")
@@ -111,7 +116,8 @@ object HakimVerifiedIntake {
                     sha256 = it.sha256,
                     verifiedBytes = it.verifiedBytes,
                     mirroredPrivately = it.mirroredPrivately,
-                    exactTextAvailable = it.exactText != null
+                    exactTextAvailable = it.exactText != null,
+                    detectedContentKind = it.detectedKind.name
                 )
             },
             exactTextEnvelope = exactEnvelope,
@@ -133,8 +139,13 @@ object HakimVerifiedIntake {
         val verifiedBytes: Long,
         val mirroredPrivately: Boolean,
         val exactText: String?,
-        val exactTextBytes: Long
+        val exactTextBytes: Long,
+        val detectedKind: DetectedKind
     )
+
+    private enum class DetectedKind {
+        JPEG, PNG, GIF, WEBP, PDF, ZIP_CONTAINER, UNKNOWN
+    }
 
     private fun prepareOne(
         context: Context,
@@ -147,6 +158,7 @@ object HakimVerifiedIntake {
 
         var total = 0L
         var mirror = true
+        val header = ByteArrayOutputStream(HEADER_PROBE_BYTES)
         resolver.openInputStream(source.uri).use { input ->
             requireNotNull(input) { "تعذر فتح المرفق: ${source.displayName}" }
             FileOutputStream(temp).use { output ->
@@ -155,6 +167,10 @@ object HakimVerifiedIntake {
                     val read = input.read(buffer)
                     if (read < 0) break
                     if (read == 0) continue
+                    if (header.size() < HEADER_PROBE_BYTES) {
+                        val remaining = HEADER_PROBE_BYTES - header.size()
+                        header.write(buffer, 0, minOf(read, remaining))
+                    }
                     digest.update(buffer, 0, read)
                     total += read.toLong()
                     if (mirror && total <= MAX_PRIVATE_MIRROR_BYTES) {
@@ -166,6 +182,9 @@ object HakimVerifiedIntake {
                 output.fd.sync()
             }
         }
+
+        val detectedKind = detectKind(header.toByteArray())
+        validateDeclaredMime(source.mimeType, source.displayName, detectedKind)
 
         source.sizeBytes?.let { announced ->
             require(announced == total) {
@@ -185,6 +204,7 @@ object HakimVerifiedIntake {
             } else {
                 require(temp.renameTo(target)) { "تعذر تثبيت النسخة المحلية الموثقة." }
             }
+            target.setLastModified(System.currentTimeMillis())
             canonicalUri = FileProvider.getUriForFile(
                 context,
                 context.packageName + AUTHORITY_SUFFIX,
@@ -203,6 +223,14 @@ object HakimVerifiedIntake {
 
         val exact = if (
             isIntrinsicText(source.mimeType, source.displayName) &&
+            detectedKind !in setOf(
+                DetectedKind.JPEG,
+                DetectedKind.PNG,
+                DetectedKind.GIF,
+                DetectedKind.WEBP,
+                DetectedKind.PDF,
+                DetectedKind.ZIP_CONTAINER
+            ) &&
             total <= MAX_EXACT_TEXT_BYTES
         ) {
             readExactText(context, verifiedAttachment)
@@ -216,7 +244,8 @@ object HakimVerifiedIntake {
             verifiedBytes = total,
             mirroredPrivately = mirrored,
             exactText = exact,
-            exactTextBytes = if (exact != null) total else 0L
+            exactTextBytes = if (exact != null) total else 0L,
+            detectedKind = detectedKind
         )
     }
 
@@ -277,6 +306,58 @@ object HakimVerifiedIntake {
         }
     }.getOrNull()
 
+    private fun detectKind(header: ByteArray): DetectedKind {
+        fun starts(vararg values: Int): Boolean =
+            header.size >= values.size && values.indices.all { header[it].toInt() and 0xff == values[it] }
+
+        if (starts(0xff, 0xd8, 0xff)) return DetectedKind.JPEG
+        if (starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return DetectedKind.PNG
+        if (header.size >= 6) {
+            val six = String(header, 0, 6, StandardCharsets.US_ASCII)
+            if (six == "GIF87a" || six == "GIF89a") return DetectedKind.GIF
+        }
+        if (header.size >= 12) {
+            val riff = String(header, 0, 4, StandardCharsets.US_ASCII)
+            val webp = String(header, 8, 4, StandardCharsets.US_ASCII)
+            if (riff == "RIFF" && webp == "WEBP") return DetectedKind.WEBP
+        }
+        if (
+            starts(0x50, 0x4b, 0x03, 0x04) ||
+            starts(0x50, 0x4b, 0x05, 0x06) ||
+            starts(0x50, 0x4b, 0x07, 0x08)
+        ) return DetectedKind.ZIP_CONTAINER
+
+        val ascii = String(header, StandardCharsets.ISO_8859_1)
+        if (ascii.contains("%PDF-")) return DetectedKind.PDF
+        return DetectedKind.UNKNOWN
+    }
+
+    private fun validateDeclaredMime(
+        mime: String,
+        name: String,
+        detected: DetectedKind
+    ) {
+        val normalized = mime.lowercase()
+        val imageKinds = setOf(
+            DetectedKind.JPEG,
+            DetectedKind.PNG,
+            DetectedKind.GIF,
+            DetectedKind.WEBP
+        )
+        val knownBinary = imageKinds + setOf(DetectedKind.PDF, DetectedKind.ZIP_CONTAINER)
+
+        val conflict = when {
+            normalized.startsWith("image/") &&
+                detected in setOf(DetectedKind.PDF, DetectedKind.ZIP_CONTAINER) -> true
+            normalized == "application/pdf" && detected in knownBinary && detected != DetectedKind.PDF -> true
+            normalized.startsWith("text/") && detected in knownBinary -> true
+            else -> false
+        }
+        require(!conflict) {
+            "نوع المرفق المعلن لا يطابق محتواه الفعلي: ${name.take(80)}"
+        }
+    }
+
     private fun isIntrinsicText(mime: String, name: String): Boolean {
         val normalized = mime.lowercase()
         if (normalized.startsWith("text/")) return true
@@ -321,10 +402,24 @@ object HakimVerifiedIntake {
     private fun cleanupOldMirrors(context: Context) {
         val dir = File(context.filesDir, "hakim_intake")
         if (!dir.exists()) return
+
         val cutoff = System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L
         dir.listFiles().orEmpty().forEach { file ->
             if (file.isFile && (file.name.endsWith(".part") || file.lastModified() < cutoff)) {
                 runCatching { file.delete() }
+            }
+        }
+
+        val survivors = dir.listFiles().orEmpty()
+            .filter { it.isFile && !it.name.endsWith(".part") }
+            .sortedBy { it.lastModified() }
+            .toMutableList()
+        var total = survivors.sumOf { it.length() }
+        for (file in survivors) {
+            if (total <= MAX_MIRROR_CACHE_BYTES) break
+            val bytes = file.length()
+            if (runCatching { file.delete() }.getOrDefault(false)) {
+                total -= bytes
             }
         }
     }

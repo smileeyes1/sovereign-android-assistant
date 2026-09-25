@@ -107,6 +107,38 @@ for token in [
 ]:
     req(token in SELF, "self_check:" + token)
 
+# Capability authorization must be executable on real side-effect paths.
+CAP = (APP / "HakimCapabilityKernel.kt").read_text(encoding="utf-8")
+UPDATER = (APP / "AutoUpdater.kt").read_text(encoding="utf-8")
+HOME = (APP / "UnifiedHomeActivity.kt").read_text(encoding="utf-8")
+MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")
+MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+
+for token in [
+    "fun grantOnce",
+    "fun grantPersistent",
+    "fun revokePersistent",
+    "explicit_user_grant_once",
+    "explicit_user_grant_persistent",
+]:
+    req(token in CAP, "capability_grant:" + token)
+
+req('userInitiated: Boolean = false' in CENTER, "share_must_default_to_not_authorized")
+req('HakimCapabilityKernel.grantOnce(this, "send_external", target)' in CENTER, "manual_share_grant_missing")
+req('"send_external"' in CENTER and "HakimCapabilityKernel.authorize(" in CENTER, "external_send_authorize_missing")
+req('"install_candidate"' in UPDATER and "HakimCapabilityKernel.authorize(" in UPDATER, "install_authorize_missing")
+req("install_user_authorization_required" in UPDATER, "install_gate_state_missing")
+req("HakimCapabilityKernel.grantPersistent(" in HOME, "persistent_update_consent_missing")
+req("HakimCapabilityKernel.revokePersistent(" in HOME, "persistent_update_revoke_missing")
+req("explicitUserGrant: Boolean = false" in MAIN, "permission_explicit_grant_contract_missing")
+req('"grant_permission"' in MAIN and "HakimCapabilityKernel.authorize(" in MAIN, "permission_authorize_missing")
+req("الموقع لا يستطيع طلب صلاحية أندرويد نيابةً عنك" in MAIN, "web_media_permission_escalation_guard_missing")
+req("الموقع لا يستطيع فتح صلاحية النظام تلقائيًا" in MAIN, "web_location_permission_escalation_guard_missing")
+
+# Adaptive window quality: Hakim must resize instead of forcing a portrait-only task.
+req('android:resizeableActivity="true"' in MANIFEST, "resizable_activity_missing")
+req('android:screenOrientation="portrait"' not in MANIFEST, "portrait_lock_regression")
+
 # Single source of truth remains conservative.
 req(STATE["android"]["latest_source_parent"]["version_code"] == 20303, "source_parent_version")
 req(STATE["android"]["latest_source_parent"]["ci_run_number"] == 1091, "source_parent_ci")

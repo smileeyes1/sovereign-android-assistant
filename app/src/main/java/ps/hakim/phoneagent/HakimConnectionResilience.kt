@@ -16,7 +16,9 @@ import org.json.JSONObject
 
 object HakimConnectionResilience {
     const val JOB_ID = 771208
+    const val RETRY_JOB_ID = 771210
     private const val PERIOD_MS = 15L * 60L * 1000L
+    private const val RETRY_MIN_MS = 10_000L
     private const val CHANNEL_ID = "hakim_recovery"
     private const val NOTIFICATION_ID = 29
 
@@ -43,6 +45,28 @@ object HakimConnectionResilience {
             scheduler.schedule(info)
         } catch (e: Exception) {
             prefs(context).edit().putString("last_recovery_schedule_error", safe(e.message)).apply()
+        }
+    }
+
+    fun scheduleImmediate(context: Context, reason: String) {
+        try {
+            val scheduler = context.getSystemService(JobScheduler::class.java)
+            val info = JobInfo.Builder(
+                RETRY_JOB_ID,
+                ComponentName(context, HakimConnectionRecoveryJobService::class.java)
+            )
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setPersisted(true)
+                .setMinimumLatency(RETRY_MIN_MS)
+                .setBackoffCriteria(RETRY_MIN_MS, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
+                .build()
+            scheduler.schedule(info)
+            prefs(context).edit()
+                .putString("last_immediate_recovery_reason", reason.take(80))
+                .putLong("last_immediate_recovery_scheduled_at", System.currentTimeMillis())
+                .apply()
+        } catch (e: Exception) {
+            prefs(context).edit().putString("last_immediate_recovery_error", safe(e.message)).apply()
         }
     }
 
@@ -104,6 +128,7 @@ object HakimConnectionResilience {
 
         if (!result.optBoolean("online") && result.optString("service_start") == "blocked") {
             prefs(app).edit().putString("connection_recovery_state", "start_blocked").apply()
+            scheduleImmediate(app, "foreground_start_blocked")
             notifyRecoveryNeeded(app)
         }
         if (result.optBoolean("online")) {
@@ -136,6 +161,8 @@ object HakimConnectionResilience {
             .put("last_recovery_error", p.getString("last_recovery_error", ""))
             .put("last_network_available_at", p.getLong("last_network_available_at", 0L))
             .put("last_network_lost_at", p.getLong("last_network_lost_at", 0L))
+            .put("last_immediate_recovery_scheduled_at", p.getLong("last_immediate_recovery_scheduled_at", 0L))
+            .put("last_immediate_recovery_reason", p.getString("last_immediate_recovery_reason", ""))
     }
 
     private fun notifyRecoveryNeeded(context: Context) {

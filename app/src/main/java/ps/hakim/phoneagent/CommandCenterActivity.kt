@@ -1365,8 +1365,18 @@ class CommandCenterActivity : ComponentActivity() {
         val out = HakimAttachmentGateway.buildShareIntent(this, governed, deliveryAttachments)
         try {
             startActivity(Intent.createChooser(out, "اختر القناة المتوافقة"))
+            HakimExecutiveLoop.externalHandoff(this, "مشاركة أندرويد")
+            refreshOperations()
+            status.text = "تم فتح المشاركة الخارجية"
         } catch (_: Exception) {
             recordRoute("share", false)
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "لا توجد قناة مشاركة متوافقة مع هذا المحتوى"
+            )
+            refreshOperations()
+            status.text = "لا توجد قناة متوافقة"
             toast("لا توجد قناة متوافقة مع هذا المحتوى")
         }
     }

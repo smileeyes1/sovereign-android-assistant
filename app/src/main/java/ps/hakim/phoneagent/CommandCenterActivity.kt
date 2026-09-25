@@ -559,8 +559,15 @@ class CommandCenterActivity : Activity() {
             "إجابة مباشرة داخل حكيم عبر " + engine.displayName
         )
         refreshOperations()
-        status.text = "يعمل على طلبك…"
-        beginStreamingReply()
+        val artifactMode = HakimProductOutput.requestsPdfArtifact(text)
+        if (artifactMode) {
+            streamingBase = conversation.text.toString().trim()
+            streamingBuffer.setLength(0)
+            status.text = "يجهّز الملف…"
+        } else {
+            status.text = "يعمل على طلبك…"
+            beginStreamingReply()
+        }
 
         val snapshot = attachments.toList()
         val startedAt = System.currentTimeMillis()
@@ -568,7 +575,9 @@ class CommandCenterActivity : Activity() {
         Thread {
             val result = engine.complete(instruction, snapshot) { delta ->
                 runOnUiThread {
-                    if (currentDirectEngine === engine) appendStreamingDelta(delta)
+                    if (currentDirectEngine === engine) {
+                        if (artifactMode) streamingBuffer.append(delta) else appendStreamingDelta(delta)
+                    }
                 }
             }
             val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
@@ -585,18 +594,36 @@ class CommandCenterActivity : Activity() {
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
-                        if (
-                            HakimProductOutput.requestsPdfArtifact(text) &&
-                            HakimProductOutput.looksLikeCapabilityRefusal(result.text) &&
-                            HakimLocalArtifactFactory.canHandle(this, text)
-                        ) {
-                            discardEmptyStreamingReply()
-                            HakimExecutiveLoop.record(
-                                this,
-                                HakimExecutiveLoop.Phase.ROUTING,
-                                "رفض نصي غير مقبول لمهمة ملف؛ تحويل إلى مصنع الملفات المحلي"
-                            )
-                            executeLocalArtifact(text)
+                        if (artifactMode) {
+                            val artifactText = result.text.ifBlank { streamingBuffer.toString() }
+                            conversation.text = streamingBase
+                            streamingBase = ""
+                            streamingBuffer.setLength(0)
+                            scrollConversationToBottom()
+
+                            if (HakimLocalArtifactFactory.canHandle(this, text)) {
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.ROUTING,
+                                    "مهمة ملف معروفة؛ استخدام المصنع المحلي الحتمي"
+                                )
+                                executeLocalArtifact(text)
+                                return@runOnUiThread
+                            }
+
+                            if (HakimProductOutput.looksLikeCapabilityRefusal(artifactText)) {
+                                appendConversation("حكيم", "تعذر إنشاء الملف بهذه الوسيلة، ولم أعتبر الرد النصي ملفًا مكتملًا.")
+                                HakimExecutiveLoop.record(
+                                    this,
+                                    HakimExecutiveLoop.Phase.GATED,
+                                    "رفض محرك لمهمة ملف؛ يمنع اعتبار الرد نجاحًا"
+                                )
+                                recordRoute("direct_artifact_refusal:" + engine.id, false)
+                                status.text = "تعذر إنشاء الملف"
+                                return@runOnUiThread
+                            }
+
+                            executeGeneratedPdfArtifact(text, artifactText)
                             return@runOnUiThread
                         }
                         HakimResiliencePolicy.recordSuccess(this, engine.id)

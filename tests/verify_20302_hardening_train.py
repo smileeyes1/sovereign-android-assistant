@@ -36,7 +36,8 @@ req("class HakimFileProvider : FileProvider()" in PROVIDER, "dedicated_provider_
 req('android:name=".HakimFileProvider"' in MANIFEST, "manifest_provider")
 req('android:name="androidx.core.content.FileProvider"' not in MANIFEST, "direct_fileprovider_forbidden")
 req('android.permission.CAMERA' in MANIFEST, "camera_capability_missing")
-MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")\nSERVICE = (APP / "HakimService.kt").read_text(encoding="utf-8")
+MAIN = (APP / "MainActivity.kt").read_text(encoding="utf-8")
+SERVICE = (APP / "HakimService.kt").read_text(encoding="utf-8")
 req("requestSpecificPermissions" in MAIN, "targeted_permission_escalation_missing")
 req("requestSpecificPermissions(needed)" in MAIN, "web_media_still_requests_blanket_permissions")
 

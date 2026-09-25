@@ -951,10 +951,21 @@ class CommandCenterActivity : Activity() {
         val saved = getSharedPreferences("hakim_conversation", MODE_PRIVATE)
             .getString("recent", "")
             .orEmpty()
-        conversation.text = if (saved.isBlank()) {
-            "حكيم:\nمرحبًا. اكتب ما تريد، وسأتولى التنفيذ وأعيد لك النتيجة هنا."
+        val migrated = if (saved.isNotBlank() && HakimProductOutput.containsRawMarkup(saved)) {
+            HakimProductOutput.clean(saved)
         } else {
             saved
+        }
+        conversation.text = if (migrated.isBlank()) {
+            "حكيم:\nمرحبًا. اكتب ما تريد، وسأتولى التنفيذ وأعيد لك النتيجة هنا."
+        } else {
+            migrated
+        }
+        if (migrated != saved) {
+            getSharedPreferences("hakim_conversation", MODE_PRIVATE)
+                .edit()
+                .putString("recent", migrated)
+                .apply()
         }
         scrollConversationToBottom()
     }

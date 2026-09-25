@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20301,
-  "candidate_name": "3.1.1-final-installable-verified-intake-v1",
+  "candidate_version": 20302,
+  "candidate_name": "3.1.2-hardening-train-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -51,5 +51,13 @@
   "verified_multimodal_intake": true,
   "exact_text_no_upload_fallback": true,
   "visual_original_required": true,
-  "free_account_attachment_handoff": true
+  "free_account_attachment_handoff": true,
+  "photo_picker_scoped_media": true,
+  "dedicated_file_provider": true,
+  "attachment_content_evidence": true,
+  "attachment_mime_conflict_gate": true,
+  "attachment_cache_bound": true,
+  "page_16k_ci_gate": true,
+  "d1_v2_structure_ci_gate": true,
+  "hardening_field_verified": false
 }

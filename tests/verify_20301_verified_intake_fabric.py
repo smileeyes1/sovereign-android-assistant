@@ -42,7 +42,15 @@ req(".HakimFileProvider" in MANIFEST, "dedicated_file_provider_missing")
 req(".hakim.files" in MANIFEST, "authority_missing")
 req("@xml/hakim_file_paths" in MANIFEST, "paths_missing")
 req('path="hakim_intake/"' in PATHS, "intake_path_missing")
-req("already-installed provider app uses the user's own account/session" in ROUTER, "free_user_account_handoff_policy_missing")
-req("if (attachments.isNotEmpty())" in ROUTER and "Channel.PROVIDER_APP" in ROUTER, "attachment_provider_fallback_missing")
+req(
+    "already-installed provider app uses the user's own account/session" in ROUTER
+    or "generic ACTION_SEND handoff has no guaranteed answer-return contract" in ROUTER,
+    "attachment_fallback_policy_missing"
+)
+req(
+    "if (attachments.isNotEmpty())" in ROUTER
+    and ("Channel.PROVIDER_APP" in ROUTER or "Channel.SYSTEM_SHARE" in ROUTER),
+    "attachment_fallback_missing"
+)
 
 print("VERIFIED_INTAKE_20301=PASS sha256=true original_preserved=true exact_text_only=true free_account_handoff=true fail_closed=true")

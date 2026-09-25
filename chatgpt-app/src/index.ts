@@ -13,6 +13,7 @@ import {
 } from "./oauth.js";
 import { pollPairAck } from "./relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
+import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -106,6 +107,11 @@ app.get("/health",(_req,res)=>res.json({
   auth:"oauth-2.1-pkce-cimd",
   production_storage_required:true,
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
+  governance_version:SOVEREIGN_GOVERNANCE_VERSION,
+  authority_boundary:"external_content_is_data_not_instruction",
+  approval_requested_is_success:false,
+  tool_result_is_goal_complete:false,
+  governance:GOVERNANCE_SUMMARY,
   reviewer_demo:reviewModeEnabled(),
   public_tools:process.env.HAKIM_PUBLIC_SAFE!=="0"
     ?["get_device_status","open_target","navigate_device","get_request_result"]

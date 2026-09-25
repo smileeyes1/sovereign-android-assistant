@@ -264,7 +264,7 @@ class CommandCenterActivity : ComponentActivity() {
                 if (text.isBlank() && attachments.isEmpty()) {
                     toast("لا يوجد محتوى لمشاركته")
                 } else {
-                    shareToAny(text)
+                    shareToAny(text, userInitiated = true)
                 }
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -1378,6 +1378,22 @@ class CommandCenterActivity : ComponentActivity() {
             .distinctBy { it.id }
 
         for (provider in candidates) {
+            val authorization = HakimCapabilityKernel.authorize(
+                this,
+                "send_external",
+                "provider:" + provider.id,
+                "attachments=" + deliveryAttachments.size + ";chars=" + (externalPromptOverride ?: text).length
+            )
+            if (authorization.optString("verdict") != "allow") {
+                HakimExecutiveLoop.record(
+                    this,
+                    HakimExecutiveLoop.Phase.GATED,
+                    "التسليم إلى تطبيق خارجي يحتاج تفويضًا صريحًا من المستخدم."
+                )
+                refreshOperations()
+                status.text = "التسليم الخارجي يحتاج تفويضك"
+                continue
+            }
             recordRoute("provider:" + provider.id, null)
             val out = HakimModelToolRouter.governedShareIntent(
                 this,
@@ -1439,9 +1455,32 @@ class CommandCenterActivity : ComponentActivity() {
     private fun shareToAny(
         text: String,
         deliveryAttachments: List<HakimAttachmentGateway.Attachment> = attachments.toList(),
-        externalPromptOverride: String? = null
+        externalPromptOverride: String? = null,
+        userInitiated: Boolean = false
     ) {
         if (text.isBlank() && deliveryAttachments.isEmpty() && externalPromptOverride.isNullOrBlank()) return
+
+        val target = "android_share"
+        if (userInitiated) {
+            HakimCapabilityKernel.grantOnce(this, "send_external", target)
+        }
+        val authorization = HakimCapabilityKernel.authorize(
+            this,
+            "send_external",
+            target,
+            "attachments=" + deliveryAttachments.size + ";chars=" + (externalPromptOverride ?: text).length
+        )
+        if (authorization.optString("verdict") != "allow") {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "المشاركة الخارجية لم تُنفذ لغياب تفويض صريح لهذه العملية."
+            )
+            refreshOperations()
+            status.text = "المشاركة تحتاج اختيارك الصريح"
+            return
+        }
+
         capture(text, "share_out")
         recordRoute("share", null)
         val governed = HakimExecutiveLoop.providerInstruction(this, externalPromptOverride ?: text)

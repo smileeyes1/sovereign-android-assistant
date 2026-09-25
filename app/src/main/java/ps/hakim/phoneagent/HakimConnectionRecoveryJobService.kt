@@ -8,6 +8,7 @@ class HakimConnectionRecoveryJobService : JobService() {
         Thread {
             try {
                 if (HakimConnectivityState.hasValidatedInternet(applicationContext)) {
+                    HakimUnifiedRelay.pollCachedOnce(applicationContext)
                     HakimUnifiedRelay.flushOutboxAsync(applicationContext)
                 }
                 HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")

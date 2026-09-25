@@ -10,6 +10,8 @@ CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 GATEWAY = (APP / "HakimAttachmentGateway.kt").read_text(encoding="utf-8")
 INTAKE = (APP / "HakimVerifiedIntake.kt").read_text(encoding="utf-8")
 PROVIDER = (APP / "HakimFileProvider.kt").read_text(encoding="utf-8")
+PAIR = (APP / "HakimPairingActivity.kt").read_text(encoding="utf-8")
+RELAY = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
 
 def req(value, reason):
@@ -62,5 +64,10 @@ for token in [
 
 req("zipalign" in WORKFLOW and "-P 16" in WORKFLOW, "16k_zipalign_gate_missing")
 req("tools/verify_hakim_d1_v2_structure.py" in WORKFLOW, "d1_v2_structure_gate_missing")
+req("configurationMatches" in RELAY, "pairing_match_guard_missing")
+req("validConfigurationInput" in RELAY, "pairing_input_validation_missing")
+req("تغيير قناة حكيم؟" in PAIR, "pairing_takeover_confirmation_missing")
+req("setPositiveButton(\"اعتماد\")" in PAIR, "pairing_local_approval_missing")
+req("configurationMatches(this" in PAIR, "same_pairing_idempotency_missing")
 
-print("HARDENING_20302=PASS photo_picker=true scoped_provider=true mime_evidence=true cache_bound=true page16k_gate=true signing_structure=true")
+print("HARDENING_20302=PASS photo_picker=true scoped_provider=true mime_evidence=true cache_bound=true page16k_gate=true signing_structure=true pairing_takeover_guard=true")

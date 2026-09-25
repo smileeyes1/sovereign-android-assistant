@@ -36,7 +36,7 @@
             android:resource="@xml/app_restrictions" />
 
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name=".HakimFileProvider"
             android:authorities="${applicationId}.hakim.files"
             android:exported="false"
             android:grantUriPermissions="true">

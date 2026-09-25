@@ -27,7 +27,8 @@ android {
 
 dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'androidx.core:core-ktx:1.15.0'\n    implementation 'androidx.activity:activity-ktx:1.13.0'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'
 }

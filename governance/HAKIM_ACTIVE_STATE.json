@@ -35,9 +35,9 @@
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
-      "version_code": 20206,
-      "version_name": "3.0.6-verified-teacher-artifacts-v1-candidate",
-      "apk_sha256": "21de316cdfe93c6cab9500e8a578070f99afaf3fdfcd0a393d47ad0e1ac4bafb",
+      "version_code": 20207,
+      "version_name": "3.0.7-universal-artifact-pipeline-v1-candidate",
+      "apk_sha256": "7c7b69cc41b67f32f8bc5629715da2e940f34b2abae7fb8208fb95a9d1c660b7",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": true,
@@ -160,7 +160,7 @@
     "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20300",
     "install_failure_2026_09_25": {
       "observed": "Package Installer: يتعذر تثبيت التطبيق على جهازك",
-      "root_cause": "A 20202 / 3.0.2 build was attempted after a >=20206 field build, so Android rejected the downgrade.",
+      "root_cause": "CONFIRMED: installed signed-health versionCode=20207; attempted 3.0.2 file carries versionCode=20202, so Android rejected the downgrade.",
       "prevention": "Candidate versionCode 20300 + package/signing/installability gate"
     }
   }

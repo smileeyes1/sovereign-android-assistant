@@ -981,7 +981,7 @@ class CommandCenterActivity : Activity() {
             beginStreamingReply()
         }
 
-        val snapshot = attachments.toList()
+        val snapshot = routedAttachments
         val startedAt = System.currentTimeMillis()
 
         Thread {
@@ -1103,8 +1103,8 @@ class CommandCenterActivity : Activity() {
                                 excluded = excluded,
                                 reason = result.reason,
                                 finalStatus = "تعذر إكمال الطلب الآن",
-                            deliveryAttachments = routedAttachments
-                        )
+                                deliveryAttachments = routedAttachments
+                            )
                         } else {
                             discardEmptyStreamingReply()
                             appendConversation("حكيم", HakimProductUx.publicError(result.reason))

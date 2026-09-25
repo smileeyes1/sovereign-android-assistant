@@ -1419,17 +1419,17 @@ class CommandCenterActivity : ComponentActivity() {
             }
         }
 
-        if (HakimExecutiveLoop.advanceCycle(this, "تعذرت القنوات المباشرة؛ تغيير المسار بدل تكرار الفشل")) {
-            HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.ROUTING, "المشاركة الآمنة كمسار احتياطي")
-        }
-        refreshOperations()
-        appendConversation("حكيم", "تعذرت القنوات المباشرة؛ سأستخدم المشاركة الآمنة كمسار احتياطي.")
-        status.text = "مسار احتياطي"
-        shareToAny(
-            text = text,
-            deliveryAttachments = deliveryAttachments,
-            externalPromptOverride = externalPromptOverride
+        HakimExecutiveLoop.record(
+            this,
+            HakimExecutiveLoop.Phase.GATED,
+            "تعذرت القنوات الخارجية المأذونة؛ لم يُرسل المحتوى ولم يُفتح مسار مشاركة تلقائي."
         )
+        refreshOperations()
+        appendConversation(
+            "حكيم",
+            "لم أرسل المحتوى إلى تطبيق خارجي دون تفويض. أبقيته داخل حكيم؛ استخدم «مشاركة» إذا أردت التسليم يدويًا."
+        )
+        status.text = "المحتوى محفوظ داخل حكيم"
     }
 
     private fun openProviderWeb(text: String, decision: HakimModelToolRouter.Decision) {
@@ -1437,8 +1437,22 @@ class CommandCenterActivity : ComponentActivity() {
             openInHakim(text)
             return
         }
-        val governed = HakimExecutiveLoop.providerInstruction(this, text)
-        copyText(governed)
+        val browserAuthorization = HakimCapabilityKernel.authorize(
+            this,
+            "browser_open",
+            provider.webUrl,
+            "external_provider_web_no_prompt_transfer"
+        )
+        if (browserAuthorization.optString("verdict") != "allow") {
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "فتح قناة الويب الخارجية لم يحصل على التفويض المناسب."
+            )
+            refreshOperations()
+            status.text = "تعذر فتح القناة الخارجية"
+            return
+        }
         getSharedPreferences("hakim", MODE_PRIVATE)
             .edit()
             .putString("last_url", provider.webUrl)

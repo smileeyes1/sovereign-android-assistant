@@ -4,7 +4,7 @@
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
-    "last_verified_baseline_commit": "35a07a35c9742ba87d6449d980ca72ff6fae4bf6",
+    "last_verified_baseline_commit": "79114b2321e2534678dfceaf4417083e652e2d70",
     "production_verified": true,
     "health_verified": true,
     "oauth_exact_callback_verified": true,
@@ -20,31 +20,32 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20304,
-      "commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
-      "ci_run_number": 1111,
+      "version_code": 20306,
+      "commit": "21166a98d062ccca9e3ed6851ca4b49f7d24e40e",
+      "ci_run_number": 1146,
       "source_ci_verified": true,
-      "field_verified": false
+      "field_verified": true
     },
     "candidate": {
-      "version_code": 20306,
-      "branch": "release/hakim-20306-direct-candidate",
-      "source_ci_state": "SUCCESS_RUNS_1145_1146",
+      "version_code": 20307,
+      "branch": "feature/hakim-network-diagnostics-20307",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
-      "control_channel_field_verified": true
+      "control_channel_field_verified": false,
+      "purpose": "read_only_network_diagnostics"
     },
     "field_observed_current": {
-      "observed_at": "2026-09-25",
-      "version_code": 20207,
-      "version_name": "3.0.7-universal-artifact-pipeline-v1-candidate",
-      "apk_sha256": "7c7b69cc41b67f32f8bc5629715da2e940f34b2abae7fb8208fb95a9d1c660b7",
+      "observed_at": "2026-09-26",
+      "version_code": 20306,
+      "version_name": "3.3.2-control-channel-recovery-direct-v1",
+      "apk_sha256": "NOT_REOBSERVED",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": true,
       "recovery_state": "healthy",
-      "evidence": "signed_health_on_stateless_pairing",
+      "evidence": "authenticated_direct_status_probe",
       "current_signer_reobserved": false,
       "exact_public_source_mapping": "NOT_PROVEN",
       "promoted_as_source_baseline": false
@@ -154,7 +155,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20306,
+    "candidate_version": 20307,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -173,7 +174,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20306",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20306_TO_20307",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -229,6 +230,8 @@
     "control_channel_field_verified": true,
     "remote_desktop_commander_required": false,
     "arabic_default_policy_source_integrated": true,
-    "arabic_default_policy_field_verified": false
+    "arabic_default_policy_field_verified": false,
+    "network_diagnostics_source_integrated": true,
+    "network_diagnostics_field_verified": false
   }
 }

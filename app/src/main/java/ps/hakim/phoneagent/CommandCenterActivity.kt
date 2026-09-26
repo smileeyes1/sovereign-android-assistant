@@ -132,6 +132,7 @@ class CommandCenterActivity : Activity() {
             setPadding(10, 18, 10, 4)
         })
 
+        HakimArabicPolicy.applyUiDefaults(root)
         setContentView(root)
     }
 

@@ -81,6 +81,7 @@ class UnifiedHomeActivity : Activity() {
             setPadding(12, 22, 12, 8)
         })
 
+        HakimArabicPolicy.applyUiDefaults(root)
         setContentView(root)
         refresh()
     }

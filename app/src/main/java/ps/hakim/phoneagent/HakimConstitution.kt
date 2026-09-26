@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 object HakimConstitution {
-    const val VERSION = "ADAPTIVE-NSTAR-AUTONOMOUS-DEFAULT-2026-09-11-v3"
+    const val VERSION = "ADAPTIVE-NSTAR-AUTONOMOUS-DEFAULT-2026-09-26-v4"
 
     private val gainDimensions = listOf(
         "الصحة والدقة",
@@ -49,6 +49,7 @@ object HakimConstitution {
     )
 
     fun install(context: Context) {
+        HakimArabicPolicy.install(context)
         val prefs = context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE)
         val canonical = canonicalJson().toString()
         prefs.edit()
@@ -89,6 +90,7 @@ object HakimConstitution {
                 appendLine("[أحدث القواعد/التفضيلات الصريحة المثبتة محليًا]")
                 appendLine(recent)
             }
+            append(HakimArabicPolicy.promptContract())
             appendLine("[المهمة الحالية]")
         }.take(6200)
     }
@@ -115,6 +117,7 @@ object HakimConstitution {
             .put("self_learning_guarded", prefs.getBoolean("self_learning_guarded", false))
             .put("self_evolution_guarded", prefs.getBoolean("self_evolution_guarded", false))
             .put("fail_closed_core_changes", prefs.getBoolean("fail_closed_core_changes", false))
+            .put("arabic_policy", HakimArabicPolicy.status(context))
             .put("rule_ledger", HakimRuleLedger.status(context))
             .put("sha256", prefs.getString("constitution_sha256", ""))
     }
@@ -134,7 +137,8 @@ object HakimConstitution {
             "كل توجيه صريح للمستخدم يُلتقط محليًا ويصنف قبل الترقية إلى قاعدة",
             "الأحدث الصريح يعلو عند التعارض والتصحيح يعلو على السابق",
             "المهمة المؤقتة لا تُرقى إلى قاعدة عامة والبيانات الحساسة لا تُرقى إلى قاعدة",
-            "أفضل/أنسب/أعلى تعني أعلى نتيجة مثبتة ملائمة لا أكبر حجم أو تكرار"
+            "أفضل/أنسب/أعلى تعني أعلى نتيجة مثبتة ملائمة لا أكبر حجم أو تكرار",
+            "العربية وRTL والمحاذاة اليمنى وقواعد BiDi والرياضيات تضبط مركزيًا بعقد HakimArabicPolicy"
         )))
         .put("execution_chain", "غاية→عقد→ن★{فهم→تحليل→استكشاف→اختيار→تنفيذ→تحقق/إصلاح→تعلم/إعادة تقدير}→سد الفجوات→انحدار/تكامل→اكتمال→تجميد")
         .put("scope", "كل شيء ذي صلة، لكل شيء مؤثر، من كل شيء موثوق ونافع، في كل موضع مفيد ومسموح، وكيف نفسها")

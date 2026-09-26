@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20310
-        versionName '3.3.6-control-channel-recovery-resilient-alarm-watchdog-network-diagnostics-lan-survey-v1'
+        versionName '3.3.6-control-channel-recovery-direct-resilient-alarm-watchdog-network-diagnostics-lan-survey-v1'
     }
 
     compileOptions {

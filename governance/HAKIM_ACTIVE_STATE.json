@@ -20,21 +20,21 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20306,
-      "commit": "21166a98d062ccca9e3ed6851ca4b49f7d24e40e",
-      "ci_run_number": 1146,
+      "version_code": 20307,
+      "commit": "660cb075eb56608db7498cc32d72fd1969a9b905",
+      "ci_run_number": 1154,
       "source_ci_verified": true,
-      "field_verified": true
+      "field_verified": false
     },
     "candidate": {
-      "version_code": 20307,
-      "branch": "feature/hakim-network-diagnostics-20307",
+      "version_code": 20308,
+      "branch": "fix/hakim-autostart-20308",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "read_only_network_diagnostics"
+      "purpose": "autostart_direct_channel_and_preserve_network_diagnostics"
     },
     "field_observed_current": {
       "observed_at": "2026-09-26",
@@ -155,7 +155,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20307,
+    "candidate_version": 20308,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -174,7 +174,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20306_TO_20307",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20306_TO_20308",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -232,6 +232,8 @@
     "arabic_default_policy_source_integrated": true,
     "arabic_default_policy_field_verified": false,
     "network_diagnostics_source_integrated": true,
-    "network_diagnostics_field_verified": false
+    "network_diagnostics_field_verified": false,
+    "autostart_recovery_source_integrated": true,
+    "autostart_recovery_field_verified": false
   }
 }

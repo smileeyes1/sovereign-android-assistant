@@ -4,11 +4,12 @@
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
-    "last_verified_baseline_commit": "03b19fedb4ea42dea34baeffdf0840c2c865f684",
+    "last_verified_baseline_commit": "35a07a35c9742ba87d6449d980ca72ff6fae4bf6",
     "production_verified": true,
     "health_verified": true,
     "oauth_exact_callback_verified": true,
-    "negative_oauth_regression_verified": true
+    "negative_oauth_regression_verified": true,
+    "direct_pairing_migration_verified": true
   },
   "android": {
     "package": "ps.hakim.stable",
@@ -27,11 +28,12 @@
     },
     "candidate": {
       "version_code": 20306,
-      "branch": "feature/hakim-20306-direct-current",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "branch": "release/hakim-20306-direct-candidate",
+      "source_ci_state": "SUCCESS_RUNS_1145_1146",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "control_channel_field_verified": true
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
@@ -49,18 +51,35 @@
     }
   },
   "local_execution": {
-    "phone_channel": "OFFLINE_CURRENTLY",
+    "phone_channel": "ONLINE_DIRECT_HTTPS_VERIFIED",
     "termux_channel": "NOT_PROVEN_CURRENTLY",
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
-    "execution_fabric_field_online": false,
+    "execution_fabric_field_online": true,
     "production_bridge_contract": "hakim-direct-https-v1+relay_result_topic+HR1+encrypted_ntfy_fallback",
     "current_installed_field_transport": {
       "observed_at": "2026-09-26",
-      "status": "OFFLINE_CURRENTLY",
-      "transport": "not_proven_live",
+      "status": "ONLINE_VERIFIED",
+      "transport": "hakim-direct-https-v1",
       "preserve_pairing": true,
-      "note": "Remote Desktop Commander is offline and its remote-call allowance is exhausted; Hakim secure relay recovery is the replacement path."
+      "authentication": "ACCEPTED_AFTER_SAFE_LAZY_MIGRATION",
+      "evidence": {
+        "production_bridge_commit": "35a07a35c9742ba87d6449d980ca72ff6fae4bf6",
+        "device_user_agent": "Dalvik/2.1.0 Android 16 TECNO LJ6",
+        "accepted_long_polls": [
+          {
+            "http_status": 204,
+            "duration_ms": 25303,
+            "timestamp_utc": "2026-09-26T14:05:47.172810384Z"
+          },
+          {
+            "http_status": 204,
+            "duration_ms": 25298,
+            "timestamp_utc": "2026-09-26T14:06:12.706595774Z"
+          }
+        ]
+      },
+      "note": "Direct authenticated long-poll continuity is field-verified. Exact installed APK byte identity remains separately unproven."
     }
   },
   "material_factory": {
@@ -207,7 +226,7 @@
     "sovereign_constitution_source_ci_verified": true,
     "control_channel_primary": "direct_https_secure_relay",
     "control_channel_urgent_recovery": true,
-    "control_channel_field_verified": false,
+    "control_channel_field_verified": true,
     "remote_desktop_commander_required": false,
     "arabic_default_policy_source_integrated": true,
     "arabic_default_policy_field_verified": false

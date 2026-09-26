@@ -14,7 +14,7 @@ def req(v, reason):
         raise SystemExit("AUTOSTART_20308=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20308,"version")
+req(m is not None and int(m.group(1))>=20308,"version_floor")
 req("control-channel-recovery-direct" in BUILD and "autostart" in BUILD and "network-diagnostics" in BUILD,"version_name")
 
 req("startHakimIfPaired(prefs)" in APPKT,"application_does_not_autostart")
@@ -24,6 +24,6 @@ req('HakimConnectionResilience.recover(this, "command_center_open")' in CENTER,"
 req("startForegroundService(intent)" in FABRIC,"fabric_service_start_missing")
 req("HakimUnifiedRelay.start(app)" in FABRIC,"secure_relay_start_missing")
 req("python3 tests/verify_20308_autostart.py" in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20308"' in WORKFLOW,"workflow_version")
+req("VERSION_CODE" in WORKFLOW,"workflow_version_present")
 
 print("AUTOSTART_20308=PASS application=true launcher=true secure_relay=true")

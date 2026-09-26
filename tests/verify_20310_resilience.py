@@ -20,7 +20,7 @@ def req(v, reason):
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m is not None and int(m.group(1))==20310,"version")
-req("resilient-control-channel" in BUILD and "alarm-watchdog" in BUILD,"version_name")
+req("control-channel-recovery" in BUILD and "alarm-watchdog" in BUILD,"version_name")
 
 for token in [
     "setAndAllowWhileIdle",

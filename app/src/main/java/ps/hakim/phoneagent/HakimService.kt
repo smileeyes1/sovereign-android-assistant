@@ -73,8 +73,12 @@ class HakimService : Service() {
         startAsForeground()
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        createBrowser()
-        connectRemote()
+        if (isPaired()) {
+            createBrowser()
+            connectRemote()
+        } else {
+            updateNotification("قناة حكيم المشفّرة تعمل — وضع خفيف بلا متصفح")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -87,7 +91,8 @@ class HakimService : Service() {
             }
             ACTION_SYNC_URL -> {
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
-                if (url.startsWith("http") && ::webView.isInitialized) {
+                if (url.startsWith("http")) {
+                    if (!::webView.isInitialized) createBrowser()
                     webView.post {
                         if (webView.url != url) webView.loadUrl(url)
                     }
@@ -105,7 +110,10 @@ class HakimService : Service() {
         }
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        if (socket == null && isPaired()) connectRemote()
+        if (socket == null && isPaired()) {
+            if (!::webView.isInitialized) createBrowser()
+            connectRemote()
+        }
         return START_STICKY
     }
 

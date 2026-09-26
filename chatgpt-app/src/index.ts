@@ -159,6 +159,9 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       ?((d as Record<string,unknown>).lan_survey as Record<string,unknown>|undefined)
       :undefined;
     const l=decoded.result?.lan_survey??nestedLan??{};
+    const deep=(d&&typeof d==="object"&&"deep_lan_discovery" in d)
+      ?((d as Record<string,unknown>).deep_lan_discovery as Record<string,unknown>|undefined)??{}
+      :{};
     const safe={
       event:"hakim_status_probe",
       version_code:decoded.result?.version_code??null,
@@ -226,6 +229,13 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         management_candidates:l.management_candidates??null,
         repeater_or_ap_candidates:l.repeater_or_ap_candidates??null,
         hosts:l.hosts??null
+      },
+      deep_lan_discovery:{
+        version:deep.version??null,
+        ok:deep.ok??null,
+        neighbors:deep.neighbors??null,
+        wifi_neighbors:deep.wifi_neighbors??null,
+        historic_targets:deep.historic_targets??null
       }
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));

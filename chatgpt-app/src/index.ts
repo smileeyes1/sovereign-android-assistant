@@ -40,15 +40,17 @@ const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_00
 relayCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
-const statusProbeByTopic=new Map<string,{requestId:string;sentAt:number}>();
+const statusProbeCooldownByTopic=new Map<string,number>();
+const statusProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
 
 function maybeMakeStatusProbe(topic:string,key:string){
   const now=Date.now();
-  const previous=statusProbeByTopic.get(topic);
-  if(previous&&now-previous.sentAt<STATUS_PROBE_COOLDOWN_MS) return null;
+  const previous=statusProbeCooldownByTopic.get(topic)??0;
+  if(now-previous<STATUS_PROBE_COOLDOWN_MS) return null;
   const envelope=makeEnvelope(key,"status",{},60_000);
-  statusProbeByTopic.set(topic,{requestId:envelope.request_id,sentAt:now});
+  statusProbeCooldownByTopic.set(topic,now);
+  statusProbeRequests.set(envelope.request_id,{sentAt:now});
   return {
     request_id:envelope.request_id,
     carrier:encryptCarrier(key,envelope),
@@ -56,9 +58,7 @@ function maybeMakeStatusProbe(topic:string,key:string){
   };
 }
 
-function logSanitizedStatusProbe(topic:string,key:string,carrier:string){
-  const tracked=statusProbeByTopic.get(topic);
-  if(!tracked) return;
+function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
   try{
     const decoded=decryptResult(key,carrier) as {
       request_id?:unknown;
@@ -72,7 +72,9 @@ function logSanitizedStatusProbe(topic:string,key:string,carrier:string){
         network_guardian?:Record<string,unknown>;
       };
     };
-    if(decoded?.request_id!==tracked.requestId) return;
+    const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
+    const tracked=statusProbeRequests.get(requestId);
+    if(!tracked) return;
     const n=decoded.result?.network_guardian??{};
     const safe={
       event:"hakim_status_probe",
@@ -97,7 +99,7 @@ function logSanitizedStatusProbe(topic:string,key:string,carrier:string){
       }
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));
-    statusProbeByTopic.delete(topic);
+    statusProbeRequests.delete(requestId);
   }catch{
     // Never log carrier/key/raw device data on probe decode failures.
   }

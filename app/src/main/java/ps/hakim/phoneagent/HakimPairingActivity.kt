@@ -32,6 +32,7 @@ class HakimPairingActivity : Activity() {
         val topic = uri?.getQueryParameter("relay_topic")
         val resultTopic = uri?.getQueryParameter("relay_result_topic")
         val relayKey = uri?.getQueryParameter("relay_key")
+        val bridgeBase = uri?.getQueryParameter("bridge_base")
 
         val valid = uri?.scheme == "hakim" &&
             uri.host == "pair" &&
@@ -44,8 +45,8 @@ class HakimPairingActivity : Activity() {
             return
         }
 
-        if (HakimUnifiedRelay.configurationMatches(this, topic, resultTopic, relayKey)) {
-            commitPairing(token, topic, resultTopic, relayKey)
+        if (HakimUnifiedRelay.configurationMatches(this, topic, resultTopic, relayKey, bridgeBase)) {
+            commitPairing(token, topic, resultTopic, relayKey, bridgeBase)
             return
         }
 
@@ -60,7 +61,7 @@ class HakimPairingActivity : Activity() {
                 }
             )
             .setPositiveButton("اعتماد") { _, _ ->
-                commitPairing(token, topic, resultTopic, relayKey)
+                commitPairing(token, topic, resultTopic, relayKey, bridgeBase)
             }
             .setNegativeButton("رفض") { _, _ ->
                 Toast.makeText(this, "لم يتم تغيير اقتران حكيم", Toast.LENGTH_SHORT).show()
@@ -74,9 +75,10 @@ class HakimPairingActivity : Activity() {
         token: String,
         topic: String?,
         resultTopic: String?,
-        relayKey: String?
+        relayKey: String?,
+        bridgeBase: String?
     ) {
-        val ok = HakimUnifiedRelay.configure(this, topic, resultTopic, relayKey)
+        val ok = HakimUnifiedRelay.configure(this, topic, resultTopic, relayKey, bridgeBase)
         if (!ok) {
             Toast.makeText(this, "تعذر اعتماد الاقتران", Toast.LENGTH_LONG).show()
             returnToHakim()

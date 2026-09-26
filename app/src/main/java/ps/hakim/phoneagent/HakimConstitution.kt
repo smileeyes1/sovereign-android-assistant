@@ -75,6 +75,7 @@ object HakimConstitution {
     )
 
     fun install(context: Context) {
+        HakimArabicPolicy.install(context)
         val prefs = context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE)
         val canonical = canonicalJson().toString()
         prefs.edit()
@@ -129,6 +130,7 @@ object HakimConstitution {
                 appendLine("[قواعد/تصحيحات/تفضيلات صريحة محفوظة محليًا]")
                 appendLine(recent)
             }
+            append(HakimArabicPolicy.promptContract())
             appendLine("[المهمة الحالية]")
         }.take(7200)
     }
@@ -160,6 +162,7 @@ object HakimConstitution {
             .put("safe_auto_continue", prefs.getBoolean("safe_auto_continue", false))
             .put("self_learning_guarded", prefs.getBoolean("self_learning_guarded", false))
             .put("self_evolution_guarded", prefs.getBoolean("self_evolution_guarded", false))
+            .put("arabic_policy", HakimArabicPolicy.status(context))
             .put("rule_ledger", HakimRuleLedger.status(context))
             .put("quranic_governance", HakimQuranicGovernance.status())
             .put("sha256", prefs.getString("constitution_sha256", ""))

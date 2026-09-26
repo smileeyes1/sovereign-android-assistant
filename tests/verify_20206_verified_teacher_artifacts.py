@@ -16,7 +16,7 @@ def req(v,reason):
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m and int(m.group(1))>=20206,"version")
 req("verified-teacher-artifacts" in BUILD or "universal-artifact-pipeline" in BUILD or "final-installable" in BUILD or "hardening-train" in BUILD or "core-product" in BUILD or
-    "sovereign-constitution" in BUILD,"version_name")
+    "sovereign-constitution" in BUILD or "control-channel-recovery" in BUILD,"version_name")
 
 for token in [
     "ADDITION_ID",

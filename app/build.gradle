@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20304
-        versionName '3.3.0-sovereign-constitution-v4'
+        versionCode 20306
+        versionName '3.3.2-control-channel-recovery-direct-v1'
     }
 
     compileOptions {

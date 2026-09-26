@@ -34,9 +34,11 @@ object HakimConstraintDoctor {
         HakimConnectionResilience.schedule(app)
 
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
-        val paired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+        val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
             prefs.getString("auth_key", "").orEmpty().isNotBlank()
+        val securePaired = HakimUnifiedRelay.isConfigured(app)
+        val paired = legacyPaired || securePaired
         val network = hasInternet(app)
         val batteryExempt = isBatteryOptimizationIgnored(app)
         val backgroundRestricted = isBackgroundRestricted(app)
@@ -63,17 +65,27 @@ object HakimConstraintDoctor {
         if (!batteryExempt) add("BATTERY_OPTIMIZATION", "warning", false, true, "قد تقيد تحسينات البطارية الاستمرارية في الخلفية")
         if (backgroundRestricted) add("BACKGROUND_RESTRICTED", "blocker", false, true, "أندرويد يقيد عمل حكيم في الخلفية")
         if (!notificationsAllowed) add("NOTIFICATIONS_DISABLED", "warning", false, true, "تعطيل الإشعارات يخفي تنبيهات الاستعادة والموافقات")
-        if (paired && network && !HakimService.running) add("SERVICE_NOT_RUNNING", "recovering", true, false, "تم طلب إعادة تشغيل الخدمة تلقائيًا")
-        if (paired && network && HakimService.running && !HakimService.connected) add("COMMAND_SOCKET_OFFLINE", "recovering", true, false, "إعادة الاتصال والحارس الدوري يعملان")
+        val secureConnected = securePaired && HakimUnifiedRelay.isConnected()
+        val legacyConnected = legacyPaired && HakimService.connected
+        if (paired && network && !HakimService.running && !secureConnected) {
+            add("SERVICE_NOT_RUNNING", "recovering", true, false, "تم طلب إعادة تشغيل قناة حكيم فورًا")
+        }
+        if (paired && network && !secureConnected && !legacyConnected) {
+            add("CONTROL_CHANNEL_RECOVERING", "recovering", true, false, "قناة حكيم تعيد الاتصال تلقائيًا مع حارس عاجل ودوري")
+        }
 
         val report = JSONObject()
             .put("time", System.currentTimeMillis())
             .put("reason", reason.take(80))
             .put("paired", paired)
+            .put("legacy_paired", legacyPaired)
+            .put("secure_paired", securePaired)
             .put("user_disabled", disabled)
             .put("network", network)
             .put("service_running", HakimService.running)
             .put("service_connected", HakimService.connected)
+            .put("secure_relay_connected", secureConnected)
+            .put("control_channel_online", secureConnected || legacyConnected)
             .put("update_install_mode", "external_user_managed")
             .put("battery_optimization_ignored", batteryExempt)
             .put("background_restricted", backgroundRestricted)

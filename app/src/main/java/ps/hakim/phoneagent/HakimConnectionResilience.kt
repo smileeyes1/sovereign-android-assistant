@@ -16,7 +16,10 @@ import org.json.JSONObject
 
 object HakimConnectionResilience {
     const val JOB_ID = 771208
+    const val URGENT_JOB_ID = 771210
     private const val PERIOD_MS = 15L * 60L * 1000L
+    private const val URGENT_DELAY_MS = 2_000L
+    private const val URGENT_DEADLINE_MS = 20_000L
     private const val CHANNEL_ID = "hakim_recovery"
     private const val NOTIFICATION_ID = 29
 
@@ -46,6 +49,27 @@ object HakimConnectionResilience {
         }
     }
 
+    fun scheduleSoon(context: Context, reason: String) {
+        try {
+            val scheduler = context.getSystemService(JobScheduler::class.java)
+            val info = JobInfo.Builder(
+                URGENT_JOB_ID,
+                ComponentName(context, HakimConnectionRecoveryJobService::class.java)
+            )
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setMinimumLatency(URGENT_DELAY_MS)
+                .setOverrideDeadline(URGENT_DEADLINE_MS)
+                .build()
+            scheduler.schedule(info)
+            prefs(context).edit()
+                .putString("last_urgent_recovery_reason", reason.take(80))
+                .putLong("last_urgent_recovery_scheduled_at", System.currentTimeMillis())
+                .apply()
+        } catch (e: Exception) {
+            prefs(context).edit().putString("last_urgent_recovery_error", safe(e.message)).apply()
+        }
+    }
+
     @Synchronized
     private fun installNetworkCallback(context: Context) {
         if (callbackInstalled) return
@@ -68,6 +92,7 @@ object HakimConnectionResilience {
                         .putLong("last_network_lost_at", System.currentTimeMillis())
                         .putString("connection_recovery_state", "waiting_network")
                         .apply()
+                    scheduleSoon(context, "network_lost")
                 }
             })
             callbackInstalled = true
@@ -92,6 +117,9 @@ object HakimConnectionResilience {
             .putLong("last_recovery_attempt_at", System.currentTimeMillis())
             .apply()
 
+        if (!result.optBoolean("online")) {
+            scheduleSoon(app, "offline_" + reason.take(60))
+        }
         if (!result.optBoolean("online") && result.optString("service_start") == "blocked") {
             prefs(app).edit().putString("connection_recovery_state", "start_blocked").apply()
             notifyRecoveryNeeded(app)
@@ -123,6 +151,9 @@ object HakimConnectionResilience {
             .put("last_recovery_error", p.getString("last_recovery_error", ""))
             .put("last_network_available_at", p.getLong("last_network_available_at", 0L))
             .put("last_network_lost_at", p.getLong("last_network_lost_at", 0L))
+            .put("last_urgent_recovery_scheduled_at", p.getLong("last_urgent_recovery_scheduled_at", 0L))
+            .put("last_urgent_recovery_reason", p.getString("last_urgent_recovery_reason", ""))
+            .put("last_urgent_recovery_error", p.getString("last_urgent_recovery_error", ""))
     }
 
     private fun notifyRecoveryNeeded(context: Context) {

@@ -23,7 +23,8 @@ req(
     "final-installable" in BUILD or
     "hardening-train" in BUILD or
     "core-product" in BUILD or
-    "sovereign-constitution" in BUILD,
+    "sovereign-constitution" in BUILD or
+    "control-channel-recovery" in BUILD,
     "version_name"
 )
 

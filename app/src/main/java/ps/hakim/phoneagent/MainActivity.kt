@@ -444,6 +444,7 @@ class MainActivity : Activity() {
 
         webView = WebView(this)
         root.addView(webView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        HakimArabicPolicy.applyUiDefaults(root)
         setContentView(root)
     }
 

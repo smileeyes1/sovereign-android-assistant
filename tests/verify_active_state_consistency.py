@@ -16,8 +16,8 @@ candidate = int(m.group(1))
 
 req(state.get("single_source_of_truth") is True, "single_source")
 req(state["cloud"]["last_verified_baseline_commit"] == "c84359e422dad0aa205f59a153a1f29d7f4c4e81", "cloud_baseline")
-req(state["android"]["latest_source_parent"]["commit"] == "ff171285dc2c9a84332a828a73b9d793f8f637d6", "source_parent")
-req(state["android"]["latest_source_parent"]["ci_run_number"] == 1111, "source_parent_ci")
+req(state["android"]["latest_source_parent"]["commit"] == "43ecd8b83c9894dbace1d03a36c6c1b290c1b444", "source_parent")
+req(state["android"]["latest_source_parent"]["ci_run_number"] == 1091, "source_parent_ci")
 req(state["android"]["candidate"]["version_code"] == candidate == 20305, "candidate_version")
 req(state["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")
 req(state["android"]["candidate"]["promoted"] is False, "must_not_promote")
@@ -114,3 +114,6 @@ req(state["productization"]["sovereign_constitution_field_verified"] is False, "
 
 req(state["productization"]["connectivity_mesh_v1"] is True, "connectivity_mesh_v1")
 req(state["productization"]["connectivity_mesh_field_verified"] is False, "connectivity_mesh_field_must_remain_false")
+
+req(state["android"]["candidate"]["development_parent_version"] == 20304, "development_parent_version")
+req(state["android"]["candidate"]["development_parent_ci_run_number"] == 1111, "development_parent_ci")

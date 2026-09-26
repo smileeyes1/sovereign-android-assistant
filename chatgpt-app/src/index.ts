@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
-  createDeviceCredential,decodeBearer,encodeBearer,pairingUrl,randomSecret
+  createDeviceCredential,decodeBearer,encodeBearer,pairingUrl,randomSecret,
+  makeEnvelope,encryptCarrier,decryptResult
 } from "./protocol.js";
 import {
   FileCodeStore,isChatGPTClientId,isChatGPTRedirectUri,issueAccessToken,issueRefreshToken,
@@ -39,6 +40,68 @@ const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_00
 relayCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
+const statusProbeByTopic=new Map<string,{requestId:string;sentAt:number}>();
+const STATUS_PROBE_COOLDOWN_MS=5*60_000;
+
+function maybeMakeStatusProbe(topic:string,key:string){
+  const now=Date.now();
+  const previous=statusProbeByTopic.get(topic);
+  if(previous&&now-previous.sentAt<STATUS_PROBE_COOLDOWN_MS) return null;
+  const envelope=makeEnvelope(key,"status",{},60_000);
+  statusProbeByTopic.set(topic,{requestId:envelope.request_id,sentAt:now});
+  return {
+    request_id:envelope.request_id,
+    carrier:encryptCarrier(key,envelope),
+    expires_at_ms:envelope.expires_at_ms
+  };
+}
+
+function logSanitizedStatusProbe(topic:string,key:string,carrier:string){
+  const tracked=statusProbeByTopic.get(topic);
+  if(!tracked) return;
+  try{
+    const decoded=decryptResult(key,carrier) as {
+      request_id?:unknown;
+      status?:unknown;
+      result?:{
+        version_code?:unknown;
+        version_name?:unknown;
+        secure_relay_state?:unknown;
+        secure_relay_running?:unknown;
+        secure_relay_connected?:unknown;
+        network_guardian?:Record<string,unknown>;
+      };
+    };
+    if(decoded?.request_id!==tracked.requestId) return;
+    const n=decoded.result?.network_guardian??{};
+    const safe={
+      event:"hakim_status_probe",
+      version_code:decoded.result?.version_code??null,
+      version_name:decoded.result?.version_name??null,
+      secure_relay_state:decoded.result?.secure_relay_state??null,
+      secure_relay_running:decoded.result?.secure_relay_running??null,
+      secure_relay_connected:decoded.result?.secure_relay_connected??null,
+      network_guardian:{
+        state:n.state??null,
+        gateway:n.gateway??null,
+        observed_dns:n.observed_dns??null,
+        fingerprint_zte:n.fingerprint_zte??null,
+        fingerprint_zxhn:n.fingerprint_zxhn??null,
+        router_auth_required:n.router_auth_required??null,
+        baseline_dns_saved:n.baseline_dns_saved??null,
+        family_dns_configured:n.family_dns_configured??null,
+        family_resolver_verified:n.family_resolver_verified??null,
+        rollback_state:n.rollback_state??null,
+        last_reason:n.last_reason??null,
+        last_detail:n.last_detail??null
+      }
+    };
+    console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));
+    statusProbeByTopic.delete(topic);
+  }catch{
+    // Never log carrier/key/raw device data on probe decode failures.
+  }
+}
 function reviewAttemptAllowed(ip:string){
   const now=Date.now();
   const current=reviewAttempts.get(ip);
@@ -340,12 +403,16 @@ app.get("/device/v1/commands",async(req,res)=>{
     const waitMs=Number.isFinite(waitRaw)?Math.max(0,Math.min(25_000,Math.trunc(waitRaw))):25_000;
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
     noStore(res);
-    if(!command) return res.status(204).end();
-    return res.json({
-      request_id:command.request_id,
-      carrier:command.carrier,
-      expires_at_ms:command.expires_at_ms
-    });
+    if(command){
+      return res.json({
+        request_id:command.request_id,
+        carrier:command.carrier,
+        expires_at_ms:command.expires_at_ms
+      });
+    }
+    const probe=maybeMakeStatusProbe(topic,key);
+    if(probe) return res.json(probe);
+    return res.status(204).end();
   }catch(e){
     return directRelayError(res,e);
   }
@@ -371,7 +438,9 @@ app.post(
       const topic=one(req.query.topic);
       const key=directRelayKey(req);
       if(typeof req.body!=="string") throw new Error("result_body_required");
-      await directRelayStore.pushResult(topic,key,req.body.trim());
+      const carrier=req.body.trim();
+      await directRelayStore.pushResult(topic,key,carrier);
+      logSanitizedStatusProbe(topic,key,carrier);
       noStore(res);
       return res.status(202).json({accepted:true});
     }catch(e){

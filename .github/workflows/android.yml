@@ -75,7 +75,8 @@ jobs:
           python3 tests/verify_20307_network_diagnostics.py
           python3 tests/verify_20308_autostart.py
           python3 tests/verify_20309_lan_survey.py
-          python3 tests/verify_20310_resilience.py\n          python3 tests/verify_20311_deep_lan.py
+          python3 tests/verify_20310_resilience.py
+          python3 tests/verify_20311_deep_lan.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py

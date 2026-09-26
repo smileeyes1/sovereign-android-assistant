@@ -148,7 +148,17 @@ object HakimUnifiedRelay {
                     BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { reader ->
                         retryMs = 2_000L
                         connected = true
-                        prefs.edit().putString("secure_relay_state", "connected").putLong("secure_relay_seen_at", System.currentTimeMillis()).remove("secure_relay_error").apply()
+                        val connectedAt = System.currentTimeMillis()
+                        prefs.edit()
+                            .putString("secure_relay_state", "connected")
+                            .putString("connection_recovery_state", "healthy")
+                            .putLong("secure_relay_seen_at", connectedAt)
+                            .putLong("last_recovery_ok_at", connectedAt)
+                            .putLong("last_connected_at", connectedAt)
+                            .remove("secure_relay_error")
+                            .remove("last_recovery_error")
+                            .apply()
+                        HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                         while (running.get()) {
                             val line = reader.readLine() ?: break
                             prefs.edit().putLong("secure_relay_seen_at", System.currentTimeMillis()).apply()
@@ -160,7 +170,12 @@ object HakimUnifiedRelay {
                 conn.disconnect()
             } catch (e: Exception) {
                 connected = false
-                prefs.edit().putString("secure_relay_state", "recovering").putString("secure_relay_error", e.javaClass.simpleName).apply()
+                prefs.edit()
+                    .putString("secure_relay_state", "recovering")
+                    .putString("connection_recovery_state", "secure_relay_recovering")
+                    .putString("secure_relay_error", e.javaClass.simpleName)
+                    .apply()
+                HakimConnectionResilience.scheduleSoon(context, "secure_relay_failure")
                 sleep(retryMs)
                 retryMs = (retryMs * 2).coerceAtMost(60_000L)
             }

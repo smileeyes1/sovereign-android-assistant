@@ -24,5 +24,6 @@ req('android:usesCleartextTraffic="false"' in MANIFEST,"cleartext_policy_changed
 req(STATE["android"]["candidate"]["version_code"]==code,"state_candidate")
 req(STATE["productization"]["candidate_version"]==code,"product_candidate")
 req("D1" in SIGN or "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3" in SIGN.lower(),"d1_anchor_missing")
-req(STATE["productization"]["install_relation"]==f"UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_{code}","install_relation")
+relation=STATE["productization"]["install_relation"]
+req(relation in {f"UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_{code}", f"UPGRADE_FROM_VERIFIED_20306_TO_{code}"},"install_relation")
 print(f"INSTALLABILITY_20300=PASS package=ps.hakim.stable version={code} floor=20207 signer=D1")

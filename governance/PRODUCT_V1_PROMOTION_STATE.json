@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20306,
+  "candidate_version": 20307,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -7,5 +7,6 @@
   "same_signed_apk_field_verified": false,
   "promoted": false,
   "sovereign_constitution_field_verified": false,
-  "control_channel_field_verified": false
+  "control_channel_field_verified": true,
+  "network_diagnostics_field_verified": false
 }

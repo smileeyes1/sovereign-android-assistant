@@ -72,6 +72,7 @@ jobs:
           python3 tests/verify_20305_control_channel_recovery.py
           python3 tests/verify_20306_direct_channel.py
           python3 tests/verify_20306_arabic_policy.py
+          python3 tests/verify_20307_network_diagnostics.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py
@@ -133,7 +134,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20306"
+          test "$VERSION_CODE" = "20307"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

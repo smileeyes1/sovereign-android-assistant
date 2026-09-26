@@ -20,32 +20,32 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20309,
-      "commit": "7eb5315da423c8fb927d1a8d9b81f8b148642413",
-      "ci_run_number": 1158,
+      "version_code": 20310,
+      "commit": "e8021c9720ebd1fb2bc9b835be69e0ca5dbb1865",
+      "ci_run_number": 1166,
       "source_ci_verified": true,
       "field_verified": true
     },
     "candidate": {
-      "version_code": 20310,
-      "branch": "feature/hakim-resilience-20310",
+      "version_code": 20311,
+      "branch": "feature/hakim-extender-survey-20311",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "layered_connection_resilience_alarm_watchdog_resume_boot"
+      "purpose": "read_only_extender_wifi_channel_and_local_management_fingerprint"
     },
     "field_observed_current": {
       "observed_at": "2026-09-26",
-      "version_code": 20309,
-      "version_name": "3.3.5-control-channel-recovery-direct-autostart-network-diagnostics-lan-survey-v1",
-      "apk_sha256": "NOT_REOBSERVED",
+      "version_code": 20310,
+      "version_name": "3.3.6-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-v1",
+      "apk_sha256": "NOT_REOBSERVED_ON_DEVICE",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": true,
       "recovery_state": "healthy",
-      "evidence": "authenticated_direct_status_probe_with_lan_survey",
+      "evidence": "authenticated_direct_status_probe_version_20310",
       "current_signer_reobserved": false,
       "exact_public_source_mapping": "NOT_PROVEN",
       "promoted_as_source_baseline": false
@@ -155,7 +155,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20310,
+    "candidate_version": 20311,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -174,7 +174,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20309_TO_20310",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20310_TO_20311",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -241,6 +241,8 @@
     "resilience_watchdog_source_integrated": true,
     "resume_recovery_source_integrated": true,
     "relay_stale_restart_source_integrated": true,
-    "layered_resilience_field_verified": false
+    "layered_resilience_field_verified": false,
+    "extender_survey_source_integrated": true,
+    "extender_survey_field_verified": false
   }
 }

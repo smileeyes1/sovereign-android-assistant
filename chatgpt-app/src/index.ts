@@ -112,7 +112,8 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         wifi:d.wifi??null,
         gateway_tcp:d.gateway_tcp??null,
         internet_tcp:d.internet_tcp??null,
-        upnp_devices:d.upnp_devices??null
+        upnp_devices:d.upnp_devices??null,
+        lan_survey:d.lan_survey??null
       }
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));

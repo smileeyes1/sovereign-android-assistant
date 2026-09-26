@@ -155,7 +155,10 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const e=decoded.result?.execution_fabric??{};
     const n=decoded.result?.network_guardian??{};
     const d=decoded.result?.network_diagnostics??{};
-    const l=decoded.result?.lan_survey??{};
+    const nestedLan=(d&&typeof d==="object"&&"lan_survey" in d)
+      ?((d as Record<string,unknown>).lan_survey as Record<string,unknown>|undefined)
+      :undefined;
+    const l=decoded.result?.lan_survey??nestedLan??{};
     const safe={
       event:"hakim_status_probe",
       version_code:decoded.result?.version_code??null,

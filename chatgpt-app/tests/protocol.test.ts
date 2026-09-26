@@ -17,6 +17,17 @@ test("pairing url uses topics, not callback secrets or result URLs",()=>{
   assert.match(u,/relay_key=/);
   assert.equal(u.includes("result_url="),false);
   assert.equal(u.includes("callback"),false);
+  assert.equal(u.includes("bridge_base="),false);
+
+  const direct=pairingUrl(c,"https://bridge.example/path");
+  const parsed=new URL(direct);
+  assert.equal(parsed.searchParams.get("bridge_base"),"https://bridge.example");
+});
+
+test("pairing url rejects insecure direct bridge origins",()=>{
+  const c=createDeviceCredential();
+  assert.throws(()=>pairingUrl(c,"http://bridge.example"),/invalid_bridge_base/);
+  assert.throws(()=>pairingUrl(c,"https://user:pass@bridge.example"),/invalid_bridge_base/);
 });
 
 test("envelope HMAC matches Android canonical format",()=>{

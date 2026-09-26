@@ -1,0 +1,50 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hakim",
+  "version": "0.2.0",
+  "description": "Use ChatGPT as the conversational brain and Hakim as a privacy-minimized, permission-gated Android execution arm.",
+  "author": {
+    "name": "Hakim Project",
+    "url": "https://hakim-chatgpt-bridge-production.up.railway.app"
+  },
+  "homepage": "https://hakim-chatgpt-bridge-production.up.railway.app",
+  "repository": "https://github.com/smileeyes1/sovereign-android-assistant",
+  "license": "MIT",
+  "keywords": [
+    "android",
+    "automation",
+    "assistant",
+    "mcp",
+    "productivity"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hakim",
+        "shortDescription": "Connect ChatGPT to Hakim",
+        "longDescription": "Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public version can check whether the paired device is connected, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, and check operation completion. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed in the public plugin. State-changing actions remain subject to Hakim and Android approval gates.",
+        "developerName": "Hakim Project",
+        "category": "Productivity",
+        "capabilities": [
+          "Check whether the paired Hakim Android device is connected",
+          "Open an explicitly selected Android app after device approval",
+          "Open an explicit HTTP or HTTPS link after device approval",
+          "Navigate Home, Back, or Recents after device approval",
+          "Check completion status for a previously requested operation"
+        ],
+        "websiteURL": "https://hakim-chatgpt-bridge-production.up.railway.app",
+        "privacyPolicyURL": "https://hakim-chatgpt-bridge-production.up.railway.app/privacy",
+        "termsOfServiceURL": "https://hakim-chatgpt-bridge-production.up.railway.app/terms",
+        "defaultPrompt": [
+          "Check whether my authorized Android device is connected through Hakim.",
+          "Open Chrome on my authorized Android device with Hakim.",
+          "Use Hakim to go back one screen on my authorized Android device."
+        ],
+        "brandColor": "#111111",
+        "logo": "./assets/hakim-mark.svg",
+        "composerIcon": "./assets/hakim-mark.svg",
+        "supportURL": "https://hakim-chatgpt-bridge-production.up.railway.app/support"
+      }
+    }
+  }
+}

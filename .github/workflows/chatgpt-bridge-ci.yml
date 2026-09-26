@@ -1,0 +1,41 @@
+name: ChatGPT Bridge CI
+
+on:
+  push:
+    branches:
+      - feature/chatgpt-account-native-bridge
+      - release/hakim-chatgpt-plugin-v1-rc1
+  workflow_dispatch:
+    paths:
+      - "chatgpt-app/**"
+      - "plugins/hakim/**"
+      - ".agents/plugins/marketplace.json"
+      - "Dockerfile"
+      - "railway.toml"
+      - ".github/workflows/chatgpt-bridge-ci.yml"
+  pull_request:
+    paths:
+      - "chatgpt-app/**"
+      - "plugins/hakim/**"
+      - ".agents/plugins/marketplace.json"
+      - "Dockerfile"
+      - "railway.toml"
+      - ".github/workflows/chatgpt-bridge-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatgpt-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - name: Build Railway Docker image
+        working-directory: .
+        run: docker build -t hakim-chatgpt-bridge:test -f Dockerfile .

@@ -12,6 +12,7 @@ import {
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
 import { pollPairAck } from "./relay.js";
+import { directRelayStore } from "./direct-relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
@@ -31,8 +32,11 @@ const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-d
 const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
+await directRelayStore.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
+const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);
+relayCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
 function reviewAttemptAllowed(ip:string){
@@ -76,6 +80,21 @@ function oauthError(res:express.Response,status:number,error:string,description:
   return res.status(status).json({error,error_description:description});
 }
 
+function directRelayKey(req:express.Request){
+  const auth=String(req.headers.authorization??"");
+  if(!auth.startsWith("Bearer ")) throw new Error("relay_auth_failed");
+  const key=auth.slice(7).trim();
+  if(!/^[A-Za-z0-9_-]{40,100}$/.test(key)) throw new Error("relay_auth_failed");
+  return key;
+}
+
+function directRelayError(res:express.Response,e:unknown){
+  noStore(res);
+  const message=e instanceof Error?e.message:"direct_relay_failed";
+  const status=message==="relay_auth_failed"?401:400;
+  return res.status(status).json({error:status===401?"unauthorized":"invalid_request"});
+}
+
 function resourceMetadata(req:express.Request){
   const base=origin(req);
   return {
@@ -104,6 +123,8 @@ app.get("/health",(_req,res)=>res.json({
   model_provider:"chatgpt-host",
   openai_api_key_required:false,
   result_transport:"end-to-end-encrypted-outbound-only",
+  device_transport:"hakim-direct-https-v1",
+  legacy_transport_fallback:process.env.HAKIM_NTFY_FALLBACK!=="0",
   auth:"oauth-2.1-pkce-cimd",
   production_storage_required:true,
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
@@ -140,7 +161,7 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
   });
 });
 
-app.get("/oauth/authorize",(req,res)=>{
+app.get("/oauth/authorize",async(req,res)=>{
   try{
     if(one(req.query.response_type)!=="code") return oauthError(res,400,"unsupported_response_type","Only authorization code is supported.");
     const clientId=one(req.query.client_id);
@@ -156,10 +177,11 @@ app.get("/oauth/authorize",(req,res)=>{
     if(resource!==base) return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
     const scopes=normalizeScopes(one(req.query.scope)||undefined);
     const credential=createDeviceCredential();
+    await directRelayStore.registerCredential(credential);
     const context=makeAuthorizeContext(oauthSecret,{
       credential,clientId,redirectUri,state,codeChallenge,resource,scopes
     });
-    const link=pairingUrl(credential);
+    const link=pairingUrl(credential,base);
     noStore(res);
     res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
 <style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}a,button{font-size:18px}button{padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
@@ -191,10 +213,11 @@ app.post("/oauth/authorize",async(req,res)=>{
       context.credential.topic="hakim_review_"+randomSecret(18);
       context.credential.resultTopic="hakim_review_result_"+randomSecret(18);
     }
+    if(!reviewRequested) await directRelayStore.registerCredential(context.credential);
     const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
     if(!paired){
       noStore(res);
-      const link=pairingUrl(context.credential);
+      const link=pairingUrl(context.credential,origin(req));
       return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
@@ -272,10 +295,11 @@ app.post("/oauth/token",async(req,res)=>{
   }
 });
 
-app.get("/pair",(_req,res)=>{
+app.get("/pair",async(req,res)=>{
   if(process.env.HAKIM_ALLOW_DEV_BEARER!=="1") return res.status(404).end();
   const c=createDeviceCredential();
-  const link=pairingUrl(c);
+  await directRelayStore.registerCredential(c);
+  const link=pairingUrl(c,origin(req));
   const bearer=encodeBearer(c);
   noStore(res);
   res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم — تطوير</title>
@@ -291,7 +315,7 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 <h2>لماذا نعالجه</h2>
 <p>نستخدم هذه البيانات حصراً للمصادقة، توجيه أوامر حكيم المأذونة، إعادة نتيجة الطلب، منع إعادة التشغيل/التلاعب، وتشخيص الأعطال التشغيلية دون تسجيل محتوى الجهاز عمدًا.</p>
 <h2>المستلمون والمعالِجون</h2>
-<p>قد تمر البيانات عبر ChatGPT/OpenAI وفق إعدادات حساب المستخدم، وعبر Railway لاستضافة الجسر، وعبر ntfy كناقل ciphertext مشفر طرفًا لطرف. لا يحصل ntfy على مفاتيح فك محتوى أوامر حكيم ونتائجه من الجسر. إذا فتح المستخدم بلاغ دعم عام على GitHub، فإن ما يكتبه هناك يخضع لإعدادات GitHub؛ لذلك نحذر من نشر الأسرار أو اللقطات الحساسة.</p>
+<p>قد تمر البيانات عبر ChatGPT/OpenAI وفق إعدادات حساب المستخدم، وعبر Railway لاستضافة الجسر، وعبر جسر حكيم نفسه كناقل HTTPS أساسي للبيانات المشفرة طرفًا لطرف. وقد يُستخدم ntfy كمسار احتياطي مشفر أثناء الهجرة أو التعافي، ولا يحصل على مفاتيح فك محتوى أوامر حكيم ونتائجه. إذا فتح المستخدم بلاغ دعم عام على GitHub، فإن ما يكتبه هناك يخضع لإعدادات GitHub؛ لذلك نحذر من نشر الأسرار أو اللقطات الحساسة.</p>
 <h2>الاحتفاظ</h2>
 <p>لا يحتفظ الجسر بمحتوى الجهاز أو بنتائج الأدوات كقاعدة بيانات. رموز تفويض OAuth أحادية الاستخدام تنتهي بعد دقيقتين، وتُحذف عند الاستخدام وتُنظف دوريًا كل دقيقة تقريبًا. رموز الوصول مشفرة ومحمولة ذاتيًا وتنتهي بعد ساعة؛ رموز التجديد تنتهي بعد ٣٠ يومًا ما لم يُفصل الربط قبل ذلك. قد تحتفظ منصات الاستضافة بسجلات تشغيلية/شبكية وفق سياساتها، لكن التطبيق لا يكتب أسرار الاقتران أو أجسام أوامر الجهاز عمدًا إلى السجلات.</p>
 <h2>الحماية</h2>
@@ -304,6 +328,55 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 </body></html>`));
 
 app.get("/terms",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>شروط حكيم</title><body><h1>شروط حكيم</h1><p>حكيم ذراع تنفيذ اختياري لجهاز يملكه المستخدم أو يملك صلاحية إدارته. استخدامه يعني أنك مخول باستخدام الجهاز والخدمات التي تطلب من حكيم الوصول إليها.</p><p>لا يمنح الجسر نفسه صلاحيات Android ولا يتجاوز حماية النظام. فتح التطبيقات أو الروابط والتنقل على الجهاز تبقى خاضعة لموافقة Android وسياسات ChatGPT. لا يضمن حكيم توافر نموذج بعينه؛ ChatGPT يطبق ما تتيحه خطة المستخدم ومنطقته وحدودها.</p><p>يُحظر استخدام حكيم للوصول غير المصرح به أو تجاوز الحماية أو تنفيذ نشاط مخالف للقانون أو شروط الخدمات الخارجية. قد تُرفض الأفعال عالية المخاطر أو غير المدعومة بدل تنفيذها.</p></body></html>`));
+
+
+app.get("/device/v1/commands",async(req,res)=>{
+  try{
+    const topic=one(req.query.topic);
+    const key=directRelayKey(req);
+    const waitRaw=Number(one(req.query.wait_ms)||"25000");
+    const waitMs=Number.isFinite(waitRaw)?Math.max(0,Math.min(25_000,Math.trunc(waitRaw))):25_000;
+    const command=await directRelayStore.leaseCommand(topic,key,waitMs);
+    noStore(res);
+    if(!command) return res.status(204).end();
+    return res.json({
+      request_id:command.request_id,
+      carrier:command.carrier,
+      expires_at_ms:command.expires_at_ms
+    });
+  }catch(e){
+    return directRelayError(res,e);
+  }
+});
+
+app.post("/device/v1/commands/:requestId/ack",async(req,res)=>{
+  try{
+    const topic=one(req.query.topic);
+    const key=directRelayKey(req);
+    await directRelayStore.ackCommand(topic,key,req.params.requestId);
+    noStore(res);
+    return res.status(204).end();
+  }catch(e){
+    return directRelayError(res,e);
+  }
+});
+
+app.post(
+  "/device/v1/results",
+  express.text({type:"text/plain",limit:"128kb"}),
+  async(req,res)=>{
+    try{
+      const topic=one(req.query.topic);
+      const key=directRelayKey(req);
+      if(typeof req.body!=="string") throw new Error("result_body_required");
+      await directRelayStore.pushResult(topic,key,req.body.trim());
+      noStore(res);
+      return res.status(202).json({accepted:true});
+    }catch(e){
+      return directRelayError(res,e);
+    }
+  }
+);
 
 app.all("/mcp",async(req,res)=>{
   const base=origin(req);

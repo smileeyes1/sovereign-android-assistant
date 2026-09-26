@@ -71,6 +71,7 @@ jobs:
           python3 tests/verify_20304_sovereign_constitution.py
           python3 tests/verify_20305_control_channel_recovery.py
           python3 tests/verify_20306_direct_channel.py
+          python3 tests/verify_20306_arabic_policy.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py

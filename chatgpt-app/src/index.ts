@@ -181,7 +181,7 @@ app.get("/oauth/authorize",async(req,res)=>{
     const context=makeAuthorizeContext(oauthSecret,{
       credential,clientId,redirectUri,state,codeChallenge,resource,scopes
     });
-    const link=pairingUrl(credential,base);
+    const link=pairingUrl(credential,base.startsWith("https://")?base:undefined);
     noStore(res);
     res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
 <style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}a,button{font-size:18px}button{padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
@@ -217,7 +217,8 @@ app.post("/oauth/authorize",async(req,res)=>{
     const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
     if(!paired){
       noStore(res);
-      const link=pairingUrl(context.credential,origin(req));
+      const retryBase=origin(req);
+      const link=pairingUrl(context.credential,retryBase.startsWith("https://")?retryBase:undefined);
       return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
@@ -299,7 +300,8 @@ app.get("/pair",async(req,res)=>{
   if(process.env.HAKIM_ALLOW_DEV_BEARER!=="1") return res.status(404).end();
   const c=createDeviceCredential();
   await directRelayStore.registerCredential(c);
-  const link=pairingUrl(c,origin(req));
+  const devBase=origin(req);
+  const link=pairingUrl(c,devBase.startsWith("https://")?devBase:undefined);
   const bearer=encodeBearer(c);
   noStore(res);
   res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم — تطوير</title>

@@ -16,7 +16,7 @@ candidate = int(m.group(1))
 
 req(state.get("single_source_of_truth") is True, "single_source")
 req(state["cloud"]["last_verified_baseline_commit"] == "68a71316eb7bc4ffcdf26301dc56dbbf2facde7d", "cloud_baseline")
-req(state["android"]["latest_source_parent"]["commit"] == "81e3b38b76c01c0f855a0ce595952d2bf9dcd7b3", "source_parent")
+req(state["android"]["latest_source_parent"]["commit"] == "7eb5315da423c8fb927d1a8d9b81f8b148642413", "source_parent")
 req(state["android"]["latest_source_parent"]["ci_run_number"] == 1158, "source_parent_ci")
 req(state["android"]["candidate"]["version_code"] == candidate == 20310, "candidate_version")
 req(state["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")

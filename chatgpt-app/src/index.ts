@@ -16,6 +16,7 @@ import { pollPairAck } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
+import { LegacyReadProbe } from "./legacy-read-probe.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -46,6 +47,17 @@ const uiProbeCooldownByTopic=new Map<string,number>();
 const uiProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
 const UI_PROBE_COOLDOWN_MS=60*60_000;
+const legacyReadProbe=new LegacyReadProbe(report=>{
+  console.log("HAKIM_LEGACY_READ_PROBE "+JSON.stringify({
+    event:"hakim_legacy_read_probe",
+    matched:report.matched,
+    signed_result:report.signed_result,
+    local_page:report.local_page,
+    local_host:report.local_host,
+    local_title:report.local_title,
+    status:report.status
+  }));
+});
 
 function maybeMakeUiProbe(topic:string,key:string){
   const now=Date.now();
@@ -516,6 +528,7 @@ app.get("/device/v1/commands",async(req,res)=>{
   try{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
+    legacyReadProbe.observeCommand(topic,key);
     const waitRaw=Number(one(req.query.wait_ms)||"25000");
     const waitMs=Number.isFinite(waitRaw)?Math.max(0,Math.min(25_000,Math.trunc(waitRaw))):25_000;
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
@@ -557,6 +570,7 @@ app.post(
       const topic=one(req.query.topic);
       const key=directRelayKey(req);
       if(typeof req.body!=="string") throw new Error("result_body_required");
+      legacyReadProbe.observeResult(topic,key);
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
       logSanitizedStatusProbe(topic,key,carrier);

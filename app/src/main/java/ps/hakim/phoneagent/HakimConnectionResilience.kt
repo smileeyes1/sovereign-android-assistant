@@ -28,6 +28,8 @@ object HakimConnectionResilience {
     fun install(context: Context) {
         val app = context.applicationContext
         schedule(app)
+        HakimResilienceAlarmReceiver.schedule(app)
+        HakimRelayWatchdog.install(app)
         installNetworkCallback(app)
         recover(app, "install")
     }

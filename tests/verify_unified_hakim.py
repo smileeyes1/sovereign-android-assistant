@@ -29,7 +29,7 @@ main_activity = text("app/src/main/java/ps/hakim/phoneagent/MainActivity.kt")
 command_center = text("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
-require("versionCode 20091" in build, "P0: رقم إصدار القناة المباشرة غير مثبت")
+require("versionCode 20306" in build, "P0: رقم إصدار القناة المباشرة غير مثبت")
 require(manifest.count('android.intent.category.LAUNCHER') == 1, "P0: يجب أن يبقى لحكيم مُشغّل واحد فقط")
 require('android:name=".UnifiedHomeActivity"' in manifest, "P0: الواجهة الموحدة ليست نقطة الدخول")
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")

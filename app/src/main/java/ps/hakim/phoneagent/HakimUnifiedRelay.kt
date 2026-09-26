@@ -185,6 +185,7 @@ object HakimUnifiedRelay {
                     .remove("secure_relay_error")
                     .remove("last_recovery_error")
                     .apply()
+                HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                 continue
             } catch (e: Exception) {
                 connected = false
@@ -210,6 +211,7 @@ object HakimUnifiedRelay {
                         .putLong("last_recovery_ok_at", connectedAt)
                         .putLong("last_connected_at", connectedAt)
                         .apply()
+                    HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                     continue
                 } catch (_: Exception) {
                     connected = false

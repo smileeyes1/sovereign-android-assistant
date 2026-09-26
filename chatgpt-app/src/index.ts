@@ -71,6 +71,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         secure_relay_connected?:unknown;
         network_guardian?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
+        lan_survey?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
@@ -78,6 +79,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     if(!tracked) return;
     const n=decoded.result?.network_guardian??{};
     const d=decoded.result?.network_diagnostics??{};
+    const l=decoded.result?.lan_survey??{};
     const safe={
       event:"hakim_status_probe",
       version_code:decoded.result?.version_code??null,
@@ -112,8 +114,20 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         wifi:d.wifi??null,
         gateway_tcp:d.gateway_tcp??null,
         internet_tcp:d.internet_tcp??null,
-        upnp_devices:d.upnp_devices??null,
-        lan_survey:d.lan_survey??null
+        upnp_devices:d.upnp_devices??null
+      },
+      lan_survey:{
+        version:l.version??null,
+        ok:l.ok??null,
+        cached:l.cached??null,
+        local_ip:l.local_ip??null,
+        prefix_length:l.prefix_length??null,
+        gateway:l.gateway??null,
+        scanned_hosts:l.scanned_hosts??null,
+        responding_service_hosts:l.responding_service_hosts??null,
+        management_candidates:l.management_candidates??null,
+        repeater_or_ap_candidates:l.repeater_or_ap_candidates??null,
+        hosts:l.hosts??null
       }
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));

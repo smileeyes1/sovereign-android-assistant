@@ -6,6 +6,7 @@ APP=ROOT/"app/src/main/java/ps/hakim/phoneagent"
 BUILD=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 RELAY=(APP/"HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 PAIR=(APP/"HakimPairingActivity.kt").read_text(encoding="utf-8")
+DIAG=(APP/"HakimNetworkDiagnostics.kt").read_text(encoding="utf-8")
 WORKFLOW=(ROOT/".github/workflows/android.yml").read_text(encoding="utf-8")
 
 def req(value, reason):
@@ -13,8 +14,8 @@ def req(value, reason):
         raise SystemExit("DIRECT_CHANNEL_20306=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20306,"version")
-req("3.3.2-control-channel-recovery-direct-v1" in BUILD,"version_name")
+req(m is not None and int(m.group(1))>=20306,"version_floor")
+req("control-channel-recovery" in BUILD or "network-diagnostics" in BUILD,"version_name_lineage")
 
 for token in [
     'KEY_BRIDGE_BASE = "relay_bridge_base"',
@@ -37,4 +38,18 @@ req("configure(this, topic, resultTopic, relayKey, bridgeBase)" in PAIR,"pair_co
 req('setPositiveButton("اعتماد")' in PAIR and 'setNegativeButton("رفض")' in PAIR,"local_pairing_approval_weakened")
 req("python3 tests/verify_20306_direct_channel.py" in WORKFLOW,"workflow_gate_missing")
 
-print("DIRECT_CHANNEL_20306=PASS primary=direct_https fallback=encrypted_ntfy recovery=preserved")
+for token in [
+    'NETWORK-DIAG-20307-v1',
+    'put("read_only", true)',
+    'rssi_dbm',
+    'link_speed_mbps',
+    'frequency_mhz',
+    'gateway_tcp_ms',
+    'internet_https_ms',
+    'admin_candidates',
+    'upnp_devices',
+    'secondary_router_suspected',
+]:
+    req(token in DIAG,"network_diag:"+token)
+req("HakimNetworkDiagnostics.snapshot(context)" in RELAY,"network_diag_not_in_status")
+print("DIRECT_CHANNEL_20306=PASS primary=direct_https fallback=encrypted_ntfy recovery=preserved network_diag=read_only")

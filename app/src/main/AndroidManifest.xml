@@ -29,6 +29,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:label="حكيم"
+        android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <activity

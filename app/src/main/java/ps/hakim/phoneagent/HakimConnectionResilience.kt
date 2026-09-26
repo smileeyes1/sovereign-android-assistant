@@ -78,6 +78,13 @@ object HakimConnectionResilience {
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
+        if (!HakimConnectivityMesh.mayRecover(app, reason)) {
+            prefs(app).edit()
+                .putString("connection_recovery_state", "debounced")
+                .putString("last_recovery_reason", reason.take(80))
+                .apply()
+            return status(app)
+        }
         val result = HakimExecutionFabric.recover(app, reason)
         val state = result.optString("state", "RECOVERING")
         val mapped = when (state) {
@@ -123,6 +130,7 @@ object HakimConnectionResilience {
             .put("last_recovery_error", p.getString("last_recovery_error", ""))
             .put("last_network_available_at", p.getLong("last_network_available_at", 0L))
             .put("last_network_lost_at", p.getLong("last_network_lost_at", 0L))
+            .put("mesh", HakimConnectivityMesh.status(context))
     }
 
     private fun notifyRecoveryNeeded(context: Context) {

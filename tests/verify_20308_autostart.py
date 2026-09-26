@@ -15,7 +15,7 @@ def req(v, reason):
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
 req(m is not None and int(m.group(1))==20308,"version")
-req("control-channel-autostart-network-diagnostics" in BUILD,"version_name")
+req("control-channel-recovery-direct" in BUILD and "autostart" in BUILD and "network-diagnostics" in BUILD,"version_name")
 
 req("startHakimIfPaired(prefs)" in APPKT,"application_does_not_autostart")
 req("startForegroundService(intent)" in APPKT,"application_foreground_start_missing")

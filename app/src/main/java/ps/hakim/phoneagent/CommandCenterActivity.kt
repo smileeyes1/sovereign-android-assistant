@@ -79,6 +79,8 @@ class CommandCenterActivity : ComponentActivity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        HakimExecutionFabric.recover(this, "command_center_open")
+        HakimConnectionResilience.recover(this, "command_center_open")
         buildUi()
         loadConversation()
         refreshOperations()

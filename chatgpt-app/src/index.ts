@@ -89,6 +89,9 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         secure_relay_state?:unknown;
         secure_relay_running?:unknown;
         secure_relay_connected?:unknown;
+        accessibility?:unknown;
+        browser_service_running?:unknown;
+        notification_listener?:unknown;
         network_guardian?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
         lan_survey?:Record<string,unknown>;
@@ -146,6 +149,9 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       secure_relay_state:decoded.result?.secure_relay_state??null,
       secure_relay_running:decoded.result?.secure_relay_running??null,
       secure_relay_connected:decoded.result?.secure_relay_connected??null,
+      accessibility:decoded.result?.accessibility??null,
+      browser_service_running:decoded.result?.browser_service_running??null,
+      notification_listener:decoded.result?.notification_listener??null,
       network_guardian:{
         state:n.state??null,
         gateway:n.gateway??null,

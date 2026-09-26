@@ -25,6 +25,6 @@ assert "apksigner" in SCRIPT and "--print-certs" in SCRIPT
 assert EXPECTED.replace(":", "").lower() in UPDATER
 assert "MAX_APK_BYTES = 32L * 1024L * 1024L" in UPDATER
 assert "verify-field-signer.sh" in WORKFLOW
-assert "hakim-field-20018.apk" in WORKFLOW
+assert version and f"hakim-field-{version.group(1)}.apk" in WORKFLOW
 assert "NOT-INSTALLABLE" in WORKFLOW
 print("SIGNING_CONTINUITY_POLICY=PASS")

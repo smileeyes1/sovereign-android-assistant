@@ -30,6 +30,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:resizeableActivity="true"
+        android:supportsRtl="true"
         android:label="حكيم"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <meta-data

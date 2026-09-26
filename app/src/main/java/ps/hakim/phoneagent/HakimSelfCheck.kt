@@ -143,6 +143,19 @@ object HakimSelfCheck {
         check("حالة الاقتران منطقية", userDisabled || paired, "warn", if (userDisabled) "فصل المستخدم محترم" else if (paired) "يوجد مسار مهيأ" else "غير مقترن")
 
         val recovery = HakimConnectionResilience.status(context)
+        val mesh = HakimConnectivityMesh.status(context)
+        check("نسيج الاتصال المتعدد معروف", mesh.optString("version").startsWith("CONNECTIVITY-MESH-"))
+        check("المسارات السحابية صادرة فقط", mesh.optBoolean("outbound_cloud_only"))
+        check("لا listener وارد يفتح على الهاتف", !mesh.optBoolean("opens_inbound_listener"))
+        check("ADB المحلي صيانة فقط", mesh.optBoolean("local_adb_maintenance_only"))
+        check("المسار القديم احتياط أخير", mesh.optBoolean("legacy_last_resort"))
+        check(
+            "المسار المفضل من القنوات المأذونة",
+            mesh.optString("preferred_path").isBlank() ||
+                mesh.optString("preferred_path") in setOf("secure_relay", "local_adb", "legacy_websocket"),
+            "warn",
+            mesh.optString("preferred_path")
+        )
         check(
             "خدمة الاتصال قابلة للاستعادة",
             userDisabled || !paired || recovery.optBoolean("service_running") || recovery.optString("state") == "restart_requested",
@@ -199,6 +212,7 @@ object HakimSelfCheck {
             .put("execution_fabric", executionFabric)
             .put("self_improvement", improvement)
             .put("connection_recovery", recovery)
+            .put("connectivity_mesh", mesh)
             .put("learning", HakimLearning.snapshot(context))
 
         context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE).edit()

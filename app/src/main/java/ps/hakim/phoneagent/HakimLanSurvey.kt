@@ -11,6 +11,12 @@ import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -76,7 +82,14 @@ object HakimLanSurvey {
                             .put("http_title", fp.optString("title"))
                             .put("http_server", fp.optString("server"))
                             .put("http_status", fp.optInt("status", -1))
-                            .put("role_hint", roleHint(fp.optString("title"), fp.optString("server"), open))
+                            .put("http_scheme", fp.optString("scheme"))
+                            .put("vendor_hint", fp.optString("vendor_hint"))
+                            .put("model_hint", fp.optString("model_hint"))
+                            .put("role_hint", roleHint(
+                                (fp.optString("title") + " " + fp.optString("vendor_hint") + " " + fp.optString("model_hint")).trim(),
+                                fp.optString("server"),
+                                open
+                            ))
                         )
                     }
                 } finally {
@@ -152,45 +165,88 @@ object HakimLanSurvey {
         val candidates = arrayListOf<String>()
         if (containsInt(ports,80)) candidates.add("http://$ip/")
         if (containsInt(ports,8080)) candidates.add("http://$ip:8080/")
+        if (containsInt(ports,443)) candidates.add("https://$ip/")
+        if (containsInt(ports,8443)) candidates.add("https://$ip:8443/")
         for (url in candidates) {
-            val result = runCatching {
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.instanceFollowRedirects = false
-                conn.connectTimeout = 500
-                conn.readTimeout = 650
-                conn.requestMethod = "GET"
-                conn.setRequestProperty("User-Agent", "HAKIM-LAN-Survey/1")
-                val status = conn.responseCode
-                val server = conn.getHeaderField("Server").orEmpty().take(120)
-                val stream = if (status in 200..399) conn.inputStream else conn.errorStream
-                val body = if (stream != null) {
-                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
-                        buildString {
-                            var total = 0
-                            while (total < 24_000) {
-                                val line = reader.readLine() ?: break
-                                append(line).append('\n')
-                                total += line.length
-                            }
-                        }
-                    }
-                } else ""
-                conn.disconnect()
-                val title = Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-                    .find(body)?.groupValues?.get(1)
-                    ?.replace(Regex("\\s+"), " ")?.trim()?.take(160).orEmpty()
-                JSONObject().put("status", status).put("server", server).put("title", title)
-            }.getOrNull()
+            val result = fetchFingerprint(ip, url)
             if (result != null) return result
         }
         return JSONObject()
+    }
+
+    private fun fetchFingerprint(ip: String, rawUrl: String): JSONObject? {
+        if (!isPrivateIpv4(ip)) return null
+        return runCatching {
+            val conn = URL(rawUrl).openConnection() as HttpURLConnection
+            if (conn is HttpsURLConnection) {
+                val trustAll = object : X509TrustManager {
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                    override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+                    override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+                }
+                val ssl = SSLContext.getInstance("TLS")
+                ssl.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+                conn.sslSocketFactory = ssl.socketFactory
+                conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            }
+            conn.instanceFollowRedirects = false
+            conn.connectTimeout = 650
+            conn.readTimeout = 850
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "HAKIM-LAN-Survey/2")
+            val status = conn.responseCode
+            val server = conn.getHeaderField("Server").orEmpty().take(120)
+            val location = conn.getHeaderField("Location").orEmpty().take(240)
+            val stream = if (status in 200..399) conn.inputStream else conn.errorStream
+            val body = if (stream != null) {
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+                    buildString {
+                        var total = 0
+                        while (total < 32_000) {
+                            val line = reader.readLine() ?: break
+                            append(line).append('\n')
+                            total += line.length
+                        }
+                    }
+                }
+            } else ""
+            conn.disconnect()
+
+            val title = Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+                .find(body)?.groupValues?.get(1)
+                ?.replace(Regex("\\s+"), " ")?.trim()?.take(160).orEmpty()
+            val fingerprintText = (title + " " + server + " " + body.take(12_000)).lowercase()
+            val vendor = when {
+                "zxhn" in fingerprintText || "zte" in fingerprintText -> "ZTE"
+                "huawei" in fingerprintText -> "Huawei"
+                "tp-link" in fingerprintText || "tplink" in fingerprintText -> "TP-Link"
+                "mercusys" in fingerprintText -> "Mercusys"
+                "tenda" in fingerprintText -> "Tenda"
+                "d-link" in fingerprintText || "dlink" in fingerprintText -> "D-Link"
+                "totolink" in fingerprintText -> "TOTOLINK"
+                "xiaomi" in fingerprintText || "miwifi" in fingerprintText -> "Xiaomi"
+                "netis" in fingerprintText -> "Netis"
+                else -> ""
+            }
+            val model = Regex("(?i)(ZXHN\\s*[A-Z0-9._-]+|F\\d{4}[A-Z0-9._-]*|RE\\d{3}[A-Z0-9._-]*|MW\\d{3}[A-Z0-9._-]*|AC\\d{2,4}[A-Z0-9._-]*)")
+                .find(fingerprintText)?.value?.uppercase().orEmpty().take(80)
+
+            JSONObject()
+                .put("scheme", URL(rawUrl).protocol)
+                .put("status", status)
+                .put("server", server)
+                .put("title", title)
+                .put("location_local", if (location.startsWith("/") || location.contains(ip)) location else "")
+                .put("vendor_hint", vendor)
+                .put("model_hint", model)
+        }.getOrNull()
     }
 
     private fun roleHint(title: String, server: String, ports: JSONArray): String {
         val text = (title + " " + server).lowercase()
         val repeaterWords = listOf("repeater","range extender","extender","access point","wireless ap","mesh","mercusys","tenda","tp-link","d-link","totolink","xiaomi","netis")
         if (repeaterWords.any { text.contains(it) }) return "repeater_or_ap"
-        if (text.contains("router") || text.contains("gateway") || text.contains("modem")) return "router_or_gateway"
+        if (text.contains("router") || text.contains("gateway") || text.contains("modem") || text.contains("zte") || text.contains("zxhn")) return "router_or_gateway"
         if (containsInt(ports,80) || containsInt(ports,443) || containsInt(ports,8080) || containsInt(ports,8443)) return "web_managed_device"
         return "network_service"
     }

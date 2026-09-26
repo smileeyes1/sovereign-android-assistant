@@ -42,7 +42,24 @@ relayCleanupTimer.unref?.();
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
+const uiProbeCooldownByTopic=new Map<string,number>();
+const uiProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
+const UI_PROBE_COOLDOWN_MS=60*60_000;
+
+function maybeMakeUiProbe(topic:string,key:string){
+  const now=Date.now();
+  const previous=uiProbeCooldownByTopic.get(topic)??0;
+  if(now-previous<UI_PROBE_COOLDOWN_MS) return null;
+  const envelope=makeEnvelope(key,"ui",{},60_000);
+  uiProbeCooldownByTopic.set(topic,now);
+  uiProbeRequests.set(envelope.request_id,{sentAt:now});
+  return {
+    request_id:envelope.request_id,
+    carrier:encryptCarrier(key,envelope),
+    expires_at_ms:envelope.expires_at_ms
+  };
+}
 
 function maybeMakeStatusProbe(topic:string,key:string){
   const now=Date.now();
@@ -64,6 +81,9 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       request_id?:unknown;
       status?:unknown;
       result?:{
+        ok?:unknown;
+        nodes?:unknown;
+
         version_code?:unknown;
         version_name?:unknown;
         secure_relay_state?:unknown;
@@ -75,6 +95,45 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
+
+    const uiTracked=uiProbeRequests.get(requestId);
+    if(uiTracked){
+      const rawNodes=Array.isArray(decoded.result?.nodes)?decoded.result?.nodes as unknown[]:[];
+      const keyword=/wifi|wi-fi|wireless|wlan|router|repeater|extender|access.?point|network|internet|gateway|dhcp|lan|wan|zte|zxhn|tp.?link|tenda|mercusys|d.?link|totolink|xiaomi|netis|شبك|واي|لاسلك|راوتر|مقو|مكرر|إنترنت|انترنت|بوابة/i;
+      const packages=new Set<string>();
+      const matches:Record<string,unknown>[]=[];
+      for(const item of rawNodes.slice(0,250)){
+        if(!item||typeof item!=="object") continue;
+        const n=item as Record<string,unknown>;
+        const pkg=typeof n.package==="string"?n.package.slice(0,160):"";
+        if(pkg) packages.add(pkg);
+        const text=typeof n.text==="string"?n.text.slice(0,160):"";
+        const desc=typeof n.desc==="string"?n.desc.slice(0,160):"";
+        const id=typeof n.id==="string"?n.id.slice(0,180):"";
+        const probe=[text,desc,id,pkg].join(" ");
+        if(!keyword.test(probe)) continue;
+        matches.push({
+          package:pkg||null,
+          text:text||null,
+          desc:desc||null,
+          id:id||null,
+          class:typeof n.class==="string"?n.class.slice(0,120):null,
+          clickable:n.clickable===true,
+          editable:n.editable===true
+        });
+        if(matches.length>=40) break;
+      }
+      console.log("HAKIM_UI_NETWORK_PROBE "+JSON.stringify({
+        event:"hakim_ui_network_probe",
+        ok:decoded.result?.ok??null,
+        node_count:rawNodes.length,
+        packages:Array.from(packages).slice(0,8),
+        network_matches:matches
+      }));
+      uiProbeRequests.delete(requestId);
+      return;
+    }
+
     const tracked=statusProbeRequests.get(requestId);
     if(!tracked) return;
     const n=decoded.result?.network_guardian??{};
@@ -444,6 +503,8 @@ app.get("/device/v1/commands",async(req,res)=>{
         expires_at_ms:command.expires_at_ms
       });
     }
+    const uiProbe=maybeMakeUiProbe(topic,key);
+    if(uiProbe) return res.json(uiProbe);
     const probe=maybeMakeStatusProbe(topic,key);
     if(probe) return res.json(probe);
     return res.status(204).end();

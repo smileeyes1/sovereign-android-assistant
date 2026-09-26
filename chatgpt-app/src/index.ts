@@ -158,7 +158,11 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const nestedLan=(d&&typeof d==="object"&&"lan_survey" in d)
       ?((d as Record<string,unknown>).lan_survey as Record<string,unknown>|undefined)
       :undefined;
+    const nestedWifi=(d&&typeof d==="object"&&"wifi_environment" in d)
+      ?((d as Record<string,unknown>).wifi_environment as Record<string,unknown>|undefined)
+      :undefined;
     const l=decoded.result?.lan_survey??nestedLan??{};
+    const w=nestedWifi??{};
     const safe={
       event:"hakim_status_probe",
       version_code:decoded.result?.version_code??null,
@@ -212,7 +216,25 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         wifi:d.wifi??null,
         gateway_tcp:d.gateway_tcp??null,
         internet_tcp:d.internet_tcp??null,
-        upnp_devices:d.upnp_devices??null
+        upnp_devices:d.upnp_devices??null,
+        wifi_environment:{
+          version:w.version??null,
+          ok:w.ok??null,
+          fine_location_granted:w.fine_location_granted??null,
+          coarse_location_granted:w.coarse_location_granted??null,
+          active_scan_requested:w.active_scan_requested??null,
+          scan_result_count:w.scan_result_count??null,
+          reported_ap_count:w.reported_ap_count??null,
+          access_points:w.access_points??null,
+          ssid_groups:w.ssid_groups??null,
+          channel_counts_24:w.channel_counts_24??null,
+          channel_counts_5:w.channel_counts_5??null,
+          channel_counts_6:w.channel_counts_6??null,
+          channel_pressure_24:w.channel_pressure_24??null,
+          suggested_24_channel:w.suggested_24_channel??null,
+          suggested_24_width_mhz:w.suggested_24_width_mhz??null,
+          error:w.error??null
+        }
       },
       lan_survey:{
         version:l.version??null,

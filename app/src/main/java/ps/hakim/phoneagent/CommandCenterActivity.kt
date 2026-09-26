@@ -91,6 +91,9 @@ class CommandCenterActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
+        HakimConnectionResilience.recover(this, "command_center_resume")
+        HakimResilienceAlarmReceiver.schedule(this)
     }
 
     override fun onNewIntent(intent: Intent) {

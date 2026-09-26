@@ -52,7 +52,7 @@ field_version = int(state["android"]["field_observed_current"]["version_code"])
 candidate_version = int(state["android"]["candidate"]["version_code"])
 req(field_version >= 20106, "field_observed_version_floor")
 req(field_version < candidate_version, "field_observed_must_precede_candidate")
-req(state["android"]["field_observed_current"]["evidence"] in {"signed_health_on_stateless_pairing","authenticated_direct_status_probe"}, "field_observed_evidence")
+req(state["android"]["field_observed_current"]["evidence"] in {"signed_health_on_stateless_pairing","authenticated_direct_status_probe","authenticated_direct_status_probe_with_lan_survey"}, "field_observed_evidence")
 req(state["android"]["field_observed_current"]["exact_public_source_mapping"] == "NOT_PROVEN", "field_source_must_not_be_invented")
 
 # Known-failure injection: weakening either D1 or verified-baseline rollback must be detectable.

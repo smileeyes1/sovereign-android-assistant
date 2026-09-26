@@ -55,14 +55,23 @@ object HakimUnifiedRelay {
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
+    @Volatile private var loopGeneration = 0L
+    @Volatile private var lastLoopProgressAt = 0L
     private val executor = Executors.newSingleThreadExecutor()
 
     fun isRunning(): Boolean = running.get()
     fun isConnected(): Boolean = connected
 
+    @Synchronized
     fun stop() {
         running.set(false)
         connected = false
+        loopGeneration += 1L
+    }
+
+    fun loopProgressAgeMs(): Long {
+        val last = lastLoopProgressAt
+        return if (last <= 0L) Long.MAX_VALUE else (System.currentTimeMillis() - last).coerceAtLeast(0L)
     }
 
     fun validConfigurationInput(topic: String?, resultTopic: String?, relayKey: String?): Boolean {
@@ -148,17 +157,53 @@ object HakimUnifiedRelay {
         }.getOrNull()
     }
 
+    @Synchronized
     fun start(context: Context) {
         val app = context.applicationContext
-        if (!running.compareAndSet(false, true)) return
+        if (running.get()) return
+        running.set(true)
+        loopGeneration += 1L
+        val generation = loopGeneration
+        lastLoopProgressAt = System.currentTimeMillis()
         ensureApprovalChannel(app)
-        executor.execute { loop(app) }
+        executor.execute { loop(app, generation) }
     }
 
-    private fun loop(context: Context) {
+    @Synchronized
+    fun restart(context: Context, reason: String) {
+        val app = context.applicationContext
+        connected = false
+        running.set(true)
+        loopGeneration += 1L
+        val generation = loopGeneration
+        lastLoopProgressAt = System.currentTimeMillis()
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("secure_relay_restart_reason", reason.take(80))
+            .putLong("secure_relay_restart_at", System.currentTimeMillis())
+            .apply()
+        ensureApprovalChannel(app)
+        executor.execute { loop(app, generation) }
+    }
+
+    fun ensureAlive(context: Context, reason: String, staleMs: Long = 180_000L): Boolean {
+        val app = context.applicationContext
+        if (!isConfigured(app)) return false
+        if (!running.get()) {
+            start(app)
+            return true
+        }
+        if (loopProgressAgeMs() > staleMs) {
+            restart(app, reason)
+            return true
+        }
+        return false
+    }
+
+    private fun loop(context: Context, generation: Long) {
         var retryMs = 2_000L
         var directFailures = 0
-        while (running.get()) {
+        while (running.get() && generation == loopGeneration) {
+            lastLoopProgressAt = System.currentTimeMillis()
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val topic = prefs.getString(KEY_TOPIC, null)
             val resultTopic = prefs.getString(KEY_RESULT_TOPIC, null)
@@ -172,6 +217,8 @@ object HakimUnifiedRelay {
 
             try {
                 directPollOnce(context, topic, resultTopic, relayKey)
+                lastLoopProgressAt = System.currentTimeMillis()
+                if (generation != loopGeneration || !running.get()) break
                 directFailures = 0
                 retryMs = 2_000L
                 connected = true
@@ -200,6 +247,8 @@ object HakimUnifiedRelay {
             if (directFailures >= 3) {
                 try {
                     listenLegacyOnce(context, topic, resultTopic, relayKey)
+                    lastLoopProgressAt = System.currentTimeMillis()
+                    if (generation != loopGeneration || !running.get()) break
                     directFailures = 0
                     retryMs = 2_000L
                     connected = true
@@ -219,6 +268,7 @@ object HakimUnifiedRelay {
             }
 
             HakimConnectionResilience.scheduleSoon(context, "secure_relay_failure")
+            lastLoopProgressAt = System.currentTimeMillis()
             sleep(retryMs)
             retryMs = (retryMs * 2).coerceAtMost(60_000L)
         }

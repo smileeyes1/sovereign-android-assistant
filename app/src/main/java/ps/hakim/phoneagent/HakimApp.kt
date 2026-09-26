@@ -13,6 +13,8 @@ class HakimApp : Application() {
         PairingDefaults.ensure(prefs)
         HakimExecutionFabric.recover(this, "app_start")
         HakimConnectionResilience.install(this)
+        HakimResilienceAlarmReceiver.schedule(this)
+        HakimRelayWatchdog.install(this)
         HakimNetworkGuardian.install(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
@@ -20,6 +22,14 @@ class HakimApp : Application() {
         HakimConstraintDoctor.runAsync(this, "app_start")
         HakimSelfImprovementLoop.install(this)
         startHakimIfPaired(prefs)
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+            HakimResilienceAlarmReceiver.schedule(this, 2L * 60L * 1000L)
+            HakimConnectionResilience.scheduleSoon(this, "trim_memory_" + level)
+        }
     }
 
     private fun startHakimIfPaired(prefs: android.content.SharedPreferences) {

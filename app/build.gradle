@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20091
-        versionName '2.0.91-direct-relay'
+        versionCode 20306
+        versionName '3.3.2-direct-relay'
     }
 
     compileOptions {

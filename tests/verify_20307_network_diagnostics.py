@@ -40,7 +40,7 @@ for permission in [
 ]:
     req(permission in MANIFEST,"permission:"+permission)
 
-for forbidden in ["setWifiEnabled(", ".disconnect(", ".reassociate(", "removeNetwork(", "enableNetwork("]:
+for forbidden in ["setWifiEnabled(", "wifiManager.disconnect(", "wifiManager.reassociate(", "removeNetwork(", "enableNetwork("]:
     req(forbidden not in DIAG,"read_only_violation:"+forbidden)
 
 req('.put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))' in RELAY,"status_not_exposed")

@@ -80,13 +80,36 @@ export class DirectRelayStore{
     }
   }
 
+  private migrationTopicAllowed(topic:string,kind:BindingKind){
+    return kind==="command"
+      ? /^hakim_cmd_[A-Za-z0-9_-]{20,100}$/.test(topic)
+      : /^hakim_result_[A-Za-z0-9_-]{20,100}$/.test(topic);
+  }
+
+  private async claimMissingBinding(topic:string,relayKey:string,kind:BindingKind){
+    if(process.env.HAKIM_DIRECT_LAZY_BIND==="0"||!this.migrationTopicAllowed(topic,kind)) {
+      throw new Error("relay_auth_failed");
+    }
+    const file=this.bindingPath(topic);
+    await fs.mkdir(path.dirname(file),{recursive:true});
+    const record:BindingRecord={kind,key_hash:sha(relayKey),created_at_ms:Date.now()};
+    try{
+      await fs.writeFile(file,JSON.stringify(record),{encoding:"utf8",mode:0o600,flag:"wx"});
+      return record;
+    }catch(e){
+      if((e as NodeJS.ErrnoException).code!=="EEXIST") throw e;
+      return JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
+    }
+  }
+
   private async authorize(topic:string,relayKey:string,kind:BindingKind){
     if(!TOPIC.test(topic)||!KEY.test(relayKey)) throw new Error("relay_auth_failed");
     let current:BindingRecord;
     try{
       current=JSON.parse(await fs.readFile(this.bindingPath(topic),"utf8")) as BindingRecord;
-    }catch{
-      throw new Error("relay_auth_failed");
+    }catch(e){
+      if((e as NodeJS.ErrnoException).code!=="ENOENT") throw new Error("relay_auth_failed");
+      current=await this.claimMissingBinding(topic,relayKey,kind);
     }
     const candidate=sha(relayKey);
     if(current.kind!==kind||!safeEqualHex(current.key_hash,candidate)) throw new Error("relay_auth_failed");

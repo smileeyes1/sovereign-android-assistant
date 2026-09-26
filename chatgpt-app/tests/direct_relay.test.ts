@@ -66,3 +66,38 @@ test("direct relay refuses a topic rebind to a different credential",async()=>{
     await assert.rejects(()=>store.registerCredential({...c,relayKey:"C".repeat(48)}),/relay_binding_conflict/);
   });
 });
+
+
+test("legacy paired device can claim its missing command binding once",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    assert.equal(await store.leaseCommand(c.topic,c.relayKey,0),null);
+    await assert.rejects(
+      ()=>store.leaseCommand(c.topic,"D".repeat(64),0),
+      /relay_auth_failed/
+    );
+  });
+});
+
+test("lazy migration refuses non-Hakim topic namespaces",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    const foreign="foreign_topic_"+c.topic.slice(-24);
+    await assert.rejects(
+      ()=>store.leaseCommand(foreign,c.relayKey,0),
+      /relay_auth_failed/
+    );
+  });
+});
+
+test("legacy result binding can self-migrate but remains key-pinned",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678",status:"ok"});
+    await store.pushResult(c.resultTopic,c.relayKey,carrier);
+    await assert.rejects(
+      ()=>store.pushResult(c.resultTopic,"E".repeat(64),carrier),
+      /relay_auth_failed/
+    );
+  });
+});

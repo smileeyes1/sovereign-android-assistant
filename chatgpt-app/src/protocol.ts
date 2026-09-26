@@ -89,12 +89,17 @@ export function decryptResult(relayKey:string,carrier:string):unknown{
   return aesOpen(RESULT_PREFIX,RESULT_AAD,relayKey,carrier);
 }
 
-export function pairingUrl(c:DeviceCredential):string{
+export function pairingUrl(c:DeviceCredential,bridgeBase?:string):string{
   const q=new URLSearchParams({
     token:c.pairToken,
     relay_topic:c.topic,
     relay_result_topic:c.resultTopic,
     relay_key:c.relayKey
   });
+  if(bridgeBase){
+    const base=new URL(bridgeBase);
+    if(base.protocol!=="https:"||base.username||base.password||!base.hostname) throw new Error("invalid_bridge_base");
+    q.set("bridge_base",base.origin);
+  }
   return "hakim://pair?"+q.toString();
 }

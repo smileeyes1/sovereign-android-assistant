@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20304,
-  "candidate_name": "3.3.0-sovereign-constitution-v4",
+  "candidate_version": 20305,
+  "candidate_name": "3.3.1-control-channel-recovery-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,9 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": 1108,
-    "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
-    "conclusion": "success"
+    "run_number": null,
+    "commit": null,
+    "conclusion": "pending"
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
@@ -83,5 +83,9 @@
   "self_installer": false,
   "verified_update_export_to_downloads": true,
   "request_install_packages": false,
-  "persistent_high_impact_grants": false
+  "persistent_high_impact_grants": false,
+  "control_channel_primary": "secure_relay",
+  "control_channel_urgent_recovery": true,
+  "control_channel_field_verified": false,
+  "remote_desktop_commander_required": false
 }

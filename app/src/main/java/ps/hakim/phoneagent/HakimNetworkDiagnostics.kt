@@ -84,6 +84,7 @@ object HakimNetworkDiagnostics {
         result.put("internet_tcp", tcpProbe("1.1.1.1", intArrayOf(443), 4))
         result.put("upnp_devices", discoverUpnp(app))
         result.put("lan_survey", HakimLanSurvey.inspect(app))
+        result.put("deep_lan_discovery", HakimDeepLanDiscovery.inspect(app))
         return result
     }
 

@@ -25,12 +25,16 @@ for token in [
 ]:
     req(token in fabric, "fabric:" + token)
 
-# Cloud production contract c84359e... uses encrypted ntfy result topics.
+# Result transport remains end-to-end encrypted. 20306 makes the Hakim HTTPS bridge
+# primary while retaining encrypted ntfy as an explicit recovery path.
 for token in [
     'KEY_RESULT_TOPIC = "relay_result_topic"',
     'RESULT_PREFIX = "HR1."',
     'RESULT_AAD = "HAKIM-RESULT-v1"',
-    'https://ntfy.sh/$resultTopic',
+    '"/device/v1/results?topic="',
+    '"Authorization", "Bearer " + relayKey',
+    '"https://ntfy.sh/" + resultTopic',
+    '"legacy_fallback"',
     'fun isConnected(): Boolean = connected',
 ]:
     req(token in relay, "relay_contract:" + token)

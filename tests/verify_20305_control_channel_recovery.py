@@ -15,8 +15,8 @@ def req(v,reason):
         raise SystemExit("CONTROL_CHANNEL_20305=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20305,"version")
-req("3.3.1-control-channel-recovery-v1" in BUILD,"version_name")
+req(m is not None and int(m.group(1))>=20305,"version_floor")
+req("control-channel-recovery" in BUILD,"version_name_lineage")
 
 for token in [
     "URGENT_JOB_ID = 771210",

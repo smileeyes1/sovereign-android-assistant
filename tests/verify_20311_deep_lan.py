@@ -35,10 +35,10 @@ for token in [
 
 for forbidden in [
     "setWifiEnabled(",
-    "disconnect(",
-    "reassociate(",
-    "removeNetwork(",
-    "enableNetwork(",
+    "wifiManager.disconnect(",
+    "wifiManager.reassociate(",
+    "wifiManager.removeNetwork(",
+    "wifiManager.enableNetwork(",
     "requestNetwork(",
     "Authorization",
     "Basic ",

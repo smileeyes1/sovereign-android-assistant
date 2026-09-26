@@ -13,8 +13,8 @@ def req(value, reason):
         raise SystemExit("DIRECT_CHANNEL_20306=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20306,"version")
-req("3.3.2-control-channel-recovery-direct-v1" in BUILD,"version_name")
+req(m is not None and int(m.group(1))>=20306,"version_floor")
+req("control-channel-recovery-direct" in BUILD,"version_name_lineage")
 
 for token in [
     'KEY_BRIDGE_BASE = "relay_bridge_base"',

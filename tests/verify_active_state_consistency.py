@@ -18,7 +18,7 @@ req(state.get("single_source_of_truth") is True, "single_source")
 req(state["cloud"]["last_verified_baseline_commit"] == "c84359e422dad0aa205f59a153a1f29d7f4c4e81", "cloud_baseline")
 req(state["android"]["latest_source_parent"]["commit"] == "43ecd8b83c9894dbace1d03a36c6c1b290c1b444", "source_parent")
 req(state["android"]["latest_source_parent"]["ci_run_number"] == 1091, "source_parent_ci")
-req(state["android"]["candidate"]["version_code"] == candidate == 20304, "candidate_version")
+req(state["android"]["candidate"]["version_code"] == candidate == 20305, "candidate_version")
 req(state["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")
 req(state["android"]["candidate"]["promoted"] is False, "must_not_promote")
 req(state["local_execution"]["phone_channel"] == "ONLINE_SIGNED_HEALTH_OBSERVED", "phone_claim")
@@ -56,7 +56,7 @@ req(state["tool_orchestration"]["result_returns_to_hakim"] is True, "result_retu
 req(state["tool_orchestration"]["direct_url_content_local_by_default"] is True, "direct_url_privacy")
 req(state["tool_orchestration"]["terminal_handoff_allowed"] is False, "terminal_handoff")
 
-req(state["productization"]["candidate_version"] == 20304, "product_candidate")
+req(state["productization"]["candidate_version"] == 20305, "product_candidate")
 req(state["productization"]["primary_ui_productized"] is True, "product_ui")
 req(state["productization"]["technical_diagnostics_hidden"] is True, "product_diagnostics")
 req(state["productization"]["sellable"] is False, "product_not_yet_sellable")
@@ -111,3 +111,9 @@ req(state["productization"]["evidence_aware_closure"] is True, "evidence_aware_c
 req(state["productization"]["temporary_tasks_not_persisted"] is True, "temporary_tasks_not_persisted")
 req(state["productization"]["rule_secret_redaction"] is True, "rule_secret_redaction")
 req(state["productization"]["sovereign_constitution_field_verified"] is False, "constitution_field_must_remain_false")
+
+req(state["productization"]["connectivity_mesh_v1"] is True, "connectivity_mesh_v1")
+req(state["productization"]["connectivity_mesh_field_verified"] is False, "connectivity_mesh_field_must_remain_false")
+
+req(state["android"]["candidate"]["development_parent_version"] == 20304, "development_parent_version")
+req(state["android"]["candidate"]["development_parent_ci_run_number"] == 1111, "development_parent_ci")

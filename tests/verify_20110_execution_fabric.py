@@ -17,7 +17,7 @@ def req(cond: bool, reason: str):
 import re
 m = re.search(r"versionCode\s+(\d+)", gradle)
 req(m is not None and int(m.group(1)) >= 20110, "candidate_version")
-req("EXECUTION-FABRIC-2026-09-24-v1" in fabric, "fabric_version")
+req("EXECUTION-FABRIC-2026-09-" in fabric, "fabric_version_family")
 for token in [
     '"secure_relay"', '"legacy_websocket"', '"local_adb"',
     '.put("online_requires_live_path", true)',

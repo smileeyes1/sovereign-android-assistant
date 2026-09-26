@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-25",
+  "snapshot_date": "2026-09-26",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -26,14 +26,15 @@
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20304,
-      "branch": "feature/hakim-20304-sovereign-constitution-v4",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20305,
+      "branch": "feature/hakim-20305-connectivity",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
-      "source_ci_run_number": 1108,
-      "source_ci_commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d"
+      "development_parent_version": 20304,
+      "development_parent_commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
+      "development_parent_ci_run_number": 1111
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
@@ -101,8 +102,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1108,
-      "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
+      "run_number": 1111,
+      "commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
       "conclusion": "success"
     }
   },
@@ -140,7 +141,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20304,
+    "candidate_version": 20305,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -209,6 +210,14 @@
     "verified_update_export_to_downloads": true,
     "request_install_packages": false,
     "persistent_high_impact_grants": false,
-    "sovereign_constitution_source_ci_verified": true
+    "sovereign_constitution_source_ci_verified": true,
+    "connectivity_mesh_v1": true,
+    "connectivity_mesh_field_verified": false,
+    "outbound_cloud_only": true,
+    "opens_inbound_listener": false,
+    "local_adb_maintenance_only": true,
+    "legacy_last_resort": true,
+    "recovery_debounce": true,
+    "hot_redundancy_supported": true
   }
 }

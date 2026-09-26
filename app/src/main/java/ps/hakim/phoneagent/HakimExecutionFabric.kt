@@ -13,7 +13,7 @@ import org.json.JSONObject
  * فشل مسار واحد لا يغلق المقصد ما دام مسار آخر حيًا أو يمكن إنعاشه.
  */
 object HakimExecutionFabric {
-    const val VERSION = "EXECUTION-FABRIC-2026-09-24-v1"
+    const val VERSION = "EXECUTION-FABRIC-2026-09-26-v2"
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
@@ -21,6 +21,7 @@ object HakimExecutionFabric {
         PairingDefaults.ensure(prefs)
 
         val now = System.currentTimeMillis()
+        val meshProfile = HakimConnectivityMesh.networkProfile(app)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) {
             prefs.edit()
                 .putString("execution_fabric_state", "DISABLED_BY_USER")
@@ -36,10 +37,10 @@ object HakimExecutionFabric {
         val secureConfigured = HakimUnifiedRelay.isConfigured(app)
         val adbPaired = prefs.getBoolean("local_adb_paired", false)
 
-        if (secureConfigured) {
+        if (secureConfigured && meshProfile.available) {
             HakimUnifiedRelay.start(app)
         }
-        if (adbPaired) {
+        if (adbPaired && meshProfile.wifi) {
             HakimLocalPairing.reconnectAsync(app)
         }
 
@@ -59,9 +60,10 @@ object HakimExecutionFabric {
         }
 
         val configuredCount = listOf(legacyConfigured, secureConfigured, adbPaired).count { it }
+        val meshState = HakimConnectivityMesh.status(app).optString("state", "RECOVERING")
         prefs.edit()
             .putString("execution_fabric_version", VERSION)
-            .putString("execution_fabric_state", if (configuredCount == 0) "UNCONFIGURED" else "RECOVERING")
+            .putString("execution_fabric_state", if (configuredCount == 0) "UNCONFIGURED" else meshState)
             .putString("execution_fabric_reason", reason.take(80))
             .putString("execution_fabric_service_start", serviceStart)
             .putLong("execution_fabric_recover_at", now)
@@ -107,6 +109,8 @@ object HakimExecutionFabric {
             .putLong("execution_fabric_checked_at", System.currentTimeMillis())
             .apply()
 
+        val mesh = HakimConnectivityMesh.status(app)
+
         return JSONObject()
             .put("execution_fabric", true)
             .put("version", VERSION)
@@ -114,6 +118,9 @@ object HakimExecutionFabric {
             .put("online", online)
             .put("online_paths", onlinePaths)
             .put("configured_paths", configuredPaths)
+            .put("mesh", mesh)
+            .put("preferred_path", mesh.optString("preferred_path", ""))
+            .put("hot_redundancy", mesh.optBoolean("hot_redundancy", false))
             .put("secure_relay_configured", secureConfigured)
             .put("secure_relay_running", HakimUnifiedRelay.isRunning())
             .put("secure_relay_connected", secureOnline)

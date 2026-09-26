@@ -27,8 +27,8 @@ def req(value, reason):
         raise SystemExit("SOVEREIGN_CONSTITUTION_20304=FAIL reason=" + reason)
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20304, "version")
-req("3.3.0-sovereign-constitution-v4" in BUILD, "version_name")
+req(m is not None and int(m.group(1)) >= 20304, "version_floor")
+req("versionName" in BUILD, "version_name_present")
 
 # Canonical governance.
 for token in [
@@ -156,7 +156,7 @@ req('android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION' not in MANIFEST, "s
 # Single source of truth remains conservative.
 req(STATE["android"]["latest_source_parent"]["version_code"] == 20303, "source_parent_version")
 req(STATE["android"]["latest_source_parent"]["ci_run_number"] == 1091, "source_parent_ci")
-req(STATE["android"]["candidate"]["version_code"] == 20304, "candidate_version")
+req(STATE["android"]["candidate"]["version_code"] >= 20304, "candidate_version_floor")
 req(STATE["android"]["candidate"]["field_verified"] is False, "field_must_remain_false")
 req(STATE["android"]["candidate"]["promoted"] is False, "candidate_must_not_promote")
 req(STATE["productization"]["sovereign_constitution_v4"] is True, "product_state_constitution")

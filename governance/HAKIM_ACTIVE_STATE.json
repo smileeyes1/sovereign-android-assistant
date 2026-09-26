@@ -19,9 +19,9 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20304,
-      "commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
-      "ci_run_number": 1111,
+      "version_code": 20303,
+      "commit": "43ecd8b83c9894dbace1d03a36c6c1b290c1b444",
+      "ci_run_number": 1091,
       "source_ci_verified": true,
       "field_verified": false
     },
@@ -31,7 +31,10 @@
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false
+      "promoted": false,
+      "development_parent_version": 20304,
+      "development_parent_commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
+      "development_parent_ci_run_number": 1111
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",

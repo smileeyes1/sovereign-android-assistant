@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20311
-        versionName '3.3.7-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-extender-survey-v1'
+        versionName '3.3.7-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-v1'
     }
 
     compileOptions {

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-25",
+  "snapshot_date": "2026-09-26",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -19,21 +19,19 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20303,
-      "commit": "43ecd8b83c9894dbace1d03a36c6c1b290c1b444",
-      "ci_run_number": 1091,
+      "version_code": 20304,
+      "commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
+      "ci_run_number": 1111,
       "source_ci_verified": true,
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20304,
-      "branch": "feature/hakim-20304-sovereign-constitution-v4",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20305,
+      "branch": "feature/hakim-20305-control-channel-recovery-v1",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
-      "promoted": false,
-      "source_ci_run_number": 1108,
-      "source_ci_commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d"
+      "promoted": false
     },
     "field_observed_current": {
       "observed_at": "2026-09-25",
@@ -51,21 +49,18 @@
     }
   },
   "local_execution": {
-    "phone_channel": "ONLINE_SIGNED_HEALTH_OBSERVED",
+    "phone_channel": "OFFLINE_CURRENTLY",
     "termux_channel": "NOT_PROVEN_CURRENTLY",
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
     "execution_fabric_field_online": false,
     "production_bridge_contract": "relay_result_topic+HR1",
     "current_installed_field_transport": {
-      "observed_at": "2026-09-24",
-      "status": "ONLINE_SIGNED_HEALTH_OBSERVED",
-      "network": "mobile_data",
-      "transport": "legacy_ntfy_websocket",
-      "stateless_pairing": true,
-      "signed_health_verified": true,
-      "service_connected": true,
-      "preserve_pairing": true
+      "observed_at": "2026-09-26",
+      "status": "OFFLINE_CURRENTLY",
+      "transport": "not_proven_live",
+      "preserve_pairing": true,
+      "note": "Remote Desktop Commander is offline and its remote-call allowance is exhausted; Hakim secure relay recovery is the replacement path."
     }
   },
   "material_factory": {
@@ -101,8 +96,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1108,
-      "commit": "0672c4b3fe29f8dc484257e6b0b76a8b80c8695d",
+      "run_number": 1111,
+      "commit": "ff171285dc2c9a84332a828a73b9d793f8f637d6",
       "conclusion": "success"
     }
   },
@@ -140,7 +135,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20304,
+    "candidate_version": 20305,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -159,7 +154,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20304",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20305",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -209,6 +204,10 @@
     "verified_update_export_to_downloads": true,
     "request_install_packages": false,
     "persistent_high_impact_grants": false,
-    "sovereign_constitution_source_ci_verified": true
+    "sovereign_constitution_source_ci_verified": true,
+    "control_channel_primary": "secure_relay",
+    "control_channel_urgent_recovery": true,
+    "control_channel_field_verified": false,
+    "remote_desktop_commander_required": false
   }
 }

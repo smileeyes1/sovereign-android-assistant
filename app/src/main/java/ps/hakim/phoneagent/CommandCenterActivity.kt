@@ -279,6 +279,7 @@ class CommandCenterActivity : ComponentActivity() {
             )
         )
 
+        HakimArabicPolicy.applyUiDefaults(root)
         setContentView(root)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->

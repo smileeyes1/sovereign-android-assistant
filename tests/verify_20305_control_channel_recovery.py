@@ -33,6 +33,9 @@ req("secureConnected || legacyConnected" in DOC,"online_status_not_multi_path")
 
 req('scheduleSoon(applicationContext, "service_destroyed")' in SVC,"service_destroyed_urgent_recovery_missing")
 req('scheduleSoon(applicationContext, "task_removed")' in SVC,"task_removed_urgent_recovery_missing")
+req('if (isPaired()) {\n            createBrowser()\n            connectRemote()' in SVC,"secure_only_service_must_not_create_legacy_webview")
+req('قناة حكيم المشفّرة تعمل — وضع خفيف بلا متصفح' in SVC,"secure_only_lightweight_state_missing")
+req('if (!::webView.isInitialized) createBrowser()' in SVC,"browser_must_be_lazy_when_needed")
 
 for token in [
     'putString("connection_recovery_state", "healthy")',

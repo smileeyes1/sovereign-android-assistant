@@ -4,7 +4,7 @@
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
-    "last_verified_baseline_commit": "c84359e422dad0aa205f59a153a1f29d7f4c4e81",
+    "last_verified_baseline_commit": "03b19fedb4ea42dea34baeffdf0840c2c865f684",
     "production_verified": true,
     "health_verified": true,
     "oauth_exact_callback_verified": true,
@@ -26,8 +26,8 @@
       "field_verified": false
     },
     "candidate": {
-      "version_code": 20305,
-      "branch": "feature/hakim-20305-control-channel-recovery-v1",
+      "version_code": 20306,
+      "branch": "feature/hakim-20306-direct-current",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
@@ -54,7 +54,7 @@
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
     "execution_fabric_field_online": false,
-    "production_bridge_contract": "relay_result_topic+HR1",
+    "production_bridge_contract": "hakim-direct-https-v1+relay_result_topic+HR1+encrypted_ntfy_fallback",
     "current_installed_field_transport": {
       "observed_at": "2026-09-26",
       "status": "OFFLINE_CURRENTLY",
@@ -135,7 +135,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20305,
+    "candidate_version": 20306,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -154,7 +154,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20305",
+    "install_relation": "UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_20306",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -205,9 +205,11 @@
     "request_install_packages": false,
     "persistent_high_impact_grants": false,
     "sovereign_constitution_source_ci_verified": true,
-    "control_channel_primary": "secure_relay",
+    "control_channel_primary": "direct_https_secure_relay",
     "control_channel_urgent_recovery": true,
     "control_channel_field_verified": false,
-    "remote_desktop_commander_required": false
+    "remote_desktop_commander_required": false,
+    "arabic_default_policy_source_integrated": true,
+    "arabic_default_policy_field_verified": false
   }
 }

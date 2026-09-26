@@ -115,6 +115,7 @@ class UnifiedHomeActivity : Activity() {
 
         root.addView(button("العودة إلى حكيم") { finish() })
 
+        HakimArabicPolicy.applyUiDefaults(root)
         setContentView(root)
         refresh()
     }

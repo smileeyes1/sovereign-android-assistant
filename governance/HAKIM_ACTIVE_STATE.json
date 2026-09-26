@@ -47,8 +47,8 @@
       "recovery_state": "healthy",
       "evidence": "authenticated_direct_status_probe_with_lan_survey",
       "current_signer_reobserved": false,
-      "exact_public_source_mapping": "PROTECTED_CANDIDATE_HEAD_PLUS_LOCAL_D1_SIGNING",
-      "promoted_as_source_baseline": true
+      "exact_public_source_mapping": "NOT_PROVEN",
+      "promoted_as_source_baseline": false
     }
   },
   "local_execution": {

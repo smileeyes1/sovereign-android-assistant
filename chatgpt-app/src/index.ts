@@ -92,6 +92,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         accessibility?:unknown;
         browser_service_running?:unknown;
         notification_listener?:unknown;
+        execution_fabric?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
         lan_survey?:Record<string,unknown>;
@@ -139,6 +140,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
 
     const tracked=statusProbeRequests.get(requestId);
     if(!tracked) return;
+    const e=decoded.result?.execution_fabric??{};
     const n=decoded.result?.network_guardian??{};
     const d=decoded.result?.network_diagnostics??{};
     const l=decoded.result?.lan_survey??{};
@@ -152,6 +154,22 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       accessibility:decoded.result?.accessibility??null,
       browser_service_running:decoded.result?.browser_service_running??null,
       notification_listener:decoded.result?.notification_listener??null,
+      execution_fabric:{
+        state:e.state??null,
+        online:e.online??null,
+        online_paths:e.online_paths??null,
+        configured_paths:e.configured_paths??null,
+        secure_relay_configured:e.secure_relay_configured??null,
+        secure_relay_running:e.secure_relay_running??null,
+        secure_relay_connected:e.secure_relay_connected??null,
+        legacy_configured:e.legacy_configured??null,
+        legacy_service_running:e.legacy_service_running??null,
+        legacy_connected:e.legacy_connected??null,
+        local_adb_paired:e.local_adb_paired??null,
+        local_adb_connected:e.local_adb_connected??null,
+        service_start:e.service_start??null,
+        last_start_error:e.last_start_error??null
+      },
       network_guardian:{
         state:n.state??null,
         gateway:n.gateway??null,

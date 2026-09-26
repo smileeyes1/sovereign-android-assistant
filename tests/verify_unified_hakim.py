@@ -23,6 +23,10 @@ local_pairing = text("app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt
 local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManager.kt")
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
+arabic_policy = text("app/src/main/java/ps/hakim/phoneagent/HakimArabicPolicy.kt")
+constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
+main_activity = text("app/src/main/java/ps/hakim/phoneagent/MainActivity.kt")
+command_center = text("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 require("versionCode 20018" in build, "P0: رقم إصدار التوحيد غير مثبت")
@@ -50,5 +54,25 @@ require('تأسيس ADB المحلي' in home and 'مركز القيادة' in h
 all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
+
+# العقد العربي الافتراضي: يمنع الانحدار إلى واجهة/مخرجات مختلطة أو مقلوبة.
+require('android:supportsRtl="true"' in manifest, "P0: دعم RTL على مستوى تطبيق حكيم غير مثبت")
+require("ARABIC-FIRST-RTL-2026-09-26-v1" in arabic_policy, "P0: نسخة العقد العربي المركزي مفقودة")
+require("arabic_default" in arabic_policy and "rtl_default" in arabic_policy, "P0: العربية/RTL ليستا افتراضيتين")
+require("right_alignment_default" in arabic_policy, "P0: المحاذاة العربية الافتراضية غير مثبتة")
+require("٠١٢٣٤٥٦٧٨٩" in arabic_policy, "P0: الأرقام الشرقية غير مثبتة في العقد العربي")
+require("math_bidi_isolation_required" in arabic_policy and "\\u2066" in arabic_policy and "\\u2069" in arabic_policy, "P0: عزل الرياضيات عن BiDi غير مثبت")
+require("technical_ltr_exception" in arabic_policy, "P0: استثناء URL/الكود من RTL غير مثبت")
+require('<html lang=\\\"ar\\\" dir=\\\"rtl\\\">' in arabic_policy, "P0: عقد HTML العربي RTL مفقود")
+require("STUDENT-EYE" in arabic_policy and "OVERLAP" in arabic_policy and "CLIP" in arabic_policy, "P0: فحص عين الطالب/الهندسة مفقود")
+require("HakimArabicPolicy.install(context)" in constitution, "P0: العقد العربي لا يُثبت مع دستور حكيم")
+require("HakimArabicPolicy.promptContract()" in constitution, "P0: العقد العربي لا يصل إلى محرك النية/النموذج")
+require('"arabic_policy"' in constitution, "P0: حالة العقد العربي غير مكشوفة في حالة الدستور")
+for ui_name, ui_text in [
+    ("MainActivity", main_activity),
+    ("UnifiedHomeActivity", home),
+    ("CommandCenterActivity", command_center),
+]:
+    require("HakimArabicPolicy.applyUiDefaults(root)" in ui_text, f"P0: {ui_name} لا يطبق العربية/RTL مركزيًا")
 
 print("UNIFIED_HAKIM_CONTRACT=PASS")

@@ -55,6 +55,10 @@ class HakimService : Service() {
         /** Read only; called from the authenticated relay worker, never from the UI thread. */
         fun readActiveBrowser(): JSONObject = activeService?.readBrowser()
             ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
+
+        /** Requires the Secure Relay approval and replay guard before entry. */
+        fun backActiveBrowser(): JSONObject = activeService?.backBrowser()
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
     }
 
     private val prefs by lazy { getSharedPreferences("hakim", MODE_PRIVATE) }
@@ -632,6 +636,66 @@ class HakimService : Service() {
         }
         return if (runCatching { done.await(6, TimeUnit.SECONDS) }.getOrDefault(false)) response.get()
         else JSONObject().put("ok", false).put("error", "browser_read_timeout")
+    }
+
+    private fun backBrowser(): JSONObject {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return JSONObject().put("ok", false).put("error", "browser_back_on_ui_thread")
+        val done = CountDownLatch(1)
+        val state = AtomicReference("browser_unavailable")
+        val previousAddress = AtomicReference("")
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            runCatching {
+                val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else null
+                when {
+                    target == null -> done.countDown()
+                    activeBrowserTaskId != null -> {
+                        state.set("browser_busy")
+                        done.countDown()
+                    }
+                    !target.canGoBack() -> {
+                        state.set("no_browser_history")
+                        done.countDown()
+                    }
+                    else -> {
+                        previousAddress.set(HakimBrowserPrivacy.safeAddress(target.url.orEmpty()))
+                        val previousIndex = target.copyBackForwardList().currentIndex
+                        target.goBack()
+                        val check = object : Runnable {
+                            var attempts = 0
+                            override fun run() {
+                                val loaded = runCatching {
+                                    target.copyBackForwardList().currentIndex < previousIndex && target.progress == 100
+                                }.getOrDefault(false)
+                                if (loaded) {
+                                    state.set("ready")
+                                    done.countDown()
+                                } else if (++attempts >= 25) {
+                                    state.set("browser_navigation_unverified")
+                                    done.countDown()
+                                } else handler.postDelayed(this, 200L)
+                            }
+                        }
+                        handler.postDelayed(check, 200L)
+                    }
+                }
+            }.onFailure {
+                state.set("browser_navigation_unverified")
+                done.countDown()
+            }
+        }
+        if (!runCatching { done.await(6, TimeUnit.SECONDS) }.getOrDefault(false))
+            return JSONObject().put("ok", false).put("error", "browser_navigation_unverified")
+        if (state.get() != "ready")
+            return JSONObject().put("ok", false).put("error", state.get())
+        val observed = readBrowser()
+        if (!observed.optBoolean("ok", false)) return observed
+        val page = observed.optJSONObject("page") ?: return JSONObject().put("ok", false).put("error", "browser_navigation_unverified")
+        val currentAddress = page.optString("url")
+        if (currentAddress.isBlank() || currentAddress == previousAddress.get())
+            return JSONObject().put("ok", false).put("error", "browser_navigation_unverified")
+        return JSONObject().put("ok", true).put("page", page)
     }
 
     private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String) {

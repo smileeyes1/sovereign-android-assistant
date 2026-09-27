@@ -41,6 +41,16 @@ require('android:name=".HakimNotificationListener"' in manifest, "P0: مستمع
 require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' in manifest, "P0: ربط مستمع الإشعارات مفقود")
 require('HakimUnifiedRelay.start(this)' in app, "P0: القناة الموحدة لا تبدأ مع حكيم")
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
+require('fun sendHealthBeacon(context: Context, reason: String): Boolean' in relay, "P0: نبضة الصحة الآمنة مفقودة")
+health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
+require('HakimUnifiedRelay.isConfigured(context)' in health and 'HakimUnifiedRelay.sendHealthBeacon(context, reason)' in health, "P0: نبضة الصحة لا تفضل القناة الآمنة")
+health_send = health.split('fun sendNow(context: Context, reason: String): Boolean {', 1)[1]
+secure_call = health_send.find('HakimUnifiedRelay.sendHealthBeacon(context, reason)')
+secure_success = health_send.find('if (secureOk) return true')
+legacy_start = health_send.find('val topic = prefs.getString("result_topic"')
+require(0 <= secure_call < secure_success < legacy_start, "P0: النقل القديم ليس fallback لنبضة الصحة")
+result_send = relay.split('private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {', 1)[1]
+require(0 <= result_send.find('/device/v1/results') < result_send.find('https://ntfy.sh/'), "P0: نتيجة القناة الآمنة لا تفضل الجسر المباشر")
 require('relay_result_topic' in pair and 'bridge_base' in pair, "P0: الاقتران المباشر لا يحمل موضوع النتيجة وأصل الجسر")
 require('KEY_BRIDGE_BASE' in relay and 'DEFAULT_BRIDGE_BASE' in relay, "P0: خط أساس الجسر المباشر مفقود")
 require('/device/v1/commands' in relay and '/device/v1/results' in relay, "P0: نقاط القناة المباشرة مفقودة")

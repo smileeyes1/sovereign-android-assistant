@@ -446,6 +446,21 @@ object HakimUnifiedRelay {
         }
     }
 
+    fun sendHealthBeacon(context: Context, reason: String): Boolean {
+        if (!isConfigured(context)) return false
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
+        if (resultTopic.isBlank()) return false
+        val requestId = "health-${System.currentTimeMillis()}"
+        return sendResult(
+            context,
+            resultTopic,
+            requestId,
+            "health",
+            status(context).put("event", "health").put("reason", reason.take(80))
+        )
+    }
+
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
         executor.execute {

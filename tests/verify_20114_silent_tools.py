@@ -1,5 +1,7 @@
 from pathlib import Path
 import re
+import json
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app/src/main/java/ps/hakim/phoneagent"
@@ -49,6 +51,31 @@ start = CENTER.index("private fun executeSilentBrowser")
 end = CENTER.index("private fun executeLocalArtifact", start)
 silent_block = CENTER[start:end]
 req("startActivity(Intent(this, MainActivity::class.java))" not in silent_block, "silent_path_opens_visible_browser")
+
+# Execute the page classifier itself against representative page responses.
+browser_block = SERVICE.split("private fun maybeCompleteBrowserTask", 1)[1].split("private fun failBrowserTask", 1)[0]
+script_match = re.search(r'val script = """(.*?)"""\.trimIndent\(\)', browser_block, re.S)
+req(script_match is not None, "browser_result_classifier_missing")
+runner = r'''
+const vm = require('node:vm');
+const script = require('node:fs').readFileSync(0, 'utf8');
+const fixtures = [
+  ['This page is blocked', 'Your organization does not allow you to view this site', true],
+  ['صفحة محظورة', 'تم حظر هذه الصفحة', true],
+  ['Access denied', 'No permission', true],
+  ['Example', 'An ordinary article about a blocked page.', false]
+];
+const outcomes = fixtures.map(([title, body, expected]) => {
+  const document = {title, body: {innerText: body}, querySelectorAll: () => []};
+  const result = JSON.parse(vm.runInNewContext(script, {document, location: {href: 'https://example.org/'}}));
+  return result.blocked === expected;
+});
+process.stdout.write(JSON.stringify(outcomes));
+'''
+outcomes = json.loads(subprocess.check_output(["node", "-e", runner], input=script_match.group(1).encode()))
+req(all(outcomes), "browser_blocked_page_fixture")
+req("onReceivedHttpError" in SERVICE and "request?.isForMainFrame == true" in SERVICE, "main_frame_http_failure_not_handled")
+req(browser_block.index('failBrowserTask(taskId, "حُظر الوصول') < browser_block.index('putString(taskId + "_state", "COMPLETE")'), "blocked_page_marked_complete")
 
 for phrase in [
     "المتصفح المدمج والأدوات والخدمات وسائل داخلية",

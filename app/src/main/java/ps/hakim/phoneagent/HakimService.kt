@@ -210,8 +210,9 @@ class HakimService : Service() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 val u = url.orEmpty()
-                if (u.startsWith("http")) {
-                    prefs.edit().putString("last_url", u).remove("last_web_error").apply()
+                val address = HakimBrowserPrivacy.safeAddress(u)
+                if (address.isNotBlank()) {
+                    prefs.edit().putString("last_url", address).apply()
                     CookieManager.getInstance().flush()
                     view?.let { maybeCompleteBrowserTask(it, u) }
                 }
@@ -245,7 +246,7 @@ class HakimService : Service() {
         activeBrowserTaskStartedAt = System.currentTimeMillis()
         browserTaskPrefs.edit()
             .putString(taskId + "_state", "RUNNING")
-            .putString(taskId + "_query", query.take(4000))
+            .remove(taskId + "_query")
             .putLong(taskId + "_started_at", activeBrowserTaskStartedAt)
             .remove(taskId + "_result")
             .remove(taskId + "_error")
@@ -264,18 +265,36 @@ class HakimService : Service() {
             val script = """
                 (function(){
                   try{
+                    const secretKey=/(token|secret|password|code|state|signature|api.?key|relay.?key|session)/i;
+                    const safeUrl=(raw)=>{
+                      try{
+                        const u=new URL(raw,location.href);
+                        if(u.protocol!=='https:'&&u.protocol!=='http:') return '[رابط خاص مخفي]';
+                        if(u.pathname.length>160||u.pathname.split('/').some(x=>x.length>48||secretKey.test(x))) return u.origin;
+                        return u.origin+u.pathname;
+                      }catch(_){return '[رابط غير صالح]';}
+                    };
+                    const protectedPage=[...document.querySelectorAll('a[href],input')].some(e=>{
+                      const href=e.getAttribute('href')||'';
+                      const type=(e.getAttribute('type')||'').toLowerCase();
+                      const ac=(e.getAttribute('autocomplete')||'').toLowerCase();
+                      return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
+                        /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
+                        type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
+                    }) || /\b(relay_key|access_token|refresh_token|client_secret|id_token)\s*[=:]\s*\S+/i.test((document.body&&document.body.innerText||'').slice(0,6000));
+                    if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true});
                     const title=(document.title||'').slice(0,300);
                     const text=(document.body&&document.body.innerText?document.body.innerText:'')
                       .replace(/\s+/g,' ').trim().slice(0,12000);
                     const links=[...document.querySelectorAll('a[href]')].slice(0,40).map(a=>({
                       text:(a.innerText||a.getAttribute('aria-label')||'').trim().slice(0,180),
-                      href:(a.href||'').slice(0,700)
+                      href:safeUrl(a.href||'')
                     }));
                     const blocked=/^(this page is blocked|access denied|تم حظر هذه الصفحة|الوصول مرفوض)\s*[.!؟]?$/i.test(title)
                       || /^(this page is blocked\b|your organization (doesn['’]t|does not) allow you to (view|visit) this site\b|تم حظر هذه الصفحة)/i.test(text.slice(0,250));
-                    return JSON.stringify({url:location.href,title:title,text:text,links:links,blocked:blocked});
+                    return JSON.stringify({url:safeUrl(location.href),title:title,text:text,links:links,blocked:blocked});
                   }catch(e){
-                    return JSON.stringify({url:location.href,error:String(e)});
+                    return JSON.stringify({error:'page_read_failed'});
                   }
                 })()
             """.trimIndent()
@@ -283,6 +302,10 @@ class HakimService : Service() {
                 if (activeBrowserTaskId != taskId) return@evaluateJavascript
                 val decoded = decodeJsString(raw)
                 val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
+                if (page.optBoolean("privacy_gate")) {
+                    failBrowserTask(taskId, "تتطلب هذه الصفحة إدخالًا أو موافقة محلية؛ لم تُقرأ أسرارها")
+                    return@evaluateJavascript
+                }
                 if (page.optBoolean("blocked") || page.has("error")) {
                     failBrowserTask(taskId, "حُظر الوصول إلى الصفحة أو تعذر قراءتها")
                     return@evaluateJavascript
@@ -291,7 +314,7 @@ class HakimService : Service() {
                 browserTaskPrefs.edit()
                     .putString(taskId + "_state", "COMPLETE")
                     .putString(taskId + "_result", page.toString())
-                    .putString(taskId + "_url", url)
+                    .putString(taskId + "_url", HakimBrowserPrivacy.safeAddress(url))
                     .putLong(taskId + "_completed_at", System.currentTimeMillis())
                     .apply()
                 activeBrowserTaskId = null
@@ -518,6 +541,24 @@ class HakimService : Service() {
             (function(){
               try {
                 ${sensitiveJs()}
+                const secretKey=/(token|secret|password|code|state|signature|api.?key|relay.?key|session)/i;
+                const safeUrl=(raw)=>{
+                  try{
+                    const u=new URL(raw,location.href);
+                    if(u.protocol!=='https:'&&u.protocol!=='http:') return '[رابط خاص مخفي]';
+                    if(u.pathname.length>160||u.pathname.split('/').some(x=>x.length>48||secretKey.test(x))) return u.origin;
+                    return u.origin+u.pathname;
+                  }catch(_){return '[رابط غير صالح]';}
+                };
+                const protectedPage=[...document.querySelectorAll('a[href],input')].some(e=>{
+                  const href=e.getAttribute('href')||'';
+                  const type=(e.getAttribute('type')||'').toLowerCase();
+                  const ac=(e.getAttribute('autocomplete')||'').toLowerCase();
+                  return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
+                    /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
+                    type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
+                }) || /\b(relay_key|access_token|refresh_token|client_secret|id_token)\s*[=:]\s*\S+/i.test((document.body&&document.body.innerText||'').slice(0,6000));
+                if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true,interactive:[],text:''});
                 const items=[];
                 const all=[...document.querySelectorAll('a,button,input,textarea,select,[role=button],[onclick],[contenteditable=true],summary,label')];
                 for(const e of all){
@@ -533,7 +574,7 @@ class HakimService : Service() {
                     id:(e.id||'').slice(0,100),
                     name:(e.getAttribute('name')||'').slice(0,100),
                     type:(e.getAttribute('type')||'').slice(0,50),
-                    href:(e.href||'').slice(0,500),
+                    href:safeUrl(e.href||''),
                     placeholder:sensitive?'[مخفي]':(e.getAttribute('placeholder')||'').slice(0,160),
                     aria:sensitive?'[مخفي]':(e.getAttribute('aria-label')||'').slice(0,160),
                     sensitive:sensitive,
@@ -544,19 +585,25 @@ class HakimService : Service() {
                 }
                 return JSON.stringify({
                   title:document.title,
-                  url:location.href,
+                  url:safeUrl(location.href),
                   ready:document.readyState,
                   scrollY:Math.round(window.scrollY),
                   innerHeight:Math.round(window.innerHeight),
                   text:(document.body&&document.body.innerText||'').slice(0,7500),
                   interactive:items
                 });
-              } catch(e){ return JSON.stringify({title:'',url:location.href,text:'',interactive:[],error:String(e)}); }
+              } catch(e){ return JSON.stringify({text:'',interactive:[],error:'page_read_failed'}); }
             })();
         """.trimIndent()
         target.evaluateJavascript(script) { raw ->
             val decoded = decodeJsString(raw)
             val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
+            if (page.optBoolean("privacy_gate")) {
+                sendResult(JSONObject().put("request_id", requestId).put("status", "gated")
+                    .put("message", "تتطلب هذه الصفحة موافقة أو إدخالًا محليًا")
+                    .put("page", page))
+                return@evaluateJavascript
+            }
             prefs.getString("last_web_error", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_error", it) }
             prefs.getString("last_download_name", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_download", it) }
             sendResult(JSONObject().put("request_id", requestId).put("status", actionStatus).put("page", page))

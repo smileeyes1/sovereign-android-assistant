@@ -1527,13 +1527,14 @@ class CommandCenterActivity : ComponentActivity() {
         capture(raw, "browser")
         recordRoute("browser", null)
         val url = HakimModelToolRouter.browserTarget(raw)
-        getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
+        val safeAddress = HakimBrowserPrivacy.safeAddress(url)
+        if (safeAddress.isNotBlank()) getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", safeAddress).apply()
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.EXECUTING, "فتح المتصفح للمسار الذي يحتاج الويب")
         HakimExecutiveLoop.waitExternal(this, "المتصفح")
         refreshOperations()
         appendConversation("حكيم", "بدأت معالجة هذا الطلب عبر الويب، ولم أعتبر المهمة مكتملة بعد.")
         status.text = "يعمل على طلبك…"
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java).putExtra("hakim_start_url", url))
     }
 
     private fun handleIntent(i: Intent?) {

@@ -33,6 +33,7 @@ const PUBLIC_READ_CATALOG=[
 
 const PRIVATE_READ_CATALOG=[
   ...PUBLIC_READ_CATALOG,
+  ["read_browser_page","browser_read","صفحة متصفح حكيم","اقرأ لقطة محدودة من جلسة المتصفح النشطة على هاتف حكيم، مع حجب صفحات تسجيل الدخول والاقتران، في الوضع الخاص فقط."],
   ["get_current_ui","ui","الواجهة الحالية","اقرأ شجرة الواجهة الحالية من جهاز حكيم المرتبط في الوضع الخاص فقط."],
   ["list_notifications","notifications","الإشعارات المأذونة","اقرأ الإشعارات المأذونة في الوضع الخاص فقط."],
   ["capture_screenshot","screenshot","التقاط الشاشة","اطلب لقطة شاشة في الوضع الخاص فقط."]

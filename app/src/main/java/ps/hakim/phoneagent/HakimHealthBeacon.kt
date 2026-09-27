@@ -34,14 +34,25 @@ object HakimHealthBeacon {
     fun sendNow(context: Context, reason: String): Boolean {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
+        val now = System.currentTimeMillis()
+        if (HakimUnifiedRelay.isConfigured(context)) {
+            val secureOk = HakimUnifiedRelay.sendHealthBeacon(context, reason)
+            prefs.edit()
+                .putString("last_health_beacon_state", if (secureOk) "secure_relay_sent" else "secure_relay_failed")
+                .putLong("last_health_beacon_at", now)
+                .apply()
+            if (secureOk) return true
+        }
+
+        // Legacy beacon remains fallback only while older pairings are migrated.
         val topic = prefs.getString("result_topic", "").orEmpty().trim()
         val key = prefs.getString("auth_key", "").orEmpty().trim()
         if (topic.isBlank() || key.isBlank()) {
-            prefs.edit().putString("last_health_beacon_state", "missing_pairing_or_auth").apply()
+            prefs.edit().putString("last_health_beacon_state", "missing_legacy_fallback").apply()
             return false
         }
 
-        val now = System.currentTimeMillis()
+        
         val lastAttempt = prefs.getLong("last_health_beacon_attempt_at", 0L)
         if (lastAttempt > 0L && now - lastAttempt < MIN_SEND_INTERVAL_MS) {
             prefs.edit()

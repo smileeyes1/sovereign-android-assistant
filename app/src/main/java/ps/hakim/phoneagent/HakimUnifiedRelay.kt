@@ -51,7 +51,7 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read")
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
@@ -504,6 +504,7 @@ object HakimUnifiedRelay {
         val payload = decodePayload(envelope)
         return when (op) {
             "status" -> status(context)
+            "browser_read" -> HakimService.readActiveBrowser()
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")

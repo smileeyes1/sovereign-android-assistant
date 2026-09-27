@@ -10,6 +10,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import android.webkit.CookieManager
 import android.webkit.URLUtil
@@ -28,7 +30,9 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.abs
@@ -46,6 +50,11 @@ class HakimService : Service() {
         private const val CHANNEL_ID = "hakim_background"
         private const val NOTIFICATION_ID = 17
         private const val MAX_COMMAND_AGE_MS = 180_000L
+        @Volatile private var activeService: HakimService? = null
+
+        /** Read only; called from the authenticated relay worker, never from the UI thread. */
+        fun readActiveBrowser(): JSONObject = activeService?.readBrowser()
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
     }
 
     private val prefs by lazy { getSharedPreferences("hakim", MODE_PRIVATE) }
@@ -67,6 +76,7 @@ class HakimService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        activeService = this
         running = true
         connected = false
         recentRequests.addAll(prefs.getStringSet("seen_request_ids", emptySet()) ?: emptySet())
@@ -119,6 +129,7 @@ class HakimService : Service() {
     }
 
     override fun onDestroy() {
+        if (activeService === this) activeService = null
         running = false
         connected = false
         socket?.cancel()
@@ -536,8 +547,7 @@ class HakimService : Service() {
         }
     """.trimIndent()
 
-    private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String) {
-        val script = """
+    private fun snapshotScript(): String = """
             (function(){
               try {
                 ${sensitiveJs()}
@@ -595,7 +605,37 @@ class HakimService : Service() {
               } catch(e){ return JSON.stringify({text:'',interactive:[],error:'page_read_failed'}); }
             })();
         """.trimIndent()
-        target.evaluateJavascript(script) { raw ->
+
+    private fun readBrowser(): JSONObject {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return JSONObject().put("ok", false).put("error", "browser_read_on_ui_thread")
+        val done = CountDownLatch(1)
+        val response = AtomicReference(JSONObject().put("ok", false).put("error", "browser_unavailable"))
+        Handler(Looper.getMainLooper()).post {
+            val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else null
+            if (target == null) {
+                done.countDown()
+                return@post
+            }
+            runCatching {
+                target.evaluateJavascript(snapshotScript()) { raw ->
+                    val page = runCatching { JSONObject(decodeJsString(raw)) }.getOrNull()
+                    val result = when {
+                        page == null || page.has("error") -> JSONObject().put("ok", false).put("error", "browser_read_failed")
+                        page.optBoolean("privacy_gate") -> JSONObject().put("ok", false).put("error", "local_approval_required")
+                        else -> JSONObject().put("ok", true).put("page", page)
+                    }
+                    response.set(result)
+                    done.countDown()
+                }
+            }.onFailure { done.countDown() }
+        }
+        return if (runCatching { done.await(6, TimeUnit.SECONDS) }.getOrDefault(false)) response.get()
+        else JSONObject().put("ok", false).put("error", "browser_read_timeout")
+    }
+
+    private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String) {
+        target.evaluateJavascript(snapshotScript()) { raw ->
             val decoded = decodeJsString(raw)
             val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
             if (page.optBoolean("privacy_gate")) {

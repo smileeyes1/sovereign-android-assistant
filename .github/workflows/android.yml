@@ -45,6 +45,7 @@ jobs:
           python3 tests/verify_20097_keyboard_local_help.py
           python3 tests/verify_20098_executive_loop.py
           python3 tests/verify_20099_chatlike_composer.py
+          python3 tests/verify_visible_operations.py
           python3 tests/verify_20100_pinned_composer.py
           python3 tests/verify_20101_intent_director.py
           python3 tests/verify_20103_free_intelligence_matrix.py

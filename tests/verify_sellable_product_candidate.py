@@ -32,7 +32,10 @@ req(
 req('actionButton("المتصفح")' not in CENTER,"browser_button_visible")
 req('actionButton("إدارة")' not in CENTER,"engineering_manage_label")
 req('actionButton("الإعدادات")' in CENTER,"settings_missing")
-req('visibility = View.GONE' in CENTER and 'تفاصيل تشغيل داخلية' in CENTER,"diagnostics_visible")
+req('operations.visibility = View.VISIBLE' in CENTER and
+    'تفاصيل تشغيل داخلية' not in CENTER and
+    'e.optString("detail")' not in (APP/"HakimExecutiveLoop.kt").read_text(encoding="utf-8").split("fun latestOperationText",1)[1].split("fun providerInstruction",1)[0],
+    "private_diagnostics_visible_or_operations_hidden")
 req("HakimProductUx.publicError" in CENTER,"technical_errors_not_sanitized")
 req("يعمل على طلبك…" in CENTER,"product_status_missing")
 

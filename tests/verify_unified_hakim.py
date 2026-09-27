@@ -25,6 +25,8 @@ local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManage
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt")
+resilience = text("app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt")
+health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version_match = re.search(r"versionCode\s+(\d+)", build)
@@ -61,6 +63,13 @@ require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_
 require('RemoteInput' in local_pairing and 'إدخال رمز الاقتران' in local_pairing, "P0: إدخال رمز الاقتران داخل حكيم مفقود")
 require('reconnectAsync' in local_pairing and 'HakimLocalPairing.reconnectAsync(context)' in boot, "P0: التعافي التلقائي للقناة المحلية مفقود")
 require('fun reconnectAsync' in local_pairing, "P0: قدرة ADB المحلية مفقودة")
+require('secureConfigured = HakimUnifiedRelay.isConfigured(app)' in fabric, "P0: نسيج التعافي لا يعترف بالاقتران الآمن")
+require('HakimUnifiedRelay.start(app)' in fabric, "P0: التعافي لا يعيد تشغيل القناة الآمنة")
+require('HakimExecutionFabric.recover(app, reason)' in resilience, "P0: حارس الاستمرارية لا يستخدم نسيج التنفيذ الموحد")
+require('HakimUnifiedRelay.isConfigured(context)' in health and 'HakimUnifiedRelay.sendHealthBeacon(context, reason)' in health, "P0: نبضة الصحة لا تستخدم القناة الآمنة أولًا")
+require('fun sendHealthBeacon(context: Context, reason: String): Boolean' in relay, "P0: إرسال نبضة الصحة عبر القناة الآمنة مفقود")
+require('"network_diagnostics", HakimNetworkDiagnostics.inspect(context)' in relay, "P0: status probe لا يحمل تشخيص الشبكة")
+
 require('الإعدادات' in home and 'العودة إلى حكيم' in home, "P0: إعدادات المنتج غير قابلة للاستخدام")
 require('تأسيس ADB المحلي' not in home, "P0: تسرب عنصر تطويري ADB إلى إعدادات العميل")
 

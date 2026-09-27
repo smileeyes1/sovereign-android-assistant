@@ -15,6 +15,7 @@ import android.webkit.CookieManager
 import android.webkit.URLUtil
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -223,6 +224,14 @@ class HakimService : Service() {
                     activeBrowserTaskId?.let { failBrowserTask(it, message.ifBlank { "تعذر تحميل الصفحة" }) }
                 }
             }
+
+            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 0) >= 400) {
+                    val reason = "تعذر تحميل الصفحة (HTTP ${errorResponse?.statusCode})"
+                    prefs.edit().putString("last_web_error", reason).apply()
+                    activeBrowserTaskId?.let { failBrowserTask(it, reason) }
+                }
+            }
         }
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             enqueueDownload(url, userAgent, contentDisposition, mimeType)
@@ -262,15 +271,22 @@ class HakimService : Service() {
                       text:(a.innerText||a.getAttribute('aria-label')||'').trim().slice(0,180),
                       href:(a.href||'').slice(0,700)
                     }));
-                    return JSON.stringify({url:location.href,title:title,text:text,links:links});
+                    const blocked=/^(this page is blocked|access denied|تم حظر هذه الصفحة|الوصول مرفوض)\s*[.!؟]?$/i.test(title)
+                      || /^(this page is blocked\b|your organization (doesn['’]t|does not) allow you to (view|visit) this site\b|تم حظر هذه الصفحة)/i.test(text.slice(0,250));
+                    return JSON.stringify({url:location.href,title:title,text:text,links:links,blocked:blocked});
                   }catch(e){
                     return JSON.stringify({url:location.href,error:String(e)});
                   }
                 })()
             """.trimIndent()
             target.evaluateJavascript(script) { raw ->
+                if (activeBrowserTaskId != taskId) return@evaluateJavascript
                 val decoded = decodeJsString(raw)
                 val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
+                if (page.optBoolean("blocked") || page.has("error")) {
+                    failBrowserTask(taskId, "حُظر الوصول إلى الصفحة أو تعذر قراءتها")
+                    return@evaluateJavascript
+                }
                 page.put("captured_at", System.currentTimeMillis())
                 browserTaskPrefs.edit()
                     .putString(taskId + "_state", "COMPLETE")

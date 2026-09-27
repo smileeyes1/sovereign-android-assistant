@@ -289,6 +289,9 @@ class HakimService : Service() {
                         return u.origin+u.pathname;
                       }catch(_){return '[رابط غير صالح]';}
                     };
+                    const title=(document.title||'').slice(0,300);
+                    const text=(document.body&&document.body.innerText?document.body.innerText:'')
+                      .replace(/\s+/g,' ').trim().slice(0,12000);
                     const protectedPage=[...document.querySelectorAll('a[href],input')].some(e=>{
                       const href=e.getAttribute('href')||'';
                       const type=(e.getAttribute('type')||'').toLowerCase();
@@ -296,12 +299,9 @@ class HakimService : Service() {
                       return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
                         /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                         type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
-                    }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
-                      || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000));
+                    }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(title+'\n'+text)
+                      || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(title+'\n'+text);
                     if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true});
-                    const title=(document.title||'').slice(0,300);
-                    const text=(document.body&&document.body.innerText?document.body.innerText:'')
-                      .replace(/\s+/g,' ').trim().slice(0,12000);
                     const links=[...document.querySelectorAll('a[href]')].slice(0,40).map(a=>({
                       text:(a.innerText||a.getAttribute('aria-label')||'').trim().slice(0,180),
                       href:safeUrl(a.href||'')
@@ -565,6 +565,8 @@ class HakimService : Service() {
                     return u.origin+u.pathname;
                   }catch(_){return '[رابط غير صالح]';}
                 };
+                const title=(document.title||'').slice(0,300);
+                const text=(document.body&&document.body.innerText||'').slice(0,7500);
                 const protectedPage=[...document.querySelectorAll('a[href],input')].some(e=>{
                   const href=e.getAttribute('href')||'';
                   const type=(e.getAttribute('type')||'').toLowerCase();
@@ -572,13 +574,12 @@ class HakimService : Service() {
                   return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
                     /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                     type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
-                }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
-                  || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000));
+                }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(title+'\n'+text)
+                  || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(title+'\n'+text);
                 if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true,interactive:[],text:''});
-                const title=(document.title||'').slice(0,300);
-                const text=(document.body&&document.body.innerText||'').slice(0,7500);
+                const blockedText=text.replace(/\s+/g,' ').trim();
                 const blocked=/^(this page is blocked|access denied|تم حظر هذه الصفحة|الوصول مرفوض)\s*[.!؟]?$/i.test(title)
-                  || /^(this page is blocked\b|your organization (doesn['’]t|does not) allow you to (view|visit) this site\b|تم حظر هذه الصفحة)/i.test(text.slice(0,250));
+                  || /^(this page is blocked\b|your organization (doesn['’]t|does not) allow you to (view|visit) this site\b|تم حظر هذه الصفحة)/i.test(blockedText.slice(0,250));
                 const items=[];
                 const all=[...document.querySelectorAll('a,button,input,textarea,select,[role=button],[onclick],[contenteditable=true],summary,label')];
                 for(const e of all){

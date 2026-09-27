@@ -23,6 +23,7 @@ const cases = [
   {title:'Public',text:'Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ1234',kind:'secret'},
   {title:'Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ1234',text:'Normal article',kind:'secret'},
   {title:'This page is blocked',text:'Your organization does not allow you to view this site',kind:'blocked'},
+  {title:'Other',text:' \n Your organization does not allow you to view this site',kind:'blocked'},
   {title:'Public',text:'An ordinary article about a blocked page.',kind:'normal'}
 ];
 const outcomes=[];

@@ -296,7 +296,8 @@ class HakimService : Service() {
                       return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
                         /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                         type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
-                    }) || /\b(relay_key|access_token|refresh_token|client_secret|id_token)\s*[=:]\s*\S+/i.test((document.body&&document.body.innerText||'').slice(0,6000));
+                    }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
+                      || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test((document.body&&document.body.innerText||'').slice(0,12000));
                     if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true});
                     const title=(document.title||'').slice(0,300);
                     const text=(document.body&&document.body.innerText?document.body.innerText:'')
@@ -547,7 +548,7 @@ class HakimService : Service() {
           const all=[type,ac,id,name,ph,aria].join(' ');
           if(type==='password') return true;
           if(ac.includes('password')||ac.includes('one-time-code')||ac.startsWith('cc-')) return true;
-          return /(otp|passcode|pin|cvv|cvc|card.?number|security.?code|رمز.?التحقق|كلمة.?المرور|رقم.?البطاقة)/i.test(all);
+          return /(otp|passcode|pin|cvv|cvc|card.?number|security.?code|api.?key|token|secret|session|رمز.?التحقق|كلمة.?المرور|رقم.?البطاقة)/i.test(all);
         }
     """.trimIndent()
 
@@ -571,8 +572,13 @@ class HakimService : Service() {
                   return /^hakim:\/\/pair(?:\?|$)/i.test(href)||
                     /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                     type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
-                }) || /\b(relay_key|access_token|refresh_token|client_secret|id_token)\s*[=:]\s*\S+/i.test((document.body&&document.body.innerText||'').slice(0,6000));
+                }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
+                  || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test((document.body&&document.body.innerText||'').slice(0,12000));
                 if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true,interactive:[],text:''});
+                const title=(document.title||'').slice(0,300);
+                const text=(document.body&&document.body.innerText||'').slice(0,7500);
+                const blocked=/^(this page is blocked|access denied|تم حظر هذه الصفحة|الوصول مرفوض)\s*[.!؟]?$/i.test(title)
+                  || /^(this page is blocked\b|your organization (doesn['’]t|does not) allow you to (view|visit) this site\b|تم حظر هذه الصفحة)/i.test(text.slice(0,250));
                 const items=[];
                 const all=[...document.querySelectorAll('a,button,input,textarea,select,[role=button],[onclick],[contenteditable=true],summary,label')];
                 for(const e of all){
@@ -580,11 +586,12 @@ class HakimService : Service() {
                   const st=getComputedStyle(e);
                   if(r.width<1||r.height<1||st.visibility==='hidden'||st.display==='none') continue;
                   const sensitive=__hakimSensitive(e);
-                  const raw=(e.innerText||e.value||e.getAttribute('aria-label')||e.getAttribute('placeholder')||'').trim();
+                  const editable=e.tagName==='INPUT'||e.tagName==='TEXTAREA'||e.getAttribute('contenteditable')==='true';
+                  const raw=(editable?'':(e.innerText||''))||e.getAttribute('aria-label')||e.getAttribute('placeholder')||'';
                   items.push({
                     index:items.length,
                     tag:e.tagName,
-                    text:sensitive?'[حقل حساس مخفي]':raw.slice(0,180),
+                    text:sensitive?'[حقل حساس مخفي]':raw.trim().slice(0,180),
                     id:(e.id||'').slice(0,100),
                     name:(e.getAttribute('name')||'').slice(0,100),
                     type:(e.getAttribute('type')||'').slice(0,50),
@@ -598,12 +605,13 @@ class HakimService : Service() {
                   if(items.length>=60) break;
                 }
                 return JSON.stringify({
-                  title:document.title,
+                  title:title,
                   url:safeUrl(location.href),
+                  blocked:blocked,
                   ready:document.readyState,
                   scrollY:Math.round(window.scrollY),
                   innerHeight:Math.round(window.innerHeight),
-                  text:(document.body&&document.body.innerText||'').slice(0,7500),
+                  text:text,
                   interactive:items
                 });
               } catch(e){ return JSON.stringify({text:'',interactive:[],error:'page_read_failed'}); }
@@ -627,6 +635,7 @@ class HakimService : Service() {
                     val result = when {
                         page == null || page.has("error") -> JSONObject().put("ok", false).put("error", "browser_read_failed")
                         page.optBoolean("privacy_gate") -> JSONObject().put("ok", false).put("error", "local_approval_required")
+                        page.optBoolean("blocked") -> JSONObject().put("ok", false).put("error", "browser_access_blocked")
                         else -> JSONObject().put("ok", true).put("page", page)
                     }
                     response.set(result)
@@ -706,6 +715,11 @@ class HakimService : Service() {
                 sendResult(JSONObject().put("request_id", requestId).put("status", "gated")
                     .put("message", "تتطلب هذه الصفحة موافقة أو إدخالًا محليًا")
                     .put("page", page))
+                return@evaluateJavascript
+            }
+            if (page.optBoolean("blocked")) {
+                sendResult(JSONObject().put("request_id", requestId).put("status", "failed")
+                    .put("message", "حُظر الوصول إلى الصفحة"))
                 return@evaluateJavascript
             }
             prefs.getString("last_web_error", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_error", it) }

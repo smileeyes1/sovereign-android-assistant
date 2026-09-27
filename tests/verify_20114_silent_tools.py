@@ -10,6 +10,7 @@ ORCH = (APP / "HakimSilentToolOrchestrator.kt").read_text(encoding="utf-8")
 ROUTER = (APP / "HakimModelToolRouter.kt").read_text(encoding="utf-8")
 CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 SERVICE = (APP / "HakimService.kt").read_text(encoding="utf-8")
+RELAY = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 DIRECTOR = (APP / "HakimIntentDirector.kt").read_text(encoding="utf-8")
 
 def req(cond: bool, reason: str):
@@ -82,8 +83,8 @@ process.stdout.write(JSON.stringify(outcomes));
 '''
 outcomes = json.loads(subprocess.check_output(["node", "-e", runner], input=script_match.group(1).encode()))
 req(all(outcomes), "browser_blocked_page_fixture")
-snapshot_block = SERVICE.split("private fun sendSnapshot", 1)[1].split("private fun decodeJsString", 1)[0]
-snapshot_match = re.search(r'val script = """(.*?)"""\.trimIndent\(\)', snapshot_block, re.S)
+snapshot_block = SERVICE.split("private fun snapshotScript", 1)[1].split("private fun decodeJsString", 1)[0]
+snapshot_match = re.search(r'private fun snapshotScript\(\): String = """(.*?)"""\.trimIndent\(\)', SERVICE, re.S)
 sensitive_match = re.search(r'private fun sensitiveJs\(\): String = """(.*?)"""\.trimIndent\(\)', SERVICE, re.S)
 req(snapshot_match is not None and sensitive_match is not None, "snapshot_privacy_script_missing")
 snapshot_js = snapshot_match.group(1).replace("${sensitiveJs()}", sensitive_match.group(1))
@@ -98,6 +99,9 @@ process.stdout.write(JSON.stringify({gated:result.privacy_gate,leaked:JSON.strin
 snapshot_outcome = json.loads(subprocess.check_output(["node", "-e", snapshot_runner], input=snapshot_js.encode()))
 req(snapshot_outcome == {"gated": True, "leaked": False}, "legacy_snapshot_pairing_secret_leak")
 req('put("status", "gated")' in snapshot_block, "legacy_snapshot_privacy_gate_not_enforced")
+req('"browser_read"' in RELAY.split("private val READ_ONLY_OPS", 1)[1].split("private val ALLOWED_OPS", 1)[0], "relay_browser_read_not_read_only")
+req('"browser_read" -> HakimService.readActiveBrowser()' in RELAY, "relay_browser_read_not_dispatched")
+req('target.evaluateJavascript(snapshotScript())' in snapshot_block, "relay_browser_read_not_using_redacted_snapshot")
 req("onReceivedHttpError" in SERVICE and "request?.isForMainFrame == true" in SERVICE, "main_frame_http_failure_not_handled")
 req(browser_block.index('failBrowserTask(taskId, "حُظر الوصول') < browser_block.index('putString(taskId + "_state", "COMPLETE")'), "blocked_page_marked_complete")
 

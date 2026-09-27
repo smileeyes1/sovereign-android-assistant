@@ -34,9 +34,10 @@ object HakimHealthBeacon {
     fun sendNow(context: Context, reason: String): Boolean {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
+        val secureConfigured = HakimUnifiedRelay.isConfigured(context)
         val topic = prefs.getString("result_topic", "").orEmpty().trim()
         val key = prefs.getString("auth_key", "").orEmpty().trim()
-        if (topic.isBlank() || key.isBlank()) {
+        if (!secureConfigured && (topic.isBlank() || key.isBlank())) {
             prefs.edit().putString("last_health_beacon_state", "missing_pairing_or_auth").apply()
             return false
         }
@@ -61,7 +62,7 @@ object HakimHealthBeacon {
         } catch (_: Exception) {}
         val installedApkSha256 = apkSha256(context)
 
-        val payload = JSONObject()
+        val health = JSONObject()
             .put("request_id", "health-$now")
             .put("status", "health")
             .put("time", now)
@@ -76,7 +77,26 @@ object HakimHealthBeacon {
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
-            .toString()
+
+        if (secureConfigured) {
+            val secureOk = HakimUnifiedRelay.sendHealthBeacon(context, health)
+            if (secureOk) {
+                prefs.edit()
+                    .putString("last_health_beacon_state", "secure_relay_sent")
+                    .putLong("last_health_beacon_at", now)
+                    .putString("installed_apk_sha256", installedApkSha256)
+                    .remove("last_health_beacon_error")
+                    .apply()
+                return true
+            }
+        }
+
+        // The older transport is only a fallback while pairing migrates.
+        if (topic.isBlank() || key.isBlank()) {
+            prefs.edit().putString("last_health_beacon_state", "secure_relay_failed_no_legacy").apply()
+            return false
+        }
+        val payload = health.toString()
 
         val requestId = "health-$now"
         val wrapper = JSONObject()

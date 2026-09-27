@@ -1,0 +1,92 @@
+name: "نشر تحديث حكيم ٢٠٣١١ بعد إصلاح قراءة المتصفح"
+
+on:
+  push:
+    branches:
+      - publish/hakim-20311-post151-d1
+    paths:
+      - .github/workflows/publish-20311-post151-update.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: جلب شجرة النشر
+        uses: actions/checkout@v4
+
+      - name: جلب أثر CI 1184 المثبت
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/10940585411/zip" \
+            -o /tmp/hakim-ci.zip
+          unzip -q /tmp/hakim-ci.zip -d /tmp/hakim-ci
+          test -f /tmp/hakim-ci/release/app-release-unsigned.apk
+          echo "8da6d86ae9222a402ae7718940724d5b5ac6336974eb5d01cbe8873ad862a8a4  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+
+      - name: إعادة تركيب APK D1 نفسه بلا مفتاح خاص
+        run: |
+          set -euo pipefail
+          python3 tools/reconstruct_20311_post151_d1.py \
+            /tmp/hakim-ci/release/app-release-unsigned.apk \
+            release-control/20311-post151-signing-block.b64 \
+            /tmp/HAKIM-20311-D1.apk
+          python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20311-D1.apk
+          echo "15904ce102af29ed818dd3b0d421a45ac6d7069cbc75c5336658ffb7a9e47e33  /tmp/HAKIM-20311-D1.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/HAKIM-20311-D1.apk)" = "14102494"
+
+      - name: نشر النسخة المطابقة في GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="hakim-20311-d1-post151"
+          ASSET="HAKIM-20311-D1.apk"
+          TARGET="58528800241d610aff9bf0d1923a0f56e31b2807"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --target "$TARGET" \
+              --title "Hakim 20311 D1 — post PR #151" \
+              --notes "مرشح 20311 موقع D1 من أثر CI #1184 المطابق للشجرة المدمجة بعد PR #151. التثبيت والتحقق الميداني ما زالا مطلوبين." \
+              --prerelease
+          fi
+          gh release upload "$TAG" "/tmp/$ASSET#$ASSET" --clobber
+          URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
+          curl --fail --location --silent --show-error "$URL" -o /tmp/roundtrip.apk
+          echo "15904ce102af29ed818dd3b0d421a45ac6d7069cbc75c5336658ffb7a9e47e33  /tmp/roundtrip.apk" | sha256sum -c -
+          echo "ASSET_URL=$URL" >> "$GITHUB_ENV"
+          echo "GITHUB_RELEASE_ROUNDTRIP=PASS"
+
+      - name: إرسال إشارة التحديث إلى حكيم 20310
+        run: |
+          set -euo pipefail
+          META='{"version_code":20311,"sha256":"15904ce102af29ed818dd3b0d421a45ac6d7069cbc75c5336658ffb7a9e47e33","size":14102494}'
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            --data-binary "$META" \
+            -H 'Title: HAKIM_UPDATE' \
+            -H "Attach: $ASSET_URL" \
+            -H 'Filename: HAKIM-20311-D1.apk' \
+            'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
+          printf '%s' "$RESPONSE" > /tmp/ntfy-response.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('/tmp/ntfy-response.json').read_text())
+          if x.get('event')!='message': raise SystemExit('NTFY_EVENT_NOT_MESSAGE')
+          if x.get('title')!='HAKIM_UPDATE': raise SystemExit('NTFY_TITLE_MISMATCH')
+          if '"version_code":20311' not in x.get('message',''): raise SystemExit('NTFY_METADATA_MISMATCH')
+          a=x.get('attachment') or {}
+          if not str(a.get('url','')).startswith('https://github.com/'):
+              raise SystemExit('NTFY_ATTACHMENT_URL_MISMATCH')
+          print('UPDATE_SIGNAL_PUBLISH=PASS event_id='+str(x.get('id','')))
+          PY

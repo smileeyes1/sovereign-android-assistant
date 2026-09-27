@@ -32,6 +32,16 @@ object HakimHealthBeacon {
     fun sendNow(context: Context, reason: String): Boolean {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
+        if (HakimUnifiedRelay.isConfigured(context)) {
+            val secureOk = HakimUnifiedRelay.sendHealthBeacon(context, reason)
+            prefs.edit()
+                .putString("last_health_beacon_state", if (secureOk) "secure_relay_sent" else "secure_relay_failed")
+                .putLong("last_health_beacon_at", System.currentTimeMillis())
+                .apply()
+            if (secureOk) return true
+        }
+
+        // Legacy transport is fallback only during migration.
         val topic = prefs.getString("result_topic", "").orEmpty().trim()
         val key = prefs.getString("auth_key", "").orEmpty().trim()
         if (topic.isBlank() || key.isBlank()) {

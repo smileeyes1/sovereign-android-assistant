@@ -233,6 +233,33 @@ object HakimExecutiveLoop {
             if (phase == Phase.GATED.name) "؛ راجع سبب التوقف في المحادثة" else ""
     }
 
+    /** Safe relay summary: phases and timing only, never goals or stored event details. */
+    fun publicStatus(context: Context): JSONObject {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val updatedAt = p.getLong("updated_at", 0L).coerceAtLeast(0L)
+        val phase = p.getString("phase", "").orEmpty()
+            .takeIf { raw -> Phase.values().any { it.name == raw } }.orEmpty()
+        val active = p.getBoolean("active", false)
+        val stale = active && updatedAt > 0L &&
+            System.currentTimeMillis() - updatedAt > 120_000L &&
+            phase != Phase.WAITING_EXTERNAL.name && phase != Phase.GATED.name
+        val state = when {
+            updatedAt == 0L -> "idle"
+            stale -> "stale"
+            phase == Phase.GATED.name -> "blocked"
+            phase == Phase.WAITING_EXTERNAL.name -> "waiting"
+            phase == Phase.COMPLETE.name -> "completed"
+            phase == Phase.CANCELLED.name -> "cancelled"
+            active -> "active"
+            else -> "idle"
+        }
+        return JSONObject()
+            .put("state", state)
+            .put("phase", phase)
+            .put("cycle", p.getInt("cycle", 1).coerceAtLeast(1))
+            .put("updated_at_ms", updatedAt)
+    }
+
     fun operationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
@@ -265,6 +292,6 @@ object HakimExecutiveLoop {
         Phase.COMPLETE.name -> "اكتمل"
         Phase.GATED.name -> "مانع مثبت"
         Phase.CANCELLED.name -> "أُلغي"
-        else -> raw
+        else -> "غير معروف"
     }
 }

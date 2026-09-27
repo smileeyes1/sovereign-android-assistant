@@ -24,9 +24,16 @@ class HakimGatewayActivity : Activity() {
                 raw.contains(".") && !raw.contains(" ") -> "https://$raw"
                 else -> "https://www.google.com/search?q=" + Uri.encode(raw.take(4000))
             }
-            getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", url).apply()
+            HakimBrowserPrivacy.safeAddress(url).takeIf { it.isNotBlank() }?.let {
+                getSharedPreferences("hakim", MODE_PRIVATE).edit().putString("last_url", it).apply()
+            }
             HakimLearning.recordAttempt(this, "gateway")
             HakimLearning.recordResult(this, "gateway", true)
+            startActivity(Intent(this, MainActivity::class.java)
+                .putExtra("hakim_start_url", url)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            finish()
+            return
         }
 
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))

@@ -67,13 +67,37 @@ const fixtures = [
 ];
 const outcomes = fixtures.map(([title, body, expected]) => {
   const document = {title, body: {innerText: body}, querySelectorAll: () => []};
-  const result = JSON.parse(vm.runInNewContext(script, {document, location: {href: 'https://example.org/'}}));
+  const result = JSON.parse(vm.runInNewContext(script, {document, location: {href: 'https://example.org/?token=private'}, URL}));
   return result.blocked === expected;
 });
+const pairLink = {getAttribute: k => k==='href'?'hakim://pair?token=private&relay_key=private':''};
+const document = {title:'ربط حكيم',body:{innerText:'token=private'},querySelectorAll: () => [pairLink]};
+const protectedResult = JSON.parse(vm.runInNewContext(script, {document,location:{href:'https://bridge.example/oauth?code=private'},URL}));
+outcomes.push(protectedResult.privacy_gate===true && !JSON.stringify(protectedResult).includes('private'));
+const publicLink = {innerText:'Report',href:'https://example.org/report?access_token=private',getAttribute: () => ''};
+const publicDocument = {title:'Report',body:{innerText:'Public report'},querySelectorAll: selector => selector==='a[href]'?[publicLink]:[]};
+const publicResult = JSON.parse(vm.runInNewContext(script,{document:publicDocument,location:{href:'https://example.org/report?state=private'},URL}));
+outcomes.push(publicResult.url==='https://example.org/report' && publicResult.links[0].href==='https://example.org/report' && !JSON.stringify(publicResult).includes('private'));
 process.stdout.write(JSON.stringify(outcomes));
 '''
 outcomes = json.loads(subprocess.check_output(["node", "-e", runner], input=script_match.group(1).encode()))
 req(all(outcomes), "browser_blocked_page_fixture")
+snapshot_block = SERVICE.split("private fun sendSnapshot", 1)[1].split("private fun decodeJsString", 1)[0]
+snapshot_match = re.search(r'val script = """(.*?)"""\.trimIndent\(\)', snapshot_block, re.S)
+sensitive_match = re.search(r'private fun sensitiveJs\(\): String = """(.*?)"""\.trimIndent\(\)', SERVICE, re.S)
+req(snapshot_match is not None and sensitive_match is not None, "snapshot_privacy_script_missing")
+snapshot_js = snapshot_match.group(1).replace("${sensitiveJs()}", sensitive_match.group(1))
+snapshot_runner = r'''
+const vm = require('node:vm');
+const script = require('node:fs').readFileSync(0, 'utf8');
+const pairLink = {getAttribute: k => k==='href'?'hakim://pair?token=private&relay_key=private':''};
+const document = {body:{innerText:'relay_key=private'},querySelectorAll: () => [pairLink]};
+const result = JSON.parse(vm.runInNewContext(script, {document,location:{href:'https://bridge.example/oauth?token=private'},URL}));
+process.stdout.write(JSON.stringify({gated:result.privacy_gate,leaked:JSON.stringify(result).includes('private')}));
+'''
+snapshot_outcome = json.loads(subprocess.check_output(["node", "-e", snapshot_runner], input=snapshot_js.encode()))
+req(snapshot_outcome == {"gated": True, "leaked": False}, "legacy_snapshot_pairing_secret_leak")
+req('put("status", "gated")' in snapshot_block, "legacy_snapshot_privacy_gate_not_enforced")
 req("onReceivedHttpError" in SERVICE and "request?.isForMainFrame == true" in SERVICE, "main_frame_http_failure_not_handled")
 req(browser_block.index('failBrowserTask(taskId, "حُظر الوصول') < browser_block.index('putString(taskId + "_state", "COMPLETE")'), "blocked_page_marked_complete")
 

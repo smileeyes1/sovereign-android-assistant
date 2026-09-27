@@ -47,6 +47,7 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("hakim", MODE_PRIVATE) }
     private val uiHandler = Handler(Looper.getMainLooper())
     private var resumed = false
+    private var initialNavigationStarted = false
 
     private val statusTicker = object : Runnable {
         override fun run() {
@@ -65,8 +66,10 @@ class MainActivity : Activity() {
         refreshPermissionStatus()
         if (isPaired()) startHakimService()
         if (savedInstanceState == null) {
-            val last = prefs.getString("last_url", "https://www.google.com").orEmpty().ifBlank { "https://www.google.com" }
+            val last = intent?.getStringExtra("hakim_start_url")?.takeIf { HakimBrowserPrivacy.safeAddress(it).isNotBlank() }
+                ?: prefs.getString("last_url", "https://www.google.com").orEmpty().ifBlank { "https://www.google.com" }
             webView.loadUrl(last)
+            initialNavigationStarted = true
         }
     }
 
@@ -75,17 +78,28 @@ class MainActivity : Activity() {
         resumed = true
         HakimRuntime.attach(webView)
         val last = prefs.getString("last_url", "").orEmpty()
-        if (last.startsWith("http") && webView.url != last) webView.loadUrl(last)
+        if (!initialNavigationStarted && last.startsWith("http") && webView.url == null) {
+            webView.loadUrl(last)
+            initialNavigationStarted = true
+        }
         refreshPairingUi()
         refreshPermissionStatus()
         uiHandler.removeCallbacks(statusTicker)
         uiHandler.post(statusTicker)
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val url = intent?.getStringExtra("hakim_start_url") ?: return
+        if (HakimBrowserPrivacy.safeAddress(url).isNotBlank() && ::webView.isInitialized) webView.loadUrl(url)
+    }
+
     override fun onPause() {
         val current = webView.url.orEmpty()
-        if (current.startsWith("http")) {
-            prefs.edit().putString("last_url", current).apply()
+        val safeAddress = HakimBrowserPrivacy.safeAddress(current)
+        if (safeAddress.isNotBlank()) {
+            prefs.edit().putString("last_url", safeAddress).apply()
             CookieManager.getInstance().flush()
             syncBackgroundUrl(current)
         }
@@ -200,7 +214,9 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 val u = url.orEmpty()
                 address.setText(u)
-                if (u.startsWith("http")) prefs.edit().putString("last_url", u).apply()
+                HakimBrowserPrivacy.safeAddress(u).takeIf { it.isNotBlank() }?.let {
+                    prefs.edit().putString("last_url", it).apply()
+                }
                 CookieManager.getInstance().flush()
                 refreshPairingUi()
             }

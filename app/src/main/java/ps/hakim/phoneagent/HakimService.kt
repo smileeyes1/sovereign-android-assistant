@@ -297,7 +297,7 @@ class HakimService : Service() {
                         /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                         type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
                     }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
-                      || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test((document.body&&document.body.innerText||'').slice(0,12000));
+                      || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000));
                     if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true});
                     const title=(document.title||'').slice(0,300);
                     const text=(document.body&&document.body.innerText?document.body.innerText:'')
@@ -573,7 +573,7 @@ class HakimService : Service() {
                     /[?&](token|relay_key|client_secret|access_token|refresh_token|code)=/i.test(href)||
                     type==='password'||ac.includes('one-time-code')||ac.startsWith('cc-');
                 }) || /\b(?:api[_-]?key|(?:access|refresh|id|relay)?[_-]?token|client[_-]?secret|password|session(?:[_-]?(?:id|key|token))?|authorization)\s*[:=]\s*["']?\S+/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000))
-                  || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test((document.body&&document.body.innerText||'').slice(0,12000));
+                  || /\bbearer\s+[A-Za-z0-9_.-]{12,}/i.test(((document.title||'')+'\n'+(document.body&&document.body.innerText||'')).slice(0,12000));
                 if(protectedPage) return JSON.stringify({url:safeUrl(location.href),privacy_gate:true,interactive:[],text:''});
                 const title=(document.title||'').slice(0,300);
                 const text=(document.body&&document.body.innerText||'').slice(0,7500);

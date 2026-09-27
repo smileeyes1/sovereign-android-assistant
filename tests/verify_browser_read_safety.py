@@ -21,6 +21,7 @@ const cases = [
   {title:'Public',text:'api_key=private',kind:'secret'},
   {title:'Public',text:'token=private',kind:'secret'},
   {title:'Public',text:'Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ1234',kind:'secret'},
+  {title:'Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ1234',text:'Normal article',kind:'secret'},
   {title:'This page is blocked',text:'Your organization does not allow you to view this site',kind:'blocked'},
   {title:'Public',text:'An ordinary article about a blocked page.',kind:'normal'}
 ];

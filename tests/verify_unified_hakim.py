@@ -52,6 +52,17 @@ require(
     "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر نسيج التنفيذ"
 )
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
+health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
+require('fun sendHealthBeacon(context: Context, health: JSONObject): Boolean' in relay, "P0: نبضة الصحة المشفرة مفقودة")
+require('HakimUnifiedRelay.sendHealthBeacon(context, health)' in health, "P0: نبضة الصحة لا تستخدم القناة الآمنة")
+send = health.split('fun sendNow(context: Context, reason: String): Boolean {', 1)[1]
+secure_call = send.find('HakimUnifiedRelay.sendHealthBeacon(context, health)')
+secure_success = send.find('if (secureOk) {', secure_call)
+legacy_start = send.find('val payload = health.toString()')
+require(0 <= secure_call < secure_success < legacy_start, "P0: النقل القديم ليس fallback لنبضة الصحة")
+result_send = relay.split('private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {', 1)[1]
+require(0 <= result_send.find('/device/v1/results') < result_send.find('https://ntfy.sh/'), "P0: الجسر المباشر ليس أولوية نتائج القناة")
+require('.put("apk_sha256", installedApkSha256)' in health, "P0: نبضة الصحة فقدت هوية التطبيق المثبت")
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
 require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة الموافقة للأفعال المتغيرة مفقودة")

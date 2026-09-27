@@ -3,6 +3,7 @@ package ps.hakim.phoneagent
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Date
 import java.util.UUID
 
 /**
@@ -219,16 +220,17 @@ object HakimExecutiveLoop {
     fun latestOperationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
-        if (events.length() == 0) return "جاهز"
-        val e = events.optJSONObject(events.length() - 1) ?: return "جاهز"
+        if (events.length() == 0) return "حالة العملية: لا توجد عملية جارية"
+        val e = events.optJSONObject(events.length() - 1) ?: return "حالة العملية: لا توجد عملية جارية"
         val phase = e.optString("phase")
-        val mark = when (phase) {
-            Phase.COMPLETE.name -> "✓"
-            Phase.GATED.name, Phase.CANCELLED.name -> "■"
-            Phase.WAITING_EXTERNAL.name -> "…"
-            else -> "•"
+        val ageMs = (System.currentTimeMillis() - p.getLong("updated_at", 0L)).coerceAtLeast(0L)
+        if (p.getBoolean("active", false) && ageMs > 120_000L &&
+            phase != Phase.WAITING_EXTERNAL.name && phase != Phase.GATED.name
+        ) {
+            return "حالة العملية: انقطع تحديث ${label(phase)} منذ ${ageMs / 60_000L} دقيقة؛ لم يثبت الاكتمال"
         }
-        return mark + " " + label(phase) + " — " + e.optString("detail")
+        return "حالة العملية: ${label(phase)}" +
+            if (phase == Phase.GATED.name) "؛ راجع سبب التوقف في المحادثة" else ""
     }
 
     fun operationText(context: Context): String {
@@ -236,18 +238,15 @@ object HakimExecutiveLoop {
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
         if (events.length() == 0) return "لا توجد عملية جارية"
         val lines = mutableListOf<String>()
-        val start = (events.length() - 7).coerceAtLeast(0)
+        val start = (events.length() - 6).coerceAtLeast(0)
         for (i in start until events.length()) {
             val e = events.optJSONObject(i) ?: continue
             val phase = e.optString("phase")
-            val mark = when (phase) {
-                Phase.COMPLETE.name -> "✓"
-                Phase.GATED.name, Phase.CANCELLED.name -> "■"
-                Phase.WAITING_EXTERNAL.name -> "…"
-                else -> "•"
-            }
-            lines += mark + " " + label(phase) + " — " + e.optString("detail")
+            val at = android.text.format.DateFormat.getTimeFormat(context)
+                .format(Date(e.optLong("at", 0L)))
+            lines += "$at · ${label(phase)} · محاولة ${e.optInt("cycle", 1)}"
         }
+        lines += latestOperationText(context)
         return lines.joinToString("\n")
     }
 

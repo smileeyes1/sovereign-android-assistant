@@ -48,6 +48,12 @@ class CommandCenterActivity : ComponentActivity() {
     private val streamingBuffer = StringBuilder()
     private val attachments = mutableListOf<HakimAttachmentGateway.Attachment>()
     private val browserHandler = Handler(Looper.getMainLooper())
+    private val operationRefresh = object : Runnable {
+        override fun run() {
+            refreshOperations()
+            browserHandler.postDelayed(this, 15_000L)
+        }
+    }
 
     private val mediaPickerLauncher = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(HakimAttachmentGateway.MAX_ATTACHMENTS_PER_TASK)
@@ -91,9 +97,17 @@ class CommandCenterActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshOperations()
+        browserHandler.removeCallbacks(operationRefresh)
+        browserHandler.postDelayed(operationRefresh, 15_000L)
         HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
         HakimConnectionResilience.recover(this, "command_center_resume")
         HakimResilienceAlarmReceiver.schedule(this)
+    }
+
+    override fun onPause() {
+        browserHandler.removeCallbacks(operationRefresh)
+        super.onPause()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -148,10 +162,17 @@ class CommandCenterActivity : ComponentActivity() {
         root.addView(status)
 
         operations = TextView(this).apply {
-            text = ""
-            visibility = View.GONE
-            contentDescription = "تفاصيل تشغيل داخلية"
+            textSize = 14f
+            gravity = Gravity.RIGHT
+            setPadding(12, 8, 12, 8)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                operationsExpanded = !operationsExpanded
+                refreshOperations()
+            }
         }
+        HakimUiKit.status(operations)
         root.addView(operations)
 
         conversationScroll = ScrollView(this).apply {
@@ -1611,6 +1632,7 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun refreshOperations() {
         if (!::operations.isInitialized) return
+        operations.visibility = View.VISIBLE
         if (operationsExpanded) {
             operations.maxLines = 7
             operations.ellipsize = null
@@ -1620,6 +1642,8 @@ class CommandCenterActivity : ComponentActivity() {
             operations.ellipsize = TextUtils.TruncateAt.END
             operations.text = HakimExecutiveLoop.latestOperationText(this)
         }
+        operations.contentDescription = operations.text.toString() +
+            if (operationsExpanded) "؛ اضغط لإخفاء المراحل" else "؛ اضغط لإظهار المراحل"
     }
 
     private fun loadConversation() {

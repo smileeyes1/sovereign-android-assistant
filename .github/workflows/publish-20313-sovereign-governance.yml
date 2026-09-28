@@ -1,0 +1,94 @@
+name: "نشر تحديث حكيم ٢٠٣١٣ — الحاكمية السيادية الكاملة"
+
+on:
+  push:
+    branches:
+      - publish/hakim-20313-sovereign-governance-d1
+    paths:
+      - .github/workflows/publish-20313-sovereign-governance.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: جلب شجرة النشر
+        uses: actions/checkout@v4
+
+      - name: جلب أثر CI 1224 المثبت
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/10982256368/zip" \
+            -o /tmp/hakim-ci.zip
+          unzip -q /tmp/hakim-ci.zip -d /tmp/hakim-ci
+          test -f /tmp/hakim-ci/release/app-release-unsigned.apk
+          echo "56971ddfae3a6e35bf6104f50da9e41f7ce97c6aecbb17093b7fb9d41ad8cce1  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+
+      - name: إعادة تركيب نفس APK D1 بلا مفتاح خاص
+        run: |
+          set -euo pipefail
+          python3 tools/reconstruct_20313_sovereign_governance.py \
+            /tmp/hakim-ci/release/app-release-unsigned.apk \
+            release-control/20313-sovereign-governance-signing-block.b64 \
+            /tmp/HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk
+          python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk
+          echo "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19  /tmp/HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk)" = "14136782"
+
+      - name: نشر الأصل المطابق في GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="hakim-20313-d1-sovereign-governance"
+          ASSET="HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk"
+          TARGET="a882a24c5d3e7cf23a795ac8824ddc57a9bc3b76"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --target "$TARGET" \
+              --title "Hakim 20313 D1 — Sovereign Governance" \
+              --notes "مرشح 20313 الموقّع بهوية D1 من أثر CI #1224 المطابق للشجرة المدمجة حتى PR #181. يشمل بوابة الاعتماد والدستور الداخلي السيادي الكامل والاستدعاء التكيفي. لا يُرقّى إلى خط أساس ميداني قبل تثبيت نفس SHA والتحقق الحي." \
+              --prerelease
+          fi
+          if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET"; then
+            gh release upload "$TAG" "/tmp/$ASSET#$ASSET"
+          fi
+          URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
+          curl --fail --location --silent --show-error "$URL" -o /tmp/roundtrip.apk
+          echo "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19  /tmp/roundtrip.apk" | sha256sum -c -
+          echo "ASSET_URL=$URL" >> "$GITHUB_ENV"
+          echo "GITHUB_RELEASE_ROUNDTRIP=PASS"
+
+      - name: إرسال إشارة التحديث إلى حكيم 20312
+        run: |
+          set -euo pipefail
+          META='{"version_code":20313,"sha256":"5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19","size":14136782}'
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            --data-binary "$META" \
+            -H 'Title: HAKIM_UPDATE' \
+            -H "Attach: $ASSET_URL" \
+            -H 'Filename: HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk' \
+            'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
+          printf '%s' "$RESPONSE" > /tmp/ntfy-response.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('/tmp/ntfy-response.json').read_text())
+          if x.get('event')!='message': raise SystemExit('NTFY_EVENT_NOT_MESSAGE')
+          if x.get('title')!='HAKIM_UPDATE': raise SystemExit('NTFY_TITLE_MISMATCH')
+          if '"version_code":20313' not in x.get('message',''): raise SystemExit('NTFY_METADATA_MISMATCH')
+          a=x.get('attachment') or {}
+          if not str(a.get('url','')).startswith('https://github.com/'):
+              raise SystemExit('NTFY_ATTACHMENT_URL_MISMATCH')
+          print('UPDATE_SIGNAL_PUBLISH=PASS event_id='+str(x.get('id','')))
+          PY

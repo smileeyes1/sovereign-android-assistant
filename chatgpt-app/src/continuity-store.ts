@@ -81,6 +81,10 @@ export class ContinuityStore{
     return path.join(this.root,this.deviceKey(c)+".json");
   }
 
+  private fileForTopic(topic:string){
+    return path.join(this.root,crypto.createHash("sha256").update(topic).digest("hex")+".json");
+  }
+
   private empty():DeviceJournal{
     return {version:"HAKIM_CONTINUITY_V2",updated_at_ms:Date.now(),work:null,operations:[]};
   }
@@ -213,8 +217,46 @@ export class ContinuityStore{
     });
   }
 
+  async stateForTopic(topic:string){
+    let journal:DeviceJournal;
+    try{
+      const raw=JSON.parse(await fs.readFile(this.fileForTopic(topic),"utf8")) as Record<string,unknown>;
+      const cutoff=Date.now()-MAX_AGE_MS;
+      const operations=Array.isArray(raw.operations)?(raw.operations as OperationRecord[]).filter(x=>
+        x&&typeof x.request_id==="string"&&typeof x.op==="string"&&
+        typeof x.updated_at_ms==="number"&&x.updated_at_ms>=cutoff
+      ).slice(-MAX_OPERATIONS):[];
+      const workRaw=raw.work;
+      let work:WorkCheckpoint|null=null;
+      if(workRaw&&typeof workRaw==="object"){
+        const w=workRaw as Record<string,unknown>;
+        const status=typeof w.status==="string"&&["active","waiting","blocked","complete","cancelled"].includes(w.status)
+          ? w.status as WorkStatus : "active";
+        if(typeof w.goal_id==="string"&&GOAL_ID.test(w.goal_id)){
+          work={
+            goal_id:w.goal_id,
+            goal_label:safeField(typeof w.goal_label==="string"?w.goal_label:"",240),
+            stage:safeField(typeof w.stage==="string"?w.stage:"",120),
+            last_verified:safeField(typeof w.last_verified==="string"?w.last_verified:"",280),
+            next_step:safeField(typeof w.next_step==="string"?w.next_step:"",280),
+            blocker:safeField(typeof w.blocker==="string"?w.blocker:"",220),
+            status,
+            updated_at_ms:typeof w.updated_at_ms==="number"?w.updated_at_ms:0
+          };
+        }
+      }
+      journal={version:"HAKIM_CONTINUITY_V2",updated_at_ms:typeof raw.updated_at_ms==="number"?raw.updated_at_ms:0,work,operations};
+    }catch{
+      journal=this.empty();
+    }
+    return this.publicState(journal);
+  }
+
   async state(c:DeviceCredential){
-    const journal=await this.read(c);
+    return this.publicState(await this.read(c));
+  }
+
+  private publicState(journal:DeviceJournal){
     const operations=[...journal.operations]
       .sort((a,b)=>b.updated_at_ms-a.updated_at_ms)
       .slice(0,12)

@@ -25,6 +25,7 @@ const READ_ANNOTATIONS={readOnlyHint:true,destructiveHint:false,idempotentHint:t
 const OPEN_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
 const NAV_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:false};
 const PRIVATE_ACTION_ANNOTATIONS={readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true};
+const CHECKPOINT_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const readSecurity=[{type:"oauth2",scopes:["hakim.read"]}];
 const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
@@ -234,6 +235,29 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   });
 
   tools.push({
+    name:"save_continuation_checkpoint",
+    title:"حفظ نقطة استئناف",
+    description:"احفظ نقطة استئناف مختصرة وآمنة للمقصد الحالي: المقصد، المرحلة، آخر نجاح مثبت، الخطوة التالية والمانع. لا تحفظ أسرارًا أو محتوى شاشة/صفحة أو قيم إدخال.",
+    inputSchema:{
+      type:"object",
+      properties:{
+        goal_id:{type:"string",minLength:8,maxLength:96,pattern:"^[A-Za-z0-9._:-]+$"},
+        goal_label:{type:"string",minLength:1,maxLength:240},
+        stage:{type:"string",minLength:1,maxLength:120},
+        last_verified:{type:"string",maxLength:280},
+        next_step:{type:"string",maxLength:280},
+        blocker:{type:"string",maxLength:220},
+        status:{type:"string",enum:["active","waiting","blocked","complete","cancelled"]}
+      },
+      required:["goal_label","stage","status"],
+      additionalProperties:false
+    },
+    annotations:CHECKPOINT_ANNOTATIONS,
+    securitySchemes:writeSecurity,
+    _meta:{securitySchemes:writeSecurity}
+  });
+
+  tools.push({
     name:"get_request_result",
     title:"قراءة حالة طلب سابق",
     description:governedReadDescription(
@@ -363,6 +387,39 @@ export function createHakimServer(
       demo:true
     });
     return text(await continuityStore.state(credential));
+  });
+
+  server.registerTool("save_continuation_checkpoint",{
+    title:"حفظ نقطة استئناف",
+    description:"احفظ نقطة استئناف مختصرة وآمنة للمقصد الحالي دون تنفيذ أي فعل على الجهاز.",
+    inputSchema:{
+      goal_id:z.string().min(8).max(96).regex(/^[A-Za-z0-9._:-]+$/).optional(),
+      goal_label:z.string().min(1).max(240),
+      stage:z.string().min(1).max(120),
+      last_verified:z.string().max(280).optional(),
+      next_step:z.string().max(280).optional(),
+      blocker:z.string().max(220).optional(),
+      status:z.enum(["active","waiting","blocked","complete","cancelled"])
+    },
+    annotations:CHECKPOINT_ANNOTATIONS
+  },async(input)=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode) return text({
+      ok:true,demo:true,
+      goal_id:input.goal_id??"goal-review-demo",
+      status:input.status,
+      persisted:false,
+      privacy:"content_redacted"
+    });
+    const checkpoint=await continuityStore.saveCheckpoint(credential,input);
+    return text({
+      ok:true,
+      persisted:true,
+      goal_id:checkpoint.goal_id,
+      status:checkpoint.status,
+      updated_at_ms:checkpoint.updated_at_ms,
+      privacy:"checkpoint_metadata_only"
+    });
   });
 
   server.registerTool("get_request_result",{

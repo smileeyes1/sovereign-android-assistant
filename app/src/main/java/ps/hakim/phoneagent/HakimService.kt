@@ -371,6 +371,9 @@ class HakimService : Service() {
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
         prefs.getString("result_topic", "").orEmpty().isNotBlank()
 
+    private fun hasSecurePairing(): Boolean =
+        HakimUnifiedRelay.isConfigured(applicationContext)
+
     private fun authKey(): String = prefs.getString("auth_key", "").orEmpty().trim()
 
     private fun connectRemote() {
@@ -625,7 +628,12 @@ class HakimService : Service() {
         val done = CountDownLatch(1)
         val response = AtomicReference(JSONObject().put("ok", false).put("error", "browser_unavailable"))
         Handler(Looper.getMainLooper()).post {
-            val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else null
+            val target = HakimRuntime.visibleWebView()
+                ?: if (::webView.isInitialized) webView
+                else if (hasSecurePairing()) {
+                    createBrowser()
+                    webView
+                } else null
             if (target == null) {
                 done.countDown()
                 return@post

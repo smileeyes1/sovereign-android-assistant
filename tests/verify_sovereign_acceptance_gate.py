@@ -8,6 +8,8 @@ SUPERVISOR = (APP / "HakimGoalSupervisor.kt").read_text(encoding="utf-8")
 EXECUTOR = (APP / "HakimGoalExecutor.kt").read_text(encoding="utf-8")
 LOOP = (APP / "HakimExecutiveLoop.kt").read_text(encoding="utf-8")
 CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
+RELAY = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
+HEALTH = (APP / "HakimHealthBeacon.kt").read_text(encoding="utf-8")
 CONSTITUTION = (APP / "HakimConstitution.kt").read_text(encoding="utf-8")
 SELF = (APP / "HakimSelfCheck.kt").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
@@ -111,6 +113,15 @@ for token in [
     "بوابة الانحدار مدعومة",
 ]:
     req(token in SELF, "self_check:" + token)
+
+req(
+    '.put("sovereign_acceptance_gate", HakimAcceptanceGate.status(context))' in RELAY,
+    "relay_observability_missing",
+)
+req(
+    '.put("sovereign_acceptance_gate", HakimAcceptanceGate.status(context))' in HEALTH,
+    "health_observability_missing",
+)
 
 req(
     "python3 tests/verify_sovereign_acceptance_gate.py" in WORKFLOW,

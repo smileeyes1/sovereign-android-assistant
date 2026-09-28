@@ -54,7 +54,7 @@ test("real HTTP /mcp exposes only public-safe catalog by default",async(t)=>{
   });
   assert.equal(response.status,200);
   const body=await response.json() as any;
-  assert.equal(body.result.tools.length,5);
+  assert.equal(body.result.tools.length,6);
 
   const byName=new Map(body.result.tools.map((x:any)=>[x.name,x]));
   for(const name of ["get_device_status","get_continuation_state","get_request_result"]){
@@ -62,6 +62,13 @@ test("real HTTP /mcp exposes only public-safe catalog by default",async(t)=>{
     assert.deepEqual(tool.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
     assert.equal(tool.annotations.readOnlyHint,true);
   }
+  const checkpoint:any=byName.get("save_continuation_checkpoint");
+  assert.deepEqual(checkpoint.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
+  assert.equal(checkpoint.annotations.readOnlyHint,false);
+  assert.equal(checkpoint.annotations.destructiveHint,false);
+  assert.equal(checkpoint.annotations.openWorldHint,false);
+  assert.equal(checkpoint.annotations.idempotentHint,true);
+
   const open:any=byName.get("open_target");
   assert.deepEqual(open.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
   assert.equal(open.annotations.openWorldHint,true);

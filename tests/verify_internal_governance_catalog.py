@@ -157,8 +157,10 @@ req(
     "HakimConstitution.taskContext(context, goal, acceptance, attachmentCount)" not in mutant,
     "fault_director_setup",
 )
-mutant2 = CATALOG.replace('"not_bound_to_custom_8000_limit", true', '"not_bound_to_custom_8000_limit", false', 1)
-req('"not_bound_to_custom_8000_limit", true' not in mutant2, "fault_limit_setup")
+limit_guard = '"not_bound_to_custom_8000_limit", true'
+req(CATALOG.count(limit_guard) >= 2, "limit_guard_redundancy_missing")
+mutant2 = CATALOG.replace(limit_guard, '"not_bound_to_custom_8000_limit", false')
+req(limit_guard not in mutant2, "fault_limit_setup")
 
 req(
     "python3 tests/verify_internal_governance_catalog.py" in WORKFLOW,

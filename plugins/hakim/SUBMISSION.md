@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
+- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** get_device_status, open_target, navigate_device, get_request_result
+- **Public tool surface:** get_device_status, open_target, navigate_device, get_continuation_state, get_request_result
 
 ## Starter prompts
 
@@ -43,10 +43,10 @@
 **Expected behavior:** Use `navigate_device` with `kind=back`.  
 **Expected result:** `approval_requested`; public navigation is limited to home/back/recents.
 
-### P5 — Check an existing request
-**Prompt:** Use Hakim to check whether operation `review-12345678` completed.  
-**Expected behavior:** Use `get_request_result` without replaying the original request.  
-**Expected result:** A redacted completion state containing operation status only; no raw device content.
+### P5 — Resume or check existing work
+**Prompt:** Continue my last Hakim operation after changing chats, or check whether operation `review-12345678` completed.  
+**Expected behavior:** Use `get_continuation_state` to recover recent safe operation metadata when needed, then use `get_request_result` with the same operation token. Never replay the original state-changing request merely because the chat changed.  
+**Expected result:** A redacted continuation/completion state containing operation type, token, and status only; no raw device content, typed values, URLs, relay keys, or credentials.
 
 ## Negative review cases
 
@@ -97,6 +97,7 @@ Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabl
 - `get_device_status`
 - `open_target`
 - `navigate_device`
+- `get_continuation_state`
 - `get_request_result`
 
 Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
@@ -118,6 +119,11 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `openWorldHint=false`: the operation is confined to the paired Android device.
 - `destructiveHint=false`: Home/Back/Recents are reversible and do not delete or overwrite user data; Android approval remains required.
 
+### get_continuation_state
+- `readOnlyHint=true`: reads only the durable, privacy-minimized operation journal and never replays an operation.
+- `openWorldHint=false`: reads only state bound to the authenticated Hakim pairing.
+- `destructiveHint=false`: does not change the device, enqueue a command, or mutate external state.
+
 ### get_request_result
 - `readOnlyHint=true`: reads completion state for an existing operation without replaying it.
 - `openWorldHint=false`: reads only bounded paired-device operation state.
@@ -129,4 +135,4 @@ No custom plugin UI component is included in this MCP-only submission, so there 
 
 ## Release notes
 
-Initial public-submission candidate for the privacy-minimized Hakim bridge. Adds OAuth 2.1 + PKCE, encrypted device relay, synthetic reviewer access, and a restricted public tool surface that uses ChatGPT as the intelligence layer while retaining explicit Android approval gates.
+Public-submission candidate for the privacy-minimized Hakim bridge. Adds OAuth 2.1 + PKCE, encrypted device relay, synthetic reviewer access, durable privacy-safe cross-session continuation, and a restricted public tool surface that uses ChatGPT as the intelligence layer while retaining explicit Android approval gates.

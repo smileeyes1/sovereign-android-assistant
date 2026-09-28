@@ -57,7 +57,10 @@ object HakimUnifiedRelay {
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
     @Volatile private var lastLoopProgressAt = 0L
-    private val executor = Executors.newSingleThreadExecutor()
+    // The poll loop may run indefinitely. Approved actions and pairing acknowledgements
+    // must not wait behind it, and must never share its retry queue.
+    private val pollExecutor = Executors.newSingleThreadExecutor()
+    private val controlExecutor = Executors.newSingleThreadExecutor()
 
     fun isRunning(): Boolean = running.get()
     fun isConnected(): Boolean = connected
@@ -166,7 +169,7 @@ object HakimUnifiedRelay {
         val generation = loopGeneration
         lastLoopProgressAt = System.currentTimeMillis()
         ensureApprovalChannel(app)
-        executor.execute { loop(app, generation) }
+        pollExecutor.execute { loop(app, generation) }
     }
 
     @Synchronized
@@ -182,7 +185,7 @@ object HakimUnifiedRelay {
             .putLong("secure_relay_restart_at", System.currentTimeMillis())
             .apply()
         ensureApprovalChannel(app)
-        executor.execute { loop(app, generation) }
+        pollExecutor.execute { loop(app, generation) }
     }
 
     fun ensureAlive(context: Context, reason: String, staleMs: Long = 180_000L): Boolean {
@@ -436,11 +439,13 @@ object HakimUnifiedRelay {
             .apply()
     }
 
+    @Synchronized
     private fun takePending(context: Context, requestId: String): Pair<JSONObject, String>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
         val raw = prefs.getString("$requestId.envelope", null) ?: return null
         val topic = prefs.getString("$requestId.result_topic", null) ?: return null
-        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").apply()
+        // Consume the approval durably before an action can change state.
+        if (!prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").commit()) return null
         return runCatching { JSONObject(raw) to topic }.getOrNull()
     }
 
@@ -487,7 +492,11 @@ object HakimUnifiedRelay {
             sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
-        executor.execute {
+        controlExecutor.execute {
+            if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
+                sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
+                return@execute
+            }
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
@@ -595,7 +604,7 @@ object HakimUnifiedRelay {
 
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        controlExecutor.execute {
             val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
             if (resultTopic.isBlank()) return@execute

@@ -130,7 +130,20 @@ object HakimGovernanceCatalog {
         acceptance: String,
         attachmentCount: Int = 0
     ): String {
-        val domains = selectDomains(goal, acceptance, attachmentCount)
+        val normalizedGoal = goal.trim()
+        val recent = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
+            .getString("recent", "")
+            .orEmpty()
+            .takeLast(4_000)
+        val vagueContinuation = normalizedGoal.length <= 80 && listOf(
+            "قم بذلك", "افعل ذلك", "اكمل", "أكمل", "تابع", "موافق", "نعم", "كل شيء", "كل شيئ"
+        ).any { normalizedGoal.contains(it, ignoreCase = true) }
+        val selectionGoal = if (vagueContinuation && recent.isNotBlank()) {
+            normalizedGoal + "\n" + recent
+        } else {
+            normalizedGoal
+        }
+        val domains = selectDomains(selectionGoal, acceptance, attachmentCount)
         val selected = rules
             .filter { !it.always && it.domain in domains }
             .distinctBy { it.id }
@@ -142,7 +155,8 @@ object HakimGovernanceCatalog {
             .putInt("full_rule_count", rules.size)
             .putInt("last_selected_rule_count", selected.size)
             .putString("last_selected_domains", domains.map { it.name }.sorted().joinToString(","))
-            .putString("last_goal_sha256", sha256(goal.trim()))
+            .putString("last_goal_sha256", sha256(normalizedGoal))
+            .putBoolean("last_selection_used_recent_context", vagueContinuation && recent.isNotBlank())
             .putLong("last_selected_at", System.currentTimeMillis())
             .apply()
 
@@ -167,6 +181,7 @@ object HakimGovernanceCatalog {
             .put("last_selected_rule_count", p.getInt("last_selected_rule_count", 0))
             .put("last_selected_domains", p.getString("last_selected_domains", ""))
             .put("last_selected_at", p.getLong("last_selected_at", 0L))
+            .put("last_selection_used_recent_context", p.getBoolean("last_selection_used_recent_context", false))
     }
 
     fun canonicalJson(): JSONObject {

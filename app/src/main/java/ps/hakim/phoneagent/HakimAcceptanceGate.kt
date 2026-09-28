@@ -241,23 +241,23 @@ object HakimAcceptanceGate {
     }
 
     private fun classify(goal: String, acceptance: String): Kind {
-        val q = (goal + " " + acceptance).lowercase()
-
-        val systemChange = listOf(
-            "apk", "github", "مستودع", "برمج", "كود", "تطبيق حكيم",
-            "تحديث حكيم", "حدّث حكيم", "اصلح حكيم", "أصلح حكيم",
-            "ابن تطبيق", "أنشئ تطبيق", "انشئ تطبيق"
-        ).any { q.contains(it) }
-        if (systemChange) return Kind.SYSTEM_CHANGE
+        val q = goal.lowercase()
+        if (acceptance.contains("جواب مباشر")) return Kind.ANSWER
 
         val artifact = listOf(
             "pdf", "بي دي اف", "ملف", "ورقة عمل", "ورقه عمل",
             "docx", "word", "وورد", "html", "png", "pptx", "عرض تقديمي"
-        ).any { q.contains(it) } ||
-            acceptance.contains("ناتج نهائي قابل للاستخدام")
+        ).any { q.contains(it) }
         if (artifact) return Kind.ARTIFACT
 
-        val execution = listOf(
+        val systemChange = listOf(
+            "apk", "github", "مستودع", "تطبيق حكيم",
+            "تحديث حكيم", "حدّث حكيم", "اصلح حكيم", "أصلح حكيم",
+            "ابن تطبيق", "أنشئ تطبيق", "انشئ تطبيق"
+        ).any { q.contains(it) } && acceptance.contains("أثر تنفيذي")
+        if (systemChange) return Kind.SYSTEM_CHANGE
+
+        val execution = acceptance.contains("أثر تنفيذي") || listOf(
             "نفذ", "نفّذ", "قم", "ثبت", "ثبّت", "اصلح", "أصلح",
             "افتح", "أرسل", "ارسل", "احذف", "حدّث", "حدث"
         ).any { q.contains(it) }

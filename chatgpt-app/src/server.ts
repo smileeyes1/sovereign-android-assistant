@@ -30,7 +30,8 @@ const readSecurity=[{type:"oauth2",scopes:["hakim.read"]}];
 const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
 const PUBLIC_READ_CATALOG=[
-  ["get_device_status","status","حالة جهاز حكيم","تحقق من أن جهاز حكيم المرتبط متصل وجاهز دون إرجاع محتوى الشاشة أو الإشعارات أو بيانات شخصية."]
+  ["get_device_status","status","حالة جهاز حكيم","تحقق من أن جهاز حكيم المرتبط متصل وجاهز دون إرجاع محتوى الشاشة أو الإشعارات أو بيانات شخصية."],
+  ["list_network_devices","network_devices","الأجهزة المحلية المأذونة","اكتشف أجهزة الشبكة المحلية بقراءة محدودة. يعيد حكيم معرفات مستعارة وبيانات تصنيف فقط؛ عناوين IP الخام تبقى على الهاتف."]
 ] as const;
 
 const PRIVATE_READ_CATALOG=[
@@ -47,6 +48,17 @@ const PRIVATE_ACTION_KINDS=[
   "click_text","set_text","tap","swipe"
 ] as const;
 type PrivateActionKind=typeof PRIVATE_ACTION_KINDS[number];
+
+const NETWORK_ACTIONS=[
+  "home","back","up","down","left","right","enter",
+  "play_pause","volume_up","volume_down","mute",
+  "open_url","launch_package"
+] as const;
+type NetworkAction=typeof NETWORK_ACTIONS[number];
+const NETWORK_DEVICE_ID=/^lan-[0-9a-f]{16}$/;
+
+const LAN_AUTHORIZE_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false};
+const LAN_CONTROL_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
 
 const actionArgsZ=z.object({
   text:z.string().max(500).optional(),
@@ -127,6 +139,33 @@ function buildActionPayload(kind:PrivateActionKind,args:Record<string,unknown>|u
       if((payload.duration as number)<100||(payload.duration as number)>3000) throw new Error("invalid_duration");
       return payload;
   }
+}
+
+function buildNetworkPayload(
+  deviceId:string,
+  action:NetworkAction,
+  url:string|undefined,
+  pkg:string|undefined
+){
+  const id=deviceId.trim();
+  if(!NETWORK_DEVICE_ID.test(id)) throw new Error("invalid_network_device_id");
+  const payload:Record<string,unknown>={device_id:id,action};
+  const hasUrl=typeof url==="string"&&url.trim().length>0;
+  const hasPkg=typeof pkg==="string"&&pkg.trim().length>0;
+  if(action==="open_url"){
+    if(!hasUrl||hasPkg) throw new Error("url_required");
+    const u=new URL(url!);
+    if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
+    if(url!.length>1500) throw new Error("url_too_long");
+    payload.url=url!.trim();
+  }else if(action==="launch_package"){
+    if(!hasPkg||hasUrl) throw new Error("package_required");
+    if(!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg!.trim())) throw new Error("invalid_package_name");
+    payload.package=pkg!.trim();
+  }else if(hasUrl||hasPkg){
+    throw new Error("unexpected_network_target");
+  }
+  return payload;
 }
 
 function limitedStatus(result:unknown,requestId:string){
@@ -223,6 +262,43 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   }
 
   tools.push({
+    name:"authorize_network_device",
+    title:"اعتماد جهاز محلي",
+    description:"اطلب اعتماد جهاز محلي اكتشفه حكيم لاستخدام محول ADB المحدود. approval_requested تعني طلب موافقة فقط؛ لا يتم تجاوز حماية الجهاز أو تجربة بيانات اعتماد.",
+    inputSchema:{
+      type:"object",
+      properties:{
+        device_id:{type:"string",pattern:"^lan-[0-9a-f]{16}$"},
+        adapter:{type:"string",enum:["adb"]}
+      },
+      required:["device_id"],
+      additionalProperties:false
+    },
+    annotations:LAN_AUTHORIZE_ANNOTATIONS,
+    securitySchemes:writeSecurity,
+    _meta:{securitySchemes:writeSecurity}
+  });
+  tools.push({
+    name:"control_network_device",
+    title:"التحكم بجهاز محلي معتمد",
+    description:"أرسل أمر ريموت محدودًا إلى جهاز Android/TV محلي معتمد. لا توجد أوامر shell عامة أو تثبيت/حذف/إعادة تشغيل. approval_requested ليست نجاحًا نهائيًا.",
+    inputSchema:{
+      type:"object",
+      properties:{
+        device_id:{type:"string",pattern:"^lan-[0-9a-f]{16}$"},
+        action:{type:"string",enum:NETWORK_ACTIONS},
+        url:{type:"string",format:"uri",pattern:"^https?://",maxLength:1500},
+        package:{type:"string",minLength:3,maxLength:255,pattern:"^[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+$"}
+      },
+      required:["device_id","action"],
+      additionalProperties:false
+    },
+    annotations:LAN_CONTROL_ANNOTATIONS,
+    securitySchemes:writeSecurity,
+    _meta:{securitySchemes:writeSecurity}
+  });
+
+  tools.push({
     name:"get_continuation_state",
     title:"حالة الاستمرارية",
     description:governedReadDescription(
@@ -284,7 +360,7 @@ export function createHakimServer(
   resourceMetadataUrl:string,
   publicSafe=isPublicSafeDefault()
 ){
-  const server=new McpServer({name:"Hakim Executive Bridge",version:publicSafe?"0.6.0-sovereign-public-safe":"0.6.0-sovereign-private"});
+  const server=new McpServer({name:"Hakim Executive Bridge",version:publicSafe?"0.7.0-sovereign-public-safe":"0.7.0-sovereign-private"});
   const has=(scope:string)=>scopes.includes(scope);
   const reviewMode=credential.topic.startsWith("hakim_review_");
   const reviewId=()=>("review-"+Date.now().toString(36));
@@ -368,6 +444,42 @@ export function createHakimServer(
       return text(actionRequested(requestId,{request_id:requestId,validated_action:payload.action}));
     });
   }
+
+  server.registerTool("authorize_network_device",{
+    title:"اعتماد جهاز محلي",
+    description:"اعتمد جهازًا محليًا مكتشفًا لاستخدام ADB المحدود بعد موافقة أندرويد.",
+    inputSchema:{
+      device_id:z.string().regex(NETWORK_DEVICE_ID),
+      adapter:z.literal("adb").optional()
+    },
+    annotations:LAN_AUTHORIZE_ANNOTATIONS
+  },async({device_id,adapter})=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,adapter:"adb"}));
+    const requestId=await remember(
+      await publishCommand(credential,"network_authorize",{device_id,adapter:adapter??"adb"}),
+      "network_authorize"
+    );
+    return text(actionRequested(requestId,{device_id,adapter:"adb"}));
+  });
+
+  server.registerTool("control_network_device",{
+    title:"التحكم بجهاز محلي معتمد",
+    description:"نفّذ أمر ريموت محدودًا على جهاز Android/TV محلي معتمد بعد موافقة أندرويد.",
+    inputSchema:{
+      device_id:z.string().regex(NETWORK_DEVICE_ID),
+      action:z.enum(NETWORK_ACTIONS),
+      url:z.string().url().max(1500).optional(),
+      package:z.string().max(255).optional()
+    },
+    annotations:LAN_CONTROL_ANNOTATIONS
+  },async({device_id,action,url,package:pkg})=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    const payload=buildNetworkPayload(device_id,action,url,pkg);
+    if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,validated_action:action}));
+    const requestId=await remember(await publishCommand(credential,"network_control",payload),"network_control");
+    return text(actionRequested(requestId,{device_id,validated_action:action}));
+  });
 
   server.registerTool("get_continuation_state",{
     title:"حالة الاستمرارية",

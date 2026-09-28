@@ -54,10 +54,10 @@ test("real HTTP /mcp exposes only public-safe catalog by default",async(t)=>{
   });
   assert.equal(response.status,200);
   const body=await response.json() as any;
-  assert.equal(body.result.tools.length,4);
+  assert.equal(body.result.tools.length,5);
 
   const byName=new Map(body.result.tools.map((x:any)=>[x.name,x]));
-  for(const name of ["get_device_status","get_request_result"]){
+  for(const name of ["get_device_status","get_continuation_state","get_request_result"]){
     const tool:any=byName.get(name);
     assert.deepEqual(tool.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
     assert.equal(tool.annotations.readOnlyHint,true);

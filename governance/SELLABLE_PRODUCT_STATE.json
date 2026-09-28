@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20305,
-  "candidate_name": "3.3.1-control-channel-recovery-v1",
+  "candidate_version": 20312,
+  "candidate_name": "3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,9 +31,10 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": null,
-    "commit": null,
-    "conclusion": "pending"
+    "run_id": 36378301981,
+    "commit": "1769585409850130935847a48ecfc9344862417f",
+    "conclusion": "success",
+    "artifact_id": 10951292910
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
@@ -87,5 +88,7 @@
   "control_channel_primary": "secure_relay",
   "control_channel_urgent_recovery": true,
   "control_channel_field_verified": false,
-  "remote_desktop_commander_required": false
+  "remote_desktop_commander_required": false,
+  "professional_observability_source_verified": true,
+  "cross_session_continuity_source_verified": true
 }

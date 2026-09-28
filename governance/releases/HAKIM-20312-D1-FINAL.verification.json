@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "artifact": "HAKIM-20312-D1-FINAL.apk",
+  "verification_state": "SOURCE_CI_AND_LOCAL_SIGNATURE_STRUCTURE_VERIFIED_FIELD_INSTALL_PENDING",
+  "package": "ps.hakim.stable",
+  "version_code": 20312,
+  "version_name": "3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1",
+  "source": {
+    "tested_head_commit": "1769585409850130935847a48ecfc9344862417f",
+    "merged_commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
+    "workflow_run_id": 36378301981,
+    "workflow_job_id": 108788551888,
+    "workflow_conclusion": "success",
+    "artifact_id": 10951292910,
+    "artifact_zip_sha256": "8028a18becb977c865ade8ee7103ac4d5d6c257c8f8b8ead5df53d6b0504e3be"
+  },
+  "unsigned_release": {
+    "sha256": "5f1e4f916cf771a99678c4167c21d51dbfcea8657680560d7271411332110040",
+    "size_bytes": 14099898
+  },
+  "signed_release": {
+    "sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+    "size_bytes": 14106158,
+    "certificate_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
+    "signer_count": 1,
+    "key_algorithm": "RSA",
+    "key_size_bits": 4096,
+    "schemes": {
+      "v1": false,
+      "v2": true,
+      "v3": false,
+      "v3_1": false,
+      "v3_2": false,
+      "v4": false
+    }
+  },
+  "content_identity": {
+    "entry_count": 101,
+    "same_entry_names": true,
+    "all_non_signature_entry_bytes_equal": true,
+    "entry_content_mismatches": []
+  },
+  "alignment": {
+    "ci_page_16k_gate": "PASS",
+    "native_lib_count": 8,
+    "all_native_libs_stored": true,
+    "all_native_libs_16384_aligned": true,
+    "resources_arsc_stored": true,
+    "resources_arsc_aligned_4": true
+  },
+  "field": {
+    "installed_on_phone": false,
+    "same_signed_apk_field_verified": false,
+    "promoted": false
+  }
+}

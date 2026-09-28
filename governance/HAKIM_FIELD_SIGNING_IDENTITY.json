@@ -1,13 +1,18 @@
 {
   "schema_version": 1,
-  "status": "FIELD_LINEAGE_IDENTITY_PINNED_PRIVATE_KEY_RECOVERY_PENDING",
+  "status": "FIELD_LINEAGE_IDENTITY_PINNED_PRIVATE_KEY_AVAILABLE_OUTSIDE_CI",
   "canonical_package": "ps.hakim.stable",
   "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
   "certificate_subject": "CN=Hakim, OU=Personal, O=Hakim, L=Tubas, ST=West Bank, C=PS",
-  "public_key": "RSA-3072",
+  "public_key": "RSA-4096",
   "signature_algorithm": "SHA384withRSA",
   "valid_from_utc": "2026-09-11T16:44:32Z",
-  "known_matching_versions": [20013, 20016],
+  "known_matching_versions": [
+    20013,
+    20016,
+    20311,
+    20312
+  ],
   "known_nonmatching_certificate_sha256": "4C:50:85:2E:B0:85:3C:C1:7D:F1:FC:54:0D:5D:B1:75:8F:16:41:1A:F6:B4:AE:3E:52:1F:26:81:0C:55:B6:99",
   "rules": [
     "Do not release an in-place ps.hakim.stable update unless its signer exactly matches certificate_sha256.",
@@ -15,5 +20,13 @@
     "Do not store private signing material in this public repository.",
     "Do not uninstall or clear the field app as a signing workaround without an explicit migration decision and state-preservation evidence.",
     "Build or CI success alone does not establish physical-phone field installation."
-  ]
+  ],
+  "last_verified_signed_candidate": {
+    "version_code": 20312,
+    "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+    "signature_scheme": "v2",
+    "signer_count": 1,
+    "field_installed": false
+  }
 }

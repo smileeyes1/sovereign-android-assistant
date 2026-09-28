@@ -31,10 +31,11 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_id": 0,
-    "commit": "PENDING_CURRENT_HEAD_CI",
-    "conclusion": "pending",
-    "artifact_id": 0
+    "run_id": 36391476836,
+    "run_number": 1204,
+    "commit": "c5907a9b92687934f3132385cda7f30911151a16",
+    "conclusion": "success",
+    "artifact_id": 10956775985
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,

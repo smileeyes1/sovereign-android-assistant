@@ -9,6 +9,12 @@ const DEFERRED_READ_TTL_MS=30*60_000;
 const EFFECT_TTL_MS=60_000;
 const DEFERRED_READ_OPS=new Set<HakimOp>(["status","ui","notifications","screenshot","browser_read"]);
 
+export const DIRECT_DEVICE_POLL_MAX_MS=8_000;
+export function normalizeDeviceWaitMs(raw:unknown){
+  const n=Number(raw??DIRECT_DEVICE_POLL_MAX_MS);
+  return Number.isFinite(n)?Math.max(0,Math.min(DIRECT_DEVICE_POLL_MAX_MS,Math.trunc(n))):DIRECT_DEVICE_POLL_MAX_MS;
+}
+
 export function commandTtlMs(op:HakimOp){
   return DEFERRED_READ_OPS.has(op)?DEFERRED_READ_TTL_MS:EFFECT_TTL_MS;
 }

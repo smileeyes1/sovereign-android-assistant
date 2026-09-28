@@ -28,8 +28,8 @@
     },
     "candidate": {
       "version_code": 20312,
-      "branch": "feature/hakim-professional-observability-20312",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "branch": "release/hakim-20312-professional-candidate",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
@@ -167,15 +167,15 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "NOT_BUILT_YET",
-    "signed_candidate_d1_verified": false,
+    "signed_candidate_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+    "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "NOT_BUILT_YET",
+    "signed_candidate_file": "HAKIM-20312-D1-FINAL.apk",
     "install_relation": "UPGRADE_FROM_VERIFIED_20311_TO_20312",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
@@ -249,6 +249,11 @@
     "professional_observability_source_integrated": true,
     "professional_observability_field_verified": false,
     "cross_session_continuity_cloud_verified": true,
-    "cross_session_continuity_android_field_verified": false
+    "cross_session_continuity_android_field_verified": false,
+    "same_signed_apk_field_verified": false,
+    "release_source_tested_head": "1769585409850130935847a48ecfc9344862417f",
+    "release_merge_commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
+    "release_ci_run_id": 36378301981,
+    "release_ci_artifact_id": 10951292910
   }
 }

@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20311,
+  "candidate_version": 20312,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -12,5 +12,7 @@
   "autostart_recovery_field_verified": true,
   "lan_survey_field_verified": true,
   "layered_resilience_field_verified": false,
-  "extender_survey_field_verified": false
+  "extender_survey_field_verified": false,
+  "professional_observability_field_verified": false,
+  "cross_session_continuity_field_verified": false
 }

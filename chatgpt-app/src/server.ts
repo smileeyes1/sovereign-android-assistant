@@ -310,6 +310,24 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
       securitySchemes:writeSecurity,
       _meta:{securitySchemes:writeSecurity}
     });
+    tools.push({
+      name:"revoke_network_device",
+      title:"إلغاء اعتماد جهاز محلي",
+      description:"ألغِ اعتماد جهاز محلي من حكيم وامسح بصمة ADB المحلية المرتبطة به. العملية خلف موافقة أندرويد ولا تنفذ أي أمر على الجهاز المستهدف.",
+      inputSchema:{
+        type:"object",
+        properties:{
+          device_id:{type:"string",pattern:"^lan-[0-9a-f]{16}$"},
+          adapter:{type:"string",enum:["adb"]}
+        },
+        required:["device_id"],
+        additionalProperties:false
+      },
+      annotations:LAN_AUTHORIZE_ANNOTATIONS,
+      securitySchemes:writeSecurity,
+      _meta:{securitySchemes:writeSecurity}
+    });
+
 
   }
 
@@ -496,6 +514,24 @@ export function createHakimServer(
       const requestId=await remember(await publishCommand(credential,"network_control",payload),"network_control");
       return text(actionRequested(requestId,{device_id,validated_action:action}));
     });
+    server.registerTool("revoke_network_device",{
+      title:"إلغاء اعتماد جهاز محلي",
+      description:"امسح اعتماد وبصمة جهاز ADB المحلي من حكيم بعد موافقة أندرويد.",
+      inputSchema:{
+        device_id:z.string().regex(NETWORK_DEVICE_ID),
+        adapter:z.literal("adb").optional()
+      },
+      annotations:LAN_AUTHORIZE_ANNOTATIONS
+    },async({device_id,adapter})=>{
+      if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+      if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,adapter:"adb",validated_action:"revoke"}));
+      const requestId=await remember(
+        await publishCommand(credential,"network_revoke",{device_id,adapter:adapter??"adb"}),
+        "network_revoke"
+      );
+      return text(actionRequested(requestId,{device_id,adapter:"adb",validated_action:"revoke"}));
+    });
+
 
   }
 

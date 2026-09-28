@@ -64,6 +64,8 @@ object HakimSelfCheck {
         check("البيانات الحساسة لا تُرقى لقاعدة", governance.optBoolean("sensitive_data_not_promoted"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
+        check("ملف التعليمات المخصصة تحت ٨٠٠٠", governance.optBoolean("custom_profile_under_8000"))
+        check("جوهر التعليمات المخصصة محفوظ", governance.optBoolean("custom_profile_lossless_core"))
 
         val acceptanceGate = governance.optJSONObject("acceptance_gate") ?: HakimAcceptanceGate.status(context)
         check("بوابة الاعتماد السيادية فعالة", acceptanceGate.optBoolean("acceptance_gate"))

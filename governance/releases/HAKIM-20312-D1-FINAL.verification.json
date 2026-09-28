@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "artifact": "HAKIM-20312-D1-FINAL.apk",
-  "verification_state": "SOURCE_CI_AND_LOCAL_SIGNATURE_STRUCTURE_VERIFIED_FIELD_INSTALL_PENDING",
+  "verification_state": "SOURCE_CI_LOCAL_SIGNATURE_AND_EXACT_FIELD_APK_VERIFIED_PRODUCT_PROMOTION_PENDING",
   "package": "ps.hakim.stable",
   "version_code": 20312,
   "version_name": "3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1",
@@ -49,8 +49,18 @@
     "resources_arsc_aligned_4": true
   },
   "field": {
-    "installed_on_phone": false,
-    "same_signed_apk_field_verified": false,
+    "installed_on_phone": true,
+    "same_signed_apk_field_verified": true,
+    "installed_apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+    "exact_sha_match": true,
+    "version_code_observed": 20312,
+    "secure_relay_connected": true,
+    "execution_fabric_online": true,
+    "cloud_continuity_ready": true,
+    "operation_runtime_observed": true,
+    "professional_observability_visual_verified": false,
+    "clean_bridge_reconnect_after_probe_removal": true,
+    "observed_at_utc": "2026-09-28T06:08:53.248020311Z",
     "promoted": false
   }
 }

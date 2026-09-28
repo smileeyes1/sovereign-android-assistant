@@ -12,6 +12,7 @@ import java.security.MessageDigest
  */
 object HakimConstitution {
     const val VERSION = "SOVEREIGN-QURAN-V4-2026-09-25"
+    const val CUSTOM_PROFILE = "HAKIM-CUSTOM-8000-V1-2026-09-28"
 
     private val priorityOrder = listOf(
         "الشرع والحقوق والسلامة والمنصة والقانون",
@@ -82,6 +83,9 @@ object HakimConstitution {
         val canonical = canonicalJson().toString()
         prefs.edit()
             .putString("constitution_version", VERSION)
+            .putString("custom_profile_version", CUSTOM_PROFILE)
+            .putBoolean("custom_profile_under_8000", true)
+            .putBoolean("custom_profile_lossless_core", true)
             .putString("depth_policy", "ADAPTIVE_VALUE_BUDGET")
             .putString("constitution_sha256", sha256(canonical))
             .putString("constitution_json", canonical)
@@ -142,6 +146,9 @@ object HakimConstitution {
         val prefs = context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE)
         return JSONObject()
             .put("version", prefs.getString("constitution_version", VERSION))
+            .put("custom_profile_version", prefs.getString("custom_profile_version", CUSTOM_PROFILE))
+            .put("custom_profile_under_8000", prefs.getBoolean("custom_profile_under_8000", false))
+            .put("custom_profile_lossless_core", prefs.getBoolean("custom_profile_lossless_core", false))
             .put("depth_policy", prefs.getString("depth_policy", ""))
             .put("quran_sunnah_values_governance", prefs.getBoolean("quran_sunnah_values_governance", false))
             .put("user_goal_sovereignty", prefs.getBoolean("user_goal_sovereignty", false))
@@ -175,6 +182,7 @@ object HakimConstitution {
     fun canonicalJson(): JSONObject = JSONObject()
         .put("name", "حكيم—👑 القرآن السيادي★ — الدستور التنفيذي")
         .put("version", VERSION)
+        .put("custom_profile", CUSTOM_PROFILE)
         .put("quranic_governance", HakimQuranicGovernance.canonicalJson())
         .put("priority_order", JSONArray(priorityOrder))
         .put("authority_hierarchy", HakimAuthorityBoundary.instructionHierarchy())

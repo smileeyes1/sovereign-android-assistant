@@ -88,12 +88,11 @@ class HakimService : Service() {
         startAsForeground()
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        if (hasAnyPairing()) {
+        if (isPaired()) {
             createBrowser()
-            if (hasLegacyPairing()) connectRemote()
-            else updateNotification("قناة حكيم الآمنة تعمل — المتصفح جاهز")
+            connectRemote()
         } else {
-            updateNotification("حكيم يعمل — بانتظار الاقتران الآمن")
+            updateNotification("قناة حكيم المشفّرة تعمل — وضع خفيف بلا متصفح")
         }
     }
 
@@ -126,10 +125,9 @@ class HakimService : Service() {
         }
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        if (hasAnyPairing() && !::webView.isInitialized) createBrowser()
-        if (socket == null && hasLegacyPairing()) connectRemote()
-        if (hasSecurePairing() && !hasLegacyPairing()) {
-            updateNotification("قناة حكيم الآمنة تعمل — المتصفح جاهز")
+        if (socket == null && isPaired()) {
+            if (!::webView.isInitialized) createBrowser()
+            connectRemote()
         }
         return START_STICKY
     }
@@ -369,17 +367,12 @@ class HakimService : Service() {
         } catch (_: Exception) {}
     }
 
-    private fun hasLegacyPairing(): Boolean =
+    private fun isPaired(): Boolean =
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
         prefs.getString("result_topic", "").orEmpty().isNotBlank()
 
     private fun hasSecurePairing(): Boolean =
         HakimUnifiedRelay.isConfigured(applicationContext)
-
-    private fun hasAnyPairing(): Boolean =
-        hasLegacyPairing() || hasSecurePairing()
-
-    private fun isPaired(): Boolean = hasLegacyPairing()
 
     private fun authKey(): String = prefs.getString("auth_key", "").orEmpty().trim()
 
@@ -635,7 +628,12 @@ class HakimService : Service() {
         val done = CountDownLatch(1)
         val response = AtomicReference(JSONObject().put("ok", false).put("error", "browser_unavailable"))
         Handler(Looper.getMainLooper()).post {
-            val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else null
+            val target = HakimRuntime.visibleWebView()
+                ?: if (::webView.isInitialized) webView
+                else if (hasSecurePairing()) {
+                    createBrowser()
+                    webView
+                } else null
             if (target == null) {
                 done.countDown()
                 return@post

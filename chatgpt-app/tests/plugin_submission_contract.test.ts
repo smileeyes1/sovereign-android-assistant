@@ -61,7 +61,7 @@ test("public async API exposes operation_token and hides request_id schema",()=>
 test("submission packet has review cases and annotation justifications",()=>{
   assert.equal([...submission.matchAll(/^### P\d+\b/gm)].length,5);
   assert.equal([...submission.matchAll(/^### N\d+\b/gm)].length,3);
-  for(const tool of ["get_device_status","open_target","navigate_device","get_request_result"]){
+  for(const tool of ["get_device_status","open_target","navigate_device","get_continuation_state","save_continuation_checkpoint","get_request_result"]){
     assert.ok(submission.includes("### "+tool),tool+" justification missing");
   }
   for(const key of ["readOnlyHint","openWorldHint","destructiveHint"]){

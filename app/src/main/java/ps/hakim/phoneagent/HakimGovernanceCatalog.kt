@@ -132,7 +132,7 @@ object HakimGovernanceCatalog {
     ): String {
         val domains = selectDomains(goal, acceptance, attachmentCount)
         val selected = rules
-            .filter { it.always || it.domain in domains }
+            .filter { !it.always && it.domain in domains }
             .distinctBy { it.id }
             .sortedWith(compareByDescending<Rule> { it.priority }.thenBy { it.id })
 
@@ -148,8 +148,8 @@ object HakimGovernanceCatalog {
 
         return buildString {
             appendLine("[الحاكمية التكيفية من الدستور الداخلي الكامل]")
-            appendLine("الدستور الكامل محفوظ داخليًا ولا يُضغط إلى حد التعليمات المخصصة؛ هنا تُستدعى فقط القواعد اللازمة للمهمة الحالية.")
-            appendLine("المجالات: " + domains.map { it.name }.sorted().joinToString("، "))
+            appendLine("الدستور الكامل محفوظ داخليًا ولا يُضغط إلى حد التعليمات المخصصة؛ القواعد الجوهرية مفروضة بالدستور التنفيذي، وهنا تُضاف فقط الوحدات اللازمة للمهمة الحالية.")
+            appendLine("الوحدات الإضافية: " + domains.map { it.name }.sorted().joinToString("، "))
             selected.forEach { appendLine("• [${it.id}] ${it.text}") }
         }.trimEnd()
     }
@@ -191,10 +191,7 @@ object HakimGovernanceCatalog {
 
     private fun selectDomains(goal: String, acceptance: String, attachmentCount: Int): Set<Domain> {
         val q = (goal + " " + acceptance).lowercase()
-        val selected = linkedSetOf(
-            Domain.CORE, Domain.AUTHORITY, Domain.EVIDENCE, Domain.EXECUTION,
-            Domain.CLOSURE, Domain.FAILURE, Domain.SECURITY, Domain.RESOURCE
-        )
+        val selected = linkedSetOf(Domain.RESOURCE)
 
         fun any(vararg terms: String): Boolean = terms.any { q.contains(it) }
 

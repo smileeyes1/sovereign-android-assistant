@@ -12,7 +12,7 @@ import {
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
-import { pollPairAck } from "./relay.js";
+import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
@@ -565,8 +565,7 @@ app.get("/device/v1/commands",async(req,res)=>{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
     legacyReadProbe.observeCommand(topic,key);
-    const waitRaw=Number(one(req.query.wait_ms)||"25000");
-    const waitMs=Number.isFinite(waitRaw)?Math.max(0,Math.min(25_000,Math.trunc(waitRaw))):25_000;
+    const waitMs=normalizeDeviceWaitMs(one(req.query.wait_ms));
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
     noStore(res);
     if(command){

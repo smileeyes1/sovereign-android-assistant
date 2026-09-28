@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { CARRIER_AAD,createDeviceCredential,decodeBearer,decryptResult,encodeBearer,encryptCarrier,encryptResult,makeEnvelope,pairingUrl } from "../src/protocol.js";
-import { commandTtlMs } from "../src/relay.js";
+import { commandTtlMs,DIRECT_DEVICE_POLL_MAX_MS,normalizeDeviceWaitMs } from "../src/relay.js";
 
 test("bearer round trip",()=>{
   const c=createDeviceCredential();
@@ -83,4 +83,13 @@ test("safe reads survive background sleep while effectful commands stay short-li
   assert.equal(commandTtlMs("ui"),30*60_000);
   assert.equal(commandTtlMs("action"),60_000);
   assert.equal(commandTtlMs("launch"),60_000);
+});
+
+
+test("device long poll is capped below the observed Android wake window",()=>{
+  assert.equal(DIRECT_DEVICE_POLL_MAX_MS,8_000);
+  assert.equal(normalizeDeviceWaitMs("25000"),8_000);
+  assert.equal(normalizeDeviceWaitMs("5000"),5_000);
+  assert.equal(normalizeDeviceWaitMs("bad"),8_000);
+  assert.equal(normalizeDeviceWaitMs("-10"),0);
 });

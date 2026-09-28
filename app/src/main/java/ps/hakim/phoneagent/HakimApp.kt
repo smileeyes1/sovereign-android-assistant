@@ -22,6 +22,7 @@ class HakimApp : Application() {
         HakimConstraintDoctor.runAsync(this, "app_start")
         HakimSelfImprovementLoop.install(this)
         startHakimIfPaired(prefs)
+        HakimFieldAcceptance.install(this)
     }
 
     override fun onTrimMemory(level: Int) {

@@ -107,6 +107,29 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
         val output: String? = null,
     )
 
+    /** Verify that the target actually accepts this Hakim ADB identity before authorization is stored. */
+    fun verifyRemote(host: String, port: Int): RemoteActionResult {
+        if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
+        return try {
+            runCatching { disconnect() }
+            setThrowOnUnauthorised(true)
+            val connected = connect(host, port) || isConnected
+            if (connected) RemoteActionResult(true) else RemoteActionResult(false, "ADB_CONNECT_FAILED")
+        } catch (t: Throwable) {
+            val name = t.javaClass.simpleName
+            val message = (t.message ?: name).lowercase()
+            val approvalRequired =
+                name.contains("Authentication", ignoreCase = true) ||
+                "unauthor" in message || "authentication" in message || "auth" in message
+            RemoteActionResult(
+                false,
+                if (approvalRequired) "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_CONNECT_FAILED"
+            )
+        } finally {
+            runCatching { disconnect() }
+        }
+    }
+
     /** Remote ADB is restricted to a small Android/TV remote-control vocabulary. */
     fun executeRemoteAction(
         host: String,

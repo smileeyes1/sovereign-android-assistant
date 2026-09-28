@@ -101,3 +101,16 @@ test("legacy result binding can self-migrate but remains key-pinned",async()=>{
     );
   });
 });
+
+
+test("paired-device continuity authorization is key-pinned",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    await store.registerCredential(c);
+    await store.authorizeCommandTopic(c.topic,c.relayKey);
+    await assert.rejects(
+      ()=>store.authorizeCommandTopic(c.topic,"Z".repeat(48)),
+      /relay_auth_failed/
+    );
+  });
+});

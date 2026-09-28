@@ -148,3 +148,23 @@ test("corrupt journal fails closed to empty state instead of replaying guesses",
     assert.equal(state.work,null);
   });
 });
+
+
+test("paired-device topic view returns the same bounded checkpoint",async()=>{
+  await withDir(async dir=>{
+    const c=createDeviceCredential();
+    const store=new ContinuityStore(dir);
+    await store.init();
+    const saved=await store.saveCheckpoint(c,{
+      goal_label:"متابعة المهمة",
+      stage:"تحقق",
+      last_verified:"تمت خطوة مثبتة",
+      next_step:"متابعة النتيجة",
+      status:"active"
+    });
+    const state=await store.stateForTopic(c.topic);
+    assert.equal(state.work?.goal_id,saved.goal_id);
+    assert.equal(state.work?.goal_label,"متابعة المهمة");
+    assert.equal(state.pending_count,0);
+  });
+});

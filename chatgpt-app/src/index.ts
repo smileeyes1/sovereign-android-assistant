@@ -562,6 +562,25 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 app.get("/terms",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>شروط حكيم</title><body><h1>شروط حكيم</h1><p>حكيم ذراع تنفيذ اختياري لجهاز يملكه المستخدم أو يملك صلاحية إدارته. استخدامه يعني أنك مخول باستخدام الجهاز والخدمات التي تطلب من حكيم الوصول إليها.</p><p>لا يمنح الجسر نفسه صلاحيات Android ولا يتجاوز حماية النظام. فتح التطبيقات أو الروابط والتنقل على الجهاز تبقى خاضعة لموافقة Android وسياسات ChatGPT. لا يضمن حكيم توافر نموذج بعينه؛ ChatGPT يطبق ما تتيحه خطة المستخدم ومنطقته وحدودها.</p><p>يُحظر استخدام حكيم للوصول غير المصرح به أو تجاوز الحماية أو تنفيذ نشاط مخالف للقانون أو شروط الخدمات الخارجية. قد تُرفض الأفعال عالية المخاطر أو غير المدعومة بدل تنفيذها.</p></body></html>`));
 
 
+app.get("/device/v1/continuity",async(req,res)=>{
+  try{
+    const topic=one(req.query.topic);
+    const key=directRelayKey(req);
+    await directRelayStore.authorizeCommandTopic(topic,key);
+    const state=await continuityStore.stateForTopic(topic);
+    noStore(res);
+    return res.json({
+      continuity_version:state.continuity_version,
+      durable:state.durable,
+      updated_at_ms:state.updated_at_ms,
+      work:state.work,
+      pending_count:state.pending_count
+    });
+  }catch(e){
+    return directRelayError(res,e);
+  }
+});
+
 app.get("/device/v1/commands",async(req,res)=>{
   try{
     const topic=one(req.query.topic);

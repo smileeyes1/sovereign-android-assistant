@@ -24,7 +24,8 @@
       "commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
       "ci_run_number": 1200,
       "source_ci_verified": true,
-      "field_verified": true
+      "field_verified": true,
+      "exact_apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0"
     },
     "candidate": {
       "version_code": 20313,

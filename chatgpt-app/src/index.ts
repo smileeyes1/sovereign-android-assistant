@@ -365,7 +365,12 @@ app.get("/health",(_req,res)=>res.json({
   governance:GOVERNANCE_SUMMARY,
   reviewer_demo:reviewModeEnabled(),
   public_tools:process.env.HAKIM_PUBLIC_SAFE!=="0"
-    ?["get_device_status","open_target","navigate_device","get_request_result"]
+    ?[
+      "get_device_status","open_target","navigate_device","get_request_result",
+      ...(process.env.HAKIM_LAN_CONTROL==="1"
+        ?["list_network_devices","authorize_network_device","control_network_device"]
+        :[])
+    ]
     :undefined
 }));
 

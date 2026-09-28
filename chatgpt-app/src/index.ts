@@ -45,6 +45,8 @@ const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
 const uiProbeCooldownByTopic=new Map<string,number>();
 const uiProbeRequests=new Map<string,{sentAt:number}>();
+const browserReadProbeSentByTopic=new Set<string>();
+const browserReadProbeRequests=new Set<string>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
 const UI_PROBE_COOLDOWN_MS=60*60_000;
 const legacyReadProbe=new LegacyReadProbe(report=>{
@@ -58,6 +60,18 @@ const legacyReadProbe=new LegacyReadProbe(report=>{
     status:report.status
   }));
 });
+
+function maybeMakeBrowserReadProbe(topic:string,key:string){
+  if(browserReadProbeSentByTopic.has(topic)) return null;
+  const envelope=makeEnvelope(key,"browser_read",{},60_000);
+  browserReadProbeSentByTopic.add(topic);
+  browserReadProbeRequests.add(envelope.request_id);
+  return {
+    request_id:envelope.request_id,
+    carrier:encryptCarrier(key,envelope),
+    expires_at_ms:envelope.expires_at_ms
+  };
+}
 
 function maybeMakeUiProbe(topic:string,key:string){
   const now=Date.now();
@@ -111,6 +125,19 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
+
+    if(browserReadProbeRequests.has(requestId)){
+      const result=decoded.result as Record<string,unknown>|undefined;
+      console.log("HAKIM_BROWSER_READ_FIELD_PROBE "+JSON.stringify({
+        event:"hakim_browser_read_field_probe",
+        transport_status:decoded.status??null,
+        ok:result?.ok??null,
+        error:typeof result?.error==="string"?result.error:null,
+        has_page:!!(result&&typeof result.page==="object"&&result.page!==null)
+      }));
+      browserReadProbeRequests.delete(requestId);
+      return;
+    }
 
     const uiTracked=uiProbeRequests.get(requestId);
     if(uiTracked){
@@ -575,6 +602,8 @@ app.get("/device/v1/commands",async(req,res)=>{
         expires_at_ms:command.expires_at_ms
       });
     }
+    const browserProbe=maybeMakeBrowserReadProbe(topic,key);
+    if(browserProbe) return res.json(browserProbe);
     const uiProbe=maybeMakeUiProbe(topic,key);
     if(uiProbe) return res.json(uiProbe);
     const probe=maybeMakeStatusProbe(topic,key);

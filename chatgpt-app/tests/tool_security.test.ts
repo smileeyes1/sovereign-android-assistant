@@ -15,13 +15,13 @@ const credential:DeviceCredential={
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{
   const tools=chatgptToolList(true) as any[];
-  assert.equal(tools.length,4);
+  assert.equal(tools.length,5);
   const byName=new Map(tools.map(t=>[t.name,t]));
   assert.deepEqual([...byName.keys()].sort(),[
-    "get_device_status","get_request_result","navigate_device","open_target"
+    "get_continuation_state","get_device_status","get_request_result","navigate_device","open_target"
   ].sort());
 
-  for(const name of ["get_device_status","get_request_result"]){
+  for(const name of ["get_device_status","get_continuation_state","get_request_result"]){
     const t:any=byName.get(name);
     assert.ok(t,name+" missing");
     assert.deepEqual(t.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
@@ -51,10 +51,10 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,8);
+  assert.equal(tools.length,9);
   for(const name of [
     "get_device_status","read_browser_page","get_current_ui","list_notifications","capture_screenshot",
-    "open_target","perform_ui_action","get_request_result"
+    "open_target","perform_ui_action","get_continuation_state","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");
   assert.deepEqual((byName.get("read_browser_page") as any).securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
   assert.equal(byName.has("navigate_device"),false);

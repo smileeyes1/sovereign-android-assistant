@@ -16,7 +16,7 @@ const credential:DeviceCredential={
   pairToken:"B".repeat(43)
 };
 
-const lanNames=["list_network_devices","authorize_network_device","control_network_device"];
+const lanNames=["list_network_devices","authorize_network_device","control_network_device","revoke_network_device"];
 const actions=[
   "home","back","up","down","left","right","enter",
   "play_pause","volume_up","volume_down","mute",
@@ -42,7 +42,7 @@ test("enabled LAN catalog is pseudonymous and restricted",()=>{
   try{
     process.env.HAKIM_LAN_CONTROL="1";
     const tools=chatgptToolList(true) as any[];
-    assert.equal(tools.length,9);
+    assert.equal(tools.length,10);
     const byName=new Map(tools.map(t=>[t.name,t]));
 
     const list:any=byName.get("list_network_devices");
@@ -63,6 +63,13 @@ test("enabled LAN catalog is pseudonymous and restricted",()=>{
     assert.deepEqual(control.inputSchema.properties.action.enum,actions);
     assert.equal(control.inputSchema.properties.command,undefined);
     assert.equal(control.annotations.destructiveHint,false);
+
+    const revoke:any=byName.get("revoke_network_device");
+    assert.ok(revoke);
+    assert.deepEqual(revoke.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
+    assert.equal(revoke.inputSchema.properties.device_id.pattern,"^lan-[0-9a-f]{16}$");
+    assert.deepEqual(revoke.inputSchema.properties.adapter.enum,["adb"]);
+    assert.equal(revoke.annotations.idempotentHint,true);
     for(const forbidden of ["reboot","power","install","uninstall","factory_reset","shell"]){
       assert.equal(actions.includes(forbidden),false,forbidden+" must remain unavailable");
     }
@@ -99,6 +106,14 @@ test("enabled reviewer LAN tools never touch a real device and preserve approval
     assert.equal((control.structuredContent as any)?.demo,true);
     assert.equal((control.structuredContent as any)?.status,"approval_requested");
     assert.equal((control.structuredContent as any)?.validated_action,"home");
+
+    const revoke=await client.callTool({
+      name:"revoke_network_device",
+      arguments:{device_id:"lan-0123456789abcdef",adapter:"adb"}
+    });
+    assert.equal((revoke.structuredContent as any)?.demo,true);
+    assert.equal((revoke.structuredContent as any)?.status,"approval_requested");
+    assert.equal((revoke.structuredContent as any)?.validated_action,"revoke");
   }finally{
     await client.close();
     await server.close();
@@ -110,6 +125,7 @@ test("LAN discovery can survive phone sleep but LAN effects stay short-lived",()
   assert.equal(commandTtlMs("network_devices"),30*60_000);
   assert.equal(commandTtlMs("network_authorize"),60_000);
   assert.equal(commandTtlMs("network_control"),60_000);
+  assert.equal(commandTtlMs("network_revoke"),60_000);
 });
 
 test("health metadata also gates LAN tool advertisement",()=>{

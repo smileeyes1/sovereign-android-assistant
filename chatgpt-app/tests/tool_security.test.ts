@@ -44,18 +44,19 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
   assert.equal(nav.annotations.destructiveHint,false);
 
   for(const forbidden of [
-    "get_current_ui","list_notifications","capture_screenshot","perform_ui_action"
+    "read_browser_page","get_current_ui","list_notifications","capture_screenshot","perform_ui_action"
   ]) assert.equal(byName.has(forbidden),false,forbidden+" must not be public");
 });
 
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,7);
+  assert.equal(tools.length,8);
   for(const name of [
-    "get_device_status","get_current_ui","list_notifications","capture_screenshot",
+    "get_device_status","read_browser_page","get_current_ui","list_notifications","capture_screenshot",
     "open_target","perform_ui_action","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");
+  assert.deepEqual((byName.get("read_browser_page") as any).securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
   assert.equal(byName.has("navigate_device"),false);
   const action:any=byName.get("perform_ui_action");
   assert.deepEqual(action.inputSchema.properties.kind.enum,[

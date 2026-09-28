@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20314
-        versionName '3.3.10-authorized-lan-control-v1'
+        versionName '3.3.10-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-field-acceptance-authorized-lan-control-v1'
     }
 
     compileOptions {

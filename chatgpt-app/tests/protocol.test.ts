@@ -87,9 +87,9 @@ test("safe reads survive background sleep while effectful commands stay short-li
 
 
 test("device long poll is capped below the observed Android wake window",()=>{
-  assert.equal(DIRECT_DEVICE_POLL_MAX_MS,4_000);
-  assert.equal(normalizeDeviceWaitMs("25000"),4_000);
-  assert.equal(normalizeDeviceWaitMs("5000"),4_000);
-  assert.equal(normalizeDeviceWaitMs("bad"),4_000);
+  assert.equal(DIRECT_DEVICE_POLL_MAX_MS,2_000);
+  assert.equal(normalizeDeviceWaitMs("25000"),2_000);
+  assert.equal(normalizeDeviceWaitMs("5000"),2_000);
+  assert.equal(normalizeDeviceWaitMs("bad"),2_000);
   assert.equal(normalizeDeviceWaitMs("-10"),0);
 });

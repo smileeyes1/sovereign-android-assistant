@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-26",
+  "snapshot_date": "2026-09-28",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
-    "last_verified_baseline_commit": "68a71316eb7bc4ffcdf26301dc56dbbf2facde7d",
+    "last_verified_baseline_commit": "db79258fd7dde8bfecb152afbe5624edf891b270",
     "production_verified": true,
     "health_verified": true,
     "oauth_exact_callback_verified": true,
@@ -27,25 +27,25 @@
       "field_verified": true
     },
     "candidate": {
-      "version_code": 20311,
-      "branch": "feature/hakim-extender-survey-20311",
+      "version_code": 20312,
+      "branch": "feature/hakim-professional-observability-20312",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "read_only_extender_wifi_channel_and_local_management_fingerprint"
+      "purpose": "professional_local_operation_observability_and_cross_session_continuity"
     },
     "field_observed_current": {
-      "observed_at": "2026-09-26",
-      "version_code": 20310,
-      "version_name": "3.3.6-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-v1",
+      "observed_at": "2026-09-28",
+      "version_code": 20311,
+      "version_name": "3.3.7-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-v1",
       "apk_sha256": "NOT_REOBSERVED_ON_DEVICE",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": true,
       "recovery_state": "healthy",
-      "evidence": "authenticated_direct_status_probe_version_20310",
+      "evidence": "authenticated_direct_status_probe_version_20311",
       "current_signer_reobserved": false,
       "exact_public_source_mapping": "NOT_PROVEN",
       "promoted_as_source_baseline": false
@@ -59,13 +59,13 @@
     "execution_fabric_field_online": true,
     "production_bridge_contract": "hakim-direct-https-v1+relay_result_topic+HR1+encrypted_ntfy_fallback",
     "current_installed_field_transport": {
-      "observed_at": "2026-09-26",
+      "observed_at": "2026-09-28",
       "status": "ONLINE_VERIFIED",
       "transport": "hakim-direct-https-v1",
       "preserve_pairing": true,
       "authentication": "ACCEPTED_AFTER_SAFE_LAZY_MIGRATION",
       "evidence": {
-        "production_bridge_commit": "35a07a35c9742ba87d6449d980ca72ff6fae4bf6",
+        "production_bridge_commit": "b53ee5a7f2140db454bfbe76ee643950182d118e",
         "device_user_agent": "Dalvik/2.1.0 Android 16 TECNO LJ6",
         "accepted_long_polls": [
           {
@@ -78,9 +78,11 @@
             "duration_ms": 25298,
             "timestamp_utc": "2026-09-26T14:06:12.706595774Z"
           }
-        ]
+        ],
+        "current_cloud_baseline_commit": "db79258fd7dde8bfecb152afbe5624edf891b270",
+        "latest_cloud_reconnect_to_field_phone": "NOT_OBSERVED_AFTER_DB79258_AT_SNAPSHOT"
       },
-      "note": "Direct authenticated long-poll continuity is field-verified. Exact installed APK byte identity remains separately unproven."
+      "note": "Hakim 20311 was directly field-observed ONLINE on the clean b53ee5a7 bridge with ~8.1s command polling. Current cloud baseline db79258 is CI/deployment verified; a fresh 20311 request to that exact deployment had not yet appeared at this snapshot, so no field reconnection is claimed."
     }
   },
   "material_factory": {
@@ -155,7 +157,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20311,
+    "candidate_version": 20312,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -165,16 +167,16 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "347cb3e259625622519dd92070f20f4841b9ebfb3b4394d7484f61532878d255",
-    "signed_candidate_d1_verified": true,
+    "signed_candidate_sha256": "NOT_BUILT_YET",
+    "signed_candidate_d1_verified": false,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "HAKIM-20301-D1-FINAL-V2.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20310_TO_20311",
+    "signed_candidate_file": "NOT_BUILT_YET",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20311_TO_20312",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -183,7 +185,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20301,
+    "signed_candidate_version": 20312,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,
@@ -243,6 +245,10 @@
     "relay_stale_restart_source_integrated": true,
     "layered_resilience_field_verified": false,
     "extender_survey_source_integrated": true,
-    "extender_survey_field_verified": false
+    "extender_survey_field_verified": false,
+    "professional_observability_source_integrated": true,
+    "professional_observability_field_verified": false,
+    "cross_session_continuity_cloud_verified": true,
+    "cross_session_continuity_android_field_verified": false
   }
 }

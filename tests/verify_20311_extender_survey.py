@@ -15,7 +15,7 @@ def req(v, reason):
         raise SystemExit("EXTENDER_SURVEY_20311=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20311,"version")
+req(m is not None and int(m.group(1))>=20311,"version")
 req("extender-survey" in BUILD and "lan-survey" in BUILD and "network-diagnostics" in BUILD,"version_name")
 
 for token in [
@@ -73,6 +73,6 @@ for forbidden_perm in [
     req(forbidden_perm not in MANIFEST,"new_permission:"+forbidden_perm)
 
 req("python3 tests/verify_20311_extender_survey.py" in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20311"' in WORKFLOW,"workflow_version")
+req("candidate_version" in WORKFLOW and "VERSION_CODE" in WORKFLOW,"workflow_version_gate_missing")
 
 print("EXTENDER_SURVEY_20311=PASS wifi_read_only=true local_https_fingerprint=true no_new_permissions=true")

@@ -220,7 +220,11 @@ object HakimExecutiveLoop {
     fun latestOperationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
-        if (events.length() == 0) return "حالة العملية: لا توجد عملية جارية"
+        if (events.length() == 0) {
+            return HakimCloudContinuity.compactText(context)
+                ?.let { "حالة العملية: $it" }
+                ?: "حالة العملية: لا توجد عملية جارية"
+        }
         val e = events.optJSONObject(events.length() - 1) ?: return "حالة العملية: لا توجد عملية جارية"
         val phase = e.optString("phase")
         val ageMs = (System.currentTimeMillis() - p.getLong("updated_at", 0L)).coerceAtLeast(0L)
@@ -263,18 +267,68 @@ object HakimExecutiveLoop {
     fun operationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
-        if (events.length() == 0) return "لا توجد عملية جارية"
+        val cloudLines = HakimCloudContinuity.panelLines(context)
+        if (events.length() == 0) {
+            return if (cloudLines.isEmpty()) {
+                "لا توجد عملية جارية"
+            } else {
+                (listOf("لا توجد عملية محلية جارية", "— الاستمرارية السحابية —") + cloudLines)
+                    .joinToString("\n")
+            }
+        }
+
+        val phase = p.getString("phase", "").orEmpty()
+        val goal = p.getString("goal", "").orEmpty().trim().replace(Regex("\\s+"), " ").take(180)
+        val lastGain = p.getString("last_material_gain", "").orEmpty()
+            .trim().replace(Regex("\\s+"), " ").take(180)
+        val latestDetail = events.optJSONObject(events.length() - 1)
+            ?.optString("detail").orEmpty().trim().replace(Regex("\\s+"), " ").take(180)
+        val fabricState = runCatching {
+            HakimExecutionFabric.status(context).optString("state", "UNKNOWN")
+        }.getOrDefault("UNKNOWN")
+
         val lines = mutableListOf<String>()
-        val start = (events.length() - 6).coerceAtLeast(0)
+        if (goal.isNotBlank()) lines += "المقصد: $goal"
+        lines += "المرحلة: ${label(phase)} · محاولة ${p.getInt("cycle", 1).coerceAtLeast(1)}"
+        lines += "قناة التنفيذ: " + when (fabricState) {
+            "ONLINE" -> "متصلة"
+            "DEGRADED" -> "متاحة جزئيًا"
+            "OFFLINE" -> "غير متصلة — الحالة محفوظة للاستئناف"
+            else -> "قيد التحقق"
+        }
+        if (lastGain.isNotBlank()) lines += "آخر تقدم مثبت: $lastGain"
+        if ((phase == Phase.GATED.name || phase == Phase.WAITING_EXTERNAL.name) && latestDetail.isNotBlank()) {
+            lines += (if (phase == Phase.GATED.name) "المانع: " else "الانتظار: ") + latestDetail
+        }
+        lines += "الخطوة التالية: ${nextStepLabel(phase)}"
+        if (cloudLines.isNotEmpty()) {
+            lines += "— الاستمرارية السحابية —"
+            lines += cloudLines
+        }
+
+        val start = (events.length() - 4).coerceAtLeast(0)
         for (i in start until events.length()) {
             val e = events.optJSONObject(i) ?: continue
-            val phase = e.optString("phase")
             val at = android.text.format.DateFormat.getTimeFormat(context)
                 .format(Date(e.optLong("at", 0L)))
-            lines += "$at · ${label(phase)} · محاولة ${e.optInt("cycle", 1)}"
+            lines += "$at · ${label(e.optString("phase"))}"
         }
         lines += latestOperationText(context)
         return lines.joinToString("\n")
+    }
+
+    private fun nextStepLabel(raw: String): String = when (raw) {
+        Phase.UNDERSTANDING.name -> "تثبيت معيار الاكتمال ثم اختيار الخطة"
+        Phase.PLANNING.name -> "اختيار المسار الأقل عبئًا والأعلى أثرًا"
+        Phase.ROUTING.name -> "بدء التنفيذ عبر المسار المختار"
+        Phase.EXECUTING.name -> "التحقق من الأثر وعدم الاكتفاء ببدء التنفيذ"
+        Phase.VERIFYING.name -> "إغلاق المقصد بالدليل أو الانتقال إلى الإصلاح"
+        Phase.REPAIRING.name -> "إعادة التنفيذ بعد تغيير سببي ثم إعادة الاختبار"
+        Phase.WAITING_EXTERNAL.name -> "الاستئناف عند وصول الأثر دون إعادة الطلب"
+        Phase.GATED.name -> "معالجة المانع المثبت أو اختيار مسار بديل مأذون"
+        Phase.COMPLETE.name -> "لا توجد خطوة تالية؛ النتيجة مكتملة"
+        Phase.CANCELLED.name -> "لا توجد خطوة تالية؛ العملية ملغاة"
+        else -> "تحديث حالة العملية"
     }
 
     fun providerInstruction(context: Context, raw: String): String {

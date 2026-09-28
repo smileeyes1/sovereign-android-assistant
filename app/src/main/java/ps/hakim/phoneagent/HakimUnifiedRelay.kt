@@ -232,6 +232,12 @@ object HakimUnifiedRelay {
                     .remove("secure_relay_error")
                     .remove("last_recovery_error")
                     .apply()
+                HakimCloudContinuity.refreshIfDue(
+                    context,
+                    bridgeBase(context),
+                    topic,
+                    relayKey
+                )
                 HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                 continue
             } catch (e: Exception) {
@@ -547,6 +553,7 @@ object HakimUnifiedRelay {
             .put("secure_relay_running", isRunning())
             .put("secure_relay_connected", isConnected())
             .put("operation", HakimExecutiveLoop.publicStatus(context))
+            .put("cloud_continuity", HakimCloudContinuity.publicStatus(context))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)
             .put("accessibility", HakimAccessibilityService.instance != null)

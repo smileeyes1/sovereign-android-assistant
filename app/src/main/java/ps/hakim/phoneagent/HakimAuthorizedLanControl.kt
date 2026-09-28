@@ -80,8 +80,8 @@ object HakimAuthorizedLanControl {
         val ip = prefs.getString("$id.ip", "").orEmpty()
         if (!isPrivateIpv4(ip)) return error("invalid_local_target")
 
-        val probe = HakimAdbConnectionManager.remote(context).verifyRemote(ip, 5555)
-        if (!probe.ok) {
+        val probe = HakimAdbConnectionManager.remote(context).probeRemoteIdentity(ip, 5555)
+        if (!probe.ok || probe.output.isNullOrBlank()) {
             return JSONObject().put("ok", false).put("version", VERSION)
                 .put("device_id", id).put("adapter", "adb")
                 .put("status", if (probe.error == "ADB_TARGET_APPROVAL_REQUIRED") "target_approval_required" else "verification_failed")
@@ -89,10 +89,11 @@ object HakimAuthorizedLanControl {
         }
 
         prefs.edit().putBoolean("$id.authorized.adb", true)
+            .putString("$id.adb_identity_sha256", probe.output)
             .putLong("$id.authorized_at_ms", System.currentTimeMillis()).apply()
         return JSONObject().put("ok", true).put("device_id", id)
             .put("adapter", "adb").put("status", "authorized")
-            .put("verification", "adb_identity_accepted")
+            .put("verification", "adb_identity_bound")
     }
 
     fun control(context: Context, payload: JSONObject): JSONObject {
@@ -107,12 +108,21 @@ object HakimAuthorizedLanControl {
         if (!isPrivateIpv4(ip)) return error("invalid_local_target")
         if (seen <= 0L || System.currentTimeMillis() - seen > MAX_STALE_MS)
             return error("device_mapping_stale")
+        val expectedIdentity = prefs.getString("$id.adb_identity_sha256", "").orEmpty()
+        if (!expectedIdentity.matches(Regex("^[0-9a-f]{64}$"))) {
+            prefs.edit().putBoolean("$id.authorized.adb", false).remove("$id.adb_identity_sha256").apply()
+            return error("device_authorization_incomplete")
+        }
         val url = payload.optString("url").takeIf { it.isNotBlank() }
         val packageName = payload.optString("package").takeIf { it.isNotBlank() }
         val result = HakimAdbConnectionManager.remote(context)
-            .executeRemoteAction(ip, 5555, action, url, packageName)
+            .executeRemoteAction(ip, 5555, expectedIdentity, action, url, packageName)
+        if (result.error == "ADB_TARGET_IDENTITY_CHANGED") {
+            prefs.edit().putBoolean("$id.authorized.adb", false).remove("$id.adb_identity_sha256").apply()
+        }
         return JSONObject().put("ok", result.ok).put("device_id", id)
             .put("action", action).put("adapter", "adb")
+            .put("authorization_revoked", result.error == "ADB_TARGET_IDENTITY_CHANGED")
             .put("error", result.error ?: JSONObject.NULL)
             .put("output", result.output?.take(800) ?: "")
     }

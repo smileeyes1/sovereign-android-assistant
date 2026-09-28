@@ -45,23 +45,6 @@ const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
-const browserReadProbeCooldownByTopic=new Map<string,number>();
-const browserReadProbeRequests=new Set<string>();
-const BROWSER_READ_PROBE_COOLDOWN_MS=24*60*60_000;
-
-function maybeMakeBrowserReadProbe(topic:string,key:string){
-  const now=Date.now();
-  const previous=browserReadProbeCooldownByTopic.get(topic)??0;
-  if(now-previous<BROWSER_READ_PROBE_COOLDOWN_MS) return null;
-  const envelope=makeEnvelope(key,"browser_read",{},60_000);
-  browserReadProbeCooldownByTopic.set(topic,now);
-  browserReadProbeRequests.add(envelope.request_id);
-  return {
-    request_id:envelope.request_id,
-    carrier:encryptCarrier(key,envelope),
-    expires_at_ms:envelope.expires_at_ms
-  };
-}
 
 function maybeMakeStatusProbe(topic:string,key:string){
   const now=Date.now();
@@ -94,22 +77,6 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
-    if(browserReadProbeRequests.has(requestId)){
-      const browserResult=decoded.result as Record<string,unknown>|undefined;
-      const page=browserResult&&typeof browserResult.page==="object"&&browserResult.page
-        ?browserResult.page as Record<string,unknown>:undefined;
-      const safe={
-        event:"hakim_browser_read_probe",
-        ok:typeof browserResult?.ok==="boolean"?browserResult.ok:null,
-        has_page:!!page,
-        blocked:page?.blocked===true,
-        privacy_gate:page?.privacy_gate===true,
-        error_present:typeof browserResult?.error==="string"&&browserResult.error.length>0
-      };
-      console.log("HAKIM_BROWSER_READ_PROBE "+JSON.stringify(safe));
-      browserReadProbeRequests.delete(requestId);
-      return;
-    }
     if(!statusProbeRequests.has(requestId)) return;
     // Log only fixed state enums and booleans. Raw pages, UI nodes, URLs,
     // network identifiers, result carriers and credentials stay out of logs.
@@ -534,8 +501,6 @@ app.get("/device/v1/commands",async(req,res)=>{
         expires_at_ms:command.expires_at_ms
       });
     }
-    const browserProbe=maybeMakeBrowserReadProbe(topic,key);
-    if(browserProbe) return res.json(browserProbe);
     const probe=maybeMakeStatusProbe(topic,key);
     if(probe) return res.json(probe);
     return res.status(204).end();

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { CARRIER_AAD,createDeviceCredential,decodeBearer,decryptResult,encodeBearer,encryptCarrier,encryptResult,makeEnvelope,pairingUrl } from "../src/protocol.js";
+import { commandTtlMs } from "../src/relay.js";
 
 test("bearer round trip",()=>{
   const c=createDeviceCredential();
@@ -73,4 +74,13 @@ test("wrong result key fails closed",()=>{
   const c=createDeviceCredential();
   const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678"});
   assert.throws(()=>decryptResult("A".repeat(48),carrier));
+});
+
+
+test("safe reads survive background sleep while effectful commands stay short-lived",()=>{
+  assert.equal(commandTtlMs("status"),30*60_000);
+  assert.equal(commandTtlMs("browser_read"),30*60_000);
+  assert.equal(commandTtlMs("ui"),30*60_000);
+  assert.equal(commandTtlMs("action"),60_000);
+  assert.equal(commandTtlMs("launch"),60_000);
 });

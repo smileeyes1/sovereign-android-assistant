@@ -52,6 +52,10 @@ require(
     "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر نسيج التنفيذ"
 )
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
+service = text("app/src/main/java/ps/hakim/phoneagent/HakimService.kt")
+require('private fun hasSecurePairing()' in service and 'HakimUnifiedRelay.isConfigured(applicationContext)' in service, "P0: خدمة حكيم لا تعترف بالاقتران الآمن")
+require('if (hasAnyPairing())' in service and 'if (hasLegacyPairing()) connectRemote()' in service, "P0: المتصفح لا يعمل مستقلًا عن WebSocket القديم")
+require('if (hasAnyPairing() && !::webView.isInitialized) createBrowser()' in service, "P0: إعادة تشغيل الخدمة لا تعيد متصفح الاقتران الآمن")
 health = text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
 require('fun sendHealthBeacon(context: Context, health: JSONObject): Boolean' in relay, "P0: نبضة الصحة المشفرة مفقودة")
 require('HakimUnifiedRelay.sendHealthBeacon(context, health)' in health, "P0: نبضة الصحة لا تستخدم القناة الآمنة")

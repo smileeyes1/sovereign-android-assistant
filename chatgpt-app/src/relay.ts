@@ -9,10 +9,11 @@ const DEFERRED_READ_TTL_MS=30*60_000;
 const EFFECT_TTL_MS=60_000;
 const DEFERRED_READ_OPS=new Set<HakimOp>(["status","ui","notifications","screenshot","browser_read"]);
 
-// Field evidence from Android 16 shows that a background poll can be cancelled
-// after roughly 5.5s. Return well before that observed floor so Doze/network
-// scheduling jitter cannot turn an otherwise idle poll into a proxy 499.
-export const DIRECT_DEVICE_POLL_MAX_MS=4_000;
+// Latest Android 16 / TECNO LJ6 field evidence showed that a background poll can
+// be cancelled at ~3.25s in a constrained background state. Return at 2s to keep
+// the server response below that observed floor with margin; durable queue and
+// reconnect semantics remain unchanged.
+export const DIRECT_DEVICE_POLL_MAX_MS=2_000;
 export function normalizeDeviceWaitMs(raw:unknown){
   const n=Number(raw??DIRECT_DEVICE_POLL_MAX_MS);
   return Number.isFinite(n)?Math.max(0,Math.min(DIRECT_DEVICE_POLL_MAX_MS,Math.trunc(n))):DIRECT_DEVICE_POLL_MAX_MS;

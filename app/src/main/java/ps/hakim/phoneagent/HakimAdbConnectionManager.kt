@@ -181,5 +181,7 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
             instance ?: synchronized(this) {
                 instance ?: HakimAdbConnectionManager(context.applicationContext).also { instance = it }
             }
+        fun remote(context: Context): HakimAdbConnectionManager =
+            HakimAdbConnectionManager(context.applicationContext)
     }
 }

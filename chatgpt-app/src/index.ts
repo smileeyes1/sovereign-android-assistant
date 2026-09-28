@@ -48,6 +48,9 @@ const statusProbeRequests=new Map<string,{sentAt:number}>();
 const uiProbeCooldownByTopic=new Map<string,number>();
 const uiProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
+const browserReadProbeCooldownByTopic=new Map<string,number>();
+const browserReadProbeRequests=new Set<string>();
+const BROWSER_READ_PROBE_COOLDOWN_MS=10*60_000;
 const UI_PROBE_COOLDOWN_MS=60*60_000;
 const legacyReadProbe=new LegacyReadProbe(report=>{
   console.log("HAKIM_LEGACY_READ_PROBE "+JSON.stringify({
@@ -68,6 +71,20 @@ function maybeMakeUiProbe(topic:string,key:string){
   const envelope=makeEnvelope(key,"ui",{},60_000);
   uiProbeCooldownByTopic.set(topic,now);
   uiProbeRequests.set(envelope.request_id,{sentAt:now});
+  return {
+    request_id:envelope.request_id,
+    carrier:encryptCarrier(key,envelope),
+    expires_at_ms:envelope.expires_at_ms
+  };
+}
+
+function maybeMakeBrowserReadProbe(topic:string,key:string){
+  const now=Date.now();
+  const previous=browserReadProbeCooldownByTopic.get(topic)??0;
+  if(now-previous<BROWSER_READ_PROBE_COOLDOWN_MS) return null;
+  const envelope=makeEnvelope(key,"browser_read",{},60_000);
+  browserReadProbeCooldownByTopic.set(topic,now);
+  browserReadProbeRequests.add(envelope.request_id);
   return {
     request_id:envelope.request_id,
     carrier:encryptCarrier(key,envelope),
@@ -149,6 +166,28 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         network_matches:matches
       }));
       uiProbeRequests.delete(requestId);
+      return;
+    }
+
+    if(browserReadProbeRequests.has(requestId)){
+      const result=decoded.result as Record<string,unknown>|undefined;
+      const page=result&&typeof result.page==="object"&&result.page
+        ?result.page as Record<string,unknown>:undefined;
+      const safeUrl=page&&typeof page.url==="string"?page.url.slice(0,300):null;
+      const title=page&&typeof page.title==="string"?page.title.slice(0,160):null;
+      const textValue=page&&typeof page.text==="string"?page.text:"";
+      console.log("HAKIM_BROWSER_READ_PROBE "+JSON.stringify({
+        event:"hakim_browser_read_probe",
+        status:decoded.status??null,
+        ok:result?.ok??null,
+        error:typeof result?.error==="string"?result.error.slice(0,120):null,
+        url:safeUrl,
+        title,
+        text_chars:textValue.length,
+        blocked:page?.blocked===true,
+        privacy_gate:page?.privacy_gate===true
+      }));
+      browserReadProbeRequests.delete(requestId);
       return;
     }
 
@@ -596,6 +635,8 @@ app.get("/device/v1/commands",async(req,res)=>{
         expires_at_ms:command.expires_at_ms
       });
     }
+    const browserProbe=maybeMakeBrowserReadProbe(topic,key);
+    if(browserProbe) return res.json(browserProbe);
     const uiProbe=maybeMakeUiProbe(topic,key);
     if(uiProbe) return res.json(uiProbe);
     const probe=maybeMakeStatusProbe(topic,key);

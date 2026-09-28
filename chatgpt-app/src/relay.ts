@@ -5,6 +5,14 @@ import { directRelayStore } from "./direct-relay.js";
 const ntfyFallbackEnabled=()=>process.env.HAKIM_NTFY_FALLBACK!=="0";
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
+const DEFERRED_READ_TTL_MS=30*60_000;
+const EFFECT_TTL_MS=60_000;
+const DEFERRED_READ_OPS=new Set<HakimOp>(["status","ui","notifications","screenshot","browser_read"]);
+
+export function commandTtlMs(op:HakimOp){
+  return DEFERRED_READ_OPS.has(op)?DEFERRED_READ_TTL_MS:EFFECT_TTL_MS;
+}
+
 async function publishNtfy(c:DeviceCredential,carrier:string){
   const response=await fetch("https://ntfy.sh/"+encodeURIComponent(c.topic),{
     method:"POST",
@@ -16,7 +24,7 @@ async function publishNtfy(c:DeviceCredential,carrier:string){
 }
 
 export async function publishCommand(c:DeviceCredential,op:HakimOp,payload:unknown){
-  const envelope=makeEnvelope(c.relayKey,op,payload);
+  const envelope=makeEnvelope(c.relayKey,op,payload,commandTtlMs(op));
   const carrier=encryptCarrier(c.relayKey,envelope);
   await directRelayStore.enqueueCommand(c,envelope.request_id,carrier,envelope.expires_at_ms);
   if(ntfyFallbackEnabled()){

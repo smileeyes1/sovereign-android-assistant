@@ -189,7 +189,7 @@ export class DirectRelayStore{
     let names:string[]=[];
     try{names=(await fs.readdir(dir)).filter(x=>x.endsWith(".json")).sort();}
     catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT") return []; throw e;}
-    const cutoff=Date.now()-10*60_000;
+    const cutoff=Date.now()-60*60_000;
     const out:ResultRecord[]=[];
     for(const name of names.slice(0,128)){
       const file=path.join(dir,name);
@@ -230,7 +230,7 @@ export class DirectRelayStore{
             const raw=JSON.parse(await fs.readFile(file,"utf8")) as CommandRecord|ResultRecord;
             const expiry=group==="commands"
               ? (raw as CommandRecord).expires_at_ms+60_000
-              : (raw as ResultRecord).created_at_ms+10*60_000;
+              : (raw as ResultRecord).created_at_ms+60*60_000;
             if(expiry<now) await fs.unlink(file).catch(()=>{});
           }catch{await fs.unlink(file).catch(()=>{});}
         }

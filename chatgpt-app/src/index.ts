@@ -368,7 +368,7 @@ app.get("/health",(_req,res)=>res.json({
     ?[
       "get_device_status","open_target","navigate_device","get_request_result",
       ...(process.env.HAKIM_LAN_CONTROL==="1"
-        ?["list_network_devices","authorize_network_device","control_network_device"]
+        ?["list_network_devices","authorize_network_device","control_network_device","revoke_network_device"]
         :[])
     ]
     :undefined

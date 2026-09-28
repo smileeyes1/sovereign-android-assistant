@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20312,
-  "candidate_name": "3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1",
+  "candidate_version": 20313,
+  "candidate_name": "3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-field-acceptance-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -14,7 +14,7 @@
   "cleartext_disabled": true,
   "privacy_data_map_present": true,
   "threat_model_present": true,
-  "same_signed_apk_field_verified": true,
+  "same_signed_apk_field_verified": false,
   "ordinary_chat_field_verified": false,
   "local_pdf_field_verified": false,
   "contextual_followup_field_verified": false,
@@ -31,10 +31,10 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_id": 36378301981,
-    "commit": "1769585409850130935847a48ecfc9344862417f",
-    "conclusion": "success",
-    "artifact_id": 10951292910
+    "run_id": 0,
+    "commit": "PENDING_CURRENT_HEAD_CI",
+    "conclusion": "pending",
+    "artifact_id": 0
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,
@@ -87,11 +87,15 @@
   "persistent_high_impact_grants": false,
   "control_channel_primary": "secure_relay",
   "control_channel_urgent_recovery": true,
-  "control_channel_field_verified": true,
+  "control_channel_field_verified": false,
   "remote_desktop_commander_required": false,
   "professional_observability_source_verified": true,
   "cross_session_continuity_source_verified": true,
-  "cross_session_continuity_field_verified": true,
-  "professional_observability_runtime_field_verified": true,
-  "professional_observability_visual_field_verified": false
+  "cross_session_continuity_field_verified": false,
+  "professional_observability_runtime_field_verified": false,
+  "professional_observability_visual_field_verified": false,
+  "field_acceptance_source_verified": true,
+  "field_acceptance_field_verified": false,
+  "verified_parent_version": 20312,
+  "verified_parent_same_artifact_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0"
 }

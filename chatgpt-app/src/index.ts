@@ -112,6 +112,64 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     // Never log carrier/key/raw device data on probe decode failures.
   }
 }
+function logSanitizedHealthBeacon(key:string,carrier:string){
+  try{
+    const decoded=decryptResult(key,carrier) as {
+      status?:unknown;
+      result?:{
+        version_code?:unknown;
+        apk_sha256?:unknown;
+        service_running?:unknown;
+        service_connected?:unknown;
+        constitution?:unknown;
+        sovereign_acceptance_gate?:Record<string,unknown>;
+        governance_catalog?:Record<string,unknown>;
+      };
+    };
+    if(decoded?.status!=="health") return;
+    const result=decoded.result;
+    if(!result||typeof result!=="object") return;
+    const apkSha=typeof result.apk_sha256==="string"&&/^[0-9a-f]{64}$/i.test(result.apk_sha256)
+      ?result.apk_sha256.toLowerCase():null;
+    const constitution=typeof result.constitution==="string"&&
+      /^[A-Z0-9._-]{8,120}$/.test(result.constitution)?result.constitution:null;
+    const gate=result.sovereign_acceptance_gate;
+    const catalog=result.governance_catalog;
+    const fixed=(raw:unknown,allowed:readonly string[])=>
+      typeof raw==="string"&&allowed.includes(raw)?raw:null;
+    const bool=(raw:unknown)=>typeof raw==="boolean"?raw:null;
+    const safe={
+      event:"hakim_health_evidence",
+      version_code:typeof result.version_code==="number"?result.version_code:null,
+      apk_sha256:apkSha,
+      service_running:bool(result.service_running),
+      service_connected:bool(result.service_connected),
+      constitution,
+      sovereign_acceptance_gate:{
+        active:bool(gate?.acceptance_gate),
+        version:typeof gate?.version==="string"&&/^[A-Z0-9._-]{8,120}$/.test(gate.version)?gate.version:null,
+        state:fixed(gate?.state,["IDLE","CONTRACTED","VERIFYING","READY_TO_DELIVER","DELIVERED","BLOCKED"]),
+        ready:bool(gate?.ready),
+        evidence_required:bool(gate?.evidence_required),
+        material_gap_blocks_close:bool(gate?.material_gap_blocks_close),
+        same_tested_delivered_artifact_required:bool(gate?.same_tested_delivered_artifact_required),
+        regression_gate_supported:bool(gate?.regression_gate_supported)
+      },
+      governance_catalog:{
+        active:bool(catalog?.governance_catalog),
+        version:typeof catalog?.version==="string"&&/^[A-Z0-9._-]{8,120}$/.test(catalog.version)?catalog.version:null,
+        not_bound_to_custom_8000_limit:bool(catalog?.not_bound_to_custom_8000_limit),
+        adaptive_rule_selection:bool(catalog?.adaptive_rule_selection),
+        full_constitution_retained:bool(catalog?.full_constitution_retained),
+        full_rule_count:typeof catalog?.full_rule_count==="number"?catalog.full_rule_count:null
+      }
+    };
+    console.log("HAKIM_HEALTH_EVIDENCE "+JSON.stringify(safe));
+  }catch{
+    // Never log raw carriers, relay keys, UI/page content, selected domains or goal data.
+  }
+}
+
 function reviewAttemptAllowed(ip:string){
   const now=Date.now();
   const current=reviewAttempts.get(ip);
@@ -474,6 +532,7 @@ app.post(
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
       logSanitizedStatusProbe(topic,key,carrier);
+      logSanitizedHealthBeacon(key,carrier);
       noStore(res);
       return res.status(202).json({accepted:true});
     }catch(e){

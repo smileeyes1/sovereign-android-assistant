@@ -51,8 +51,8 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "network_devices")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "network_authorize", "network_control")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
@@ -467,7 +467,12 @@ object HakimUnifiedRelay {
             requestId.hashCode(),
             notification
                 .setContentTitle("حكيم — موافقة مطلوبة")
-                .setContentText(if (op == "browser_back") "الرجوع إلى الصفحة السابقة في متصفح حكيم" else "طلب تحكم على الهاتف: $op")
+                .setContentText(when (op) {
+                    "browser_back" -> "الرجوع إلى الصفحة السابقة في متصفح حكيم"
+                    "network_authorize" -> "اعتماد جهاز محلي للتحكم المأذون"
+                    "network_control" -> "تنفيذ أمر ريموت على جهاز محلي معتمد"
+                    else -> "طلب تحكم على الهاتف: $op"
+                })
                 .setSmallIcon(android.R.drawable.ic_lock_lock)
                 .setAutoCancel(true)
                 .addAction(android.R.drawable.ic_input_add, "موافقة", approve)
@@ -512,6 +517,9 @@ object HakimUnifiedRelay {
             "status" -> status(context)
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
+            "network_devices" -> HakimAuthorizedLanControl.discover(context)
+            "network_authorize" -> HakimAuthorizedLanControl.authorize(context, payload)
+            "network_control" -> HakimAuthorizedLanControl.control(context, payload)
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")
@@ -561,6 +569,7 @@ object HakimUnifiedRelay {
             .put("auto_update", AutoUpdater.diagnostics(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
+            .put("authorized_lan_control", HakimAuthorizedLanControl.status(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))

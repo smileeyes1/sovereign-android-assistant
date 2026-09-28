@@ -24,6 +24,7 @@ object HakimIntentDirector {
 
         val instruction = buildString {
             append(HakimConstitution.promptPrefix(context))
+            appendLine(HakimConstitution.taskContext(context, goal, acceptance, attachmentCount))
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
             appendLine("افهم مقصد المستخدم قبل الإجابة، ثم صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل يحقق المقصد.")
             appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه ما دام هناك عيب مادي قابل للإصلاح دون تكرار غير منتج.")
@@ -51,7 +52,7 @@ object HakimIntentDirector {
             }
             appendLine("مقصد المستخدم الحالي:")
             append(goal)
-        }.take(12_000)
+        }
 
         return Contract(goal, acceptance, instruction)
     }

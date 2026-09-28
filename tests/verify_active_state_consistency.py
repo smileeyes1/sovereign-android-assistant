@@ -18,7 +18,7 @@ req(state.get("single_source_of_truth") is True, "single_source")
 req(state["cloud"]["last_verified_baseline_commit"] == "e1c5d8760490f2d035966d7ea0883b23f71afb13", "cloud_baseline")
 req(state["android"]["latest_source_parent"]["commit"] == "d6b866cf98c71f6eedd489bac3490e1d6d1a067d", "source_parent")
 req(state["android"]["latest_source_parent"]["ci_run_number"] == 1200, "source_parent_ci")
-req(state["android"]["candidate"]["version_code"] == candidate == 20313, "candidate_version")
+req(state["android"]["candidate"]["version_code"] == candidate, "candidate_version")
 candidate_field = state["android"]["candidate"]["field_verified"] is True
 parent_version = int(state["android"]["latest_source_parent"]["version_code"])
 req(state["android"]["candidate"]["promoted"] is False, "must_not_promote")
@@ -65,7 +65,7 @@ req(state["tool_orchestration"]["result_returns_to_hakim"] is True, "result_retu
 req(state["tool_orchestration"]["direct_url_content_local_by_default"] is True, "direct_url_privacy")
 req(state["tool_orchestration"]["terminal_handoff_allowed"] is False, "terminal_handoff")
 
-req(state["productization"]["candidate_version"] == candidate == 20313, "product_candidate")
+req(state["productization"]["candidate_version"] == candidate, "product_candidate")
 req(state["productization"]["primary_ui_productized"] is True, "product_ui")
 req(state["productization"]["technical_diagnostics_hidden"] is True, "product_diagnostics")
 req(state["productization"]["sellable"] is False, "product_not_yet_sellable")

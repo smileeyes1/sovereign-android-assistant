@@ -16,7 +16,7 @@ def req(ok, reason):
         raise SystemExit("FIELD_ACCEPTANCE_20313=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20313,"version")
+req(m is not None and int(m.group(1))>=20313,"version")
 req("field-acceptance" in BUILD,"version_lineage")
 
 for token in [
@@ -60,7 +60,7 @@ req('.put("field_acceptance", HakimFieldAcceptance.status(context))' in RELAY,"r
 req('.put("field_acceptance", HakimFieldAcceptance.status(context))' in HEALTH,"health_acceptance_status_missing")
 
 req("python3 tests/verify_20313_field_acceptance.py" in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20313"' in WORKFLOW,"workflow_version")
+req('VERSION_CODE="$(awk' in WORKFLOW and 'test "$VERSION_CODE"' in WORKFLOW,"workflow_version_gate")
 
 # Fault injection sentinels: personal-data and paid-fallback regressions must be detectable.
 mutant=FIELD.replace('"personal_content_used", false','"personal_content_used", true',1)

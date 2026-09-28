@@ -92,6 +92,7 @@ object HakimArtifactPipeline {
 
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            appendLine(HakimConstitution.taskContext(context, request.originalPrompt, "ملف نهائي قابل للاستخدام والتحقق", 1))
             appendLine("أنت مولّد محتوى فقط داخل مصنع حكيم، ولست مسؤولًا عن إنشاء الملف.")
             appendLine("مهم جدًا: لا تقل إنك لا تستطيع إنشاء PDF أو binary؛ لا تنشئ PDF أصلًا.")
             appendLine("حكيم سيتولى تحويل النص الناتج محليًا إلى PDF حقيقي بعد عودتك.")
@@ -112,7 +113,7 @@ object HakimArtifactPipeline {
             }
             appendLine("طلب المستخدم الأصلي:")
             append(request.originalPrompt)
-        }.take(12_000)
+        }
     }
 
     fun repairInstruction(
@@ -121,6 +122,7 @@ object HakimArtifactPipeline {
         failedText: String
     ): String = buildString {
         append(HakimConstitution.promptPrefix(context))
+        appendLine(HakimConstitution.taskContext(context, request.originalPrompt, "إصلاح ملف بعد فشل تحقق", 1))
         appendLine("أعد المحاولة كمحتوى وثيقة فقط.")
         appendLine("لا تتحدث عن القدرة على إنشاء ملفات ولا عن PDF ولا عن أدوات التحويل.")
         appendLine("لا تستخدم HTML أو Markdown خامًا أو جداول pipes.")
@@ -136,7 +138,7 @@ object HakimArtifactPipeline {
                 )
             )
         }
-    }.take(6_000)
+    }
 
     fun validateContent(
         request: HakimArtifactRequest,

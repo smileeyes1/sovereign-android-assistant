@@ -52,7 +52,7 @@ object HakimUnifiedRelay {
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
     private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "network_devices")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "network_authorize", "network_control")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "network_authorize", "network_control", "network_revoke")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
@@ -471,6 +471,7 @@ object HakimUnifiedRelay {
                     "browser_back" -> "الرجوع إلى الصفحة السابقة في متصفح حكيم"
                     "network_authorize" -> "اعتماد جهاز محلي للتحكم المأذون"
                     "network_control" -> "تنفيذ أمر ريموت على جهاز محلي معتمد"
+                    "network_revoke" -> "إلغاء اعتماد جهاز محلي من حكيم"
                     else -> "طلب تحكم على الهاتف: $op"
                 })
                 .setSmallIcon(android.R.drawable.ic_lock_lock)
@@ -520,6 +521,7 @@ object HakimUnifiedRelay {
             "network_devices" -> HakimAuthorizedLanControl.discover(context)
             "network_authorize" -> HakimAuthorizedLanControl.authorize(context, payload)
             "network_control" -> HakimAuthorizedLanControl.control(context, payload)
+            "network_revoke" -> HakimAuthorizedLanControl.revoke(context, payload)
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")

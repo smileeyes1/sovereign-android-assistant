@@ -88,11 +88,12 @@ class HakimService : Service() {
         startAsForeground()
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        if (isPaired()) {
+        if (hasAnyPairing()) {
             createBrowser()
-            connectRemote()
+            if (hasLegacyPairing()) connectRemote()
+            else updateNotification("قناة حكيم الآمنة تعمل — المتصفح جاهز")
         } else {
-            updateNotification("قناة حكيم المشفّرة تعمل — وضع خفيف بلا متصفح")
+            updateNotification("حكيم يعمل — بانتظار الاقتران الآمن")
         }
     }
 
@@ -125,9 +126,10 @@ class HakimService : Service() {
         }
         HakimUnifiedRelay.start(applicationContext)
         HakimLocalPairing.reconnectAsync(applicationContext)
-        if (socket == null && isPaired()) {
-            if (!::webView.isInitialized) createBrowser()
-            connectRemote()
+        if (hasAnyPairing() && !::webView.isInitialized) createBrowser()
+        if (socket == null && hasLegacyPairing()) connectRemote()
+        if (hasSecurePairing() && !hasLegacyPairing()) {
+            updateNotification("قناة حكيم الآمنة تعمل — المتصفح جاهز")
         }
         return START_STICKY
     }
@@ -367,9 +369,17 @@ class HakimService : Service() {
         } catch (_: Exception) {}
     }
 
-    private fun isPaired(): Boolean =
+    private fun hasLegacyPairing(): Boolean =
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
         prefs.getString("result_topic", "").orEmpty().isNotBlank()
+
+    private fun hasSecurePairing(): Boolean =
+        HakimUnifiedRelay.isConfigured(applicationContext)
+
+    private fun hasAnyPairing(): Boolean =
+        hasLegacyPairing() || hasSecurePairing()
+
+    private fun isPaired(): Boolean = hasLegacyPairing()
 
     private fun authKey(): String = prefs.getString("auth_key", "").orEmpty().trim()
 

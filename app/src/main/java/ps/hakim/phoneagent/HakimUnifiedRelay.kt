@@ -564,6 +564,7 @@ object HakimUnifiedRelay {
             .put("execution_fabric", HakimExecutionFabric.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
+            .put("field_acceptance", HakimFieldAcceptance.status(context))
             .put("learning", HakimLearning.snapshot(context))
     }
 

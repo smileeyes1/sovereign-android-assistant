@@ -104,6 +104,20 @@ object HakimCloudContinuity {
         return lines
     }
 
+    fun compactText(context: Context): String? {
+        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (p.getString("state", "") != "ready") return null
+        val goal = p.getString("goal_label", "").orEmpty()
+        val stage = p.getString("stage", "").orEmpty()
+        val pending = p.getInt("pending_count", 0).coerceAtLeast(0)
+        return when {
+            goal.isNotBlank() && stage.isNotBlank() -> "استمرارية: $stage · $goal"
+            goal.isNotBlank() -> "استمرارية: $goal"
+            pending > 0 -> "استمرارية: $pending عمليات معلقة"
+            else -> null
+        }?.take(220)
+    }
+
     fun publicStatus(context: Context): JSONObject {
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return JSONObject()

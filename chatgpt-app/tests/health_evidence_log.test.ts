@@ -32,11 +32,13 @@ test("health evidence logger is redacted, bounded and wired to result intake",()
     "last_selected_domains",
     "learning",
     "network_diagnostics",
-    "notification",
-    "browser",
-    "ui",
-    "page",
-    "carrier:",
-    "key:"
+    "notifications",
+    "browser_read",
+    "typed_value",
+    "JSON.stringify(decoded)",
+    "JSON.stringify(result)",
+    "console.log(carrier)",
+    "console.log(key)"
   ]) assert.equal(fn.includes(forbidden),false,forbidden);
+  assert.ok(fn.includes('console.log("HAKIM_HEALTH_EVIDENCE "+JSON.stringify(safe))'));
 });

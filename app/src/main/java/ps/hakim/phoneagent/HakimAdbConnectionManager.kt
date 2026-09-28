@@ -101,6 +101,77 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
         autoConnect(context.applicationContext, 20_000L) || isConnected
     }.getOrDefault(false)
 
+    data class RemoteActionResult(
+        val ok: Boolean,
+        val error: String? = null,
+        val output: String? = null,
+    )
+
+    /** Remote ADB is restricted to a small Android/TV remote-control vocabulary. */
+    fun executeRemoteAction(
+        host: String,
+        port: Int,
+        action: String,
+        url: String? = null,
+        packageName: String? = null,
+    ): RemoteActionResult {
+        if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
+        val command = when (action) {
+            "home" -> "input keyevent KEYCODE_HOME"
+            "back" -> "input keyevent KEYCODE_BACK"
+            "up" -> "input keyevent KEYCODE_DPAD_UP"
+            "down" -> "input keyevent KEYCODE_DPAD_DOWN"
+            "left" -> "input keyevent KEYCODE_DPAD_LEFT"
+            "right" -> "input keyevent KEYCODE_DPAD_RIGHT"
+            "enter" -> "input keyevent KEYCODE_DPAD_CENTER"
+            "play_pause" -> "input keyevent KEYCODE_MEDIA_PLAY_PAUSE"
+            "volume_up" -> "input keyevent KEYCODE_VOLUME_UP"
+            "volume_down" -> "input keyevent KEYCODE_VOLUME_DOWN"
+            "mute" -> "input keyevent KEYCODE_VOLUME_MUTE"
+            "open_url" -> {
+                val safe = safeHttpUrl(url) ?: return RemoteActionResult(false, "INVALID_URL")
+                "am start -W -a android.intent.action.VIEW -d '$safe'"
+            }
+            "launch_package" -> {
+                val pkg = packageName?.trim().orEmpty()
+                if (!pkg.matches(Regex("^[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+$")))
+                    return RemoteActionResult(false, "INVALID_PACKAGE")
+                "monkey -p '$pkg' -c android.intent.category.LAUNCHER 1"
+            }
+            else -> return RemoteActionResult(false, "UNSUPPORTED_ACTION")
+        }
+        return try {
+            runCatching { disconnect() }
+            if (!connect(host, port)) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            val stream = openStream("shell:$command")
+            val output = runCatching {
+                stream.openInputStream().bufferedReader(Charsets.UTF_8).use { it.readText().take(2000) }
+            }.getOrDefault("")
+            RemoteActionResult(true, output = output)
+        } catch (t: Throwable) {
+            val message = (t.message ?: t.javaClass.simpleName).lowercase()
+            val code = if ("unauthorized" in message || "auth" in message)
+                "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_REMOTE_ACTION_FAILED"
+            RemoteActionResult(false, code)
+        } finally {
+            runCatching { disconnect() }
+        }
+    }
+
+    private fun safeHttpUrl(raw: String?): String? {
+        val value = raw?.trim().orEmpty()
+        if (value.length !in 8..1500) return null
+        if (!(value.startsWith("https://") || value.startsWith("http://"))) return null
+        if (value.any { it.isWhitespace() || it == '\'' || it == '"' || it == ';' || it == '\\' }) return null
+        return value
+    }
+
+    private fun isPrivateIpv4(ip: String): Boolean {
+        val p = ip.split(".").mapNotNull { it.toIntOrNull() }
+        if (p.size != 4 || p.any { it !in 0..255 }) return false
+        return p[0] == 10 || (p[0] == 172 && p[1] in 16..31) || (p[0] == 192 && p[1] == 168)
+    }
+
     companion object {
         private const val KEY_ALIAS = "hakim_native_local_adb_v1"
         private const val TEN_YEARS_MS = 3650L * 24L * 60L * 60L * 1000L

@@ -110,9 +110,6 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         network_guardian?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
         lan_survey?:Record<string,unknown>;
-        apk_sha256?:unknown;
-        operation?:Record<string,unknown>;
-        cloud_continuity?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
@@ -155,20 +152,6 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       return;
     }
 
-    if(decoded.status==="health"){
-      const apkSha=typeof decoded.result?.apk_sha256==="string"
-        ?decoded.result.apk_sha256.toLowerCase():"";
-      const versionCode=decoded.result?.version_code??null;
-      if(/^[a-f0-9]{64}$/.test(apkSha)){
-        console.log("HAKIM_FIELD_HASH_PROBE "+JSON.stringify({
-          event:"hakim_field_hash_probe",
-          version_code:versionCode,
-          apk_sha256:apkSha
-        }));
-      }
-      return;
-    }
-
     const tracked=statusProbeRequests.get(requestId);
     if(!tracked) return;
     const e=decoded.result?.execution_fabric??{};
@@ -190,8 +173,6 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       event:"hakim_status_probe",
       version_code:decoded.result?.version_code??null,
       version_name:decoded.result?.version_name??null,
-      operation:decoded.result?.operation??null,
-      cloud_continuity:decoded.result?.cloud_continuity??null,
       secure_relay_state:decoded.result?.secure_relay_state??null,
       secure_relay_running:decoded.result?.secure_relay_running??null,
       secure_relay_connected:decoded.result?.secure_relay_connected??null,

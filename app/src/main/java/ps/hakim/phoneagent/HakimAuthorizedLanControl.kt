@@ -96,6 +96,20 @@ object HakimAuthorizedLanControl {
             .put("verification", "adb_identity_bound")
     }
 
+    fun revoke(context: Context, payload: JSONObject): JSONObject {
+        val id = payload.optString("device_id").trim()
+        val adapter = payload.optString("adapter", "adb").trim()
+        if (!DEVICE_ID.matches(id)) return error("invalid_device_id")
+        if (adapter != "adb") return error("unsupported_adapter")
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("$id.authorized.adb", false)
+            .remove("$id.adb_identity_sha256")
+            .remove("$id.authorized_at_ms")
+            .apply()
+        return JSONObject().put("ok", true).put("device_id", id)
+            .put("adapter", "adb").put("status", "revoked")
+    }
+
     fun control(context: Context, payload: JSONObject): JSONObject {
         val id = payload.optString("device_id").trim()
         val action = payload.optString("action").trim()

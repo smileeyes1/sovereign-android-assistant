@@ -20,7 +20,8 @@ req('HakimLanSurvey.inspect(app)' in DIAG,"survey_not_exposed")
 for token in [
     "Executors.newFixedThreadPool",
     "CACHE_MS",
-    "PORTS = intArrayOf(80, 443, 8080, 8443, 53, 22)",
+    "PORTS = intArrayOf(",
+    "80", "443", "8080", "8443", "53", "22",
     "subnetTargets",
     "tcpOpen",
     "httpFingerprint",

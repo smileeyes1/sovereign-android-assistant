@@ -9,6 +9,7 @@ import io.github.muntashirakon.adb.android.AdbMdns
 import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.Certificate
 import java.util.Date
@@ -107,24 +108,19 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
         val output: String? = null,
     )
 
-    /** Verify that the target actually accepts this Hakim ADB identity before authorization is stored. */
-    fun verifyRemote(host: String, port: Int): RemoteActionResult {
+    /** Verify both ADB authorization and a local-only target identity fingerprint. */
+    fun probeRemoteIdentity(host: String, port: Int): RemoteActionResult {
         if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
         return try {
             runCatching { disconnect() }
             setThrowOnUnauthorised(true)
             val connected = connect(host, port) || isConnected
-            if (connected) RemoteActionResult(true) else RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            if (!connected) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            val identity = readRemoteIdentityHash()
+                ?: return RemoteActionResult(false, "ADB_TARGET_IDENTITY_UNAVAILABLE")
+            RemoteActionResult(true, output = identity)
         } catch (t: Throwable) {
-            val name = t.javaClass.simpleName
-            val message = (t.message ?: name).lowercase()
-            val approvalRequired =
-                name.contains("Authentication", ignoreCase = true) ||
-                "unauthor" in message || "authentication" in message || "auth" in message
-            RemoteActionResult(
-                false,
-                if (approvalRequired) "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_CONNECT_FAILED"
-            )
+            RemoteActionResult(false, classifyRemoteFailure(t))
         } finally {
             runCatching { disconnect() }
         }
@@ -134,11 +130,15 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
     fun executeRemoteAction(
         host: String,
         port: Int,
+        expectedIdentitySha256: String,
         action: String,
         url: String? = null,
         packageName: String? = null,
     ): RemoteActionResult {
         if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
+        if (!expectedIdentitySha256.matches(Regex("^[0-9a-f]{64}$"))) {
+            return RemoteActionResult(false, "INVALID_REMOTE_IDENTITY")
+        }
         val command = when (action) {
             "home" -> "input keyevent KEYCODE_HOME"
             "back" -> "input keyevent KEYCODE_BACK"
@@ -165,20 +165,49 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
         }
         return try {
             runCatching { disconnect() }
-            if (!connect(host, port)) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            setThrowOnUnauthorised(true)
+            val connected = connect(host, port) || isConnected
+            if (!connected) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            val actualIdentity = readRemoteIdentityHash()
+                ?: return RemoteActionResult(false, "ADB_TARGET_IDENTITY_UNAVAILABLE")
+            if (!MessageDigest.isEqual(
+                    expectedIdentitySha256.toByteArray(Charsets.US_ASCII),
+                    actualIdentity.toByteArray(Charsets.US_ASCII)
+                )) {
+                return RemoteActionResult(false, "ADB_TARGET_IDENTITY_CHANGED")
+            }
             val stream = openStream("shell:$command")
             val output = runCatching {
                 stream.openInputStream().bufferedReader(Charsets.UTF_8).use { it.readText().take(2000) }
             }.getOrDefault("")
             RemoteActionResult(true, output = output)
         } catch (t: Throwable) {
-            val message = (t.message ?: t.javaClass.simpleName).lowercase()
-            val code = if ("unauthorized" in message || "auth" in message)
-                "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_REMOTE_ACTION_FAILED"
-            RemoteActionResult(false, code)
+            RemoteActionResult(false, classifyRemoteFailure(t))
         } finally {
             runCatching { disconnect() }
         }
+    }
+
+    private fun readRemoteIdentityHash(): String? {
+        val stream = openStream(
+            "shell:getprop ro.serialno; getprop ro.product.model; getprop ro.build.fingerprint"
+        )
+        val raw = stream.openInputStream().bufferedReader(Charsets.UTF_8).use {
+            it.readText().take(4096).trim()
+        }
+        if (raw.isBlank()) return null
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(("HAKIM-ADB-TARGET-v1\u0000" + raw).toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
+    private fun classifyRemoteFailure(t: Throwable): String {
+        val name = t.javaClass.simpleName
+        val message = (t.message ?: name).lowercase()
+        val approvalRequired =
+            name.contains("Authentication", ignoreCase = true) ||
+            "unauthor" in message || "authentication" in message || "auth" in message
+        return if (approvalRequired) "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_REMOTE_ACTION_FAILED"
     }
 
     private fun safeHttpUrl(raw: String?): String? {

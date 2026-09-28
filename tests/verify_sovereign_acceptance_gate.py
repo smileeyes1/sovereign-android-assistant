@@ -82,6 +82,18 @@ req(
     CENTER.count("HakimAcceptanceGate.verifyAndBindArtifact(") >= 3,
     "pdf_delivery_paths_not_bound_to_verified_artifact",
 )
+req(
+    'if (acceptance.contains("جواب مباشر")) return Kind.ANSWER' in GATE,
+    "text_answer_false_artifact_gate",
+)
+req(
+    'acceptance.contains("ناتج نهائي قابل للاستخدام")' not in GATE,
+    "generic_text_creation_must_not_require_file_binding",
+)
+req(
+    '&& acceptance.contains("أثر تنفيذي")' in GATE,
+    "system_change_gate_must_require_executive_intent",
+)
 
 for token in [
     '"اجتاز الانحدار"',

@@ -112,6 +112,7 @@ object HakimIntentEngine {
         val plan = resolve(context, raw)
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            appendLine(HakimConstitution.taskContext(context, plan.goal, plan.completion.joinToString("؛ ")))
             val tolActive = TOL_TOKEN.containsMatchIn(raw)
             val allActive = ALL_TOKEN.containsMatchIn(raw)
             appendLine("[محرك النية]")
@@ -130,7 +131,7 @@ object HakimIntentEngine {
             if (plan.route == "human_biology") appendLine(HakimHumanBiology.governedContext(context, raw))
             appendLine("[أمر المستخدم]")
             append(raw.trim())
-        }.take(12_000)
+        }
     }
 
     fun status(context: Context): JSONObject {

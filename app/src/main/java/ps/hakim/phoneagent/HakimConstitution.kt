@@ -13,6 +13,7 @@ import java.security.MessageDigest
 object HakimConstitution {
     const val VERSION = "SOVEREIGN-QURAN-V4-2026-09-25"
     const val CUSTOM_PROFILE = "HAKIM-CUSTOM-8000-V1-2026-09-28"
+    const val INTERNAL_GOVERNANCE = HakimGovernanceCatalog.VERSION
 
     private val priorityOrder = listOf(
         "الشرع والحقوق والسلامة والمنصة والقانون",
@@ -84,6 +85,11 @@ object HakimConstitution {
         prefs.edit()
             .putString("constitution_version", VERSION)
             .putString("custom_profile_version", CUSTOM_PROFILE)
+            .putString("internal_governance_version", INTERNAL_GOVERNANCE)
+            .putString("internal_governance_sha256", HakimGovernanceCatalog.fullSha256())
+            .putInt("internal_governance_rule_count", HakimGovernanceCatalog.canonicalJson().optJSONArray("rules")?.length() ?: 0)
+            .putBoolean("internal_governance_unbounded_by_custom_limit", true)
+            .putBoolean("adaptive_governance_context", true)
             .putBoolean("custom_profile_under_8000", true)
             .putBoolean("custom_profile_lossless_core", true)
             .putString("depth_policy", "ADAPTIVE_VALUE_BUDGET")
@@ -139,8 +145,20 @@ object HakimConstitution {
             }
             append(HakimArabicPolicy.promptContract())
             appendLine("[المهمة الحالية]")
-        }.take(7200)
+        }
     }
+
+    fun taskContext(
+        context: Context,
+        goal: String,
+        acceptance: String,
+        attachmentCount: Int = 0
+    ): String = HakimGovernanceCatalog.adaptiveContext(
+        context,
+        goal,
+        acceptance,
+        attachmentCount
+    )
 
     fun status(context: Context): JSONObject {
         val prefs = context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE)
@@ -149,6 +167,9 @@ object HakimConstitution {
             .put("custom_profile_version", prefs.getString("custom_profile_version", CUSTOM_PROFILE))
             .put("custom_profile_under_8000", prefs.getBoolean("custom_profile_under_8000", false))
             .put("custom_profile_lossless_core", prefs.getBoolean("custom_profile_lossless_core", false))
+            .put("internal_governance_version", prefs.getString("internal_governance_version", INTERNAL_GOVERNANCE))
+            .put("internal_governance_unbounded_by_custom_limit", prefs.getBoolean("internal_governance_unbounded_by_custom_limit", false))
+            .put("adaptive_governance_context", prefs.getBoolean("adaptive_governance_context", false))
             .put("depth_policy", prefs.getString("depth_policy", ""))
             .put("quran_sunnah_values_governance", prefs.getBoolean("quran_sunnah_values_governance", false))
             .put("user_goal_sovereignty", prefs.getBoolean("user_goal_sovereignty", false))
@@ -176,6 +197,7 @@ object HakimConstitution {
             .put("rule_ledger", HakimRuleLedger.status(context))
             .put("quranic_governance", HakimQuranicGovernance.status())
             .put("acceptance_gate", HakimAcceptanceGate.status(context))
+            .put("governance_catalog", HakimGovernanceCatalog.status(context))
             .put("sha256", prefs.getString("constitution_sha256", ""))
     }
 
@@ -183,6 +205,7 @@ object HakimConstitution {
         .put("name", "حكيم—👑 القرآن السيادي★ — الدستور التنفيذي")
         .put("version", VERSION)
         .put("custom_profile", CUSTOM_PROFILE)
+        .put("internal_governance", HakimGovernanceCatalog.canonicalJson())
         .put("quranic_governance", HakimQuranicGovernance.canonicalJson())
         .put("priority_order", JSONArray(priorityOrder))
         .put("authority_hierarchy", HakimAuthorityBoundary.instructionHierarchy())

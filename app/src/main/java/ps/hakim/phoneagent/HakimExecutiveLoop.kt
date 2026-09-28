@@ -55,7 +55,7 @@ object HakimExecutiveLoop {
             .putLong("last_material_gain_at", System.currentTimeMillis())
             .putString("events", "[]")
             .apply()
-        HakimGoalSupervisor.begin(context, id, criteria, "android-candidate")
+        HakimGoalSupervisor.begin(context, id, criteria, "android-candidate", goal)
         record(context, Phase.UNDERSTANDING, "فهم المقصد وتثبيت معيار الاكتمال")
         return current(context)!!
     }
@@ -176,8 +176,9 @@ object HakimExecutiveLoop {
             return false
         }
 
+        HakimAcceptanceGate.markDelivered(context)
         noteMaterialGain(context, evidence)
-        record(context, Phase.COMPLETE, "تحقق معيار الاكتمال بالدليل المناسب")
+        record(context, Phase.COMPLETE, "تحقق معيار الاكتمال واجتازت النتيجة بوابة الاعتماد")
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean("active", false).putLong("completed_at", System.currentTimeMillis()).apply()
         return true

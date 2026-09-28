@@ -65,6 +65,13 @@ object HakimSelfCheck {
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
 
+        val acceptanceGate = governance.optJSONObject("acceptance_gate") ?: HakimAcceptanceGate.status(context)
+        check("بوابة الاعتماد السيادية فعالة", acceptanceGate.optBoolean("acceptance_gate"))
+        check("الدليل شرط للإغلاق", acceptanceGate.optBoolean("evidence_required"))
+        check("الفجوة المادية تمنع الإغلاق", acceptanceGate.optBoolean("material_gap_blocks_close"))
+        check("نفس الملف المختبر هو المسلّم", acceptanceGate.optBoolean("same_tested_delivered_artifact_required"))
+        check("بوابة الانحدار مدعومة", acceptanceGate.optBoolean("regression_gate_supported"))
+
         val quran = governance.optJSONObject("quranic_governance") ?: JSONObject()
         check("السنة الصحيحة بيان مع التثبت", quran.optBoolean("sahih_sunnah_is_explanatory_with_verification"))
         check("الخلاف المعتبر محفوظ", quran.optBoolean("recognized_scholarly_disagreement_respected"))

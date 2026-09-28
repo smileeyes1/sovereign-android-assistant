@@ -10,12 +10,16 @@ object HakimGoalSupervisor {
     enum class Recovery { RETRY_CHANGED, REROUTE, WAIT_RESUMABLE, PROVEN_GATE }
     enum class EvidenceStage { REQUESTED, DISPATCHED, OS_ACCEPTED, OS_INSTALLED, UI_OBSERVED, USER_CONFIRMED }
 
-    fun begin(context: Context, goalId: String, acceptance: String, baseline: String) {
+    fun begin(context: Context, goalId: String, acceptance: String, baseline: String) =
+        begin(context, goalId, acceptance, baseline, acceptance)
+
+    fun begin(context: Context, goalId: String, acceptance: String, baseline: String, goal: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("goal_id", goalId.take(120)).putString("acceptance", acceptance.take(4000))
             .putString("baseline", baseline.take(500)).putString("state", State.EXECUTE.name)
             .putBoolean("effect_verified", false).putBoolean("gate_proven", false)
             .putLong("updated_at", System.currentTimeMillis()).apply()
+        HakimAcceptanceGate.begin(context, goalId, goal, acceptance, baseline)
         HakimValueContinuityEngine.checkpoint(context, goalId, "supervisor:EXECUTE", "continue_until_effect_or_proven_gate", baseline)
     }
 
@@ -29,6 +33,7 @@ object HakimGoalSupervisor {
             .putBoolean("effect_verified", effectVerified).putString("state", next.name)
             .putLong("evidence_at", System.currentTimeMillis())
             .putLong("updated_at", System.currentTimeMillis()).apply()
+        HakimAcceptanceGate.recordEffectEvidence(context, stage, evidence, effectVerified)
     }
 
     fun proveGate(context: Context, evidence: String, noAuthorizedReroute: Boolean): Boolean {
@@ -36,6 +41,7 @@ object HakimGoalSupervisor {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean("gate_proven", true).putString("gate_evidence", evidence.take(4000))
             .putString("state", State.PROVEN_GATE.name).putLong("updated_at", System.currentTimeMillis()).apply()
+        HakimAcceptanceGate.markMaterialGap(context, "proven_gate:" + evidence)
         return true
     }
 
@@ -49,6 +55,7 @@ object HakimGoalSupervisor {
             .putString("failure_fingerprint", fingerprint).putInt("same_failure_count", count)
             .putString("failure_evidence", evidence.take(4000)).putString("state", next.name)
             .putBoolean("effect_verified", false).putLong("updated_at", System.currentTimeMillis()).apply()
+        HakimAcceptanceGate.markMaterialGap(context, evidence)
     }
 
     fun recover(context: Context, mode: Recovery, evidence: String, resumeCondition: String = ""): State {
@@ -98,7 +105,8 @@ object HakimGoalSupervisor {
     }
 
     fun canClose(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("effect_verified", false)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("effect_verified", false) &&
+            HakimAcceptanceGate.canClose(context)
 
     fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -108,5 +116,6 @@ object HakimGoalSupervisor {
             .put("failure_of_means_never_closes_goal", true).put("same_failure_forces_reroute", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
             .put("goal_id", p.getString("goal_id", "")).put("effect_verified", p.getBoolean("effect_verified", false))
             .put("gate_proven", p.getBoolean("gate_proven", false))
+            .put("acceptance_gate", HakimAcceptanceGate.status(context))
     }
 }

@@ -82,6 +82,7 @@ jobs:
           python3 tests/verify_20311_extender_survey.py
           python3 tests/verify_20312_professional_observability.py
           python3 tests/verify_20313_field_acceptance.py
+          python3 tests/verify_sovereign_acceptance_gate.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py

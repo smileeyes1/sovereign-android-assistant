@@ -16,7 +16,8 @@ object HakimGoalExecutor {
         val state = s.optString("state")
         val goal = s.optString("goal_id")
         val action = when (state) {
-            HakimGoalSupervisor.State.EFFECT_VERIFIED.name -> "COMPLETE"
+            HakimGoalSupervisor.State.EFFECT_VERIFIED.name ->
+                if (HakimGoalSupervisor.canClose(context)) "COMPLETE" else "VERIFY"
             HakimGoalSupervisor.State.PROVEN_GATE.name -> "GATED"
             HakimGoalSupervisor.State.WAIT.name -> "WAIT"
             HakimGoalSupervisor.State.REROUTE.name -> "REROUTE"

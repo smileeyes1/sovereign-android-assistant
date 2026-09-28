@@ -71,6 +71,19 @@ for token in [
 req("HakimAcceptanceGate.canClose(context)" in SUPERVISOR, "supervisor_gate_missing")
 req("HakimGoalSupervisor.canClose(context)" in LOOP, "executive_close_gate_missing")
 req('if (category == "task")' in RULES, "temporary_task_memory_guard_missing")
+for token in [
+    'const val CUSTOM_PROFILE = "HAKIM-CUSTOM-8000-V1-2026-09-28"',
+    '"custom_profile_under_8000"',
+    '"custom_profile_lossless_core"',
+]:
+    req(token in CONSTITUTION, "runtime_profile:" + token)
+
+for token in [
+    "ملف التعليمات المخصصة تحت ٨٠٠٠",
+    "جوهر التعليمات المخصصة محفوظ",
+]:
+    req(token in SELF, "self_check_profile:" + token)
+
 req("python3 tests/verify_custom_instructions_8000.py" in WORKFLOW, "workflow_gate_missing")
 
 # Fault-injection sentinels: تقصير أو إزالة قواعد حاكمة يجب أن يُكتشف.

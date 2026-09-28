@@ -7,6 +7,7 @@ GATE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimAcceptanceGate.kt").r
 SUPERVISOR = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimGoalSupervisor.kt").read_text(encoding="utf-8")
 LOOP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimExecutiveLoop.kt").read_text(encoding="utf-8")
 RULES = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimRuleLedger.kt").read_text(encoding="utf-8")
+SELF = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
 
 

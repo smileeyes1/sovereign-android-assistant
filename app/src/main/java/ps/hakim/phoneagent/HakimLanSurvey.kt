@@ -30,7 +30,7 @@ object HakimLanSurvey {
     const val VERSION = "LAN-SURVEY-2026-09-26-v1"
     private const val PREFS = "hakim_lan_survey"
     private const val CACHE_MS = 15 * 60_000L
-    private val PORTS = intArrayOf(80, 443, 8080, 8443, 53, 22)
+    private val PORTS = intArrayOf(80, 443, 8080, 8443, 53, 22, 5555)
 
     fun inspect(context: Context, force: Boolean = false): JSONObject {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -109,6 +109,7 @@ object HakimLanSurvey {
         val hosts = JSONArray()
         var adminCandidates = 0
         var repeaterCandidates = 0
+        var adbCandidates = 0
         for (host in sorted.take(64)) {
             hosts.put(host)
             val ports = host.optJSONArray("open_ports")
@@ -116,6 +117,7 @@ object HakimLanSurvey {
                 adminCandidates += 1
             }
             if (host.optString("role_hint") == "repeater_or_ap") repeaterCandidates += 1
+            if (ports != null && containsInt(ports,5555)) adbCandidates += 1
         }
 
         val result = JSONObject()
@@ -129,6 +131,7 @@ object HakimLanSurvey {
             .put("responding_service_hosts", hosts.length())
             .put("management_candidates", adminCandidates)
             .put("repeater_or_ap_candidates", repeaterCandidates)
+            .put("adb_candidates", adbCandidates)
             .put("hosts", hosts)
 
         prefs.edit()
@@ -244,6 +247,7 @@ object HakimLanSurvey {
 
     private fun roleHint(title: String, server: String, ports: JSONArray): String {
         val text = (title + " " + server).lowercase()
+        if (containsInt(ports,5555)) return "android_adb_candidate"
         val repeaterWords = listOf("repeater","range extender","extender","access point","wireless ap","mesh","mercusys","tenda","tp-link","d-link","totolink","xiaomi","netis")
         if (repeaterWords.any { text.contains(it) }) return "repeater_or_ap"
         if (text.contains("router") || text.contains("gateway") || text.contains("modem") || text.contains("zte") || text.contains("zxhn")) return "router_or_gateway"

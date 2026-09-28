@@ -75,6 +75,7 @@ object HakimHealthBeacon {
             .put("recovery", HakimConnectionResilience.status(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
+            .put("field_acceptance", HakimFieldAcceptance.status(context))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
 

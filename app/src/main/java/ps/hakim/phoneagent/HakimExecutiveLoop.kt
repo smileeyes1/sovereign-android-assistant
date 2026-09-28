@@ -220,7 +220,11 @@ object HakimExecutiveLoop {
     fun latestOperationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
-        if (events.length() == 0) return "حالة العملية: لا توجد عملية جارية"
+        if (events.length() == 0) {
+            return HakimCloudContinuity.compactText(context)
+                ?.let { "حالة العملية: $it" }
+                ?: "حالة العملية: لا توجد عملية جارية"
+        }
         val e = events.optJSONObject(events.length() - 1) ?: return "حالة العملية: لا توجد عملية جارية"
         val phase = e.optString("phase")
         val ageMs = (System.currentTimeMillis() - p.getLong("updated_at", 0L)).coerceAtLeast(0L)
@@ -263,7 +267,15 @@ object HakimExecutiveLoop {
     fun operationText(context: Context): String {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val events = runCatching { JSONArray(p.getString("events", "[]")) }.getOrElse { JSONArray() }
-        if (events.length() == 0) return "لا توجد عملية جارية"
+        val cloudLines = HakimCloudContinuity.panelLines(context)
+        if (events.length() == 0) {
+            return if (cloudLines.isEmpty()) {
+                "لا توجد عملية جارية"
+            } else {
+                (listOf("لا توجد عملية محلية جارية", "— الاستمرارية السحابية —") + cloudLines)
+                    .joinToString("\n")
+            }
+        }
 
         val phase = p.getString("phase", "").orEmpty()
         val goal = p.getString("goal", "").orEmpty().trim().replace(Regex("\\s+"), " ").take(180)
@@ -289,6 +301,10 @@ object HakimExecutiveLoop {
             lines += (if (phase == Phase.GATED.name) "المانع: " else "الانتظار: ") + latestDetail
         }
         lines += "الخطوة التالية: ${nextStepLabel(phase)}"
+        if (cloudLines.isNotEmpty()) {
+            lines += "— الاستمرارية السحابية —"
+            lines += cloudLines
+        }
 
         val start = (events.length() - 4).coerceAtLeast(0)
         for (i in start until events.length()) {

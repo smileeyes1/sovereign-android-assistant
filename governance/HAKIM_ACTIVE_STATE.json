@@ -4,7 +4,7 @@
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
-    "last_verified_baseline_commit": "036c53c40c2045fcf90613797a5375fbffc0d925",
+    "last_verified_baseline_commit": "db79258fd7dde8bfecb152afbe5624edf891b270",
     "production_verified": true,
     "health_verified": true,
     "oauth_exact_callback_verified": true,
@@ -65,7 +65,7 @@
       "preserve_pairing": true,
       "authentication": "ACCEPTED_AFTER_SAFE_LAZY_MIGRATION",
       "evidence": {
-        "production_bridge_commit": "036c53c40c2045fcf90613797a5375fbffc0d925",
+        "production_bridge_commit": "b53ee5a7f2140db454bfbe76ee643950182d118e",
         "device_user_agent": "Dalvik/2.1.0 Android 16 TECNO LJ6",
         "accepted_long_polls": [
           {
@@ -78,9 +78,11 @@
             "duration_ms": 25298,
             "timestamp_utc": "2026-09-26T14:06:12.706595774Z"
           }
-        ]
+        ],
+        "current_cloud_baseline_commit": "db79258fd7dde8bfecb152afbe5624edf891b270",
+        "latest_cloud_reconnect_to_field_phone": "NOT_OBSERVED_AFTER_DB79258_AT_SNAPSHOT"
       },
-      "note": "Hakim 20311 Secure Relay and execution_fabric were field-observed ONLINE after installation; exact installed APK byte identity remains separately unproven. Production bridge baseline has since advanced; current phone reconnection to that exact latest deployment is not claimed until observed."
+      "note": "Hakim 20311 was directly field-observed ONLINE on the clean b53ee5a7 bridge with ~8.1s command polling. Current cloud baseline db79258 is CI/deployment verified; a fresh 20311 request to that exact deployment had not yet appeared at this snapshot, so no field reconnection is claimed."
     }
   },
   "material_factory": {

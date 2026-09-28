@@ -15,7 +15,7 @@ req(bool(m), "version_missing")
 candidate = int(m.group(1))
 
 req(state.get("single_source_of_truth") is True, "single_source")
-req(state["cloud"]["last_verified_baseline_commit"] == "036c53c40c2045fcf90613797a5375fbffc0d925", "cloud_baseline")
+req(state["cloud"]["last_verified_baseline_commit"] == "db79258fd7dde8bfecb152afbe5624edf891b270", "cloud_baseline")
 req(state["android"]["latest_source_parent"]["commit"] == "e8021c9720ebd1fb2bc9b835be69e0ca5dbb1865", "source_parent")
 req(state["android"]["latest_source_parent"]["ci_run_number"] == 1166, "source_parent_ci")
 req(state["android"]["candidate"]["version_code"] == candidate == 20312, "candidate_version")

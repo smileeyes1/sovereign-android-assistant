@@ -79,11 +79,20 @@ object HakimAuthorizedLanControl {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val ip = prefs.getString("$id.ip", "").orEmpty()
         if (!isPrivateIpv4(ip)) return error("invalid_local_target")
+
+        val probe = HakimAdbConnectionManager.remote(context).verifyRemote(ip, 5555)
+        if (!probe.ok) {
+            return JSONObject().put("ok", false).put("version", VERSION)
+                .put("device_id", id).put("adapter", "adb")
+                .put("status", if (probe.error == "ADB_TARGET_APPROVAL_REQUIRED") "target_approval_required" else "verification_failed")
+                .put("error", probe.error ?: "adb_verification_failed")
+        }
+
         prefs.edit().putBoolean("$id.authorized.adb", true)
             .putLong("$id.authorized_at_ms", System.currentTimeMillis()).apply()
         return JSONObject().put("ok", true).put("device_id", id)
             .put("adapter", "adb").put("status", "authorized")
-            .put("note", "target_adb_may_still_require_on_device_key_approval")
+            .put("verification", "adb_identity_accepted")
     }
 
     fun control(context: Context, payload: JSONObject): JSONObject {

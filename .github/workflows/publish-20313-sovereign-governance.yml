@@ -1,4 +1,5 @@
 name: "نشر تحديث حكيم ٢٠٣١٣ — الحاكمية السيادية الكاملة"
+# exact-public-signing-block retry 1
 
 on:
   push:

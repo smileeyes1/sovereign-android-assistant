@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20312
-        versionName '3.3.8-professional-observability-continuity-v1'
+        versionName '3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1'
     }
 
     compileOptions {

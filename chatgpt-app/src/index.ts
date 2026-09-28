@@ -17,7 +17,6 @@ import { directRelayStore } from "./direct-relay.js";
 import { continuityStore } from "./continuity-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
-import { LegacyReadProbe } from "./legacy-read-probe.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -45,35 +44,7 @@ relayCleanupTimer.unref?.();
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
-const uiProbeCooldownByTopic=new Map<string,number>();
-const uiProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
-const UI_PROBE_COOLDOWN_MS=60*60_000;
-const legacyReadProbe=new LegacyReadProbe(report=>{
-  console.log("HAKIM_LEGACY_READ_PROBE "+JSON.stringify({
-    event:"hakim_legacy_read_probe",
-    matched:report.matched,
-    signed_result:report.signed_result,
-    local_page:report.local_page,
-    local_host:report.local_host,
-    local_title:report.local_title,
-    status:report.status
-  }));
-});
-
-function maybeMakeUiProbe(topic:string,key:string){
-  const now=Date.now();
-  const previous=uiProbeCooldownByTopic.get(topic)??0;
-  if(now-previous<UI_PROBE_COOLDOWN_MS) return null;
-  const envelope=makeEnvelope(key,"ui",{},60_000);
-  uiProbeCooldownByTopic.set(topic,now);
-  uiProbeRequests.set(envelope.request_id,{sentAt:now});
-  return {
-    request_id:envelope.request_id,
-    carrier:encryptCarrier(key,envelope),
-    expires_at_ms:envelope.expires_at_ms
-  };
-}
 
 function maybeMakeStatusProbe(topic:string,key:string){
   const now=Date.now();
@@ -93,175 +64,47 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
   try{
     const decoded=decryptResult(key,carrier) as {
       request_id?:unknown;
-      status?:unknown;
       result?:{
         ok?:unknown;
-        nodes?:unknown;
-
         version_code?:unknown;
         version_name?:unknown;
         secure_relay_state?:unknown;
         secure_relay_running?:unknown;
         secure_relay_connected?:unknown;
-        accessibility?:unknown;
         browser_service_running?:unknown;
-        notification_listener?:unknown;
         execution_fabric?:Record<string,unknown>;
-        network_guardian?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
-        lan_survey?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
-
-    const uiTracked=uiProbeRequests.get(requestId);
-    if(uiTracked){
-      const rawNodes=Array.isArray(decoded.result?.nodes)?decoded.result?.nodes as unknown[]:[];
-      const keyword=/wifi|wi-fi|wireless|wlan|router|repeater|extender|access.?point|network|internet|gateway|dhcp|lan|wan|zte|zxhn|tp.?link|tenda|mercusys|d.?link|totolink|xiaomi|netis|شبك|واي|لاسلك|راوتر|مقو|مكرر|إنترنت|انترنت|بوابة/i;
-      const packages=new Set<string>();
-      const matches:Record<string,unknown>[]=[];
-      for(const item of rawNodes.slice(0,250)){
-        if(!item||typeof item!=="object") continue;
-        const n=item as Record<string,unknown>;
-        const pkg=typeof n.package==="string"?n.package.slice(0,160):"";
-        if(pkg) packages.add(pkg);
-        const text=typeof n.text==="string"?n.text.slice(0,160):"";
-        const desc=typeof n.desc==="string"?n.desc.slice(0,160):"";
-        const id=typeof n.id==="string"?n.id.slice(0,180):"";
-        const probe=[text,desc,id,pkg].join(" ");
-        if(!keyword.test(probe)) continue;
-        matches.push({
-          package:pkg||null,
-          text:text||null,
-          desc:desc||null,
-          id:id||null,
-          class:typeof n.class==="string"?n.class.slice(0,120):null,
-          clickable:n.clickable===true,
-          editable:n.editable===true
-        });
-        if(matches.length>=40) break;
-      }
-      console.log("HAKIM_UI_NETWORK_PROBE "+JSON.stringify({
-        event:"hakim_ui_network_probe",
-        ok:decoded.result?.ok??null,
-        node_count:rawNodes.length,
-        packages:Array.from(packages).slice(0,8),
-        network_matches:matches
-      }));
-      uiProbeRequests.delete(requestId);
-      return;
-    }
-
-    const tracked=statusProbeRequests.get(requestId);
-    if(!tracked) return;
-    const e=decoded.result?.execution_fabric??{};
-    const n=decoded.result?.network_guardian??{};
-    const d=decoded.result?.network_diagnostics??{};
-    const nestedLan=(d&&typeof d==="object"&&"lan_survey" in d)
-      ?((d as Record<string,unknown>).lan_survey as Record<string,unknown>|undefined)
-      :undefined;
-    const nestedWifi=(d&&typeof d==="object"&&"wifi_environment" in d)
-      ?((d as Record<string,unknown>).wifi_environment as Record<string,unknown>|undefined)
-      :undefined;
-    const nestedDeep=(d&&typeof d==="object"&&"deep_lan_discovery" in d)
-      ?((d as Record<string,unknown>).deep_lan_discovery as Record<string,unknown>|undefined)
-      :undefined;
-    const l=decoded.result?.lan_survey??nestedLan??{};
-    const w=nestedWifi??{};
-    const deep=nestedDeep??{};
+    if(!statusProbeRequests.has(requestId)) return;
+    // Log only fixed state enums and booleans. Raw pages, UI nodes, URLs,
+    // network identifiers, result carriers and credentials stay out of logs.
+    const fixed=(raw:unknown,allowed:readonly string[])=>
+      typeof raw==="string"&&allowed.includes(raw)?raw:null;
+    const flag=(raw:unknown)=>typeof raw==="boolean"?raw:null;
+    const result=decoded.result;
+    const fabric=result?.execution_fabric;
+    const diagnostics=result?.network_diagnostics;
     const safe={
       event:"hakim_status_probe",
-      version_code:decoded.result?.version_code??null,
-      version_name:decoded.result?.version_name??null,
-      secure_relay_state:decoded.result?.secure_relay_state??null,
-      secure_relay_running:decoded.result?.secure_relay_running??null,
-      secure_relay_connected:decoded.result?.secure_relay_connected??null,
-      accessibility:decoded.result?.accessibility??null,
-      browser_service_running:decoded.result?.browser_service_running??null,
-      notification_listener:decoded.result?.notification_listener??null,
+      ok:flag(result?.ok),
+      version_code:typeof result?.version_code==="number"?result.version_code:null,
+      version_name_has_extender_survey:typeof result?.version_name==="string"?
+        result.version_name.includes("extender-survey"):null,
+      secure_relay_state:fixed(result?.secure_relay_state,
+        ["direct_connected","direct_recovering","legacy_fallback","unconfigured","unknown"]),
+      secure_relay_running:flag(result?.secure_relay_running),
+      secure_relay_connected:flag(result?.secure_relay_connected),
+      browser_service_running:flag(result?.browser_service_running),
       execution_fabric:{
-        state:e.state??null,
-        online:e.online??null,
-        online_paths:e.online_paths??null,
-        configured_paths:e.configured_paths??null,
-        secure_relay_configured:e.secure_relay_configured??null,
-        secure_relay_running:e.secure_relay_running??null,
-        secure_relay_connected:e.secure_relay_connected??null,
-        legacy_configured:e.legacy_configured??null,
-        legacy_service_running:e.legacy_service_running??null,
-        legacy_connected:e.legacy_connected??null,
-        local_adb_paired:e.local_adb_paired??null,
-        local_adb_connected:e.local_adb_connected??null,
-        service_start:e.service_start??null,
-        last_start_error:e.last_start_error??null
+        state:fixed(fabric?.state,["ONLINE","RECOVERING","OFFLINE","DEGRADED","UNKNOWN"]),
+        online:flag(fabric?.online),
+        secure_relay_connected:flag(fabric?.secure_relay_connected),
+        legacy_connected:flag(fabric?.legacy_connected)
       },
-      network_guardian:{
-        state:n.state??null,
-        gateway:n.gateway??null,
-        observed_dns:n.observed_dns??null,
-        fingerprint_zte:n.fingerprint_zte??null,
-        fingerprint_zxhn:n.fingerprint_zxhn??null,
-        router_auth_required:n.router_auth_required??null,
-        baseline_dns_saved:n.baseline_dns_saved??null,
-        family_dns_configured:n.family_dns_configured??null,
-        family_resolver_verified:n.family_resolver_verified??null,
-        rollback_state:n.rollback_state??null,
-        last_reason:n.last_reason??null,
-        last_detail:n.last_detail??null
-      },
-      network_diagnostics:{
-        version:d.version??null,
-        transport_wifi:d.transport_wifi??null,
-        internet_capability:d.internet_capability??null,
-        validated:d.validated??null,
-        metered:d.metered??null,
-        gateway:d.gateway??null,
-        dns:d.dns??null,
-        interface:d.interface??null,
-        mtu:d.mtu??null,
-        wifi:d.wifi??null,
-        gateway_tcp:d.gateway_tcp??null,
-        internet_tcp:d.internet_tcp??null,
-        upnp_devices:d.upnp_devices??null,
-        wifi_environment:{
-          version:w.version??null,
-          ok:w.ok??null,
-          fine_location_granted:w.fine_location_granted??null,
-          coarse_location_granted:w.coarse_location_granted??null,
-          active_scan_requested:w.active_scan_requested??null,
-          scan_result_count:w.scan_result_count??null,
-          reported_ap_count:w.reported_ap_count??null,
-          access_points:w.access_points??null,
-          ssid_groups:w.ssid_groups??null,
-          channel_counts_24:w.channel_counts_24??null,
-          channel_counts_5:w.channel_counts_5??null,
-          channel_counts_6:w.channel_counts_6??null,
-          channel_pressure_24:w.channel_pressure_24??null,
-          suggested_24_channel:w.suggested_24_channel??null,
-          suggested_24_width_mhz:w.suggested_24_width_mhz??null,
-          error:w.error??null
-        }
-      },
-      lan_survey:{
-        version:l.version??null,
-        ok:l.ok??null,
-        cached:l.cached??null,
-        local_ip:l.local_ip??null,
-        prefix_length:l.prefix_length??null,
-        gateway:l.gateway??null,
-        scanned_hosts:l.scanned_hosts??null,
-        responding_service_hosts:l.responding_service_hosts??null,
-        management_candidates:l.management_candidates??null,
-        repeater_or_ap_candidates:l.repeater_or_ap_candidates??null,
-        hosts:l.hosts??null
-      },
-      deep_lan_discovery:{
-        version:deep.version??null,
-        ok:deep.ok??null,
-        neighbors:deep.neighbors??null,
-        wifi_neighbors:deep.wifi_neighbors??null,
-        historic_targets:deep.historic_targets??null
-      }
+      network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
+        Object.keys(diagnostics).length>0
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));
     statusProbeRequests.delete(requestId);
@@ -590,7 +433,6 @@ app.get("/device/v1/commands",async(req,res)=>{
   try{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
-    legacyReadProbe.observeCommand(topic,key);
     const waitMs=normalizeDeviceWaitMs(one(req.query.wait_ms));
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
     noStore(res);
@@ -601,8 +443,6 @@ app.get("/device/v1/commands",async(req,res)=>{
         expires_at_ms:command.expires_at_ms
       });
     }
-    const uiProbe=maybeMakeUiProbe(topic,key);
-    if(uiProbe) return res.json(uiProbe);
     const probe=maybeMakeStatusProbe(topic,key);
     if(probe) return res.json(probe);
     return res.status(204).end();
@@ -631,7 +471,6 @@ app.post(
       const topic=one(req.query.topic);
       const key=directRelayKey(req);
       if(typeof req.body!=="string") throw new Error("result_body_required");
-      legacyReadProbe.observeResult(topic,key);
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
       logSanitizedStatusProbe(topic,key,carrier);

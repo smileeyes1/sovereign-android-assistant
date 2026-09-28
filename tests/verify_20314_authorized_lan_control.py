@@ -23,7 +23,7 @@ req('raw_ip_exposed' in CONTROL and '.put("raw_ip_exposed", false)' in CONTROL,'
 req('device_not_authorized' in CONTROL,'authorization_gate')
 req('device_mapping_stale' in CONTROL,'stale_mapping_guard')
 req('network_devices' in RELAY,'network_read_op')
-req('network_authorize' in RELAY and 'network_control' in RELAY,'network_write_ops')
+req('network_authorize' in RELAY and 'network_control' in RELAY and 'network_revoke' in RELAY,'network_write_ops')
 req('showApproval(context, requestId, op)' in RELAY,'write_approval_gate')
 req('fun probeRemoteIdentity(' in ADB,'adb_identity_probe')
 req('HAKIM-ADB-TARGET-v1' in ADB and 'ro.build.fingerprint' in ADB,'adb_identity_fingerprint')
@@ -39,6 +39,9 @@ req('target_approval_required' in authorize_block,'target_approval_state_missing
 control_block=CONTROL.split('fun control(',1)[1].split('fun status(',1)[0]
 req('expectedIdentity' in control_block and 'ADB_TARGET_IDENTITY_CHANGED' in control_block,'identity_not_checked_before_effect')
 req('authorization_revoked' in control_block,'identity_change_does_not_revoke')
+revoke_block=CONTROL.split('fun revoke(',1)[1].split('fun control(',1)[0]
+req('putBoolean("$id.authorized.adb", false)' in revoke_block,'explicit_revoke_missing')
+req('remove("$id.adb_identity_sha256")' in revoke_block,'identity_not_removed_on_revoke')
 req('fun remote(context: Context)' in ADB,'isolated_remote_manager')
 
 for token in [

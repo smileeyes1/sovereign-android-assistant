@@ -25,8 +25,14 @@ req('device_mapping_stale' in CONTROL,'stale_mapping_guard')
 req('network_devices' in RELAY,'network_read_op')
 req('network_authorize' in RELAY and 'network_control' in RELAY,'network_write_ops')
 req('showApproval(context, requestId, op)' in RELAY,'write_approval_gate')
+req('fun verifyRemote(' in ADB,'adb_verification_probe')
+req('setThrowOnUnauthorised(true)' in ADB,'adb_auth_rejection_detection')
 req('fun executeRemoteAction(' in ADB,'restricted_adb_executor')
 req('connect(host, port)' in ADB and 'openStream("shell:$command")' in ADB,'remote_adb_path')
+req('verifyRemote(ip, 5555)' in CONTROL,'authorization_handshake_missing')
+authorize_block=CONTROL.split('fun authorize(',1)[1].split('fun control(',1)[0]
+req(authorize_block.index('verifyRemote(ip, 5555)') < authorize_block.index('putBoolean("$id.authorized.adb", true)'), 'authorization_before_handshake')
+req('target_approval_required' in authorize_block,'target_approval_state_missing')
 req('fun remote(context: Context)' in ADB,'isolated_remote_manager')
 
 for token in [

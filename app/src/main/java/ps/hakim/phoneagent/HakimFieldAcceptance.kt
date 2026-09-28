@@ -213,10 +213,12 @@ object HakimFieldAcceptance {
 
     private fun browserProbe(): ProbeState {
         var result = JSONObject().put("ok", false).put("error", "browser_service_unavailable")
-        repeat(4) {
+        for (attempt in 0 until 4) {
             result = HakimService.fieldBrowserSelfTest()
-            if (result.optString("error") != "browser_service_unavailable") return@repeat
-            try { Thread.sleep(900L) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+            if (result.optString("error") != "browser_service_unavailable") break
+            if (attempt < 3) {
+                try { Thread.sleep(900L) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+            }
         }
         val pass =
             result.optBoolean("ok") &&

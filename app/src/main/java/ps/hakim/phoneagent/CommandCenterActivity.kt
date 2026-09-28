@@ -987,7 +987,15 @@ class CommandCenterActivity : ComponentActivity() {
         refreshOperations()
 
         Thread {
-            val result = HakimUniversalPdfRenderer.render(this, request, content)
+            val result = HakimUniversalPdfRenderer.render(this, request, content).map { rendered ->
+                HakimAcceptanceGate.verifyAndBindArtifact(
+                    this,
+                    rendered.uri,
+                    rendered.savedAt,
+                    "application/pdf"
+                )
+                rendered
+            }
             runOnUiThread {
                 result.onSuccess { rendered ->
                     require(rendered.verified)
@@ -1042,7 +1050,15 @@ class CommandCenterActivity : ComponentActivity() {
         status.text = "يجهّز الملف…"
 
         Thread {
-            val result = HakimLocalArtifactFactory.create(this, text)
+            val result = HakimLocalArtifactFactory.create(this, text).map { created ->
+                HakimAcceptanceGate.verifyAndBindArtifact(
+                    this,
+                    created.uri,
+                    created.savedAt,
+                    created.kind
+                )
+                created
+            }
             runOnUiThread {
                 result.onSuccess { created ->
                     appendConversation(
@@ -1095,7 +1111,15 @@ class CommandCenterActivity : ComponentActivity() {
         val title = if (text.contains("ورقة عمل") || text.contains("ورقه عمل")) "ورقة عمل" else "مستند حكيم"
 
         Thread {
-            val result = HakimLocalArtifactFactory.createTextPdf(this, title, rawContent)
+            val result = HakimLocalArtifactFactory.createTextPdf(this, title, rawContent).map { created ->
+                HakimAcceptanceGate.verifyAndBindArtifact(
+                    this,
+                    created.uri,
+                    created.savedAt,
+                    created.kind
+                )
+                created
+            }
             runOnUiThread {
                 result.onSuccess { created ->
                     appendConversation("حكيم", HakimProductUx.completionMessage("pdf", created.savedAt))

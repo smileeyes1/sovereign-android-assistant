@@ -14,6 +14,7 @@ import {
 } from "./oauth.js";
 import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
+import { continuityStore } from "./continuity-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 import { LegacyReadProbe } from "./legacy-read-probe.js";
@@ -35,6 +36,7 @@ const codeStore=new FileCodeStore(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
+await continuityStore.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);

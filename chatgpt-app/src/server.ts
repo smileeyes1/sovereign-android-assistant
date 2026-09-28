@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
+import { continuityStore } from "./continuity-store.js";
 import {
   SOVEREIGN_GOVERNANCE_VERSION,actionRequested,governedReadDescription,
   tagDeviceEvidence,tagExternalData
@@ -221,6 +222,18 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   }
 
   tools.push({
+    name:"get_continuation_state",
+    title:"حالة الاستمرارية",
+    description:governedReadDescription(
+      "استرجع سجلًا دائمًا ومختصرًا لآخر عمليات حكيم المرتبطة بهذا الجهاز، لتستأنف محادثة جديدة الطلبات المعلقة دون إعادة تنفيذها. لا يعيد محتوى الشاشة أو الصفحة أو القيم المكتوبة أو الأسرار."
+    ),
+    inputSchema:{type:"object",properties:{},additionalProperties:false},
+    annotations:READ_ANNOTATIONS,
+    securitySchemes:readSecurity,
+    _meta:{securitySchemes:readSecurity}
+  });
+
+  tools.push({
     name:"get_request_result",
     title:"قراءة حالة طلب سابق",
     description:governedReadDescription(
@@ -251,6 +264,14 @@ export function createHakimServer(
   const has=(scope:string)=>scopes.includes(scope);
   const reviewMode=credential.topic.startsWith("hakim_review_");
   const reviewId=()=>("review-"+Date.now().toString(36));
+  const remember=async(requestId:string,op:HakimOp)=>{
+    if(!reviewMode) await continuityStore.recordRequested(credential,requestId,op);
+    return requestId;
+  };
+  const observe=async(requestId:string,result:unknown)=>{
+    if(!reviewMode) await continuityStore.recordObserved(credential,requestId,result);
+    return result;
+  };
   const readCatalog=publicSafe?PUBLIC_READ_CATALOG:PRIVATE_READ_CATALOG;
 
   for(const [name,internalOp,title,description] of readCatalog){
@@ -264,8 +285,8 @@ export function createHakimServer(
         device:{name:"Hakim Review Device",connected:true},
         ...(publicSafe?{privacy:"content_redacted"}:{message:"Safe reviewer fixture; no real device was accessed."})
       },name));
-      const requestId=await publishCommand(credential,internalOp as HakimOp,{});
-      const result=await pollResult(credential,requestId,8_000);
+      const requestId=await remember(await publishCommand(credential,internalOp as HakimOp,{}),internalOp as HakimOp);
+      const result=await observe(requestId,await pollResult(credential,requestId,8_000));
       if(publicSafe&&name==="get_device_status") return text(tagExternalData(limitedStatus(result,requestId),name));
       return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
@@ -287,7 +308,10 @@ export function createHakimServer(
       if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
     }
     if(reviewMode) return text(actionRequested(reviewId(),{demo:true,note:"No real device action occurs in reviewer mode."}));
-    const requestId=await publishCommand(credential,"launch",{package:hasPkg?pkg!.trim():"",url:hasUrl?url!.trim():""});
+    const requestId=await remember(
+      await publishCommand(credential,"launch",{package:hasPkg?pkg!.trim():"",url:hasUrl?url!.trim():""}),
+      "launch"
+    );
     return text(actionRequested(requestId,publicSafe?{}:{request_id:requestId}));
   });
 
@@ -300,7 +324,7 @@ export function createHakimServer(
     },async({kind})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       if(reviewMode) return text(actionRequested(reviewId(),{demo:true,validated_action:kind,note:"No real device action occurs in reviewer mode."}));
-      const requestId=await publishCommand(credential,"action",{action:kind});
+      const requestId=await remember(await publishCommand(credential,"action",{action:kind}),"action");
       return text(actionRequested(requestId,{validated_action:kind}));
     });
   }else{
@@ -316,10 +340,30 @@ export function createHakimServer(
         const id=reviewId();
         return text(actionRequested(id,{demo:true,request_id:id,validated_action:payload.action,note:"No real device action occurs in reviewer mode."}));
       }
-      const requestId=await publishCommand(credential,"action",payload);
+      const requestId=await remember(await publishCommand(credential,"action",payload),"action");
       return text(actionRequested(requestId,{request_id:requestId,validated_action:payload.action}));
     });
   }
+
+  server.registerTool("get_continuation_state",{
+    title:"حالة الاستمرارية",
+    description:governedReadDescription(
+      "استرجع آخر عمليات حكيم الآمنة للاستئناف عبر محادثة جديدة دون إعادة تنفيذ الطلبات المعلقة."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    if(reviewMode) return text({
+      continuity_version:"HAKIM_CONTINUITY_V1",
+      durable:true,
+      pending_count:0,
+      operations:[],
+      privacy:"content_redacted",
+      demo:true
+    });
+    return text(await continuityStore.state(credential));
+  });
 
   server.registerTool("get_request_result",{
     title:"قراءة حالة طلب سابق",
@@ -339,7 +383,7 @@ export function createHakimServer(
         :{ok:true,demo:true,status:"complete",request_id,result:{message:"Safe reviewer fixture."}},
       request_id
     ));
-    const result=await pollResult(credential,request_id,8_000);
+    const result=await observe(request_id,await pollResult(credential,request_id,8_000));
     if(publicSafe) return text(tagDeviceEvidence(limitedRequestResult(result,operation_token),request_id));
     return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id},request_id));
   });

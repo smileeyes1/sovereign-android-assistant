@@ -37,7 +37,7 @@ test("portable MCP package points only to production HTTPS bridge",()=>{
 test("public tool surface is narrow and fully annotated",()=>{
   const tools=chatgptToolList(true) as any[];
   assert.deepEqual(tools.map(t=>t.name),[
-    "get_device_status","open_target","navigate_device","get_continuation_state","get_request_result"
+    "get_device_status","open_target","navigate_device","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]);
   for(const tool of tools){
     assert.equal(typeof tool.annotations?.readOnlyHint,"boolean",tool.name);

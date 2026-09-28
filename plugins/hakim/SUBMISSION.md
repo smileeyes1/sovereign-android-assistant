@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
+- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, save a bounded work checkpoint, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** get_device_status, open_target, navigate_device, get_continuation_state, get_request_result
+- **Public tool surface:** get_device_status, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
 
 ## Starter prompts
 
@@ -98,6 +98,7 @@ Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabl
 - `open_target`
 - `navigate_device`
 - `get_continuation_state`
+- `save_continuation_checkpoint`
 - `get_request_result`
 
 Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
@@ -123,6 +124,12 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `readOnlyHint=true`: reads only the durable, privacy-minimized operation journal and never replays an operation.
 - `openWorldHint=false`: reads only state bound to the authenticated Hakim pairing.
 - `destructiveHint=false`: does not change the device, enqueue a command, or mutate external state.
+
+### save_continuation_checkpoint
+- `readOnlyHint=false`: writes only the bounded continuation checkpoint on the Hakim bridge; it does not execute a device action.
+- `openWorldHint=false`: writes only state bound to the authenticated Hakim pairing.
+- `destructiveHint=false`: does not delete user data, send content externally, or mutate device state.
+- `idempotentHint=true`: updating the same `goal_id` replaces its checkpoint metadata rather than replaying an external action.
 
 ### get_request_result
 - `readOnlyHint=true`: reads completion state for an existing operation without replaying it.

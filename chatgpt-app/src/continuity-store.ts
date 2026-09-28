@@ -5,6 +5,7 @@ import path from "node:path";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 
 export type ContinuityStatus="requested"|"pending"|"ok"|"error"|"failed"|"rejected"|"expired"|"duplicate"|"complete";
+export type WorkStatus="active"|"waiting"|"blocked"|"complete"|"cancelled";
 
 type OperationRecord={
   request_id:string;
@@ -14,15 +15,30 @@ type OperationRecord={
   updated_at_ms:number;
 };
 
-type DeviceJournal={
-  version:"HAKIM_CONTINUITY_V1";
+export type WorkCheckpoint={
+  goal_id:string;
+  goal_label:string;
+  stage:string;
+  last_verified:string;
+  next_step:string;
+  blocker:string;
+  status:WorkStatus;
   updated_at_ms:number;
+};
+
+type DeviceJournal={
+  version:"HAKIM_CONTINUITY_V2";
+  updated_at_ms:number;
+  work:WorkCheckpoint|null;
   operations:OperationRecord[];
 };
 
 const MAX_OPERATIONS=64;
 const MAX_AGE_MS=30*24*60*60_000;
 const FINAL_STATUSES=new Set<ContinuityStatus>(["ok","error","failed","rejected","expired","duplicate","complete"]);
+const GOAL_ID=/^[A-Za-z0-9._:-]{8,96}$/;
+const CONTROL=/[\u0000-\u001F\u007F]/g;
+const SECRET_HINT=/(?:bearer\s+[a-z0-9._~-]+|(?:password|passwd|secret|api[_ -]?key|access[_ -]?token|refresh[_ -]?token)\s*[:=])/i;
 
 function safeStatus(result:unknown):ContinuityStatus{
   if(result===null||result===undefined) return "pending";
@@ -37,6 +53,12 @@ function safeStatus(result:unknown):ContinuityStatus{
   if(raw==="duplicate") return "duplicate";
   if(raw==="pending"||raw==="approval_requested"||raw==="requested") return "pending";
   return "complete";
+}
+
+function safeField(raw:string,max:number){
+  const value=raw.replace(CONTROL," ").replace(/\s+/g," ").trim().slice(0,max);
+  if(SECRET_HINT.test(value)) throw new Error("checkpoint_sensitive_content_rejected");
+  return value;
 }
 
 export class ContinuityStore{
@@ -60,19 +82,43 @@ export class ContinuityStore{
   }
 
   private empty():DeviceJournal{
-    return {version:"HAKIM_CONTINUITY_V1",updated_at_ms:Date.now(),operations:[]};
+    return {version:"HAKIM_CONTINUITY_V2",updated_at_ms:Date.now(),work:null,operations:[]};
   }
 
   private async read(c:DeviceCredential):Promise<DeviceJournal>{
     try{
-      const parsed=JSON.parse(await fs.readFile(this.file(c),"utf8")) as DeviceJournal;
-      if(parsed?.version!=="HAKIM_CONTINUITY_V1"||!Array.isArray(parsed.operations)) return this.empty();
+      const raw=JSON.parse(await fs.readFile(this.file(c),"utf8")) as Record<string,unknown>;
+      if(!Array.isArray(raw.operations)) return this.empty();
       const cutoff=Date.now()-MAX_AGE_MS;
-      parsed.operations=parsed.operations.filter(x=>
+      const operations=(raw.operations as OperationRecord[]).filter(x=>
         x&&typeof x.request_id==="string"&&typeof x.op==="string"&&
         typeof x.updated_at_ms==="number"&&x.updated_at_ms>=cutoff
       ).slice(-MAX_OPERATIONS);
-      return parsed;
+      const workRaw=raw.work;
+      let work:WorkCheckpoint|null=null;
+      if(workRaw&&typeof workRaw==="object"){
+        const w=workRaw as Record<string,unknown>;
+        const status=typeof w.status==="string"&&["active","waiting","blocked","complete","cancelled"].includes(w.status)
+          ? w.status as WorkStatus : "active";
+        if(typeof w.goal_id==="string"&&GOAL_ID.test(w.goal_id)){
+          work={
+            goal_id:w.goal_id,
+            goal_label:safeField(typeof w.goal_label==="string"?w.goal_label:"",240),
+            stage:safeField(typeof w.stage==="string"?w.stage:"",120),
+            last_verified:safeField(typeof w.last_verified==="string"?w.last_verified:"",280),
+            next_step:safeField(typeof w.next_step==="string"?w.next_step:"",280),
+            blocker:safeField(typeof w.blocker==="string"?w.blocker:"",220),
+            status,
+            updated_at_ms:typeof w.updated_at_ms==="number"?w.updated_at_ms:0
+          };
+        }
+      }
+      return {
+        version:"HAKIM_CONTINUITY_V2",
+        updated_at_ms:typeof raw.updated_at_ms==="number"?raw.updated_at_ms:Date.now(),
+        work,
+        operations
+      };
     }catch{
       return this.empty();
     }
@@ -106,6 +152,35 @@ export class ContinuityStore{
       release();
       if(this.locks.get(key)===gate) this.locks.delete(key);
     }
+  }
+
+  async saveCheckpoint(
+    c:DeviceCredential,
+    input:{
+      goal_id?:string;
+      goal_label:string;
+      stage:string;
+      last_verified?:string;
+      next_step?:string;
+      blocker?:string;
+      status:WorkStatus;
+    }
+  ){
+    const goalId=(input.goal_id??("goal-"+crypto.randomUUID().replace(/-/g,"").slice(0,20))).trim();
+    if(!GOAL_ID.test(goalId)) throw new Error("invalid_goal_id");
+    const checkpoint:WorkCheckpoint={
+      goal_id:goalId,
+      goal_label:safeField(input.goal_label,240),
+      stage:safeField(input.stage,120),
+      last_verified:safeField(input.last_verified??"",280),
+      next_step:safeField(input.next_step??"",280),
+      blocker:safeField(input.blocker??"",220),
+      status:input.status,
+      updated_at_ms:Date.now()
+    };
+    if(!checkpoint.goal_label||!checkpoint.stage) throw new Error("checkpoint_goal_and_stage_required");
+    await this.mutate(c,journal=>{journal.work=checkpoint;});
+    return checkpoint;
   }
 
   async recordRequested(c:DeviceCredential,requestId:string,op:HakimOp){
@@ -155,10 +230,11 @@ export class ContinuityStore{
       continuity_version:journal.version,
       durable:true,
       updated_at_ms:journal.updated_at_ms,
+      work:journal.work,
       pending_count:operations.filter(x=>x.resumable).length,
       operations,
-      resume_rule:"For pending operations, call get_request_result with the same operation_token. Do not re-run the original action merely because the chat changed.",
-      privacy:"No screen text, page contents, notification contents, URLs, typed values, relay keys, or credentials are stored in this journal."
+      resume_rule:"Resume the work checkpoint first. For pending operations, call get_request_result with the same operation_token. Do not re-run an original action merely because the chat or session changed.",
+      privacy:"The journal stores only bounded work checkpoint text plus operation type/token/status. It does not store screen/page/notification contents, typed values, relay keys, or credentials."
     };
   }
 }

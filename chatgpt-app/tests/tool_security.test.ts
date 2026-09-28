@@ -15,10 +15,10 @@ const credential:DeviceCredential={
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{
   const tools=chatgptToolList(true) as any[];
-  assert.equal(tools.length,5);
+  assert.equal(tools.length,6);
   const byName=new Map(tools.map(t=>[t.name,t]));
   assert.deepEqual([...byName.keys()].sort(),[
-    "get_continuation_state","get_device_status","get_request_result","navigate_device","open_target"
+    "get_continuation_state","get_device_status","get_request_result","navigate_device","open_target","save_continuation_checkpoint"
   ].sort());
 
   for(const name of ["get_device_status","get_continuation_state","get_request_result"]){
@@ -29,6 +29,13 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
     assert.equal(t.annotations.openWorldHint,false);
     assert.equal(t.annotations.destructiveHint,false);
   }
+
+  const checkpoint:any=byName.get("save_continuation_checkpoint");
+  assert.deepEqual(checkpoint.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
+  assert.equal(checkpoint.annotations.readOnlyHint,false);
+  assert.equal(checkpoint.annotations.destructiveHint,false);
+  assert.equal(checkpoint.annotations.openWorldHint,false);
+  assert.equal(checkpoint.annotations.idempotentHint,true);
 
   const open:any=byName.get("open_target");
   assert.deepEqual(open.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
@@ -51,10 +58,10 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,9);
+  assert.equal(tools.length,10);
   for(const name of [
     "get_device_status","read_browser_page","get_current_ui","list_notifications","capture_screenshot",
-    "open_target","perform_ui_action","get_continuation_state","get_request_result"
+    "open_target","perform_ui_action","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");
   assert.deepEqual((byName.get("read_browser_page") as any).securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
   assert.equal(byName.has("navigate_device"),false);

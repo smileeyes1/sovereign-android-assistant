@@ -37,9 +37,9 @@ test("private browser reads do not activate the legacy diagnostic probe",()=>{
 test("status probe follows the lease without competing diagnostic probes or raw logs",()=>{
   assert.equal(index.includes("maybeMakeUiProbe"),false);
   assert.equal(index.includes("HAKIM_UI_NETWORK_PROBE"),false);
-  const route=index.split('app.get("/device/v1/commands"',1)[1].split('app.post("/device/v1/commands/:requestId/ack"',1)[0];
+  const route=index.split('app.get("/device/v1/commands"')[1].split('app.post("/device/v1/commands/:requestId/ack"')[0];
   assert.match(route,/const probe=maybeMakeStatusProbe\(topic,key\)/);
-  const log=index.split("function logSanitizedStatusProbe(",1)[1].split("function reviewAttemptAllowed(",1)[0];
+  const log=index.split("function logSanitizedStatusProbe(")[1].split("function reviewAttemptAllowed(")[0];
   assert.match(log,/statusProbeRequests\.has\(requestId\)/);
   assert.match(log,/network_diagnostics_available/);
   assert.match(log,/version_name_has_extender_survey/);

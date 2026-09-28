@@ -25,14 +25,20 @@ req('device_mapping_stale' in CONTROL,'stale_mapping_guard')
 req('network_devices' in RELAY,'network_read_op')
 req('network_authorize' in RELAY and 'network_control' in RELAY,'network_write_ops')
 req('showApproval(context, requestId, op)' in RELAY,'write_approval_gate')
-req('fun verifyRemote(' in ADB,'adb_verification_probe')
+req('fun probeRemoteIdentity(' in ADB,'adb_identity_probe')
+req('HAKIM-ADB-TARGET-v1' in ADB and 'ro.build.fingerprint' in ADB,'adb_identity_fingerprint')
 req('setThrowOnUnauthorised(true)' in ADB,'adb_auth_rejection_detection')
+req('ADB_TARGET_IDENTITY_CHANGED' in ADB,'identity_change_guard')
 req('fun executeRemoteAction(' in ADB,'restricted_adb_executor')
 req('connect(host, port)' in ADB and 'openStream("shell:$command")' in ADB,'remote_adb_path')
-req('verifyRemote(ip, 5555)' in CONTROL,'authorization_handshake_missing')
+req('probeRemoteIdentity(ip, 5555)' in CONTROL,'authorization_handshake_missing')
 authorize_block=CONTROL.split('fun authorize(',1)[1].split('fun control(',1)[0]
-req(authorize_block.index('verifyRemote(ip, 5555)') < authorize_block.index('putBoolean("$id.authorized.adb", true)'), 'authorization_before_handshake')
+req(authorize_block.index('probeRemoteIdentity(ip, 5555)') < authorize_block.index('putBoolean("$id.authorized.adb", true)'), 'authorization_before_handshake')
+req('adb_identity_sha256' in authorize_block,'identity_not_bound_at_authorization')
 req('target_approval_required' in authorize_block,'target_approval_state_missing')
+control_block=CONTROL.split('fun control(',1)[1].split('fun status(',1)[0]
+req('expectedIdentity' in control_block and 'ADB_TARGET_IDENTITY_CHANGED' in control_block,'identity_not_checked_before_effect')
+req('authorization_revoked' in control_block,'identity_change_does_not_revoke')
 req('fun remote(context: Context)' in ADB,'isolated_remote_manager')
 
 for token in [

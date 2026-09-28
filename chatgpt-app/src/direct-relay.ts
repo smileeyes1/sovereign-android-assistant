@@ -115,6 +115,10 @@ export class DirectRelayStore{
     if(current.kind!==kind||!safeEqualHex(current.key_hash,candidate)) throw new Error("relay_auth_failed");
   }
 
+  async authorizeCommandTopic(topic:string,relayKey:string){
+    await this.authorize(topic,relayKey,"command");
+  }
+
   async enqueueCommand(c:DeviceCredential,requestId:string,carrier:string,expiresAtMs:number){
     if(!REQUEST_ID.test(requestId)) throw new Error("invalid_request_id");
     if(!carrier.startsWith("HC1.")||carrier.length>131072) throw new Error("invalid_command_carrier");

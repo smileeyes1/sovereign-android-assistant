@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20313,
+  "candidate_version": 20314,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -19,5 +19,6 @@
   "professional_observability_visual_field_verified": false,
   "field_acceptance_field_verified": false,
   "verified_parent_version": 20312,
-  "verified_parent_same_artifact_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0"
+  "verified_parent_same_artifact_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+  "authorized_lan_control_field_verified": false
 }

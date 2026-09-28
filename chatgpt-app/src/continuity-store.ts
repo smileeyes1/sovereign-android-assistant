@@ -91,7 +91,8 @@ export class ContinuityStore{
     const previous=this.locks.get(key)??Promise.resolve();
     let release!:()=>void;
     const current=new Promise<void>(resolve=>{release=resolve;});
-    this.locks.set(key,previous.catch(()=>{}).then(()=>current));
+    const gate=previous.catch(()=>{}).then(()=>current);
+    this.locks.set(key,gate);
     await previous.catch(()=>{});
     try{
       const journal=await this.read(c);
@@ -103,7 +104,7 @@ export class ContinuityStore{
       await this.write(c,journal);
     }finally{
       release();
-      if(this.locks.get(key)===current) this.locks.delete(key);
+      if(this.locks.get(key)===gate) this.locks.delete(key);
     }
   }
 

@@ -55,5 +55,18 @@ test("privacy policy states data categories, recipients, retention and user cont
   ]){
     assert.equal(index.includes(phrase),true,"missing privacy requirement: "+phrase);
   }
-  assert.equal(index.includes("لا يحتفظ الجسر بمحتوى الجهاز أو بنتائج الأدوات كقاعدة بيانات"),true);
+  for(const phrase of [
+    "سجل الاستمرارية",
+    "checkpoint",
+    "أوامر القراءة الآمنة المشفرة",
+    "النتائج المشفرة",
+    "مدة تصل إلى ٣٠ يومًا"
+  ]){
+    assert.equal(index.includes(phrase),true,"missing continuity privacy requirement: "+phrase);
+  }
+  assert.equal(
+    index.includes("لا يحتفظ الجسر بمحتوى الجهاز أو بنتائج الأدوات كقاعدة بيانات"),
+    false,
+    "obsolete no-retention claim must not return"
+  );
 });

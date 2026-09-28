@@ -22,9 +22,9 @@ probe=LOOP.split("fun publicStatus",1)[1].split("fun operationText",1)[0]
 for token in [
     'p.getString("goal"',
     '"المقصد: $goal"',
-    '"آخر تقدم مثبت:"',
-    '"الخطوة التالية:"',
-    '"قناة التنفيذ:"',
+    "آخر تقدم مثبت:",
+    "الخطوة التالية:",
+    "قناة التنفيذ:",
     'Phase.GATED.name',
     'Phase.WAITING_EXTERNAL.name',
     'HakimExecutionFabric.status(context)'

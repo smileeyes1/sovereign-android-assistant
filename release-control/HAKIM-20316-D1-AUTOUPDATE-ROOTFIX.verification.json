@@ -1,0 +1,68 @@
+{
+  "name": "HAKIM_20316_D1_AUTOUPDATE_ROOTFIX_EVIDENCE",
+  "recorded_date": "2026-09-29",
+  "status": "SIGNED_D1_V2_VERIFIED__SOURCE_CI_VERIFIED__FIELD_INSTALL_PENDING",
+  "source": {
+    "repository": "smileeyes1/sovereign-android-assistant",
+    "branch": "release/hakim-20316-autoupdate-rootfix-candidate",
+    "tested_head_sha": "c585a7def11d0312a7e7fbba2f854e960fb3127c",
+    "pull_request": 196,
+    "ci_run_number": 1292,
+    "ci_run_id": 36624131677,
+    "ci_conclusion": "success",
+    "ci_artifact_id": 11059049070,
+    "ci_artifact_digest": "sha256:7b59e94e125a62ce4ffc36753fc9061c9a8aabed98bd34a9dd40b4fe5491b7e4"
+  },
+  "apk": {
+    "file": "HAKIM-20316-D1-AUTOUPDATE-ROOTFIX.apk",
+    "package": "ps.hakim.stable",
+    "version_code": 20316,
+    "version_name": "3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1",
+    "unsigned_ci_sha256": "9fa73a168adb211ceeea056885c42e89944345010883473aea00b22e3d346913",
+    "signed_sha256": "383f356a66ac171caabc105a68fe7c89a035ddad55da7310aae014b119e6faa8",
+    "signed_size_bytes": 14153226,
+    "certificate_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
+    "signature_scheme": "APK Signature Scheme v2",
+    "signature_algorithm_id": "0x0104",
+    "signature_algorithm": "RSA PKCS#1 v1.5 with SHA-512",
+    "signing_block_bytes": 4096
+  },
+  "verification": {
+    "independent_d1_v2_verifier": "PASS",
+    "content_digest_verified": true,
+    "rsa_signature_verified": true,
+    "public_key_matches_certificate": true,
+    "negative_payload_mutation_rejected": true,
+    "negative_signature_mutation_rejected": true,
+    "zip_integrity": "PASS",
+    "zip_entry_count": 101,
+    "zip_entry_names_equal_to_ci_unsigned": true,
+    "entry_offsets_unchanged_from_ci_unsigned": true,
+    "entry_metadata_unchanged_from_ci_unsigned": true,
+    "native_library_count": 8,
+    "native_libraries_16k_aligned": true,
+    "resources_arsc_uncompressed": true,
+    "resources_arsc_4byte_aligned": true
+  },
+  "root_fix": {
+    "auto_update_job_registered": true,
+    "app_start_wakeup": true,
+    "boot_and_package_replace_wakeup": true,
+    "constraint_recovery_wakeup": true,
+    "periodic_fallback": true,
+    "silent_install_permission_added": false,
+    "ci_regression_gate": "verify_20316_autoupdate_wakeup.py"
+  },
+  "field": {
+    "installed_version_before_upgrade": 20313,
+    "candidate_installed": false,
+    "same_signed_apk_field_verified": false,
+    "field_verified": false,
+    "promotion": "BLOCKED_UNTIL_EXACT_APK_INSTALL_AND_LIVE_EVIDENCE"
+  },
+  "security": {
+    "private_signing_key_uploaded_to_github_or_railway": false,
+    "release_can_be_reconstructed_from_public_signing_block": true,
+    "contains_secrets": false
+  }
+}

@@ -51,16 +51,13 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "chatgpt_action")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
     @Volatile private var lastLoopProgressAt = 0L
-    // The poll loop may run indefinitely. Approved actions and pairing acknowledgements
-    // must not wait behind it, and must never share its retry queue.
-    private val pollExecutor = Executors.newSingleThreadExecutor()
-    private val controlExecutor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newSingleThreadExecutor()
 
     fun isRunning(): Boolean = running.get()
     fun isConnected(): Boolean = connected
@@ -169,7 +166,7 @@ object HakimUnifiedRelay {
         val generation = loopGeneration
         lastLoopProgressAt = System.currentTimeMillis()
         ensureApprovalChannel(app)
-        pollExecutor.execute { loop(app, generation) }
+        executor.execute { loop(app, generation) }
     }
 
     @Synchronized
@@ -185,7 +182,7 @@ object HakimUnifiedRelay {
             .putLong("secure_relay_restart_at", System.currentTimeMillis())
             .apply()
         ensureApprovalChannel(app)
-        pollExecutor.execute { loop(app, generation) }
+        executor.execute { loop(app, generation) }
     }
 
     fun ensureAlive(context: Context, reason: String, staleMs: Long = 180_000L): Boolean {
@@ -218,44 +215,56 @@ object HakimUnifiedRelay {
                 continue
             }
 
-            try {
-                directPollOnce(context, topic, resultTopic, relayKey)
-                lastLoopProgressAt = System.currentTimeMillis()
-                if (generation != loopGeneration || !running.get()) break
-                directFailures = 0
-                retryMs = 2_000L
-                connected = true
-                val connectedAt = System.currentTimeMillis()
-                prefs.edit()
-                    .putString("secure_relay_state", "direct_connected")
-                    .putString("connection_recovery_state", "healthy")
-                    .putLong("secure_relay_seen_at", connectedAt)
-                    .putLong("last_recovery_ok_at", connectedAt)
-                    .putLong("last_connected_at", connectedAt)
-                    .remove("secure_relay_error")
-                    .remove("last_recovery_error")
-                    .apply()
-                HakimCloudContinuity.refreshIfDue(
-                    context,
-                    bridgeBase(context),
-                    topic,
-                    relayKey
-                )
-                HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
-                continue
-            } catch (e: Exception) {
+            if (HakimFaultContainment.shouldAttempt(context, "secure_relay", "direct_poll")) {
+                try {
+                    directPollOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "direct_poll")
+                    lastLoopProgressAt = System.currentTimeMillis()
+                    if (generation != loopGeneration || !running.get()) break
+                    directFailures = 0
+                    retryMs = 2_000L
+                    connected = true
+                    val connectedAt = System.currentTimeMillis()
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_connected")
+                        .putString("connection_recovery_state", "healthy")
+                        .putLong("secure_relay_seen_at", connectedAt)
+                        .putLong("last_recovery_ok_at", connectedAt)
+                        .putLong("last_connected_at", connectedAt)
+                        .remove("secure_relay_error")
+                        .remove("last_recovery_error")
+                        .apply()
+                    HakimCloudContinuity.refreshIfDue(
+                        context,
+                        bridgeBase(context),
+                        topic,
+                        relayKey
+                    )
+                    HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
+                    continue
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "direct_poll", e)
+                    connected = false
+                    directFailures += 1
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_recovering")
+                        .putString("connection_recovery_state", "secure_relay_recovering")
+                        .putString("secure_relay_error", e.javaClass.simpleName)
+                        .apply()
+                }
+            } else {
                 connected = false
-                directFailures += 1
+                directFailures = maxOf(directFailures, 3)
                 prefs.edit()
-                    .putString("secure_relay_state", "direct_recovering")
+                    .putString("secure_relay_state", "direct_circuit_open")
                     .putString("connection_recovery_state", "secure_relay_recovering")
-                    .putString("secure_relay_error", e.javaClass.simpleName)
                     .apply()
             }
 
-            if (directFailures >= 3) {
+            if (directFailures >= 3 && HakimFaultContainment.shouldAttempt(context, "secure_relay", "legacy_poll")) {
                 try {
                     listenLegacyOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "legacy_poll")
                     lastLoopProgressAt = System.currentTimeMillis()
                     if (generation != loopGeneration || !running.get()) break
                     directFailures = 0
@@ -271,7 +280,8 @@ object HakimUnifiedRelay {
                         .apply()
                     HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                     continue
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "legacy_poll", e)
                     connected = false
                 }
             }
@@ -439,13 +449,11 @@ object HakimUnifiedRelay {
             .apply()
     }
 
-    @Synchronized
     private fun takePending(context: Context, requestId: String): Pair<JSONObject, String>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
         val raw = prefs.getString("$requestId.envelope", null) ?: return null
         val topic = prefs.getString("$requestId.result_topic", null) ?: return null
-        // Consume the approval durably before an action can change state.
-        if (!prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").commit()) return null
+        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").apply()
         return runCatching { JSONObject(raw) to topic }.getOrNull()
     }
 
@@ -472,7 +480,11 @@ object HakimUnifiedRelay {
             requestId.hashCode(),
             notification
                 .setContentTitle("حكيم — موافقة مطلوبة")
-                .setContentText(if (op == "browser_back") "الرجوع إلى الصفحة السابقة في متصفح حكيم" else "طلب تحكم على الهاتف: $op")
+                .setContentText(when (op) {
+                    "browser_back" -> "الرجوع إلى الصفحة السابقة في متصفح حكيم"
+                    "chatgpt_action" -> "تنفيذ إجراء داخل حساب ChatGPT (مثل إرسال رسالة)"
+                    else -> "طلب تحكم على الهاتف: $op"
+                })
                 .setSmallIcon(android.R.drawable.ic_lock_lock)
                 .setAutoCancel(true)
                 .addAction(android.R.drawable.ic_input_add, "موافقة", approve)
@@ -492,11 +504,28 @@ object HakimUnifiedRelay {
             sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
-        controlExecutor.execute {
-            if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
-                sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
-                return@execute
-            }
+        if (!HakimFaultContainment.canExecuteHighImpact(context)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "fault_containment_blocked")
+            )
+            return
+        }
+        val op = envelope.optString("op").ifBlank { "unknown" }
+        if (!HakimFaultContainment.shouldAttempt(context, "remote_op", op)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "operation_circuit_open")
+            )
+            return
+        }
+        executor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
@@ -517,10 +546,14 @@ object HakimUnifiedRelay {
     private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
         val op = envelope.optString("op")
         val payload = decodePayload(envelope)
-        return when (op) {
+        return try {
+            val result = when (op) {
             "status" -> status(context)
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
+            "chatgpt_read" -> HakimService.chatGptRead(payload)
+            "chatgpt_navigate" -> HakimService.chatGptNavigate(payload)
+            "chatgpt_action" -> HakimService.chatGptAction(payload)
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")
@@ -540,12 +573,39 @@ object HakimUnifiedRelay {
                 JSONObject().put("ok", ok).put("error", if (ok) JSONObject.NULL else "action_failed")
             }
             "launch" -> launch(context, payload)
-            else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+                else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+            }
+            if (result.optBoolean("ok", false)) {
+                HakimFaultContainment.recordSuccess(context, "remote_op", op)
+            } else {
+                HakimFaultContainment.recordFailure(
+                    context,
+                    "remote_op",
+                    op.ifBlank { "unknown" },
+                    IllegalStateException("operation_result_failed")
+                )
+            }
+            result
+        } catch (e: Exception) {
+            HakimFaultContainment.recordFailure(
+                context,
+                "remote_op",
+                op.ifBlank { "unknown" },
+                e
+            )
+            JSONObject().put("ok", false).put("error", "operation_failed_safely")
         }
     }
 
     private fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val liveConnected = isConnected()
+        val persistedRelayState = p.getString("secure_relay_state", "unknown") ?: "unknown"
+        val coherentRelayState = if (!liveConnected && persistedRelayState == "direct_connected") {
+            "direct_recovering"
+        } else {
+            persistedRelayState
+        }
         val packageInfo = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
         val version = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) packageInfo?.longVersionCode ?: 0L
         else @Suppress("DEPRECATION") packageInfo?.versionCode?.toLong() ?: 0L
@@ -557,10 +617,10 @@ object HakimUnifiedRelay {
             .put("version_name", packageInfo?.versionName.orEmpty())
             .put("single_app", true)
             .put("secure_relay", isConfigured(context))
-            .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
+            .put("secure_relay_state", coherentRelayState)
             .put("direct_bridge", true)
             .put("secure_relay_running", isRunning())
-            .put("secure_relay_connected", isConnected())
+            .put("secure_relay_connected", liveConnected)
             .put("operation", HakimExecutiveLoop.publicStatus(context))
             .put("cloud_continuity", HakimCloudContinuity.publicStatus(context))
             .put("browser_service_running", HakimService.running)
@@ -571,11 +631,9 @@ object HakimUnifiedRelay {
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
-            .put("field_acceptance", HakimFieldAcceptance.status(context))
-            .put("sovereign_acceptance_gate", HakimAcceptanceGate.status(context))
-            .put("governance_catalog", HakimGovernanceCatalog.status(context))
             .put("learning", HakimLearning.snapshot(context))
     }
 
@@ -606,7 +664,7 @@ object HakimUnifiedRelay {
 
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
-        controlExecutor.execute {
+        executor.execute {
             val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
             if (resultTopic.isBlank()) return@execute

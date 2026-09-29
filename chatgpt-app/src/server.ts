@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildCinematicPlan,cinematicCapabilities } from "./cinematic-director.js";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
@@ -32,8 +33,7 @@ const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
 
 const PUBLIC_READ_CATALOG=[
-  ["get_device_status","status","حالة حكيم الحية — ابدأ هنا","هذه هي بوابة البداية لأي مهمة تخص حكيم: افحص الآن الحالة الفعلية الحية قبل أي تحليل أو إجراء. يعيد الإصدار وحالة القناة ومحرك التنفيذ ونقطة الاستمرارية دون محتوى شاشة أو أسرار. لا تعتمد على وصف سابق عندما تتوفر هذه الأداة."],
-  ["get_video_capabilities","video_capabilities","قدرات مصنع الفيديو","افحص القدرات الفعلية الحالية لمصنع الفيديو في حكيم قبل التخطيط أو التنفيذ. يميز بين التخطيط المحلي ومنفذ التوليد الفعلي ولا يدعي وجود GPU أو مزود غير مثبت."]
+  ["get_device_status","status","حالة حكيم الحية — ابدأ هنا","هذه هي بوابة البداية لأي مهمة تخص حكيم: افحص الآن الحالة الفعلية الحية قبل أي تحليل أو إجراء. يعيد الإصدار وحالة القناة ومحرك التنفيذ ونقطة الاستمرارية دون محتوى شاشة أو أسرار. لا تعتمد على وصف سابق عندما تتوفر هذه الأداة."]
 ] as const;
 
 const LAN_READ_CATALOG=[
@@ -226,6 +226,15 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
 
   const tools:any[]=[
     ...readTools,
+    {
+      name:"get_video_capabilities",
+      title:"قدرات مصنع الفيديو السينمائي",
+      description:governedReadDescription("يعرض قدرات مخرج حكيم السينمائي وحالة منفذ التوليد دون تنفيذ رندر أو الوصول إلى محتوى الجهاز."),
+      inputSchema:{type:"object",properties:{},additionalProperties:false},
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
     {
       name:"plan_video_project",
       title:"تخطيط مشروع فيديو",
@@ -491,10 +500,22 @@ export function createHakimServer(
     });
   }
 
-  server.registerTool("plan_video_project",{
-    title:"تخطيط مشروع فيديو",
+  server.registerTool("get_video_capabilities",{
+    title:"قدرات مصنع الفيديو السينمائي",
     description:governedReadDescription(
-      "خطط فيديو عبر مصنع حكيم مع بوابات الجودة والكلفة والحقوق. التخطيط قراءة آمنة ولا يعني أن منفذ التوليد الواقعي متصل."
+      "اقرأ حالة مخرج حكيم السينمائي محليًا على الجسر. لا يصل إلى الهاتف ولا يشغّل مزودًا ولا ينشئ ملفًا."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    return text(cinematicCapabilities());
+  });
+
+  server.registerTool("plan_video_project",{
+    title:"تخطيط مشروع فيديو سينمائي",
+    description:governedReadDescription(
+      "حوّل الهدف إلى خطة إخراج سينمائي كاملة: لغة كاميرا، عدسات، إضاءة، استمرارية، صوت، مونتاج، توجيه مزودات وبوابات قبول. لا ينفذ رندرًا ولا يدعي إنتاج ملف."
     ),
     inputSchema:{
       goal:z.string().min(1).max(1200),
@@ -509,39 +530,7 @@ export function createHakimServer(
     annotations:READ_ANNOTATIONS
   },async(input)=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
-    if(reviewMode) return text(tagExternalData({
-      ok:true,
-      demo:true,
-      contract:"VIDEO-FACTORY-2026-09-30-v1",
-      goal:input.goal,
-      provider_decision:{state:"deferred",reason:"review_mode_has_no_verified_video_provider"},
-      artifact_created:false,
-      rule:"Planning is not rendering."
-    },"plan_video_project"));
-    const preflight=await fetchLivePreflight(credential,reviewMode);
-    if((preflight as {runtime_ready?:unknown}).runtime_ready!==true){
-      return text({
-        ok:false,
-        status:"blocked",
-        error:"hakim_live_preflight_failed",
-        purpose:"plan_video_project",
-        preflight,
-        rule:"Read current Hakim runtime state before video planning."
-      });
-    }
-    const payload={
-      goal:input.goal,
-      ...(input.audience!==undefined?{audience:input.audience}:{}),
-      ...(input.audience_age!==undefined?{audience_age:input.audience_age}:{}),
-      ...(input.duration_sec!==undefined?{duration_sec:input.duration_sec}:{}),
-      ...(input.aspect!==undefined?{aspect:input.aspect}:{}),
-      ...(input.style!==undefined?{style:input.style}:{}),
-      ...(input.realism!==undefined?{realism:input.realism}:{}),
-      ...(input.educational!==undefined?{educational:input.educational}:{})
-    };
-    const requestId=await remember(await publishCommand(credential,"video_plan",payload),"video_plan");
-    const result=await observe(requestId,await pollResult(credential,requestId,8_000));
-    return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
+    return text(buildCinematicPlan(input));
   });
 
   server.registerTool("open_target",{

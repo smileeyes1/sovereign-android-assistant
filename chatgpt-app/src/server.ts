@@ -32,7 +32,8 @@ const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
 
 const PUBLIC_READ_CATALOG=[
-  ["get_device_status","status","حالة حكيم الحية — ابدأ هنا","هذه هي بوابة البداية لأي مهمة تخص حكيم: افحص الآن الحالة الفعلية الحية قبل أي تحليل أو إجراء. يعيد الإصدار وحالة القناة ومحرك التنفيذ ونقطة الاستمرارية دون محتوى شاشة أو أسرار. لا تعتمد على وصف سابق عندما تتوفر هذه الأداة."]
+  ["get_device_status","status","حالة حكيم الحية — ابدأ هنا","هذه هي بوابة البداية لأي مهمة تخص حكيم: افحص الآن الحالة الفعلية الحية قبل أي تحليل أو إجراء. يعيد الإصدار وحالة القناة ومحرك التنفيذ ونقطة الاستمرارية دون محتوى شاشة أو أسرار. لا تعتمد على وصف سابق عندما تتوفر هذه الأداة."],
+  ["get_video_capabilities","video_capabilities","قدرات مصنع الفيديو","افحص القدرات الفعلية الحالية لمصنع الفيديو في حكيم قبل التخطيط أو التنفيذ. يميز بين التخطيط المحلي ومنفذ التوليد الفعلي ولا يدعي وجود GPU أو مزود غير مثبت."]
 ] as const;
 
 const LAN_READ_CATALOG=[
@@ -61,6 +62,9 @@ const NETWORK_ACTIONS=[
 ] as const;
 type NetworkAction=typeof NETWORK_ACTIONS[number];
 const NETWORK_DEVICE_ID=/^lan-[0-9a-f]{16}$/;
+
+const VIDEO_ASPECTS=["16:9","9:16","1:1","4:5"] as const;
+const VIDEO_REALISM=["standard","high","maximum","cinematic"] as const;
 
 const LAN_AUTHORIZE_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const LAN_CONTROL_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
@@ -222,6 +226,29 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
 
   const tools:any[]=[
     ...readTools,
+    {
+      name:"plan_video_project",
+      title:"تخطيط مشروع فيديو",
+      description:governedReadDescription("حوّل هدف الفيديو إلى خطة إنتاج محكومة من حكيم: مشاهد، استراتيجية موارد، بوابات جودة وسياسة عدم الادعاء. هذه الأداة لا تولّد الفيديو ولا تثبت وجود منفذ توليد فعلي."),
+      inputSchema:{
+        type:"object",
+        properties:{
+          goal:{type:"string",minLength:1,maxLength:1200},
+          audience:{type:"string",maxLength:240},
+          audience_age:{type:"integer",minimum:3,maximum:100},
+          duration_sec:{type:"integer",minimum:8,maximum:900},
+          aspect:{type:"string",enum:VIDEO_ASPECTS},
+          style:{type:"string",maxLength:240},
+          realism:{type:"string",enum:VIDEO_REALISM},
+          educational:{type:"boolean"}
+        },
+        required:["goal"],
+        additionalProperties:false
+      },
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
     {
       name:"open_target",
       title:"فتح تطبيق أو رابط",
@@ -463,6 +490,59 @@ export function createHakimServer(
       return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
   }
+
+  server.registerTool("plan_video_project",{
+    title:"تخطيط مشروع فيديو",
+    description:governedReadDescription(
+      "خطط فيديو عبر مصنع حكيم مع بوابات الجودة والكلفة والحقوق. التخطيط قراءة آمنة ولا يعني أن منفذ التوليد الواقعي متصل."
+    ),
+    inputSchema:{
+      goal:z.string().min(1).max(1200),
+      audience:z.string().max(240).optional(),
+      audience_age:z.number().int().min(3).max(100).optional(),
+      duration_sec:z.number().int().min(8).max(900).optional(),
+      aspect:z.enum(VIDEO_ASPECTS).optional(),
+      style:z.string().max(240).optional(),
+      realism:z.enum(VIDEO_REALISM).optional(),
+      educational:z.boolean().optional()
+    },
+    annotations:READ_ANNOTATIONS
+  },async(input)=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    if(reviewMode) return text(tagExternalData({
+      ok:true,
+      demo:true,
+      contract:"VIDEO-FACTORY-2026-09-30-v1",
+      goal:input.goal,
+      provider_decision:{state:"deferred",reason:"review_mode_has_no_verified_video_provider"},
+      artifact_created:false,
+      rule:"Planning is not rendering."
+    },"plan_video_project"));
+    const preflight=await fetchLivePreflight(credential,reviewMode);
+    if((preflight as {runtime_ready?:unknown}).runtime_ready!==true){
+      return text({
+        ok:false,
+        status:"blocked",
+        error:"hakim_live_preflight_failed",
+        purpose:"plan_video_project",
+        preflight,
+        rule:"Read current Hakim runtime state before video planning."
+      });
+    }
+    const payload={
+      goal:input.goal,
+      ...(input.audience!==undefined?{audience:input.audience}:{}),
+      ...(input.audience_age!==undefined?{audience_age:input.audience_age}:{}),
+      ...(input.duration_sec!==undefined?{duration_sec:input.duration_sec}:{}),
+      ...(input.aspect!==undefined?{aspect:input.aspect}:{}),
+      ...(input.style!==undefined?{style:input.style}:{}),
+      ...(input.realism!==undefined?{realism:input.realism}:{}),
+      ...(input.educational!==undefined?{educational:input.educational}:{})
+    };
+    const requestId=await remember(await publishCommand(credential,"video_plan",payload),"video_plan");
+    const result=await observe(requestId,await pollResult(credential,requestId,8_000));
+    return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
+  });
 
   server.registerTool("open_target",{
     title:"فتح تطبيق أو رابط",

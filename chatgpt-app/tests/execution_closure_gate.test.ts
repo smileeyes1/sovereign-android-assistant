@@ -26,11 +26,10 @@ test("all model-facing literal mutation dispatches are an explicit frozen allowl
   );
 });
 
-test("video planning remains an explicit read-only dispatch",()=>{
-  assert.ok(literalPublishOps(server).includes("video_plan"));
-  assert.equal(EFFECTFUL_OPS.has("video_plan"),false);
-  const relay=fs.readFileSync(path.join(root,"src/relay.ts"),"utf8");
-  assert.match(relay,/DEFERRED_READ_OPS=new Set<HakimOp>\([^\n]*"video_capabilities","video_plan"/);
+test("cinematic planning remains bridge-local and cannot dispatch to the device",()=>{
+  assert.equal(literalPublishOps(server).includes("video_plan"),false);
+  assert.ok(server.includes('buildCinematicPlan(input)'));
+  assert.ok(server.includes('cinematicCapabilities()'));
 });
 
 test("every MCP mutation dispatch is guarded by live preflight in the same handler",()=>{

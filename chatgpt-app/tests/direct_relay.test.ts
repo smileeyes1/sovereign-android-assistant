@@ -67,6 +67,30 @@ test("direct relay refuses a topic rebind to a different credential",async()=>{
   });
 });
 
+test("abandoned pairing binding expires without becoming a reusable legacy topic",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    await store.registerCredential(c,1);
+    await new Promise(resolve=>setTimeout(resolve,15));
+    await assert.rejects(()=>store.authorizeCommandTopic(c.topic,c.relayKey),/relay_auth_failed/);
+    await assert.rejects(()=>store.registerCredential(c),/relay_auth_failed/);
+    await assert.rejects(()=>store.markCredentialPaired(c),/relay_auth_failed/);
+  });
+});
+
+test("paired binding stays usable after its initial pairing window",async()=>{
+  await withStore(async store=>{
+    const c=createDeviceCredential();
+    await store.registerCredential(c,50);
+    await store.markCredentialPaired(c);
+    await new Promise(resolve=>setTimeout(resolve,60));
+    await store.authorizeCommandTopic(c.topic,c.relayKey);
+    const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678",status:"paired"});
+    await store.pushResult(c.resultTopic,c.relayKey,carrier);
+    assert.equal((await store.listResults(c)).length,1);
+  });
+});
+
 
 test("legacy paired device can claim its missing command binding once",async()=>{
   await withStore(async store=>{

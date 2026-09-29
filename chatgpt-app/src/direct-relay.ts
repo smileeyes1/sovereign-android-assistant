@@ -5,7 +5,7 @@ import path from "node:path";
 import type { DeviceCredential } from "./protocol.js";
 
 type BindingKind="command"|"result";
-type BindingRecord={kind:BindingKind;key_hash:string;created_at_ms:number};
+type BindingRecord={kind:BindingKind;key_hash:string;created_at_ms:number;expires_at_ms?:number};
 type CommandRecord={
   request_id:string;
   carrier:string;
@@ -59,23 +59,41 @@ export class DirectRelayStore{
     await fs.rename(tmp,file);
   }
 
-  async registerCredential(c:DeviceCredential){
+  async registerCredential(c:DeviceCredential,pendingTtlMs?:number){
     await this.init();
     if(!TOPIC.test(c.topic)||!TOPIC.test(c.resultTopic)||!KEY.test(c.relayKey)) throw new Error("invalid_direct_relay_credential");
+    if(pendingTtlMs!==undefined&&(!Number.isSafeInteger(pendingTtlMs)||pendingTtlMs<1||pendingTtlMs>10*60_000))
+      throw new Error("invalid_pairing_ttl");
     const key_hash=sha(c.relayKey);
     const now=Date.now();
     const bindings:[string,BindingRecord][]=[
-      [c.topic,{kind:"command",key_hash,created_at_ms:now}],
-      [c.resultTopic,{kind:"result",key_hash,created_at_ms:now}]
+      [c.topic,{kind:"command",key_hash,created_at_ms:now,...(pendingTtlMs?{expires_at_ms:now+pendingTtlMs}:{})}],
+      [c.resultTopic,{kind:"result",key_hash,created_at_ms:now,...(pendingTtlMs?{expires_at_ms:now+pendingTtlMs}:{})}]
     ];
     for(const [topic,record] of bindings){
       const file=this.bindingPath(topic);
       try{
         const current=JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
         if(current.kind!==record.kind||!safeEqualHex(current.key_hash,record.key_hash)) throw new Error("relay_binding_conflict");
+        if(current.expires_at_ms!==undefined&&current.expires_at_ms<=now) throw new Error("relay_auth_failed");
       }catch(e){
         if((e as NodeJS.ErrnoException).code!=="ENOENT") throw e;
         await this.atomicJson(file,record);
+      }
+    }
+  }
+
+  async markCredentialPaired(c:DeviceCredential){
+    await this.registerCredential(c);
+    for(const [topic,kind] of [[c.topic,"command"],[c.resultTopic,"result"]] as const){
+      const file=this.bindingPath(topic);
+      const current=JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
+      if(current.kind!==kind||!safeEqualHex(current.key_hash,sha(c.relayKey))||
+          (current.expires_at_ms!==undefined&&current.expires_at_ms<=Date.now()))
+        throw new Error("relay_auth_failed");
+      if(current.expires_at_ms!==undefined){
+        delete current.expires_at_ms;
+        await this.atomicJson(file,current);
       }
     }
   }
@@ -112,7 +130,8 @@ export class DirectRelayStore{
       current=await this.claimMissingBinding(topic,relayKey,kind);
     }
     const candidate=sha(relayKey);
-    if(current.kind!==kind||!safeEqualHex(current.key_hash,candidate)) throw new Error("relay_auth_failed");
+    if(current.kind!==kind||!safeEqualHex(current.key_hash,candidate)||
+        (current.expires_at_ms!==undefined&&current.expires_at_ms<=Date.now())) throw new Error("relay_auth_failed");
   }
 
   async authorizeCommandTopic(topic:string,relayKey:string){

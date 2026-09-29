@@ -313,7 +313,7 @@ app.get("/oauth/authorize",async(req,res)=>{
     if(resource!==base) return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
     const scopes=normalizeScopes(one(req.query.scope)||undefined);
     const credential=createDeviceCredential();
-    await directRelayStore.registerCredential(credential);
+    await directRelayStore.registerCredential(credential,10*60_000);
     const context=makeAuthorizeContext(oauthSecret,{
       credential,clientId,redirectUri,state,codeChallenge,resource,scopes
     });
@@ -324,6 +324,7 @@ app.get("/oauth/authorize",async(req,res)=>{
 <h1>ربط جهاز حكيم</h1>
 <p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
+<p class="box">افتح زر الربط على هاتفك مباشرة. لا تنسخ الرابط إلى محادثة، ولا تشارك صورة تظهره؛ فهو يحتوي بيانات اقتران سرية مؤقتة.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
 ${reviewModeEnabled()?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
@@ -349,7 +350,7 @@ app.post("/oauth/authorize",async(req,res)=>{
       context.credential.topic="hakim_review_"+randomSecret(18);
       context.credential.resultTopic="hakim_review_result_"+randomSecret(18);
     }
-    if(!reviewRequested) await directRelayStore.registerCredential(context.credential);
+    if(!reviewRequested) await directRelayStore.registerCredential(context.credential,10*60_000);
     const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
     if(!paired){
       noStore(res);
@@ -359,6 +360,7 @@ app.post("/oauth/authorize",async(req,res)=>{
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
     }
+    if(!reviewRequested) await directRelayStore.markCredentialPaired(context.credential);
     const code=await codeStore.issue({
       credential:context.credential,
       clientId:context.clientId,

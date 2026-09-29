@@ -1,6 +1,4 @@
-name: "نشر تحديث حكيم ٢٠٣١٥ — الاستقلال وعزل الأعطال"
-# exact D1 block verified locally against CI #1281
-# exact public signing block verified: git-blob 4f92808466add4ed3846dbdf2cda2fb9cf240a8e
+name: "نشر حكيم ٢٠٣١٥ — تجهيز الإصدار فقط"
 
 on:
   push:
@@ -9,14 +7,6 @@ on:
     paths:
       - .github/workflows/publish-20315-autonomy.yml
       - release-control/20315-autonomy-signing-block.b64
-      - release-control/20315-signing-block.part00.txt
-      - release-control/20315-signing-block.part01.txt
-      - release-control/20315-signing-block.part02.txt
-      - release-control/20315-signing-block.part03.txt
-      - release-control/20315-signing-block.part04.txt
-      - release-control/20315-signing-block.part05.txt
-      - release-control/20315-signing-block.part06.txt
-      - release-control/20315-signing-block.part07.txt
       - tools/reconstruct_20315_autonomy.py
   workflow_dispatch:
 
@@ -48,32 +38,22 @@ jobs:
           echo "479bd4bcbcefcc27cb1948d09b36e1c102682d39e755e32c319bc2d42629f6a4  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
           test "$(stat -c %s /tmp/hakim-ci/release/app-release-unsigned.apk)" = "14149090"
 
-      - name: إعادة تركيب نفس APK D1 بلا مفتاح خاص
+      - name: إعادة تركيب APK D1 المطابق
         run: |
           set -euo pipefail
-          echo "89534682c4dc7a02788ad2f351543c0a88b6b70c5ba5d1ccd17a794f53fa02a4  release-control/20315-signing-block.part00.txt" | sha256sum -c -
-          echo "040c6ecacb6c10c03103eb8b391fcc91cd45170586eabd0a8716428a1dcee977  release-control/20315-signing-block.part01.txt" | sha256sum -c -
-          echo "6acfeea99bcdce47078c3defcb4bfc60afc4277b28f76157053981f211df4c28  release-control/20315-signing-block.part02.txt" | sha256sum -c -
-          echo "6d5691509cc700a6986feabfc0c67482d01469cf4e602dc2e0aeafa2850815bb  release-control/20315-signing-block.part03.txt" | sha256sum -c -
-          echo "9c1db29f6a306d342449d854a50033c2ea91e05b5a8d6c93ba36b15049a14956  release-control/20315-signing-block.part04.txt" | sha256sum -c -
-          echo "7fb638fe6a8de3603d5fe85dcec0f41371f4bb55a21964244cd96e1b7466fce3  release-control/20315-signing-block.part05.txt" | sha256sum -c -
-          echo "7fb638fe6a8de3603d5fe85dcec0f41371f4bb55a21964244cd96e1b7466fce3  release-control/20315-signing-block.part06.txt" | sha256sum -c -
-          echo "96750ecb2421df86cc50370399de8db8e6250e581322dac29e9b70f4872384d1  release-control/20315-signing-block.part07.txt" | sha256sum -c -
-          cat release-control/20315-signing-block.part{00..07}.txt > /tmp/20315-signing-block.b64
-          test "$(wc -c < /tmp/20315-signing-block.b64)" = "5464"
-          base64 -d /tmp/20315-signing-block.b64 > /tmp/20315-signing-block.bin
-          echo "0ccd1ade4c7b7e40579a368176d3e6639600b874caa647798adf126436c3b6e5  /tmp/20315-signing-block.bin" | sha256sum -c -
-          test "$(stat -c %s /tmp/20315-signing-block.bin)" = "4096"
+          base64 -d release-control/20315-autonomy-signing-block.b64 > /tmp/20315-signing-block.bin
+          echo "2e1af7dbd8e4a2e8caf3b77ca5274b4c398e1b815b540e2fbda7943dbba3ecb8  /tmp/20315-signing-block.bin" | sha256sum -c -
+          test "$(stat -c %s /tmp/20315-signing-block.bin)" = "2624"
           python3 tools/reconstruct_20315_autonomy.py \
             /tmp/hakim-ci/release/app-release-unsigned.apk \
-            /tmp/20315-signing-block.b64 \
+            release-control/20315-autonomy-signing-block.b64 \
             /tmp/HAKIM-20315-D1-AUTONOMY.apk
           python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20315-D1-AUTONOMY.apk
-          echo "1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6  /tmp/HAKIM-20315-D1-AUTONOMY.apk" | sha256sum -c -
-          test "$(stat -c %s /tmp/HAKIM-20315-D1-AUTONOMY.apk)" = "14153186"
+          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/HAKIM-20315-D1-AUTONOMY.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/HAKIM-20315-D1-AUTONOMY.apk)" = "14151714"
           unzip -t /tmp/HAKIM-20315-D1-AUTONOMY.apk >/dev/null
 
-      - name: نشر الأصل المطابق في GitHub Release
+      - name: نشر الأصل المطابق كإصدار تمهيدي
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -85,7 +65,7 @@ jobs:
             gh release create "$TAG" \
               --target "$TARGET" \
               --title "Hakim 20315 D1 — Autonomy and Fault Containment" \
-              --notes "مرشح ٢٠٣١٥ الموقّع بهوية D1 من أثر CI #1281 المطابق للرأس 7bce317. يضم التحكم المقيد في ChatGPT وعزل الأعطال واتساق حالة Secure Relay. لا يُرقّى إلى خط أساس ميداني قبل تثبيت نفس SHA والتحقق الحي والانحدار." \
+              --notes "مرشح ٢٠٣١٥ من أثر CI #1281، موقّع بهوية D1 نفسها. هذه مرحلة تجهيز فقط: لا ترسل إشارة تحديث للهاتف ولا تعلن تحققًا ميدانيًا." \
               --prerelease
           fi
           if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET"; then
@@ -93,27 +73,6 @@ jobs:
           fi
           URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
           curl --fail --location --silent --show-error "$URL" -o /tmp/roundtrip.apk
-          echo "1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6  /tmp/roundtrip.apk" | sha256sum -c -
-          echo "ASSET_URL=$URL" >> "$GITHUB_ENV"
+          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/roundtrip.apk" | sha256sum -c -
           echo "GITHUB_RELEASE_ROUNDTRIP=PASS"
-
-      - name: إرسال إشارة التحديث إلى حكيم 20313
-        run: |
-          set -euo pipefail
-          META='{"version_code":20315,"sha256":"1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6","size":14153186}'
-          RESPONSE="$(curl --fail-with-body --silent --show-error \
-            --data-binary "$META" \
-            -H 'Title: HAKIM_UPDATE' \
-            -H "Attach: $ASSET_URL" \
-            -H 'Filename: HAKIM-20315-D1-AUTONOMY.apk' \
-            'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
-          printf '%s' "$RESPONSE" > /tmp/ntfy-response.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          x=json.loads(Path('/tmp/ntfy-response.json').read_text())
-          if x.get('event')!='message': raise SystemExit('NTFY_EVENT_NOT_MESSAGE')
-          if x.get('title')!='HAKIM_UPDATE': raise SystemExit('NTFY_TITLE_MISMATCH')
-          if '"version_code":20315' not in x.get('message',''): raise SystemExit('NTFY_METADATA_MISMATCH')
-          print('UPDATE_SIGNAL_PUBLISH=PASS event_id='+str(x.get('id','')))
-          PY
+          echo "PHONE_UPDATE_SIGNAL=NOT_SENT"

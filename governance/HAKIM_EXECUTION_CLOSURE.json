@@ -1,0 +1,33 @@
+{
+  "version": "HAKIM_EXECUTION_CLOSURE_V1",
+  "status": "CANDIDATE",
+  "created_at": "2026-09-30",
+  "canonical_gateway": "HAKIM_UNIVERSAL_GATEWAY_V1",
+  "mandatory_preflight": "HAKIM_LIVE_PREFLIGHT_V1",
+  "minimum_field_version": 20315,
+  "production_bridge_commit": "f80e36f2552c23cf7497b5cbbfd39b6f0669c856",
+  "field": {
+    "package": "ps.hakim.stable",
+    "version_code": 20315,
+    "apk_sha256": "43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491"
+  },
+  "invariants": [
+    "Any AI/chat/provider that does not enter through an authorized Hakim adapter is not an execution authority.",
+    "Every authorized device mutation must pass a fresh live preflight inside Hakim immediately before dispatch.",
+    "A stale conversation, cached memory, or previous model output cannot authorize a mutation.",
+    "approval_requested is not success; completion requires observing the same operation token.",
+    "Changing chat/model/session must resume pending operation tokens instead of replaying the original mutation.",
+    "Device relay credentials are never provider credentials.",
+    "No shell or root execution surface is part of the universal gateway."
+  ],
+  "acceptance": {
+    "ci_required": true,
+    "production_deploy_required": true,
+    "public_discovery_required": true,
+    "live_phone_heartbeat_required": true,
+    "regression_gate_required": true
+  },
+  "fail_closed": true,
+  "provider_neutral": true,
+  "closure_definition": "The issue is closed operationally when the regression gate passes, the closure record is merged and deployed, public gateway discovery is reachable, and the paired field device continues to prove the required version and APK digest after deployment."
+}

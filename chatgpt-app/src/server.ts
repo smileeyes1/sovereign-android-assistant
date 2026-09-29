@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { buildCinematicPlan,cinematicCapabilities } from "./cinematic-director.js";
+import { cinematicExecutorEnabled,cinematicExecutorSummary,getCinematicRenderStatus,submitCinematicRender } from "./cinematic-executor.js";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
@@ -28,6 +29,8 @@ const OPEN_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:
 const NAV_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:false};
 const PRIVATE_ACTION_ANNOTATIONS={readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true};
 const CHECKPOINT_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false};
+const VIDEO_RENDER_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
+const VIDEO_STATUS_ANNOTATIONS={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true};
 const readSecurity=[{type:"oauth2",scopes:["hakim.read"]}];
 const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
@@ -277,6 +280,46 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
     }
   ];
 
+  if(cinematicExecutorEnabled()){
+    tools.push({
+      name:"render_video_project",
+      title:"بدء رندر فيديو سينمائي",
+      description:"ابدأ رندر الخطة السينمائية عبر منفذ حكيم الموثق. المسار مجاني فقط؛ لا يسمح بمزود مدفوع، وaccepted ليست نجاح رندر. النجاح لا يثبت إلا بعد فحص ملف الفيديو.",
+      inputSchema:{
+        type:"object",
+        properties:{
+          goal:{type:"string",minLength:1,maxLength:1200},
+          audience:{type:"string",maxLength:240},
+          audience_age:{type:"integer",minimum:3,maximum:100},
+          duration_sec:{type:"integer",minimum:8,maximum:900},
+          aspect:{type:"string",enum:VIDEO_ASPECTS},
+          style:{type:"string",maxLength:240},
+          realism:{type:"string",enum:VIDEO_REALISM},
+          educational:{type:"boolean"}
+        },
+        required:["goal"],
+        additionalProperties:false
+      },
+      annotations:VIDEO_RENDER_ANNOTATIONS,
+      securitySchemes:writeSecurity,
+      _meta:{securitySchemes:writeSecurity}
+    });
+    tools.push({
+      name:"get_video_render_status",
+      title:"حالة رندر الفيديو",
+      description:governedReadDescription("تحقق من حالة رندر سينمائي سابق. لا تعتبر completed نجاحًا إلا إذا أعاد حكيم ملفًا ذا بصمة وفحص تشغيل وبوابات جودة ناجحة."),
+      inputSchema:{
+        type:"object",
+        properties:{job_id:{type:"string",minLength:8,maxLength:160,pattern:"^[A-Za-z0-9._:-]+$"}},
+        required:["job_id"],
+        additionalProperties:false
+      },
+      annotations:VIDEO_STATUS_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    });
+  }
+
   if(publicSafe){
     tools.push({
       name:"navigate_device",
@@ -509,7 +552,7 @@ export function createHakimServer(
     annotations:READ_ANNOTATIONS
   },async()=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
-    return text(cinematicCapabilities());
+    return text({...cinematicCapabilities(),executor:cinematicExecutorSummary()});
   });
 
   server.registerTool("plan_video_project",{
@@ -532,6 +575,52 @@ export function createHakimServer(
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
     return text(buildCinematicPlan(input));
   });
+
+  if(cinematicExecutorEnabled()){
+    server.registerTool("render_video_project",{
+      title:"بدء رندر فيديو سينمائي",
+      description:"ابدأ مهمة رندر عبر منفذ حكيم الموثق مع سياسة free_only. قبول المهمة ليس نجاحًا، ولا يسمح هذا المسار بدفع تلقائي.",
+      inputSchema:{
+        goal:z.string().min(1).max(1200),
+        audience:z.string().max(240).optional(),
+        audience_age:z.number().int().min(3).max(100).optional(),
+        duration_sec:z.number().int().min(8).max(900).optional(),
+        aspect:z.enum(VIDEO_ASPECTS).optional(),
+        style:z.string().max(240).optional(),
+        realism:z.enum(VIDEO_REALISM).optional(),
+        educational:z.boolean().optional()
+      },
+      annotations:VIDEO_RENDER_ANNOTATIONS
+    },async(input)=>{
+      if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+      const plan=buildCinematicPlan(input);
+      if(reviewMode){
+        return text({
+          ok:true,demo:true,status:"accepted",job_id:"review-video-job-0001",
+          render_success:false,artifact_verified:false,
+          rule:"review_fixture_no_real_render"
+        });
+      }
+      return text(await submitCinematicRender(plan));
+    });
+
+    server.registerTool("get_video_render_status",{
+      title:"حالة رندر الفيديو",
+      description:governedReadDescription("تحقق من مهمة رندر سابقة دون إعادة تشغيلها."),
+      inputSchema:{job_id:z.string().min(8).max(160).regex(/^[A-Za-z0-9._:-]+$/)},
+      annotations:VIDEO_STATUS_ANNOTATIONS
+    },async({job_id})=>{
+      if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+      if(reviewMode){
+        return text({
+          ok:true,demo:true,job_id,status:"pending",
+          artifact_verified:false,render_success:false,
+          rule:"review_fixture_no_real_artifact"
+        });
+      }
+      return text(await getCinematicRenderStatus(job_id));
+    });
+  }
 
   server.registerTool("open_target",{
     title:"فتح تطبيق أو رابط",

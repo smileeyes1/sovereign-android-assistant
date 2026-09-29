@@ -22,7 +22,7 @@
       "interface": {
         "displayName": "Hakim",
         "shortDescription": "Connect ChatGPT to Hakim",
-        "longDescription": "Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public version can check connectivity, request opening a selected app or HTTP/HTTPS link, navigate Home/Back/Recents, recover durable cross-session state, save a bounded work checkpoint, and check operation completion. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed in the public plugin. State-changing device actions remain subject to Hakim and Android approval gates.",
+        "longDescription": "Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public version can check connectivity, inspect the current video-factory capability state, plan a video project without rendering it, request opening a selected app or HTTP/HTTPS link, navigate Home/Back/Recents, recover durable cross-session state, save a bounded work checkpoint, and check operation completion. Video planning never claims a rendered artifact or unverified GPU/provider. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed in the public plugin. State-changing device actions remain subject to Hakim and Android approval gates.",
         "developerName": "Hakim Project",
         "category": "Productivity",
         "capabilities": [
@@ -32,7 +32,9 @@
           "Navigate Home, Back, or Recents after device approval",
           "Check completion status for a previously requested operation",
           "Recover recent operation state after a chat or session change without replaying actions",
-          "Resume a goal from a durable checkpoint without replaying pending device actions"
+          "Resume a goal from a durable checkpoint without replaying pending device actions",
+          "Check the current Hakim video-factory capability state without rendering",
+          "Plan a bounded video project without claiming a rendered artifact"
         ],
         "websiteURL": "https://hakim-chatgpt-bridge-production.up.railway.app",
         "privacyPolicyURL": "https://hakim-chatgpt-bridge-production.up.railway.app/privacy",

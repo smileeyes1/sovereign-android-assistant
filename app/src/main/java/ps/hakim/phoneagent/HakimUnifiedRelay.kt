@@ -514,6 +514,17 @@ object HakimUnifiedRelay {
             )
             return
         }
+        val op = envelope.optString("op").ifBlank { "unknown" }
+        if (!HakimFaultContainment.shouldAttempt(context, "remote_op", op)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "operation_circuit_open")
+            )
+            return
+        }
         executor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
@@ -566,6 +577,13 @@ object HakimUnifiedRelay {
             }
             if (result.optBoolean("ok", false)) {
                 HakimFaultContainment.recordSuccess(context, "remote_op", op)
+            } else {
+                HakimFaultContainment.recordFailure(
+                    context,
+                    "remote_op",
+                    op.ifBlank { "unknown" },
+                    IllegalStateException("operation_result_failed")
+                )
             }
             result
         } catch (e: Exception) {
@@ -573,8 +591,7 @@ object HakimUnifiedRelay {
                 context,
                 "remote_op",
                 op.ifBlank { "unknown" },
-                e,
-                critical = !READ_ONLY_OPS.contains(op)
+                e
             )
             JSONObject().put("ok", false).put("error", "operation_failed_safely")
         }

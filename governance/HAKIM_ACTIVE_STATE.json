@@ -29,12 +29,15 @@
     "candidate": {
       "version_code": 20313,
       "branch": "release/hakim-20313-chatgpt-control-candidate",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "scoped_chatgpt_web_history_index_read_navigation_and_approved_send"
+      "purpose": "scoped_chatgpt_web_history_index_read_navigation_and_approved_send",
+      "source_ci_run_id": 36597253198,
+      "source_ci_tested_head": "94b7d118bfe20aecbcbc6eba0986457a7ffefd26",
+      "field_signing_state": "BLOCKED_CI_D1_MATERIAL_UNAVAILABLE"
     },
     "field_observed_current": {
       "observed_at": "2026-09-28",
@@ -274,6 +277,7 @@
     "chatgpt_control_field_verified": false,
     "chatgpt_control_scope": "chatgpt.com_only",
     "chatgpt_control_storage": "encrypted_titles_and_conversation_links_only",
-    "chatgpt_destructive_actions_exposed": false
+    "chatgpt_destructive_actions_exposed": false,
+    "chatgpt_control_source_ci_verified": true
   }
 }

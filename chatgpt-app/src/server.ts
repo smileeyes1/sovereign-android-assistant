@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildCinematicPlan,cinematicCapabilities } from "./cinematic-director.js";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
@@ -61,6 +62,9 @@ const NETWORK_ACTIONS=[
 ] as const;
 type NetworkAction=typeof NETWORK_ACTIONS[number];
 const NETWORK_DEVICE_ID=/^lan-[0-9a-f]{16}$/;
+
+const VIDEO_ASPECTS=["16:9","9:16","1:1","4:5"] as const;
+const VIDEO_REALISM=["standard","high","maximum","cinematic"] as const;
 
 const LAN_AUTHORIZE_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const LAN_CONTROL_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true};
@@ -222,6 +226,38 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
 
   const tools:any[]=[
     ...readTools,
+    {
+      name:"get_video_capabilities",
+      title:"قدرات مصنع الفيديو السينمائي",
+      description:governedReadDescription("يعرض قدرات مخرج حكيم السينمائي وحالة منفذ التوليد دون تنفيذ رندر أو الوصول إلى محتوى الجهاز."),
+      inputSchema:{type:"object",properties:{},additionalProperties:false},
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
+    {
+      name:"plan_video_project",
+      title:"تخطيط مشروع فيديو",
+      description:governedReadDescription("حوّل هدف الفيديو إلى خطة إنتاج محكومة من حكيم: مشاهد، استراتيجية موارد، بوابات جودة وسياسة عدم الادعاء. هذه الأداة لا تولّد الفيديو ولا تثبت وجود منفذ توليد فعلي."),
+      inputSchema:{
+        type:"object",
+        properties:{
+          goal:{type:"string",minLength:1,maxLength:1200},
+          audience:{type:"string",maxLength:240},
+          audience_age:{type:"integer",minimum:3,maximum:100},
+          duration_sec:{type:"integer",minimum:8,maximum:900},
+          aspect:{type:"string",enum:VIDEO_ASPECTS},
+          style:{type:"string",maxLength:240},
+          realism:{type:"string",enum:VIDEO_REALISM},
+          educational:{type:"boolean"}
+        },
+        required:["goal"],
+        additionalProperties:false
+      },
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
     {
       name:"open_target",
       title:"فتح تطبيق أو رابط",
@@ -463,6 +499,39 @@ export function createHakimServer(
       return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
   }
+
+  server.registerTool("get_video_capabilities",{
+    title:"قدرات مصنع الفيديو السينمائي",
+    description:governedReadDescription(
+      "اقرأ حالة مخرج حكيم السينمائي محليًا على الجسر. لا يصل إلى الهاتف ولا يشغّل مزودًا ولا ينشئ ملفًا."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    return text(cinematicCapabilities());
+  });
+
+  server.registerTool("plan_video_project",{
+    title:"تخطيط مشروع فيديو سينمائي",
+    description:governedReadDescription(
+      "حوّل الهدف إلى خطة إخراج سينمائي كاملة: لغة كاميرا، عدسات، إضاءة، استمرارية، صوت، مونتاج، توجيه مزودات وبوابات قبول. لا ينفذ رندرًا ولا يدعي إنتاج ملف."
+    ),
+    inputSchema:{
+      goal:z.string().min(1).max(1200),
+      audience:z.string().max(240).optional(),
+      audience_age:z.number().int().min(3).max(100).optional(),
+      duration_sec:z.number().int().min(8).max(900).optional(),
+      aspect:z.enum(VIDEO_ASPECTS).optional(),
+      style:z.string().max(240).optional(),
+      realism:z.enum(VIDEO_REALISM).optional(),
+      educational:z.boolean().optional()
+    },
+    annotations:READ_ANNOTATIONS
+  },async(input)=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    return text(buildCinematicPlan(input));
+  });
 
   server.registerTool("open_target",{
     title:"فتح تطبيق أو رابط",

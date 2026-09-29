@@ -15,13 +15,14 @@ const credential:DeviceCredential={
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{
   const tools=chatgptToolList(true) as any[];
-  assert.equal(tools.length,6);
+  assert.equal(tools.length,8);
   const byName=new Map(tools.map(t=>[t.name,t]));
   assert.deepEqual([...byName.keys()].sort(),[
-    "get_continuation_state","get_device_status","get_request_result","navigate_device","open_target","save_continuation_checkpoint"
+    "get_continuation_state","get_device_status","get_request_result","get_video_capabilities","plan_video_project",
+    "navigate_device","open_target","save_continuation_checkpoint"
   ].sort());
 
-  for(const name of ["get_device_status","get_continuation_state","get_request_result"]){
+  for(const name of ["get_device_status","get_video_capabilities","plan_video_project","get_continuation_state","get_request_result"]){
     const t:any=byName.get(name);
     assert.ok(t,name+" missing");
     assert.deepEqual(t.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
@@ -58,9 +59,9 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,10);
+  assert.equal(tools.length,12);
   for(const name of [
-    "get_device_status","read_browser_page","get_current_ui","list_notifications","capture_screenshot",
+    "get_device_status","get_video_capabilities","plan_video_project","read_browser_page","get_current_ui","list_notifications","capture_screenshot",
     "open_target","perform_ui_action","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");
   assert.deepEqual((byName.get("read_browser_page") as any).securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
@@ -93,6 +94,13 @@ test("public reviewer mode is isolated from real device transport and redacts co
     assert.equal((status.structuredContent as any)?.demo,true);
     assert.equal((status.structuredContent as any)?.device?.name,"Hakim Review Device");
     assert.equal((status.structuredContent as any)?.privacy,"content_redacted");
+
+    const video=await client.callTool({name:"plan_video_project",arguments:{
+      goal:"درس قصير عن المقارنة بين عددين",duration_sec:45,aspect:"16:9",educational:true
+    }});
+    assert.equal((video.structuredContent as any)?.artifact_created,false);
+    assert.equal((video.structuredContent as any)?.director_version,"HAKIM_CINEMA_V1_2026-09-30");
+    assert.equal((video.structuredContent as any)?.acceptance?.render_success_without_artifact_forbidden,true);
 
     const launch=await client.callTool({name:"open_target",arguments:{package:"com.example.safe"}});
     assert.equal((launch.structuredContent as any)?.demo,true);

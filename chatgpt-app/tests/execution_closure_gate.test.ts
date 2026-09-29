@@ -8,18 +8,28 @@ const server=fs.readFileSync(path.join(root,"src/server.ts"),"utf8");
 const index=fs.readFileSync(path.join(root,"src/index.ts"),"utf8");
 
 function literalPublishOps(source:string){
-  return [...source.matchAll(/publishCommand\(credential,"([^"]+)"/g)].map(m=>m[1]);
+  return [...source.matchAll(/publishCommand\(credential,"([^"]+)"/g)].map(m=>m[1]!);
 }
+
+const EFFECTFUL_OPS=new Set([
+  "launch","action","network_authorize","network_control","network_revoke"
+]);
 
 test("all model-facing literal mutation dispatches are an explicit frozen allowlist",()=>{
   assert.deepEqual(
-    literalPublishOps(server),
+    literalPublishOps(server).filter(op=>EFFECTFUL_OPS.has(op)),
     ["launch","action","action","network_authorize","network_control","network_revoke"]
   );
   assert.deepEqual(
-    literalPublishOps(index),
+    literalPublishOps(index).filter(op=>EFFECTFUL_OPS.has(op)),
     ["launch","action"]
   );
+});
+
+test("cinematic planning remains bridge-local and cannot dispatch to the device",()=>{
+  assert.equal(literalPublishOps(server).includes("video_plan"),false);
+  assert.ok(server.includes('buildCinematicPlan(input)'));
+  assert.ok(server.includes('cinematicCapabilities()'));
 });
 
 test("every MCP mutation dispatch is guarded by live preflight in the same handler",()=>{

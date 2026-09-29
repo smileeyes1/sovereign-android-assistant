@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, save a bounded work checkpoint, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. ChatGPT remains the conversational intelligence layer and the bridge does not require an OpenAI API key.
+- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, inspect the current video-factory capability state, plan a video project without rendering it, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, save a bounded work checkpoint, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. Video planning never claims a rendered artifact or GPU/provider availability that has not been verified.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** get_device_status, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
+- **Public tool surface:** get_device_status, get_video_capabilities, plan_video_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
 
 ## Starter prompts
 
@@ -95,6 +95,8 @@ Do not commit the token to GitHub.
 
 Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabled only during review through Railway environment variables. The public catalog must contain exactly:
 - `get_device_status`
+- `get_video_capabilities`
+- `plan_video_project`
 - `open_target`
 - `navigate_device`
 - `get_continuation_state`
@@ -109,6 +111,16 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `readOnlyHint=true`: retrieves only a minimal connection/status summary and changes no device or server state.
 - `openWorldHint=false`: accesses only the single bounded device paired to the authenticated Hakim credential.
 - `destructiveHint=false`: performs no write, deletion, send, or irreversible action.
+
+### get_video_capabilities
+- `readOnlyHint=true`: reads only the current bounded video-factory capability state.
+- `openWorldHint=false`: does not contact or select an external rendering provider.
+- `destructiveHint=false`: performs no rendering, purchase, upload, or device mutation.
+
+### plan_video_project
+- `readOnlyHint=true`: creates a bounded production plan only; it does not render a video.
+- `openWorldHint=false`: planning is executed through Hakim's paired-device planning contract and does not itself invoke an external provider.
+- `destructiveHint=false`: it creates no media artifact, consumes no paid rendering resource, and changes no device state.
 
 ### open_target
 - `readOnlyHint=false`: requests a visible state change on the paired Android device.

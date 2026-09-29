@@ -27,5 +27,16 @@
     "login_secret_capture": false,
     "accessibility_service_required": false
   },
-  "promotion_gate": "SOURCE_CI_PENDING; D1_SIGNING_PENDING; SAME_ARTIFACT_FIELD_TEST_PENDING"
+  "promotion_gate": "SOURCE_CI_VERIFIED; D1_SIGNING_BLOCKED_CI; SAME_ARTIFACT_FIELD_TEST_PENDING",
+  "source_ci": {
+    "verified": true,
+    "run_id": 36597253198,
+    "tested_head": "94b7d118bfe20aecbcbc6eba0986457a7ffefd26",
+    "build": "PASS",
+    "page_16k": "PASS"
+  },
+  "signing": {
+    "field_d1_apk_created": false,
+    "reason": "CI_D1_MATERIAL_UNAVAILABLE"
+  }
 }

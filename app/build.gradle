@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20313
-        versionName '3.3.9-control-channel-recovery-direct-autostart-resilient-network-chatgpt-web-control-v1'
+        versionName '3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-v1'
     }
 
     compileOptions {

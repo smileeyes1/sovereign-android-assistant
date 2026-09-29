@@ -1,0 +1,85 @@
+name: "إصلاح أصل حكيم ٢٠٣١٥ — بلا إشارة هاتف"
+
+on:
+  push:
+    branches:
+      - publish/hakim-20315-autonomy-d1
+    paths:
+      - .github/workflows/repair-20315-release.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: جلب أثر CI المثبت
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/11051287470/zip" \
+            -o /tmp/hakim-ci.zip
+          echo "edc941fb62e2a0efa21e57f46b15bc9762b52c9f25ca87c1310871117190814f  /tmp/hakim-ci.zip" | sha256sum -c -
+          unzip -q /tmp/hakim-ci.zip -d /tmp/hakim-ci
+          echo "479bd4bcbcefcc27cb1948d09b36e1c102682d39e755e32c319bc2d42629f6a4  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+
+      - name: إعادة تركيب الحزمة الصحيحة
+        run: |
+          set -euo pipefail
+          cat > /tmp/block.b64 <<'B64'
+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
+B64
+          base64 -d /tmp/block.b64 > /tmp/block.bin
+          echo "2e1af7dbd8e4a2e8caf3b77ca5274b4c398e1b815b540e2fbda7943dbba3ecb8  /tmp/block.bin" | sha256sum -c -
+          test "$(stat -c %s /tmp/block.bin)" = "2624"
+          python3 - <<'PY'
+          import base64, hashlib, struct, zipfile
+          from pathlib import Path
+          src=Path('/tmp/hakim-ci/release/app-release-unsigned.apk').read_bytes()
+          block=Path('/tmp/block.bin').read_bytes()
+          eocd=src.rfind(b'PK\x05\x06')
+          if eocd < 0: raise SystemExit('EOCD_MISSING')
+          cd=struct.unpack_from('<I',src,eocd+16)[0]
+          out=bytearray(src[:cd])+block+bytearray(src[cd:])
+          ne=eocd+len(block)
+          struct.pack_into('<I',out,ne+16,cd+len(block))
+          Path('/tmp/HAKIM-20315-D1-AUTONOMY.apk').write_bytes(out)
+          if hashlib.sha256(out).hexdigest()!='27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2':
+              raise SystemExit('SIGNED_SHA_MISMATCH')
+          if len(out)!=14151714: raise SystemExit('SIGNED_SIZE_MISMATCH')
+          with zipfile.ZipFile('/tmp/HAKIM-20315-D1-AUTONOMY.apk') as z:
+              if z.testzip() is not None: raise SystemExit('ZIP_INTEGRITY_FAIL')
+          print('EXACT_SIGNED_APK=PASS')
+          PY
+          python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20315-D1-AUTONOMY.apk
+
+      - name: استبدال الأصل الخاطئ فقط
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="hakim-20315-d1-autonomy"
+          ASSET="HAKIM-20315-D1-AUTONOMY.apk"
+          EXPECTED="sha256:27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2"
+          CURRENT="$(gh release view "$TAG" --json assets --jq '.assets[] | select(.name=="'"$ASSET"'") | .digest' || true)"
+          if [ "$CURRENT" != "$EXPECTED" ]; then
+            gh release delete-asset "$TAG" "$ASSET" -y || true
+            gh release upload "$TAG" "/tmp/$ASSET#$ASSET"
+          fi
+          gh release edit "$TAG" \
+            --notes "مرشح ٢٠٣١٥ من أثر CI #1281، موقّع D1 وبصمة الحزمة المصححة 27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2. هذه مرحلة تجهيز فقط: لا توجد إشارة تحديث هاتف في هذا التشغيل."
+          URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
+          curl --fail --location --silent --show-error "$URL" -o /tmp/roundtrip.apk
+          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/roundtrip.apk" | sha256sum -c -
+          echo "RELEASE_REPAIR=PASS"
+          echo "PHONE_UPDATE_SIGNAL=NOT_SENT"

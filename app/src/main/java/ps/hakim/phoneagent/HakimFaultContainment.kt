@@ -121,7 +121,7 @@ object HakimFaultContainment {
         return JSONObject()
             .put("fault_containment", true)
             .put("version", VERSION)
-            .put("silent_failures_forbidden", true)
+            .put("critical_path_silent_failures_forbidden", true)
             .put("bounded_retry", true)
             .put("circuit_breaker", true)
             .put("high_impact_fail_closed", true)

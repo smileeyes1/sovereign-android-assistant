@@ -15,6 +15,7 @@ import {
 import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
+import { DeviceBindingStore } from "./device-binding-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
@@ -32,10 +33,12 @@ app.use(express.urlencoded({extended:false,limit:"64kb"}));
 const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
 const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
 const codeStore=new FileCodeStore(dataDir);
+const deviceBindingStore=new DeviceBindingStore(dataDir,oauthSecret);
 await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
 await continuityStore.init();
+await deviceBindingStore.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);
@@ -152,7 +155,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     // Never log carrier/key/raw device data on probe decode failures.
   }
 }
-function logSanitizedHealthBeacon(key:string,carrier:string){
+function logSanitizedHealthBeacon(key:string,carrier:string):number|null{
   try{
     const decoded=decryptResult(key,carrier) as {
       status?:unknown;
@@ -166,9 +169,9 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         governance_catalog?:Record<string,unknown>;
       };
     };
-    if(decoded?.status!=="health") return;
+    if(decoded?.status!=="health") return null;
     const result=decoded.result;
-    if(!result||typeof result!=="object") return;
+    if(!result||typeof result!=="object") return null;
     const apkSha=typeof result.apk_sha256==="string"&&/^[0-9a-f]{64}$/i.test(result.apk_sha256)
       ?result.apk_sha256.toLowerCase():null;
     const constitution=typeof result.constitution==="string"&&
@@ -205,8 +208,11 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
       }
     };
     console.log("HAKIM_HEALTH_EVIDENCE "+JSON.stringify(safe));
+    return typeof result.version_code==="number"&&Number.isInteger(result.version_code)&&result.version_code>0
+      ?result.version_code:null;
   }catch{
     // Never log raw carriers, relay keys, UI/page content, selected domains or goal data.
+    return null;
   }
 }
 
@@ -505,7 +511,19 @@ app.post("/oauth/authorize",async(req,res)=>{
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
     }
-    if(!reviewRequested) await directRelayStore.markCredentialPaired(context.credential);
+    if(!reviewRequested){
+      await directRelayStore.markCredentialPaired(context.credential);
+      const promoted=await deviceBindingStore.promoteApprovedPairing(context.credential);
+      if(promoted.previous&&!deviceBindingStore.sameCredential(promoted.previous.credential,promoted.current.credential)){
+        await continuityStore.migrateCheckpoint(
+          promoted.previous.credential,
+          promoted.current.credential,
+          promoted.current.binding_id
+        );
+      }else{
+        await continuityStore.bindAlias(promoted.current.credential.topic,promoted.current.binding_id);
+      }
+    }
     const code=await codeStore.issue({
       credential:context.credential,
       clientId:context.clientId,
@@ -684,6 +702,8 @@ app.get("/device/v1/continuity",async(req,res)=>{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
     await directRelayStore.authorizeCommandTopic(topic,key);
+    const observed=await deviceBindingStore.observe("command",topic,key);
+    if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
     const state=await continuityStore.stateForTopic(topic);
     noStore(res);
     return res.json({
@@ -703,6 +723,9 @@ app.get("/device/v1/commands",async(req,res)=>{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
     const waitMs=normalizeDeviceWaitMs(one(req.query.wait_ms));
+    await directRelayStore.authorizeCommandTopic(topic,key);
+    const observed=await deviceBindingStore.observe("command",topic,key);
+    if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
     noStore(res);
     if(command){
@@ -742,8 +765,11 @@ app.post(
       if(typeof req.body!=="string") throw new Error("result_body_required");
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
+      const observed=await deviceBindingStore.observe("result",topic,key);
+      if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
       logSanitizedStatusProbe(topic,key,carrier);
-      logSanitizedHealthBeacon(key,carrier);
+      const healthVersion=logSanitizedHealthBeacon(key,carrier);
+      if(healthVersion!==null) await deviceBindingStore.noteVersion(topic,key,healthVersion);
       noStore(res);
       return res.status(202).json({accepted:true});
     }catch(e){

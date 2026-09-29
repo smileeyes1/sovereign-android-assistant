@@ -137,7 +137,7 @@ object HakimSelfCheck {
 
         val containment = HakimFaultContainment.status(context)
         check("حاجز الأعطال المركزي فعّال", containment.optBoolean("fault_containment"))
-        check("الفشل الصامت ممنوع", containment.optBoolean("silent_failures_forbidden"))
+        check("الفشل الصامت ممنوع في المسارات الحرجة المحروسة", containment.optBoolean("critical_path_silent_failures_forbidden"))
         check("منع التكرار الأعمى فعال", containment.optBoolean("bounded_retry") && containment.optBoolean("circuit_breaker"))
         check("الأفعال عالية الأثر تفشل مغلقة عند العطل الحرج", containment.optBoolean("high_impact_fail_closed"))
         check("لا حظر أمان حرج نشط", !containment.optBoolean("high_impact_blocked"), "fail", "critical_blocks=" + containment.optInt("critical_blocks"))

@@ -9,6 +9,14 @@ on:
     paths:
       - .github/workflows/publish-20315-autonomy.yml
       - release-control/20315-autonomy-signing-block.b64
+      - release-control/20315-signing-block.part00.txt
+      - release-control/20315-signing-block.part01.txt
+      - release-control/20315-signing-block.part02.txt
+      - release-control/20315-signing-block.part03.txt
+      - release-control/20315-signing-block.part04.txt
+      - release-control/20315-signing-block.part05.txt
+      - release-control/20315-signing-block.part06.txt
+      - release-control/20315-signing-block.part07.txt
       - tools/reconstruct_20315_autonomy.py
   workflow_dispatch:
 
@@ -43,9 +51,22 @@ jobs:
       - name: إعادة تركيب نفس APK D1 بلا مفتاح خاص
         run: |
           set -euo pipefail
+          echo "89534682c4dc7a02788ad2f351543c0a88b6b70c5ba5d1ccd17a794f53fa02a4  release-control/20315-signing-block.part00.txt" | sha256sum -c -
+          echo "040c6ecacb6c10c03103eb8b391fcc91cd45170586eabd0a8716428a1dcee977  release-control/20315-signing-block.part01.txt" | sha256sum -c -
+          echo "6acfeea99bcdce47078c3defcb4bfc60afc4277b28f76157053981f211df4c28  release-control/20315-signing-block.part02.txt" | sha256sum -c -
+          echo "6d5691509cc700a6986feabfc0c67482d01469cf4e602dc2e0aeafa2850815bb  release-control/20315-signing-block.part03.txt" | sha256sum -c -
+          echo "9c1db29f6a306d342449d854a50033c2ea91e05b5a8d6c93ba36b15049a14956  release-control/20315-signing-block.part04.txt" | sha256sum -c -
+          echo "7fb638fe6a8de3603d5fe85dcec0f41371f4bb55a21964244cd96e1b7466fce3  release-control/20315-signing-block.part05.txt" | sha256sum -c -
+          echo "7fb638fe6a8de3603d5fe85dcec0f41371f4bb55a21964244cd96e1b7466fce3  release-control/20315-signing-block.part06.txt" | sha256sum -c -
+          echo "96750ecb2421df86cc50370399de8db8e6250e581322dac29e9b70f4872384d1  release-control/20315-signing-block.part07.txt" | sha256sum -c -
+          cat release-control/20315-signing-block.part{00..07}.txt > /tmp/20315-signing-block.b64
+          test "$(wc -c < /tmp/20315-signing-block.b64)" = "5464"
+          base64 -d /tmp/20315-signing-block.b64 > /tmp/20315-signing-block.bin
+          echo "0ccd1ade4c7b7e40579a368176d3e6639600b874caa647798adf126436c3b6e5  /tmp/20315-signing-block.bin" | sha256sum -c -
+          test "$(stat -c %s /tmp/20315-signing-block.bin)" = "4096"
           python3 tools/reconstruct_20315_autonomy.py \
             /tmp/hakim-ci/release/app-release-unsigned.apk \
-            release-control/20315-autonomy-signing-block.b64 \
+            /tmp/20315-signing-block.b64 \
             /tmp/HAKIM-20315-D1-AUTONOMY.apk
           python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20315-D1-AUTONOMY.apk
           echo "1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6  /tmp/HAKIM-20315-D1-AUTONOMY.apk" | sha256sum -c -

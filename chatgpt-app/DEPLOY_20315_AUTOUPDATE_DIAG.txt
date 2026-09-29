@@ -1,0 +1,3 @@
+Hakim 20315 AutoUpdater diagnostics deployment trigger.
+Logic baseline: 59e55bb9b5151dca3a9dbe1c829992828aba1d7a
+No runtime logic, configuration, secrets, or device permissions are changed by this marker.

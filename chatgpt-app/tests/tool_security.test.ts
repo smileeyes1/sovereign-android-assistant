@@ -98,9 +98,9 @@ test("public reviewer mode is isolated from real device transport and redacts co
     const video=await client.callTool({name:"plan_video_project",arguments:{
       goal:"درس قصير عن المقارنة بين عددين",duration_sec:45,aspect:"16:9",educational:true
     }});
-    assert.equal((video.structuredContent as any)?.demo,true);
     assert.equal((video.structuredContent as any)?.artifact_created,false);
-    assert.equal((video.structuredContent as any)?.provider_decision?.state,"deferred");
+    assert.equal((video.structuredContent as any)?.director_version,"HAKIM_CINEMA_V1_2026-09-30");
+    assert.equal((video.structuredContent as any)?.acceptance?.render_success_without_artifact_forbidden,true);
 
     const launch=await client.callTool({name:"open_target",arguments:{package:"com.example.safe"}});
     assert.equal((launch.structuredContent as any)?.demo,true);

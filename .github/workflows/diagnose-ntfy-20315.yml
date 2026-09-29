@@ -1,4 +1,4 @@
-name: "تشخيص إشارة حكيم ٢٠٣١٥ — قراءة فقط"
+name: "تشخيص إشارة حكيم ٢٠٣١٥ — محاكاة AutoUpdater"
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - publish/hakim-20315-autonomy-d1
     paths:
       - .github/workflows/diagnose-ntfy-20315.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,34 +16,94 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: قراءة الحدث المنشور بشكل معقم
+      - name: محاكاة مرشح AutoUpdater 20313 دون تغيير الهاتف
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1/json?poll=1&since=6h'             -o /tmp/events.ndjson
+          curl --fail --silent --show-error \
+            'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1/json?poll=1&since=6h' \
+            -o /tmp/events.ndjson
           python3 - <<'PY'
-          import json
-          target='nXcLLTue6euz'
-          found=None
+          import json,re
+          CURRENT=20313
+          MAX=32*1024*1024
+          TARGET='nXcLLTue6euz'
+          events=[]
+          chosen=None
+          chosen_time=0
+          target_diag=None
           for line in open('/tmp/events.ndjson',encoding='utf-8'):
-              try: x=json.loads(line)
-              except Exception: continue
-              if x.get('id')==target:
-                  found=x
-                  break
-          if not found:
+              if not line.strip():
+                  continue
+              try: event=json.loads(line)
+              except Exception:
+                  continue
+              if event.get('event')!='message':
+                  continue
+              if event.get('title')!='HAKIM_UPDATE':
+                  continue
+              a=event.get('attachment')
+              if not isinstance(a,dict):
+                  continue
+              url=a.get('url','')
+              if not isinstance(url,str) or not url.startswith('https://'):
+                  continue
+              raw=event.get('message','{}')
+              try: meta=json.loads(raw)
+              except Exception:
+                  if event.get('id')==TARGET:
+                      target_diag={'id':TARGET,'json':False}
+                  continue
+              version=meta.get('version_code',-1)
+              sha=str(meta.get('sha256','')).lower()
+              size=meta.get('size',a.get('size',-1))
+              at=event.get('time',0)
+              checks={
+                  'event_message':event.get('event')=='message',
+                  'title_ok':event.get('title')=='HAKIM_UPDATE',
+                  'attachment_object':isinstance(a,dict),
+                  'https_url':isinstance(url,str) and url.startswith('https://'),
+                  'meta_json':True,
+                  'version_type_int':isinstance(version,int) and not isinstance(version,bool),
+                  'version_gt_current':isinstance(version,int) and version>CURRENT,
+                  'sha_len_64':len(sha)==64,
+                  'sha_hex':bool(re.fullmatch(r'[0-9a-f]{64}',sha)),
+                  'size_type_int':isinstance(size,int) and not isinstance(size,bool),
+                  'size_in_range':isinstance(size,int) and 1<=size<=MAX,
+                  'time_nonnegative':isinstance(at,int) and at>=0
+              }
+              if event.get('id')==TARGET:
+                  target_diag={
+                      'id':TARGET,
+                      'version':version,
+                      'sha_prefix':sha[:8],
+                      'sha_length':len(sha),
+                      'size':size,
+                      'attachment_size':a.get('size'),
+                      'url_host':url.split('/')[2] if '://' in url else None,
+                      'time':at,
+                      'checks':checks,
+                      'all_filter_conditions':all([
+                          checks['version_gt_current'],
+                          checks['sha_len_64'],
+                          checks['size_in_range']
+                      ])
+                  }
+              if not (isinstance(version,int) and version>CURRENT):
+                  continue
+              if len(sha)!=64:
+                  continue
+              if not (isinstance(size,int) and 1<=size<=MAX):
+                  continue
+              if isinstance(at,int) and at>=chosen_time:
+                  chosen_time=at
+                  chosen={'id':event.get('id'),'version':version,'sha_prefix':sha[:8],'size':size,'time':at}
+          print('AUTOUPDATER_TARGET_DIAG='+json.dumps(target_diag,separators=(',',':'),sort_keys=True))
+          print('AUTOUPDATER_CHOSEN='+json.dumps(chosen,separators=(',',':'),sort_keys=True))
+          if target_diag is None:
               raise SystemExit('TARGET_EVENT_NOT_FOUND')
-          a=found.get('attachment')
-          msg=found.get('message')
-          out={
-            'event_id': found.get('id'),
-            'event': found.get('event'),
-            'title': found.get('title'),
-            'message_has_20315': isinstance(msg,str) and '"version_code":20315' in msg,
-            'message_length': len(msg) if isinstance(msg,str) else None,
-            'attachment_present': isinstance(a,dict),
-            'attachment_url_https': isinstance(a,dict) and isinstance(a.get('url'),str) and a.get('url').startswith('https://'),
-            'attachment_name': a.get('name') if isinstance(a,dict) else None,
-            'attachment_size': a.get('size') if isinstance(a,dict) else None,
-          }
-          print('NTFY_20315_DIAG='+json.dumps(out,separators=(',',':')))
+          if not target_diag.get('all_filter_conditions'):
+              raise SystemExit('TARGET_FILTER_FAIL')
+          if chosen is None or chosen.get('version')!=20315:
+              raise SystemExit('EMULATION_DID_NOT_CHOOSE_20315')
+          print('AUTOUPDATER_EMULATION=PASS')
           PY

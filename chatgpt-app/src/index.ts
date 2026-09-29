@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "node:crypto";
 import cors from "cors";
 import os from "node:os";
 import path from "node:path";
@@ -12,10 +13,11 @@ import {
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
-import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
+import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
 import { DeviceBindingStore } from "./device-binding-store.js";
+import { OAuthClientRegistry } from "./oauth-client-registry.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
@@ -34,17 +36,20 @@ const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
 const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
 const codeStore=new FileCodeStore(dataDir);
 const deviceBindingStore=new DeviceBindingStore(dataDir,oauthSecret);
+const oauthClientRegistry=new OAuthClientRegistry(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
 await continuityStore.init();
 await deviceBindingStore.init();
+await oauthClientRegistry.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);
 relayCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
+const registrationAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
@@ -226,6 +231,33 @@ function reviewAttemptAllowed(ip:string){
   current.count+=1;
   if(current.count>20) return false;
   return true;
+}
+
+function registrationAttemptAllowed(ip:string){
+  const now=Date.now();
+  const current=registrationAttempts.get(ip);
+  if(!current||now-current.windowStart>60_000){
+    registrationAttempts.set(ip,{count:1,windowStart:now});
+    return true;
+  }
+  current.count+=1;
+  return current.count<=10;
+}
+
+async function resolveOAuthClient(clientId:string,redirectUri:string){
+  if(isChatGPTClientId(clientId)){
+    if(!isChatGPTRedirectUri(redirectUri)) return null;
+    return {kind:"chatgpt" as const,label:"ChatGPT"};
+  }
+  const registered=await oauthClientRegistry.resolve(clientId,redirectUri);
+  if(!registered) return null;
+  return {kind:"registered" as const,label:registered.client_name};
+}
+
+function clientAuthorizationApproved(raw:unknown){
+  if(!raw||typeof raw!=="object") return false;
+  const message=raw as {status?:unknown;result?:{ok?:unknown;client_authorization?:unknown}};
+  return message.status==="ok"&&message.result?.ok===true&&message.result?.client_authorization===true;
 }
 function reviewModeEnabled(){
   return !!process.env.HAKIM_REVIEW_USER&&!!process.env.HAKIM_REVIEW_PASSWORD;

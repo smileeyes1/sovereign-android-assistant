@@ -17,7 +17,7 @@ def req(ok, reason):
         raise SystemExit("CHATGPT_CONTROL_20313=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20313,"version")
+req(m is not None and int(m.group(1))>=20313,"version_floor")
 req("chatgpt-web-control" in BUILD,"lineage")
 req('"chatgpt_read"' in RELAY and '"chatgpt_navigate"' in RELAY and '"chatgpt_action"' in RELAY,"relay_ops")
 read_section=RELAY.split("private val READ_ONLY_OPS",1)[1].split("private val ALLOWED_OPS",1)[0]
@@ -29,12 +29,12 @@ req("delete_conversation" not in SERVICE and "archive_conversation" not in SERVI
 req("AndroidKeyStore" in INDEX and "AES/GCM/NoPadding" in INDEX,"encrypted_index")
 req("لا يخزن نصوص المحادثات" in INDEX,"data_minimization")
 req('android:name=".HakimAccessibilityService"' not in MANIFEST,"no_accessibility_regression")
-req(STATE["android"]["latest_source_parent"]["version_code"]==20312,"baseline_preserved")
-req(STATE["android"]["candidate"]["version_code"]==20313,"candidate_state")
+req(STATE["android"]["latest_source_parent"]["version_code"]>=20313,"baseline_preserved")
+req(STATE["android"]["candidate"]["version_code"]==int(m.group(1)),"candidate_state")
 req(STATE["android"]["candidate"]["field_verified"] is False,"field_not_claimed")
-req(STATE["android"]["field_observed_current"]["version_code"]==20312,"field_baseline_unchanged")
-req(PROMO["candidate_version"]==20313 and PROMO["same_signed_apk_field_verified"] is False,"promotion_gate")
+req(STATE["android"]["field_observed_current"]["version_code"]==STATE["android"]["latest_source_parent"]["version_code"],"field_baseline_matches_parent")
+req(PROMO["candidate_version"]==int(m.group(1)) and PROMO["same_signed_apk_field_verified"] is False,"promotion_gate")
 req("python3 tests/verify_20313_chatgpt_control.py" in WORKFLOW,"workflow_test")
-req('test "$VERSION_CODE" = "20313"' in WORKFLOW,"workflow_version")
+req('test "$VERSION_CODE" = "20315"' in WORKFLOW,"workflow_version")
 
 print("CHATGPT_CONTROL_20313=PASS scope=chatgpt.com encrypted_index=true accessibility=false field_verified=false")

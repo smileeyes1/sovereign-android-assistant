@@ -15,6 +15,7 @@ class HakimEvolutionJobService : JobService() {
                     HakimValueContinuityEngine.resumePending(applicationContext)
                     HakimGoalSupervisor.resume(applicationContext)
                     HakimGoalExecutor.tick(applicationContext)
+                    AutoUpdater.checkNow(applicationContext)
                     val report = HakimSelfCheck.run(applicationContext)
                     HakimLearning.recordHealth(applicationContext, report)
                 }

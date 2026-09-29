@@ -122,6 +122,7 @@ jobs:
           python3 tests/verify_goal_supervisor_policy.py
           python3 tests/verify_execution_continuity.py
           python3 tests/verify_self_check_continuity.py
+          python3 tests/verify_fault_containment_policy.py
           python3 tests/verify_goal_executor_policy.py
           python3 tests/verify_all_things_contract.py
           python3 tests/verify_field_d1_trust_anchor.py

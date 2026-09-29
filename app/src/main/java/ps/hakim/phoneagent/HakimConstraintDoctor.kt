@@ -31,6 +31,9 @@ object HakimConstraintDoctor {
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)
         HakimSelfCheck.schedule(app)
+        HakimFaultContainment.guard(app, "constraint_doctor", "auto_update_schedule") {
+            AutoUpdater.schedule(app)
+        }
         HakimConnectionResilience.schedule(app)
 
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
@@ -46,6 +49,10 @@ object HakimConstraintDoctor {
 
         if (!disabled && paired && network) {
             HakimConnectionResilience.recover(app, "constraint_doctor_$reason")
+            HakimFaultContainment.guard(app, "constraint_doctor", "auto_update_realtime") {
+                AutoUpdater.startRealtimeListener(app)
+            }
+            AutoUpdater.checkAsync(app)
             HakimHealthBeacon.sendAsync(app, "constraint_doctor_$reason")
         }
 

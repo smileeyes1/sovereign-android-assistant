@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20313,
+  "candidate_version": 20315,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -18,5 +18,11 @@
   "professional_observability_runtime_field_verified": true,
   "professional_observability_visual_field_verified": false,
   "chatgpt_control_source_integrated": true,
-  "chatgpt_control_field_verified": false
+  "chatgpt_control_field_verified": false,
+  "verified_parent_version": 20313,
+  "verified_parent_same_artifact_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+  "fault_containment_source_integrated": true,
+  "fault_containment_field_verified": false,
+  "coherent_relay_status_source_integrated": true,
+  "coherent_relay_status_field_verified": false
 }

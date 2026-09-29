@@ -45,6 +45,7 @@ const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
+const UPDATE_20315_SIGNAL_AT_MS=1790705524*1000;
 
 function maybeMakeStatusProbe(topic:string,key:string){
   const now=Date.now();
@@ -117,6 +118,10 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
           "verify_identity_failed","export_failed"
         ]),
         push_seen:typeof autoUpdate?.last_push_at==="number"?autoUpdate.last_push_at>0:null,
+        last_check_after_20315_signal:typeof autoUpdate?.last_check_at==="number"?
+          autoUpdate.last_check_at>=UPDATE_20315_SIGNAL_AT_MS:null,
+        last_push_after_20315_signal:typeof autoUpdate?.last_push_at==="number"?
+          autoUpdate.last_push_at>=UPDATE_20315_SIGNAL_AT_MS:null,
         last_discovered_version:typeof autoUpdate?.last_discovered_version==="number"?
           autoUpdate.last_discovered_version:null,
         last_exported_version:typeof autoUpdate?.last_exported_version==="number"?

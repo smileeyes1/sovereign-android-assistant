@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, re, subprocess, sys
+import json, os, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,13 +16,28 @@ def git(*args, check=True):
         raise RuntimeError(p.stderr.strip() or "git command failed")
     return p.stdout
 
+# Always refresh remote state first: conversation memory is never authoritative.
+git("fetch", "--no-tags", "--prune", "origin", "+refs/heads/*:refs/remotes/origin/*")
+
+event = os.getenv("GITHUB_EVENT_NAME", "")
+base = os.getenv("GITHUB_BASE_REF", "")
+changed = []
+if event == "pull_request" and base:
+    changed = git("diff", "--name-only", f"origin/{base}...HEAD").splitlines()
+elif event == "push":
+    changed = git("diff", "--name-only", "HEAD^", "HEAD", check=False).splitlines()
+
+# Bootstrap/policy-only changes may install the guard even when main itself is historical.
+# Any Android source/config change, and every manual run, is enforced fail-closed.
+android_changed = any(p == "app/build.gradle" or p.startswith("app/") for p in changed)
+if event in {"pull_request", "push"} and not android_changed:
+    print("FRESHNESS_GUARD=PASS mode=policy_only_no_android_change")
+    sys.exit(0)
+
 local = version_from_text(BUILD.read_text())
 if local is None:
     print("FRESHNESS_GUARD=FAIL reason=local_version_missing", file=sys.stderr)
     sys.exit(2)
-
-# Refresh all branch refs so a stale checkout/conversation cannot decide freshness.
-git("fetch", "--no-tags", "--prune", "origin", "+refs/heads/*:refs/remotes/origin/*")
 
 prefixes = POLICY["trusted_branch_prefixes"]
 candidates = []

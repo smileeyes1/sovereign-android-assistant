@@ -29,8 +29,11 @@ const CHECKPOINT_ANNOTATIONS={readOnlyHint:false,destructiveHint:false,idempoten
 const readSecurity=[{type:"oauth2",scopes:["hakim.read"]}];
 const writeSecurity=[{type:"oauth2",scopes:["hakim.write"]}];
 
+const LIVE_PREFLIGHT_VERSION="HAKIM_LIVE_PREFLIGHT_V1";
+const MIN_FIELD_VERSION=20315;
+
 const PUBLIC_READ_CATALOG=[
-  ["get_device_status","status","حالة جهاز حكيم","تحقق من أن جهاز حكيم المرتبط متصل وجاهز دون إرجاع محتوى الشاشة أو الإشعارات أو بيانات شخصية."]
+  ["get_device_status","status","حالة حكيم الحية — ابدأ هنا","هذه هي بوابة البداية لأي مهمة تخص حكيم: افحص الآن الحالة الفعلية الحية قبل أي تحليل أو إجراء. يعيد الإصدار وحالة القناة ومحرك التنفيذ ونقطة الاستمرارية دون محتوى شاشة أو أسرار. لا تعتمد على وصف سابق عندما تتوفر هذه الأداة."]
 ] as const;
 
 const LAN_READ_CATALOG=[
@@ -180,6 +183,74 @@ function buildNetworkPayload(
   return payload;
 }
 
+function livePreflightSummary(result:unknown,requestId:string){
+  const root=(typeof result==="object"&&result!==null)?result as Record<string,unknown>:{};
+  const inner=(typeof root.result==="object"&&root.result!==null)?root.result as Record<string,unknown>:{};
+  const fabric=(typeof inner.execution_fabric==="object"&&inner.execution_fabric!==null)
+    ?inner.execution_fabric as Record<string,unknown>:{};
+  const containment=(typeof inner.fault_containment==="object"&&inner.fault_containment!==null)
+    ?inner.fault_containment as Record<string,unknown>:{};
+
+  const versionCode=typeof inner.version_code==="number"?inner.version_code:0;
+  const packageName=typeof inner.package==="string"?inner.package:"";
+  const relayState=typeof inner.secure_relay_state==="string"?inner.secure_relay_state:"unknown";
+  const relayConnected=inner.secure_relay_connected===true;
+  const fabricState=typeof fabric.state==="string"?fabric.state:"UNKNOWN";
+  const fabricOnline=fabric.online===true;
+  const browserRunning=inner.browser_service_running===true;
+  const selfCheck=typeof inner.self_check==="string"?inner.self_check:"NOT_TESTED";
+  const highImpactBlocked=containment.high_impact_blocked===true;
+  const transportStatus=typeof root.status==="string"?root.status:"complete";
+  const deviceOk=inner.ok!==false&&transportStatus!=="error"&&transportStatus!=="failed";
+
+  const runtimeReady=
+    deviceOk&&
+    packageName==="ps.hakim.stable"&&
+    versionCode>=MIN_FIELD_VERSION&&
+    relayConnected&&
+    relayState==="direct_connected"&&
+    fabricOnline&&
+    fabricState==="ONLINE"&&
+    selfCheck!=="FAIL_CLOSED";
+
+  return {
+    preflight_version:LIVE_PREFLIGHT_VERSION,
+    request_id:requestId,
+    observed_at_ms:Date.now(),
+    fresh:true,
+    runtime_ready:runtimeReady,
+    action_ready:runtimeReady&&!highImpactBlocked,
+    minimum_field_version:MIN_FIELD_VERSION,
+    device:{
+      package:packageName,
+      version_code:versionCode,
+      version_name:typeof inner.version_name==="string"?inner.version_name:"",
+      secure_relay_state:relayState,
+      secure_relay_connected:relayConnected,
+      browser_service_running:browserRunning,
+      execution_fabric:{
+        state:fabricState,
+        online:fabricOnline
+      },
+      fault_containment:{
+        high_impact_blocked:highImpactBlocked,
+        recovery_required:containment.recovery_required===true
+      },
+      self_check:selfCheck
+    },
+    reason:
+      !result?"status_timeout":
+      !deviceOk?"device_status_failed":
+      packageName!=="ps.hakim.stable"?"package_mismatch":
+      versionCode<MIN_FIELD_VERSION?"field_version_below_minimum":
+      !relayConnected||relayState!=="direct_connected"?"secure_relay_not_live":
+      !fabricOnline||fabricState!=="ONLINE"?"execution_fabric_not_online":
+      selfCheck==="FAIL_CLOSED"?"self_check_fail_closed":
+      highImpactBlocked?"high_impact_blocked":
+      "ready"
+  };
+}
+
 function limitedStatus(result:unknown,requestId:string){
   if(result===null||result===undefined) return {ok:false,status:"pending",request_id:requestId};
   const root=(typeof result==="object"&&result!==null)?result as Record<string,unknown>:{};
@@ -209,6 +280,38 @@ function limitedRequestResult(result:unknown,requestId:string){
 
 export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   const readCatalog=activeReadCatalog(publicSafe);
+
+  const fetchLivePreflight=async()=>{
+    if(reviewMode){
+      return {
+        preflight_version:LIVE_PREFLIGHT_VERSION,
+        observed_at_ms:Date.now(),
+        fresh:true,
+        runtime_ready:true,
+        action_ready:true,
+        minimum_field_version:MIN_FIELD_VERSION,
+        demo:true,
+        device:{package:"ps.hakim.stable",version_code:MIN_FIELD_VERSION,secure_relay_state:"direct_connected",secure_relay_connected:true,execution_fabric:{state:"ONLINE",online:true},fault_containment:{high_impact_blocked:false},self_check:"PASS"},
+        reason:"ready"
+      };
+    }
+    const requestId=await publishCommand(credential,"status",{});
+    const result=await pollResult(credential,requestId,8_000);
+    return livePreflightSummary(result,requestId);
+  };
+
+  const blockOnPreflight=(preflight:ReturnType<typeof livePreflightSummary>|Record<string,unknown>,purpose:string)=>{
+    const actionReady=(preflight as {action_ready?:unknown}).action_ready===true;
+    if(actionReady) return null;
+    return text({
+      ok:false,
+      status:"blocked",
+      error:"hakim_live_preflight_failed",
+      purpose,
+      preflight,
+      rule:"No device mutation may run from stale or unverified Hakim state. Re-check live state first."
+    });
+  };
   const readTools=readCatalog.map(([name,_op,title,description])=>({
     name,title,description:governedReadDescription(description),
     inputSchema:{type:"object",properties:{},additionalProperties:false},
@@ -418,16 +521,38 @@ export function createHakimServer(
         device:{name:"Hakim Review Device",connected:true},
         ...(publicSafe?{privacy:"content_redacted"}:{message:"Safe reviewer fixture; no real device was accessed."})
       },name));
+      if(internalOp!=="status"){
+        const preflight=await fetchLivePreflight();
+        if((preflight as {runtime_ready?:unknown}).runtime_ready!==true){
+          return text({
+            ok:false,
+            status:"blocked",
+            error:"hakim_live_preflight_failed",
+            purpose:name,
+            preflight,
+            rule:"Read current Hakim runtime state before any device read."
+          });
+        }
+      }
       const requestId=await remember(await publishCommand(credential,internalOp as HakimOp,{}),internalOp as HakimOp);
       const result=await observe(requestId,await pollResult(credential,requestId,8_000));
-      if(publicSafe&&name==="get_device_status") return text(tagExternalData(limitedStatus(result,requestId),name));
+      if(publicSafe&&name==="get_device_status"){
+        const preflight=livePreflightSummary(result,requestId);
+        const continuity=await continuityStore.state(credential);
+        return text(tagExternalData({
+          ...limitedStatus(result,requestId),
+          preflight,
+          continuity,
+          rule:"Treat this live state as authoritative for the current turn. Before every later device mutation, Hakim re-runs this preflight internally."
+        },name));
+      }
       return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
   }
 
   server.registerTool("open_target",{
     title:"فتح تطبيق أو رابط",
-    description:"اطلب فتح تطبيق أو رابط على جهاز حكيم. approval_requested ليس نجاحًا أو اكتمالًا؛ الأثر يحتاج نتيجة لاحقة من الجهاز.",
+    description:"اطلب فتح تطبيق أو رابط على جهاز حكيم. الجسر يفرض فحصًا حيًا جديدًا للحالة قبل الإجراء؛ إذا كانت الحالة قديمة أو القناة/محرك التنفيذ غير جاهزين يُحظر الإجراء. approval_requested ليس نجاحًا أو اكتمالًا.",
     inputSchema:{package:z.string().max(255).optional(),url:z.string().url().optional()},
     annotations:OPEN_ANNOTATIONS
   },async({package:pkg,url})=>{
@@ -441,6 +566,9 @@ export function createHakimServer(
       if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
     }
     if(reviewMode) return text(actionRequested(reviewId(),{demo:true,note:"No real device action occurs in reviewer mode."}));
+    const preflight=await fetchLivePreflight();
+    const preflightBlock=blockOnPreflight(preflight,"open_target");
+    if(preflightBlock) return preflightBlock;
     const requestId=await remember(
       await publishCommand(credential,"launch",{package:hasPkg?pkg!.trim():"",url:hasUrl?url!.trim():""}),
       "launch"
@@ -451,12 +579,15 @@ export function createHakimServer(
   if(publicSafe){
     server.registerTool("navigate_device",{
       title:"تنقل آمن على الجهاز",
-      description:"نفّذ فقط home أو back أو recents بعد موافقة أندرويد.",
+      description:"نفّذ فقط home أو back أو recents بعد موافقة أندرويد. الجسر يفرض فحص الحالة الحية أولًا ولا يعتمد على حالة من محادثة سابقة.",
       inputSchema:{kind:z.enum(PUBLIC_NAV_KINDS)},
       annotations:NAV_ANNOTATIONS
     },async({kind})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       if(reviewMode) return text(actionRequested(reviewId(),{demo:true,validated_action:kind,note:"No real device action occurs in reviewer mode."}));
+      const preflight=await fetchLivePreflight();
+      const preflightBlock=blockOnPreflight(preflight,"navigate_device");
+      if(preflightBlock) return preflightBlock;
       const requestId=await remember(await publishCommand(credential,"action",{action:kind}),"action");
       return text(actionRequested(requestId,{validated_action:kind}));
     });
@@ -473,6 +604,9 @@ export function createHakimServer(
         const id=reviewId();
         return text(actionRequested(id,{demo:true,request_id:id,validated_action:payload.action,note:"No real device action occurs in reviewer mode."}));
       }
+      const preflight=await fetchLivePreflight();
+      const preflightBlock=blockOnPreflight(preflight,"perform_ui_action");
+      if(preflightBlock) return preflightBlock;
       const requestId=await remember(await publishCommand(credential,"action",payload),"action");
       return text(actionRequested(requestId,{request_id:requestId,validated_action:payload.action}));
     });
@@ -490,6 +624,9 @@ export function createHakimServer(
     },async({device_id,adapter})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,adapter:"adb"}));
+      const preflight=await fetchLivePreflight();
+      const preflightBlock=blockOnPreflight(preflight,"authorize_network_device");
+      if(preflightBlock) return preflightBlock;
       const requestId=await remember(
         await publishCommand(credential,"network_authorize",{device_id,adapter:adapter??"adb"}),
         "network_authorize"
@@ -511,6 +648,9 @@ export function createHakimServer(
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       const payload=buildNetworkPayload(device_id,action,url,pkg);
       if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,validated_action:action}));
+      const preflight=await fetchLivePreflight();
+      const preflightBlock=blockOnPreflight(preflight,"control_network_device");
+      if(preflightBlock) return preflightBlock;
       const requestId=await remember(await publishCommand(credential,"network_control",payload),"network_control");
       return text(actionRequested(requestId,{device_id,validated_action:action}));
     });
@@ -525,6 +665,9 @@ export function createHakimServer(
     },async({device_id,adapter})=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
       if(reviewMode) return text(actionRequested(reviewId(),{demo:true,device_id,adapter:"adb",validated_action:"revoke"}));
+      const preflight=await fetchLivePreflight();
+      const preflightBlock=blockOnPreflight(preflight,"revoke_network_device");
+      if(preflightBlock) return preflightBlock;
       const requestId=await remember(
         await publishCommand(credential,"network_revoke",{device_id,adapter:adapter??"adb"}),
         "network_revoke"

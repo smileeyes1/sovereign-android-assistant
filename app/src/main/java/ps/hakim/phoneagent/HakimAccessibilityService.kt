@@ -51,6 +51,54 @@ class HakimAccessibilityService : AccessibilityService() {
         return arr
     }
 
+
+    fun isActivePackage(expectedPackage: String): Boolean {
+        if (expectedPackage.isBlank()) return false
+        return rootInActiveWindow?.packageName?.toString() == expectedPackage
+    }
+
+    fun uiSnapshotForPackage(expectedPackage: String, limit: Int = 250): JSONArray {
+        if (!isActivePackage(expectedPackage)) return JSONArray()
+        return uiSnapshot(limit)
+    }
+
+    fun clickTextWithinPackage(expectedPackage: String, text: String): Boolean {
+        if (!isActivePackage(expectedPackage)) return false
+        return clickText(text)
+    }
+
+    fun setTextFirstEditableWithinPackage(expectedPackage: String, value: String): Boolean {
+        if (!isActivePackage(expectedPackage) || value.isBlank()) return false
+        val root = rootInActiveWindow ?: return false
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val n = queue.removeFirst()
+            if (n.packageName?.toString() == expectedPackage && n.isEditable && !isSensitive(n)) {
+                val b = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value)
+                }
+                if (n.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b)) return true
+            }
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
+        }
+        return false
+    }
+
+    fun scrollWithinPackage(expectedPackage: String, forward: Boolean): Boolean {
+        if (!isActivePackage(expectedPackage)) return false
+        val root = rootInActiveWindow ?: return false
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        while (queue.isNotEmpty()) {
+            val n = queue.removeFirst()
+            if (n.packageName?.toString() == expectedPackage && n.isScrollable && n.performAction(action)) return true
+            for (i in 0 until n.childCount) n.getChild(i)?.let { queue.add(it) }
+        }
+        return false
+    }
+
     fun action(obj: JSONObject): Boolean = when (obj.optString("action")) {
         "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
         "back" -> performGlobalAction(GLOBAL_ACTION_BACK)

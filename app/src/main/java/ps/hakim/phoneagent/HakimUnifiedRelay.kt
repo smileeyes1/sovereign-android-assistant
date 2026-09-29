@@ -49,8 +49,8 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "chatgpt_read")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "chatgpt_action")
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()
 
@@ -400,6 +400,8 @@ object HakimUnifiedRelay {
                 val ok = HakimAccessibilityService.instance?.action(payload) == true
                 JSONObject().put("ok", ok).put("error", if (ok) JSONObject.NULL else "action_failed")
             }
+            "chatgpt_read" -> HakimChatGptController.read(context, payload)
+            "chatgpt_action" -> HakimChatGptController.action(context, payload)
             "launch" -> launch(context, payload)
             else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
         }

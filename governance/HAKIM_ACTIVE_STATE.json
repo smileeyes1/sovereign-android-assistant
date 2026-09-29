@@ -30,12 +30,13 @@
     "candidate": {
       "version_code": 20315,
       "branch": "release/hakim-20315-fieldline-autonomy-candidate",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SUCCESS_RUN_36606143472",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "chatgpt_autonomy_fault_containment_coherent_relay_status"
+      "purpose": "chatgpt_autonomy_fault_containment_coherent_relay_status",
+      "source_ci_verified": true
     },
     "field_observed_current": {
       "observed_at": "2026-09-29",
@@ -163,7 +164,7 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+    "signed_candidate_sha256": "43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491",
     "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
@@ -171,7 +172,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk",
+    "signed_candidate_file": "HAKIM-20315-D1-AUTONOMY.apk",
     "install_relation": "UPGRADE_FROM_VERIFIED_20313_TO_20315",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
@@ -181,7 +182,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20313,
+    "signed_candidate_version": 20315,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,
@@ -247,10 +248,10 @@
     "cross_session_continuity_cloud_verified": true,
     "cross_session_continuity_android_field_verified": false,
     "same_signed_apk_field_verified": false,
-    "release_source_tested_head": "",
+    "release_source_tested_head": "7bce31720b39bd6e3fd7134a67658eb25ea966b2",
     "release_merge_commit": "",
-    "release_ci_run_id": null,
-    "release_ci_artifact_id": null,
+    "release_ci_run_id": 36606143472,
+    "release_ci_artifact_id": 11051412509,
     "professional_observability_runtime_field_verified": false,
     "professional_observability_visual_field_verified": false,
     "chatgpt_control_source_integrated": true,
@@ -258,13 +259,17 @@
     "chatgpt_control_scope": "chatgpt.com_only",
     "chatgpt_control_storage": "encrypted_titles_and_conversation_links_only",
     "chatgpt_destructive_actions_exposed": false,
-    "chatgpt_control_source_ci_verified": false,
+    "chatgpt_control_source_ci_verified": true,
     "fault_containment_source_integrated": true,
     "fault_containment_field_verified": false,
     "high_impact_fault_gate": true,
     "silent_exception_policy": "critical_paths_recorded_bounded_and_fail_closed",
     "repeated_failure_policy": "circuit_breaker_then_reroute_or_wait",
     "coherent_relay_status_source_integrated": true,
-    "coherent_relay_status_field_verified": false
+    "coherent_relay_status_field_verified": false,
+    "signed_candidate_origin": "PRIVATE_LOCAL_D1_SIGNING_FROM_EXACT_CI_UNSIGNED",
+    "fault_containment_source_ci_verified": true,
+    "coherent_relay_status_source_ci_verified": true,
+    "field_install_pending": true
   }
 }

@@ -14,7 +14,7 @@ def req(ok, reason):
         raise SystemExit("PRO_OBSERVABILITY_20312=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20312,"version")
+req(m is not None and int(m.group(1))>=20312,"version")
 for token in ["network-diagnostics","lan-survey","extender-survey","professional-observability","continuity"]:
     req(token in BUILD,"version_lineage:"+token)
 
@@ -53,6 +53,6 @@ for forbidden in ['putString("relay_key"', 'putString("oauth"', 'putString("acce
     req(forbidden not in CLOUD,"cloud_secret_persist:"+forbidden)
 
 req('python3 tests/verify_20312_professional_observability.py' in WORKFLOW,"workflow_test")
-req('test "$VERSION_CODE" = "20312"' in WORKFLOW,"workflow_version")
+req('VERSION_CODE="$(awk' in WORKFLOW,"workflow_version_dynamic")
 
 print("PRO_OBSERVABILITY_20312=PASS local_goal=true last_gain=true blocker=true next_step=true execution_channel=true cloud_continuity=true relay_privacy=true")

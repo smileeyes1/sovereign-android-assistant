@@ -26,7 +26,7 @@ for token in [
     'fun recordFailure',
     'fun recordSuccess',
     'fun canExecuteHighImpact',
-    '"silent_failures_forbidden"',
+    '"critical_path_silent_failures_forbidden"',
     '"bounded_retry"',
     '"high_impact_fail_closed"',
     '"raw_exception_message_persisted", false',
@@ -44,6 +44,10 @@ req("HakimFaultContainment.guard" in RECOVERY, "recovery_not_guarded")
 req('val containment = HakimFaultContainment.status(context)' in SELF, "self_check_status_missing")
 req('"fault_containment", containment' in SELF, "self_check_report_missing")
 req('"fault_containment_blocked"' in RELAY, "high_impact_gate_missing")
+req('"operation_circuit_open"' in RELAY, "operation_circuit_gate_missing")
+req('HakimFaultContainment.shouldAttempt(context, "remote_op", op)' in RELAY, "operation_circuit_check_missing")
+req('IllegalStateException("operation_result_failed")' in RELAY, "logical_failure_not_counted")
+req('critical = !READ_ONLY_OPS.contains(op)' not in RELAY, "remote_failure_global_deadlock")
 req('HakimFaultContainment.shouldAttempt(context, "secure_relay", "direct_poll")' in RELAY, "relay_circuit_missing")
 req('HakimFaultContainment.recordFailure(context, "secure_relay", "direct_poll"' in RELAY, "relay_failure_record_missing")
 req('.put("fault_containment", HakimFaultContainment.status(context))' in RELAY, "relay_status_missing")
@@ -55,4 +59,4 @@ req(STATE["productization"].get("fault_containment_source_integrated") is True, 
 req(STATE["productization"].get("fault_containment_field_verified") is False, "state_field_claim")
 req(STATE["productization"].get("high_impact_fault_gate") is True, "state_high_impact_gate")
 
-print("FAULT_CONTAINMENT=PASS silent=false bounded_retry=true circuit_breaker=true high_impact_fail_closed=true")
+print("FAULT_CONTAINMENT=PASS critical_silent=false bounded_retry=true circuit_breaker=true high_impact_fail_closed=true")

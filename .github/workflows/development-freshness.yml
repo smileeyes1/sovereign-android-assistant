@@ -1,0 +1,25 @@
+name: Hakim cross-conversation freshness guard
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hakim-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact work
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject stale conversation baseline
+        run: python3 scripts/verify-development-freshness.py

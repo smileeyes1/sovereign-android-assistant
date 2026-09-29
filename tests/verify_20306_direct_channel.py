@@ -28,6 +28,9 @@ for token in [
     'HakimHealthBeacon.sendAsync',
     '"https://ntfy.sh/"',
     'HakimSecretStore.put(context, SECRET_RELAY_KEY',
+    'if (!liveConnected && persistedRelayState == "direct_connected")',
+    '.put("secure_relay_state", coherentRelayState)',
+    '.put("secure_relay_connected", liveConnected)',
 ]:
     req(token in RELAY,"relay:"+token)
 

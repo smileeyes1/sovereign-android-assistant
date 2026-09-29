@@ -1,4 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
+# 20316 exact-head CI retrigger after Play Protect gate formatting fix
 
 on:
   push:

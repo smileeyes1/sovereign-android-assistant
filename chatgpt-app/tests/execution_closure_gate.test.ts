@@ -11,15 +11,26 @@ function literalPublishOps(source:string){
   return [...source.matchAll(/publishCommand\(credential,"([^"]+)"/g)].map(m=>m[1]);
 }
 
+const EFFECTFUL_OPS=new Set([
+  "launch","action","network_authorize","network_control","network_revoke"
+]);
+
 test("all model-facing literal mutation dispatches are an explicit frozen allowlist",()=>{
   assert.deepEqual(
-    literalPublishOps(server),
+    literalPublishOps(server).filter(op=>EFFECTFUL_OPS.has(op)),
     ["launch","action","action","network_authorize","network_control","network_revoke"]
   );
   assert.deepEqual(
-    literalPublishOps(index),
+    literalPublishOps(index).filter(op=>EFFECTFUL_OPS.has(op)),
     ["launch","action"]
   );
+});
+
+test("video planning remains an explicit read-only dispatch",()=>{
+  assert.ok(literalPublishOps(server).includes("video_plan"));
+  assert.equal(EFFECTFUL_OPS.has("video_plan"),false);
+  const relay=fs.readFileSync(path.join(root,"src/relay.ts"),"utf8");
+  assert.match(relay,/DEFERRED_READ_OPS=new Set<HakimOp>\([^\n]*"video_capabilities","video_plan"/);
 });
 
 test("every MCP mutation dispatch is guarded by live preflight in the same handler",()=>{

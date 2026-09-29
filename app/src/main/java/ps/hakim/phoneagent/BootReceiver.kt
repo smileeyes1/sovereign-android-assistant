@@ -19,6 +19,13 @@ class BootReceiver : BroadcastReceiver() {
         HakimGoalSupervisor.resume(context)
         HakimGoalExecutor.tick(context)
         HakimSelfCheck.schedule(context)
+        HakimFaultContainment.guard(context, "boot", "auto_update_schedule") {
+            AutoUpdater.schedule(context)
+        }
+        HakimFaultContainment.guard(context, "boot", "auto_update_realtime") {
+            AutoUpdater.startRealtimeListener(context)
+        }
+        AutoUpdater.checkAsync(context)
         HakimExecutionFabric.recover(context, "boot_or_replace")
         HakimResilienceAlarmReceiver.schedule(context, 90_000L)
         HakimRelayWatchdog.install(context)

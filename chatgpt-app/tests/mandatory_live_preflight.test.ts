@@ -5,19 +5,21 @@ import path from "node:path";
 
 const root=path.resolve(import.meta.dirname,"..");
 const server=fs.readFileSync(path.join(root,"src/server.ts"),"utf8");
+const preflight=fs.readFileSync(path.join(root,"src/live-preflight.ts"),"utf8");
 
 test("Hakim requires fresh live state before device operations",()=>{
-  assert.match(server,/LIVE_PREFLIGHT_VERSION="HAKIM_LIVE_PREFLIGHT_V1"/);
-  assert.match(server,/MIN_FIELD_VERSION=20315/);
-  assert.match(server,/const fetchLivePreflight=async\(\)=>/);
-  assert.match(server,/publishCommand\(credential,"status",\{\}\)/);
-  assert.match(server,/pollResult\(credential,requestId,8_000\)/);
-  assert.match(server,/packageName==="ps\.hakim\.stable"/);
-  assert.match(server,/versionCode>=MIN_FIELD_VERSION/);
-  assert.match(server,/relayState==="direct_connected"/);
-  assert.match(server,/fabricState==="ONLINE"/);
-  assert.match(server,/selfCheck!=="FAIL_CLOSED"/);
-  assert.match(server,/action_ready:runtimeReady&&!highImpactBlocked/);
+  assert.match(preflight,/LIVE_PREFLIGHT_VERSION="HAKIM_LIVE_PREFLIGHT_V1"/);
+  assert.match(preflight,/MIN_FIELD_VERSION=20315/);
+  assert.match(preflight,/export async function fetchLivePreflight/);
+  assert.match(preflight,/publishCommand\(credential,"status",\{\}\)/);
+  assert.match(preflight,/pollResult\(credential,requestId,8_000\)/);
+  assert.match(preflight,/packageName==="ps\.hakim\.stable"/);
+  assert.match(preflight,/versionCode>=MIN_FIELD_VERSION/);
+  assert.match(preflight,/relayState==="direct_connected"/);
+  assert.match(preflight,/fabricState==="ONLINE"/);
+  assert.match(preflight,/selfCheck!=="FAIL_CLOSED"/);
+  assert.match(preflight,/action_ready:runtimeReady&&!highImpactBlocked/);
+  assert.match(server,/fetchLivePreflight\(credential,reviewMode\)/);
 });
 
 test("every device mutation is guarded by mandatory preflight",()=>{

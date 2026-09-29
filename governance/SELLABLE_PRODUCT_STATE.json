@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20313,
-  "candidate_name": "3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-field-acceptance-v1",
+  "candidate_version": 20315,
+  "candidate_name": "3.4.0-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-v1",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -96,6 +96,6 @@
   "professional_observability_visual_field_verified": false,
   "field_acceptance_source_verified": true,
   "field_acceptance_field_verified": false,
-  "verified_parent_version": 20312,
-  "verified_parent_same_artifact_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0"
+  "verified_parent_version": 20313,
+  "verified_parent_same_artifact_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19"
 }

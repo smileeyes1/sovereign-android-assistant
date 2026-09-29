@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-28",
+  "snapshot_date": "2026-09-29",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -27,14 +27,14 @@
       "field_verified": true
     },
     "candidate": {
-      "version_code": 20312,
-      "branch": "release/hakim-20312-professional-candidate",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
-      "field_verified": true,
-      "same_signed_apk_field_verified": true,
+      "version_code": 20313,
+      "branch": "release/hakim-20313-chatgpt-control-candidate",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "field_verified": false,
+      "same_signed_apk_field_verified": false,
       "promoted": false,
-      "control_channel_field_verified": true,
-      "purpose": "professional_local_operation_observability_and_cross_session_continuity"
+      "control_channel_field_verified": false,
+      "purpose": "scoped_chatgpt_web_history_index_read_navigation_and_approved_send"
     },
     "field_observed_current": {
       "observed_at": "2026-09-28",
@@ -129,7 +129,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "FIELD_BASELINE_ACCEPTED_PRODUCT_PROMOTION_STILL_GATED",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20313_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -170,7 +170,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20312,
+    "candidate_version": 20313,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -263,12 +263,17 @@
     "professional_observability_field_verified": false,
     "cross_session_continuity_cloud_verified": true,
     "cross_session_continuity_android_field_verified": true,
-    "same_signed_apk_field_verified": true,
+    "same_signed_apk_field_verified": false,
     "release_source_tested_head": "1769585409850130935847a48ecfc9344862417f",
     "release_merge_commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
     "release_ci_run_id": 36378301981,
     "release_ci_artifact_id": 10951292910,
     "professional_observability_runtime_field_verified": true,
-    "professional_observability_visual_field_verified": false
+    "professional_observability_visual_field_verified": false,
+    "chatgpt_control_source_integrated": true,
+    "chatgpt_control_field_verified": false,
+    "chatgpt_control_scope": "chatgpt.com_only",
+    "chatgpt_control_storage": "encrypted_titles_and_conversation_links_only",
+    "chatgpt_destructive_actions_exposed": false
   }
 }

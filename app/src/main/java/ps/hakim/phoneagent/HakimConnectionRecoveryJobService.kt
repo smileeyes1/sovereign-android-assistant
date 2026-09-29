@@ -12,7 +12,7 @@ class HakimConnectionRecoveryJobService : JobService() {
                     HakimConnectionResilience.recover(app, "periodic_watchdog")
                     HakimConstraintDoctor.run(app, "periodic_watchdog")
                     HakimSelfCheck.runAsync(app)
-                    HakimSelfImprovementLoop.scheduleEvaluation(app, "periodic_watchdog")
+                    HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
                 }
             } finally {
                 jobFinished(params, false)

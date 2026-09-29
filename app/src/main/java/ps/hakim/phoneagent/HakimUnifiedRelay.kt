@@ -547,6 +547,16 @@ object HakimUnifiedRelay {
 
     private fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val liveConnected = isConnected()
+        val persistedRelayState = p.getString("secure_relay_state", "unknown") ?: "unknown"
+        // SharedPreferences.apply() is asynchronous, while the live flag changes
+        // immediately. Never publish the stale impossible pair
+        // direct_connected + connected=false during a recovery transition.
+        val coherentRelayState = if (!liveConnected && persistedRelayState == "direct_connected") {
+            "direct_recovering"
+        } else {
+            persistedRelayState
+        }
         val packageInfo = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
         val version = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) packageInfo?.longVersionCode ?: 0L
         else @Suppress("DEPRECATION") packageInfo?.versionCode?.toLong() ?: 0L
@@ -558,10 +568,10 @@ object HakimUnifiedRelay {
             .put("version_name", packageInfo?.versionName.orEmpty())
             .put("single_app", true)
             .put("secure_relay", isConfigured(context))
-            .put("secure_relay_state", p.getString("secure_relay_state", "unknown"))
+            .put("secure_relay_state", coherentRelayState)
             .put("direct_bridge", true)
             .put("secure_relay_running", isRunning())
-            .put("secure_relay_connected", isConnected())
+            .put("secure_relay_connected", liveConnected)
             .put("operation", HakimExecutiveLoop.publicStatus(context))
             .put("cloud_continuity", HakimCloudContinuity.publicStatus(context))
             .put("browser_service_running", HakimService.running)

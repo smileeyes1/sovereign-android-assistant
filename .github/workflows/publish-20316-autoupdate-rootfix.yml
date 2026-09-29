@@ -39,9 +39,12 @@ jobs:
       - name: إعادة تركيب APK D1 المطابق بلا مفتاح خاص
         run: |
           set -euo pipefail
+          curl --fail --location --silent --show-error \
+            "https://raw.githubusercontent.com/smileeyes1/sovereign-android-assistant/aeab76b44dff4af1f5228bc040d6012d06ae4810/release-control/20315-autonomy-signing-block.b64" \
+            -o /tmp/20315-autonomy-signing-block.b64
           python3 tools/reconstruct_20316_autoupdate_rootfix.py \
             /tmp/hakim-ci/release/app-release-unsigned.apk \
-            release-control/20316-autoupdate-rootfix-signing-block.b64 \
+            /tmp/20315-autonomy-signing-block.b64 \
             /tmp/HAKIM-20316-D1-AUTOUPDATE-ROOTFIX.apk
           python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20316-D1-AUTOUPDATE-ROOTFIX.apk
           echo "383f356a66ac171caabc105a68fe7c89a035ddad55da7310aae014b119e6faa8  /tmp/HAKIM-20316-D1-AUTOUPDATE-ROOTFIX.apk" | sha256sum -c -

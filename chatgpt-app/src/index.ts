@@ -74,6 +74,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         browser_service_running?:unknown;
         execution_fabric?:Record<string,unknown>;
         network_diagnostics?:Record<string,unknown>;
+        auto_update?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
@@ -86,6 +87,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const result=decoded.result;
     const fabric=result?.execution_fabric;
     const diagnostics=result?.network_diagnostics;
+    const autoUpdate=result?.auto_update;
     const safe={
       event:"hakim_status_probe",
       ok:flag(result?.ok),
@@ -104,7 +106,22 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         legacy_connected:flag(fabric?.legacy_connected)
       },
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
-        Object.keys(diagnostics).length>0
+        Object.keys(diagnostics).length>0,
+      auto_update:{
+        state:fixed(autoUpdate?.state,[
+          "unknown","scheduled","checking","up_to_date","update_found","downloading",
+          "verified","ready_in_downloads","push_received","realtime_connected",
+          "realtime_disconnected","realtime_closed","check_network_failed",
+          "check_http_failed","download_failed","download_http_failed",
+          "download_size_mismatch","verify_size_failed","verify_sha_failed",
+          "verify_identity_failed","export_failed"
+        ]),
+        push_seen:typeof autoUpdate?.last_push_at==="number"?autoUpdate.last_push_at>0:null,
+        last_discovered_version:typeof autoUpdate?.last_discovered_version==="number"?
+          autoUpdate.last_discovered_version:null,
+        last_exported_version:typeof autoUpdate?.last_exported_version==="number"?
+          autoUpdate.last_exported_version:null
+      }
     };
     console.log("HAKIM_STATUS_PROBE "+JSON.stringify(safe));
     statusProbeRequests.delete(requestId);

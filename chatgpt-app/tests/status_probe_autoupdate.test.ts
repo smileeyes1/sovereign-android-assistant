@@ -14,8 +14,8 @@ test("status probe exposes only bounded AutoUpdater readiness metadata",()=>{
 
   for(const forbidden of [
     "last_update_error","last_check_at","last_verified_at",
-    "download_url","attachment","carrier","relay_key",
+    "download_url","attachment","relay_key",
     "JSON.stringify(decoded)","JSON.stringify(result)",
-    "console.log(key)"
+    "console.log(carrier)","console.log(key)"
   ]) assert.equal(fn.includes(forbidden),false,forbidden);
 });

@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
-import { continuityStore } from "./continuity-store.js";
+import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
 import {
   SOVEREIGN_GOVERNANCE_VERSION,actionRequested,governedReadDescription,
   tagDeviceEvidence,tagExternalData
@@ -428,7 +428,8 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
         last_verified:{type:"string",maxLength:280},
         next_step:{type:"string",maxLength:280},
         blocker:{type:"string",maxLength:220},
-        status:{type:"string",enum:["active","waiting","blocked","complete","cancelled"]}
+        status:{type:"string",enum:["active","waiting","blocked","complete","cancelled"]},
+        expected_revision:{type:"integer",minimum:0}
       },
       required:["goal_label","stage","status"],
       additionalProperties:false
@@ -709,7 +710,8 @@ export function createHakimServer(
       last_verified:z.string().max(280).optional(),
       next_step:z.string().max(280).optional(),
       blocker:z.string().max(220).optional(),
-      status:z.enum(["active","waiting","blocked","complete","cancelled"])
+      status:z.enum(["active","waiting","blocked","complete","cancelled"]),
+      expected_revision:z.number().int().min(0).optional()
     },
     annotations:CHECKPOINT_ANNOTATIONS
   },async(input)=>{
@@ -721,15 +723,30 @@ export function createHakimServer(
       persisted:false,
       privacy:"content_redacted"
     });
-    const checkpoint=await continuityStore.saveCheckpoint(credential,input);
-    return text({
-      ok:true,
-      persisted:true,
-      goal_id:checkpoint.goal_id,
-      status:checkpoint.status,
-      updated_at_ms:checkpoint.updated_at_ms,
-      privacy:"checkpoint_metadata_only"
-    });
+    try{
+      const checkpoint=await continuityStore.saveCheckpoint(credential,input);
+      return text({
+        ok:true,
+        persisted:true,
+        goal_id:checkpoint.goal_id,
+        status:checkpoint.status,
+        checkpoint_revision:checkpoint.checkpoint_revision,
+        updated_at_ms:checkpoint.updated_at_ms,
+        privacy:"checkpoint_metadata_only"
+      });
+    }catch(e){
+      if(e instanceof ContinuityRevisionConflict){
+        return text({
+          ok:false,
+          persisted:false,
+          conflict:true,
+          error:"continuity_revision_conflict",
+          current_revision:e.current_revision,
+          recovery:"Re-read get_continuation_state, reconcile the newer checkpoint, then retry with its checkpoint_revision."
+        });
+      }
+      throw e;
+    }
   });
 
   server.registerTool("get_request_result",{

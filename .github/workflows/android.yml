@@ -2,7 +2,7 @@ name: بناء تطبيق حكيم الهاتف
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -82,7 +82,7 @@ jobs:
           python3 tests/verify_20311_extender_survey.py
           python3 tests/verify_20312_professional_observability.py
           python3 tests/verify_20313_chatgpt_control.py
-          python3 tests/verify_20315_autonomy.py
+          python3 tests/verify_20315_autonomy.py\n          python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py
@@ -145,7 +145,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20315"
+          test "$VERSION_CODE" = "20316"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

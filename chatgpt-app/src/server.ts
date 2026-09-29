@@ -281,37 +281,6 @@ function limitedRequestResult(result:unknown,requestId:string){
 export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   const readCatalog=activeReadCatalog(publicSafe);
 
-  const fetchLivePreflight=async()=>{
-    if(reviewMode){
-      return {
-        preflight_version:LIVE_PREFLIGHT_VERSION,
-        observed_at_ms:Date.now(),
-        fresh:true,
-        runtime_ready:true,
-        action_ready:true,
-        minimum_field_version:MIN_FIELD_VERSION,
-        demo:true,
-        device:{package:"ps.hakim.stable",version_code:MIN_FIELD_VERSION,secure_relay_state:"direct_connected",secure_relay_connected:true,execution_fabric:{state:"ONLINE",online:true},fault_containment:{high_impact_blocked:false},self_check:"PASS"},
-        reason:"ready"
-      };
-    }
-    const requestId=await publishCommand(credential,"status",{});
-    const result=await pollResult(credential,requestId,8_000);
-    return livePreflightSummary(result,requestId);
-  };
-
-  const blockOnPreflight=(preflight:ReturnType<typeof livePreflightSummary>|Record<string,unknown>,purpose:string)=>{
-    const actionReady=(preflight as {action_ready?:unknown}).action_ready===true;
-    if(actionReady) return null;
-    return text({
-      ok:false,
-      status:"blocked",
-      error:"hakim_live_preflight_failed",
-      purpose,
-      preflight,
-      rule:"No device mutation may run from stale or unverified Hakim state. Re-check live state first."
-    });
-  };
   const readTools=readCatalog.map(([name,_op,title,description])=>({
     name,title,description:governedReadDescription(description),
     inputSchema:{type:"object",properties:{},additionalProperties:false},
@@ -509,6 +478,38 @@ export function createHakimServer(
     return result;
   };
   const readCatalog=activeReadCatalog(publicSafe);
+
+  const fetchLivePreflight=async()=>{
+    if(reviewMode){
+      return {
+        preflight_version:LIVE_PREFLIGHT_VERSION,
+        observed_at_ms:Date.now(),
+        fresh:true,
+        runtime_ready:true,
+        action_ready:true,
+        minimum_field_version:MIN_FIELD_VERSION,
+        demo:true,
+        device:{package:"ps.hakim.stable",version_code:MIN_FIELD_VERSION,secure_relay_state:"direct_connected",secure_relay_connected:true,execution_fabric:{state:"ONLINE",online:true},fault_containment:{high_impact_blocked:false},self_check:"PASS"},
+        reason:"ready"
+      };
+    }
+    const requestId=await publishCommand(credential,"status",{});
+    const result=await pollResult(credential,requestId,8_000);
+    return livePreflightSummary(result,requestId);
+  };
+
+  const blockOnPreflight=(preflight:ReturnType<typeof livePreflightSummary>|Record<string,unknown>,purpose:string)=>{
+    const actionReady=(preflight as {action_ready?:unknown}).action_ready===true;
+    if(actionReady) return null;
+    return text({
+      ok:false,
+      status:"blocked",
+      error:"hakim_live_preflight_failed",
+      purpose,
+      preflight,
+      rule:"No device mutation may run from stale or unverified Hakim state. Re-check live state first."
+    });
+  };
 
   for(const [name,internalOp,title,description] of readCatalog){
     server.registerTool(name,{

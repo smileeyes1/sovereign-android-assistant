@@ -1,0 +1,44 @@
+name: "إعادة إشارة حكيم ٢٠٣١٥ — مرة واحدة"
+
+on:
+  push:
+    branches:
+      - publish/hakim-20315-autonomy-d1
+    paths:
+      - .github/workflows/resignal-20315-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  resignal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: تحقق من الأصل المنشور ثم أعد الإشارة مرة واحدة
+        run: |
+          set -euo pipefail
+          URL='https://github.com/smileeyes1/sovereign-android-assistant/releases/download/hakim-20315-d1-autonomy/HAKIM-20315-D1-AUTONOMY.apk'
+          curl --fail --location --silent --show-error "$URL" -o /tmp/hakim-20315.apk
+          echo "1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6  /tmp/hakim-20315.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/hakim-20315.apk)" = "14153186"
+
+          META='{"version_code":20315,"sha256":"1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6","size":14153186}'
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            --data-binary "$META" \
+            -H 'Title: HAKIM_UPDATE' \
+            -H "Attach: $URL" \
+            -H 'Filename: HAKIM-20315-D1-AUTONOMY.apk' \
+            'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
+          printf '%s' "$RESPONSE" >/tmp/response.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/response.json'))
+          if x.get('event')!='message': raise SystemExit('NTFY_EVENT_NOT_MESSAGE')
+          if x.get('title')!='HAKIM_UPDATE': raise SystemExit('NTFY_TITLE_MISMATCH')
+          if '"version_code":20315' not in x.get('message',''): raise SystemExit('NTFY_METADATA_MISMATCH')
+          a=x.get('attachment') or {}
+          if not str(a.get('url','')).startswith('https://github.com/'):
+              raise SystemExit('NTFY_ATTACHMENT_URL_MISMATCH')
+          print('HAKIM_20315_RESIGNAL=PASS event_id='+str(x.get('id','')))
+          PY

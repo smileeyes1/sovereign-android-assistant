@@ -7,7 +7,7 @@ const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
 const DEFERRED_READ_TTL_MS=30*60_000;
 const EFFECT_TTL_MS=60_000;
-const DEFERRED_READ_OPS=new Set<HakimOp>(["status","ui","notifications","screenshot","browser_read","network_devices"]);
+const DEFERRED_READ_OPS=new Set<HakimOp>(["status","ui","notifications","screenshot","browser_read","network_devices","video_capabilities","video_plan"]);
 
 // Latest Android 16 / TECNO LJ6 field evidence showed that a background poll can
 // be cancelled at ~3.25s in a constrained background state. Return at 2s to keep

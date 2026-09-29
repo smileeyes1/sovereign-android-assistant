@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-28",
+  "snapshot_date": "2026-09-29",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -20,33 +20,32 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20312,
-      "commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
-      "ci_run_number": 1200,
+      "version_code": 20313,
+      "commit": "a882a24c5d3e7cf23a795ac8824ddc57a9bc3b76",
+      "ci_run_number": 1224,
       "source_ci_verified": true,
-      "field_verified": true,
-      "exact_apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0"
+      "field_verified": true
     },
     "candidate": {
-      "version_code": 20313,
-      "branch": "feature/hakim-field-acceptance-20313",
+      "version_code": 20315,
+      "branch": "release/hakim-20315-autonomy-field-candidate",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "bounded_synthetic_field_acceptance"
+      "purpose": "chatgpt_autonomy_fault_containment_coherent_relay_status"
     },
     "field_observed_current": {
-      "observed_at": "2026-09-28",
-      "version_code": 20312,
-      "version_name": "3.3.8-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-v1",
-      "apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+      "observed_at": "2026-09-29",
+      "version_code": 20313,
+      "version_name": "3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-field-acceptance-v1",
+      "apk_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": true,
-      "recovery_state": "healthy",
-      "evidence": "authenticated_health_hash_and_status_probe_version_20312",
+      "recovery_state": "healthy_observed_with_uncontrolled_gaps",
+      "evidence": "authenticated_health_hash_and_status_probe_version_20313",
       "current_signer_reobserved": true,
       "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_artifact",
       "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
@@ -61,42 +60,24 @@
     "execution_fabric_field_online": true,
     "production_bridge_contract": "hakim-direct-https-v1+relay_result_topic+HR1+encrypted_ntfy_fallback",
     "current_installed_field_transport": {
-      "observed_at": "2026-09-28",
+      "observed_at": "2026-09-29",
       "status": "ONLINE_VERIFIED",
       "transport": "hakim-direct-https-v1",
       "preserve_pairing": true,
       "authentication": "ACCEPTED",
       "evidence": {
-        "production_bridge_commit": "e1c5d8760490f2d035966d7ea0883b23f71afb13",
+        "production_bridge_commit": "8ed3b19e800445c2b82ca9052375353b34ee6fc8",
         "device_user_agent": "Dalvik/2.1.0 Android 16 TECNO LJ6",
-        "installed_version_code": 20312,
-        "installed_apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+        "installed_version_code": 20313,
+        "installed_apk_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
         "exact_signed_artifact_match": true,
+        "signer_certificate_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
         "secure_relay_state": "direct_connected",
         "execution_fabric_state": "ONLINE",
-        "cloud_continuity_state": "ready",
-        "operation_state": "completed",
-        "operation_phase": "COMPLETE",
-        "accepted_polls": [
-          {
-            "http_status": 200,
-            "duration_ms": 4243,
-            "timestamp_utc": "2026-09-28T06:02:44.704670734Z"
-          },
-          {
-            "http_status": 204,
-            "duration_ms": 4214,
-            "timestamp_utc": "2026-09-28T06:03:16.173563678Z"
-          },
-          {
-            "http_status": 200,
-            "duration_ms": 4267,
-            "timestamp_utc": "2026-09-28T06:08:42.079770545Z"
-          }
-        ],
-        "clean_bridge_reconnect_observed_at_utc": "2026-09-28T06:11:25.041975885Z"
+        "uncontrolled_disconnects_observed": true,
+        "controlled_doze_kill_reboot_suite_verified": false
       },
-      "note": "Hakim 20312 is field-observed on the exact D1-signed APK SHA-256. Secure Relay and execution_fabric were ONLINE, cloud continuity reported ready, four-second polling remained stable, and the phone resumed posting results after the temporary field probe was removed and the clean bridge container replaced it."
+      "note": "Hakim 20313 is field-observed on the exact D1-signed APK SHA-256 and reconnects over the direct HTTPS Secure Relay. Controlled Doze/kill/reboot continuity and ChatGPT-control field acceptance remain separate gates."
     }
   },
   "material_factory": {
@@ -130,7 +111,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_20313_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20315_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -171,7 +152,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20313,
+    "candidate_version": 20315,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -181,16 +162,16 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "NOT_BUILT_YET",
-    "signed_candidate_d1_verified": false,
+    "signed_candidate_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+    "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "NOT_BUILT_YET",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20312_TO_20313",
+    "signed_candidate_file": "HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20313_TO_20315",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -243,7 +224,7 @@
     "sovereign_constitution_source_ci_verified": true,
     "control_channel_primary": "direct_https_secure_relay",
     "control_channel_urgent_recovery": true,
-    "control_channel_field_verified": false,
+    "control_channel_field_verified": true,
     "remote_desktop_commander_required": false,
     "arabic_default_policy_source_integrated": true,
     "arabic_default_policy_field_verified": false,
@@ -263,15 +244,26 @@
     "professional_observability_source_integrated": true,
     "professional_observability_field_verified": false,
     "cross_session_continuity_cloud_verified": true,
-    "cross_session_continuity_android_field_verified": false,
+    "cross_session_continuity_android_field_verified": true,
     "same_signed_apk_field_verified": false,
-    "release_source_tested_head": "PENDING_CURRENT_HEAD_CI",
-    "release_merge_commit": "PENDING",
-    "release_ci_run_id": 0,
-    "release_ci_artifact_id": 0,
-    "professional_observability_runtime_field_verified": false,
+    "release_source_tested_head": "",
+    "release_merge_commit": "",
+    "release_ci_run_id": null,
+    "release_ci_artifact_id": null,
+    "professional_observability_runtime_field_verified": true,
     "professional_observability_visual_field_verified": false,
-    "field_acceptance_source_integrated": true,
-    "field_acceptance_field_verified": false
+    "chatgpt_control_source_integrated": true,
+    "chatgpt_control_field_verified": false,
+    "chatgpt_control_scope": "chatgpt.com_only",
+    "chatgpt_control_storage": "encrypted_titles_and_conversation_links_only",
+    "chatgpt_destructive_actions_exposed": false,
+    "chatgpt_control_source_ci_verified": false,
+    "fault_containment_source_integrated": true,
+    "fault_containment_field_verified": false,
+    "high_impact_fault_gate": true,
+    "silent_exception_policy": "critical_paths_recorded_bounded_and_fail_closed",
+    "repeated_failure_policy": "circuit_breaker_then_reroute_or_wait",
+    "coherent_relay_status_source_integrated": true,
+    "coherent_relay_status_field_verified": false
   }
 }

@@ -80,6 +80,8 @@ test("wrong result key fails closed",()=>{
 test("safe reads survive background sleep while effectful commands stay short-lived",()=>{
   assert.equal(commandTtlMs("status"),30*60_000);
   assert.equal(commandTtlMs("browser_read"),30*60_000);
+  assert.equal(commandTtlMs("video_capabilities"),30*60_000);
+  assert.equal(commandTtlMs("video_plan"),30*60_000);
   assert.equal(commandTtlMs("ui"),30*60_000);
   assert.equal(commandTtlMs("action"),60_000);
   assert.equal(commandTtlMs("launch"),60_000);

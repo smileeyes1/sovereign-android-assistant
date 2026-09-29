@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
-import { ContinuityStore } from "../src/continuity-store.js";
+import { ContinuityRevisionConflict,ContinuityStore } from "../src/continuity-store.js";
 import { createDeviceCredential } from "../src/protocol.js";
 
 async function withDir(fn:(dir:string)=>Promise<void>){
@@ -30,7 +31,9 @@ test("continuity V2 survives a new store instance with work checkpoint",async()=
     await b.init();
     const state=await b.state(c);
     assert.equal(state.durable,true);
-    assert.equal(state.continuity_version,"HAKIM_CONTINUITY_V2");
+    assert.equal(state.continuity_version,"HAKIM_CONTINUITY_V3");
+    assert.match(state.continuity_id,/^hc3-[0-9a-f]{24}$/);
+    assert.equal(state.checkpoint_revision,1);
     assert.equal(state.work?.goal_id,saved.goal_id);
     assert.equal(state.work?.goal_label,"إكمال تقرير المدرسة");
     assert.equal(state.work?.stage,"التحقق");
@@ -166,5 +169,102 @@ test("paired-device topic view returns the same bounded checkpoint",async()=>{
     assert.equal(state.work?.goal_id,saved.goal_id);
     assert.equal(state.work?.goal_label,"متابعة المهمة");
     assert.equal(state.pending_count,0);
+  });
+});
+
+
+test("checkpoint revision prevents a stale conversation from overwriting a newer one",async()=>{
+  await withDir(async dir=>{
+    const c=createDeviceCredential();
+    const store=new ContinuityStore(dir);
+    await store.init();
+    const first=await store.saveCheckpoint(c,{
+      goal_label:"مهمة مشتركة",
+      stage:"المرحلة الأولى",
+      status:"active",
+      expected_revision:0
+    });
+    assert.equal(first.checkpoint_revision,1);
+
+    const second=await store.saveCheckpoint(c,{
+      goal_id:first.goal_id,
+      goal_label:"مهمة مشتركة",
+      stage:"المرحلة الثانية",
+      status:"active",
+      expected_revision:1
+    });
+    assert.equal(second.checkpoint_revision,2);
+
+    await assert.rejects(
+      ()=>store.saveCheckpoint(c,{
+        goal_id:first.goal_id,
+        goal_label:"مهمة مشتركة",
+        stage:"كتابة قديمة",
+        status:"active",
+        expected_revision:1
+      }),
+      (error:unknown)=>{
+        assert.ok(error instanceof ContinuityRevisionConflict);
+        assert.equal(error.current_revision,2);
+        return true;
+      }
+    );
+
+    const state=await store.state(c);
+    assert.equal(state.work?.stage,"المرحلة الثانية");
+    assert.equal(state.checkpoint_revision,2);
+  });
+});
+
+test("V2 journal upgrades in memory without losing checkpoint or operations",async()=>{
+  await withDir(async dir=>{
+    const c=createDeviceCredential();
+    const topicHash=crypto.createHash("sha256").update(c.topic).digest("hex");
+    await fs.writeFile(path.join(dir,topicHash+".json"),JSON.stringify({
+      version:"HAKIM_CONTINUITY_V2",
+      updated_at_ms:Date.now(),
+      work:{
+        goal_id:"goal-v2-upgrade",
+        goal_label:"هدف قديم",
+        stage:"مرحلة محفوظة",
+        last_verified:"تحقق سابق",
+        next_step:"أكمل",
+        blocker:"",
+        status:"active",
+        updated_at_ms:Date.now()
+      },
+      operations:[{
+        request_id:"chatgpt-v2-upgrade-1234",
+        op:"status",
+        status:"pending",
+        created_at_ms:Date.now(),
+        updated_at_ms:Date.now()
+      }]
+    }),"utf8");
+
+    const store=new ContinuityStore(dir);
+    await store.init();
+    const state=await store.state(c);
+    assert.equal(state.continuity_version,"HAKIM_CONTINUITY_V3");
+    assert.equal(state.checkpoint_revision,1);
+    assert.equal(state.work?.goal_label,"هدف قديم");
+    assert.equal(state.pending_count,1);
+  });
+});
+
+test("operation updates do not advance checkpoint revision",async()=>{
+  await withDir(async dir=>{
+    const c=createDeviceCredential();
+    const store=new ContinuityStore(dir);
+    await store.init();
+    const checkpoint=await store.saveCheckpoint(c,{
+      goal_label:"ثبات المراجعة",
+      stage:"تنفيذ",
+      status:"active"
+    });
+    await store.recordRequested(c,"chatgpt-revision-1234","status");
+    await store.recordObserved(c,"chatgpt-revision-1234",{status:"ok"});
+    const state=await store.state(c);
+    assert.equal(state.checkpoint_revision,checkpoint.checkpoint_revision);
   });
 });

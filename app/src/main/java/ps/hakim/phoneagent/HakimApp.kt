@@ -32,6 +32,13 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
             HakimNetworkGuardian.install(this)
         }
+        HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
+            AutoUpdater.schedule(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
+            AutoUpdater.startRealtimeListener(this)
+        }
+        AutoUpdater.checkAsync(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)

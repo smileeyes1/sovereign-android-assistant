@@ -189,7 +189,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20312-D1-FINAL.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20311_TO_20312",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20312_TO_20313",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",

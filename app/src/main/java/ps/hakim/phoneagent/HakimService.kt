@@ -59,6 +59,18 @@ class HakimService : Service() {
         /** Requires the Secure Relay approval and replay guard before entry. */
         fun backActiveBrowser(): JSONObject = activeService?.backBrowser()
             ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
+
+        /** قراءة ChatGPT محصورة في chatgpt.com ولا تتعامل مع حقول الدخول الحساسة. */
+        fun chatGptRead(payload: JSONObject): JSONObject = activeService?.chatGptReadInternal(payload)
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
+
+        /** تنقّل قرائي داخل ChatGPT فقط؛ لا يرسل رسائل ولا يحذف شيئًا. */
+        fun chatGptNavigate(payload: JSONObject): JSONObject = activeService?.chatGptNavigateInternal(payload)
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
+
+        /** أفعال تغيّر حالة حساب ChatGPT، ولا تصل هنا إلا بعد بوابة موافقة Secure Relay. */
+        fun chatGptAction(payload: JSONObject): JSONObject = activeService?.chatGptActionInternal(payload)
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
     }
 
     private val prefs by lazy { getSharedPreferences("hakim", MODE_PRIVATE) }
@@ -621,6 +633,375 @@ class HakimService : Service() {
               } catch(e){ return JSON.stringify({text:'',interactive:[],error:'page_read_failed'}); }
             })();
         """.trimIndent()
+
+
+    private fun isChatGptAddress(raw: String): Boolean = runCatching {
+        val u = Uri.parse(raw)
+        u.scheme.equals("https", true) &&
+            (u.host.equals("chatgpt.com", true) || u.host.equals("www.chatgpt.com", true))
+    }.getOrDefault(false)
+
+    private fun looksLikeChatGptAuth(raw: String): Boolean = runCatching {
+        val host = Uri.parse(raw).host.orEmpty().lowercase()
+        host == "auth.openai.com" || host.endsWith(".openai.com") ||
+            host == "accounts.google.com" || host.endsWith(".google.com")
+    }.getOrDefault(false)
+
+    private fun chatGptEvaluate(script: String, timeoutMs: Long = 7_000L): JSONObject {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return JSONObject().put("ok", false).put("error", "chatgpt_read_on_ui_thread")
+        val done = CountDownLatch(1)
+        val response = AtomicReference(
+            JSONObject().put("ok", false).put("error", "chatgpt_browser_unavailable")
+        )
+        Handler(Looper.getMainLooper()).post {
+            val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else null
+            if (target == null) {
+                done.countDown()
+                return@post
+            }
+            val address = target.url.orEmpty()
+            if (!isChatGptAddress(address)) {
+                response.set(
+                    JSONObject()
+                        .put("ok", false)
+                        .put("error", if (looksLikeChatGptAuth(address)) "chatgpt_login_required" else "chatgpt_not_open")
+                        .put("scope", "chatgpt.com")
+                )
+                done.countDown()
+                return@post
+            }
+            runCatching {
+                target.evaluateJavascript(script) { raw ->
+                    val decoded = decodeJsString(raw)
+                    val parsed = runCatching { JSONObject(decoded) }.getOrNull()
+                        ?: JSONObject().put("ok", false).put("error", "chatgpt_script_invalid")
+                    parsed.put("scope", "chatgpt.com")
+                    response.set(parsed)
+                    done.countDown()
+                }
+            }.onFailure {
+                response.set(
+                    JSONObject().put("ok", false).put("error", "chatgpt_script_failed").put("scope", "chatgpt.com")
+                )
+                done.countDown()
+            }
+        }
+        return if (runCatching { done.await(timeoutMs, TimeUnit.MILLISECONDS) }.getOrDefault(false)) response.get()
+        else JSONObject().put("ok", false).put("error", "chatgpt_timeout").put("scope", "chatgpt.com")
+    }
+
+    private fun navigateChatGpt(url: String): JSONObject {
+        if (!isChatGptAddress(url))
+            return JSONObject().put("ok", false).put("error", "chatgpt_scope_mismatch").put("scope", "chatgpt.com")
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return JSONObject().put("ok", false).put("error", "chatgpt_navigation_on_ui_thread").put("scope", "chatgpt.com")
+        val done = CountDownLatch(1)
+        val response = AtomicReference(
+            JSONObject().put("ok", false).put("error", "chatgpt_browser_unavailable").put("scope", "chatgpt.com")
+        )
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            val target = HakimRuntime.visibleWebView() ?: if (::webView.isInitialized) webView else run {
+                if (hasSecurePairing()) {
+                    createBrowser()
+                    webView
+                } else null
+            }
+            if (target == null) {
+                done.countDown()
+                return@post
+            }
+            target.loadUrl(url)
+            val check = object : Runnable {
+                var attempts = 0
+                override fun run() {
+                    val current = target.url.orEmpty()
+                    when {
+                        looksLikeChatGptAuth(current) -> {
+                            response.set(
+                                JSONObject().put("ok", false).put("error", "chatgpt_login_required").put("scope", "chatgpt.com")
+                            )
+                            done.countDown()
+                        }
+                        isChatGptAddress(current) && target.progress == 100 -> {
+                            response.set(
+                                JSONObject()
+                                    .put("ok", true)
+                                    .put("url", HakimBrowserPrivacy.safeAddress(current))
+                                    .put("scope", "chatgpt.com")
+                            )
+                            done.countDown()
+                        }
+                        ++attempts >= 40 -> {
+                            response.set(
+                                JSONObject().put("ok", false).put("error", "chatgpt_navigation_unverified").put("scope", "chatgpt.com")
+                            )
+                            done.countDown()
+                        }
+                        else -> handler.postDelayed(this, 200L)
+                    }
+                }
+            }
+            handler.postDelayed(check, 200L)
+        }
+        return if (runCatching { done.await(9, TimeUnit.SECONDS) }.getOrDefault(false)) response.get()
+        else JSONObject().put("ok", false).put("error", "chatgpt_navigation_timeout").put("scope", "chatgpt.com")
+    }
+
+    private fun chatGptSidebarReadScript(): String = """
+        (function(){
+          try{
+            if(location.protocol!=='https:' || (location.hostname!=='chatgpt.com' && location.hostname!=='www.chatgpt.com'))
+              return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
+            if(document.querySelector('input[type=password],input[autocomplete*=one-time-code]'))
+              return JSON.stringify({ok:false,error:'chatgpt_login_required'});
+            const anchors=[...document.querySelectorAll('a[href]')];
+            const seen=new Set(), items=[];
+            for(const a of anchors){
+              let u; try{u=new URL(a.href,location.href);}catch(_){continue;}
+              if((u.hostname!=='chatgpt.com'&&u.hostname!=='www.chatgpt.com') || !/(^|\/)c\/[^/?#]+/.test(u.pathname)) continue;
+              const href=u.origin+u.pathname;
+              const title=((a.innerText||a.getAttribute('aria-label')||a.getAttribute('title')||'').replace(/\s+/g,' ').trim()).slice(0,180);
+              if(!title||seen.has(href)) continue;
+              seen.add(href); items.push({title:title,href:href});
+              if(items.length>=120) break;
+            }
+            const candidates=[...document.querySelectorAll('nav,aside,div')].filter(e=>e.scrollHeight>e.clientHeight+20);
+            let best=null,bestCount=-1;
+            for(const c of candidates){
+              const n=[...c.querySelectorAll('a[href]')].filter(a=>{try{return /(^|\/)c\/[^/?#]+/.test(new URL(a.href,location.href).pathname)}catch(_){return false}}).length;
+              if(n>bestCount){best=c;bestCount=n;}
+            }
+            const side=best?{
+              can_scroll:best.scrollHeight>best.clientHeight+20,
+              top:Math.round(best.scrollTop),
+              height:Math.round(best.scrollHeight),
+              client:Math.round(best.clientHeight),
+              at_bottom:(best.scrollTop+best.clientHeight)>=best.scrollHeight-8
+            }:{can_scroll:false,top:0,height:0,client:0,at_bottom:true};
+            const body=(document.body&&document.body.innerText||'').slice(0,1200);
+            const loginRequired=items.length===0 && /(log in|sign up|تسجيل الدخول|إنشاء حساب)/i.test(body);
+            if(loginRequired) return JSON.stringify({ok:false,error:'chatgpt_login_required'});
+            return JSON.stringify({ok:true,items:items,sidebar:side,coverage:'visible_sidebar_slice'});
+          }catch(_){return JSON.stringify({ok:false,error:'chatgpt_sidebar_read_failed'});}
+        })();
+    """.trimIndent()
+
+    private fun chatGptSidebarScrollScript(toTop: Boolean): String =
+        """
+        (function(){
+          try{
+            if(location.protocol!=='https:' || (location.hostname!=='chatgpt.com' && location.hostname!=='www.chatgpt.com'))
+              return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
+            const candidates=[...document.querySelectorAll('nav,aside,div')].filter(e=>e.scrollHeight>e.clientHeight+20);
+            let best=null,bestCount=-1;
+            for(const c of candidates){
+              const n=[...c.querySelectorAll('a[href]')].filter(a=>{try{return /(^|\/)c\/[^/?#]+/.test(new URL(a.href,location.href).pathname)}catch(_){return false}}).length;
+              if(n>bestCount){best=c;bestCount=n;}
+            }
+            if(!best) return JSON.stringify({ok:true,moved:false,at_bottom:true});
+            const before=best.scrollTop;
+            if(__TO_TOP__) best.scrollTop=0;
+            else best.scrollTop=Math.min(best.scrollHeight,best.scrollTop+Math.max(300,best.clientHeight*0.82));
+            return JSON.stringify({ok:true,moved:Math.abs(best.scrollTop-before)>1,top:Math.round(best.scrollTop),at_bottom:(best.scrollTop+best.clientHeight)>=best.scrollHeight-8});
+          }catch(_){return JSON.stringify({ok:false,error:'chatgpt_sidebar_scroll_failed'});}
+        })();
+        """.trimIndent().replace("__TO_TOP__", if (toTop) "true" else "false")
+
+    private fun chatGptMessagesScript(): String = """
+        (function(){
+          try{
+            if(location.protocol!=='https:' || (location.hostname!=='chatgpt.com' && location.hostname!=='www.chatgpt.com'))
+              return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
+            if(document.querySelector('input[type=password],input[autocomplete*=one-time-code]'))
+              return JSON.stringify({ok:false,error:'chatgpt_login_required'});
+            const redact=(s)=>String(s||'').replace(/((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|otp|كلمة.?المرور|رمز.?التحقق)\s*[:=]\s*)\S+/gi,'$1[مخفي]');
+            let nodes=[...document.querySelectorAll('[data-message-author-role]')];
+            if(nodes.length===0) nodes=[...document.querySelectorAll('article')];
+            const messages=[], seen=new Set();
+            for(const n of nodes){
+              const role=n.getAttribute('data-message-author-role')||'unknown';
+              const text=redact((n.innerText||'').replace(/\s+/g,' ').trim()).slice(0,8000);
+              if(!text) continue;
+              const key=role+'\n'+text;
+              if(seen.has(key)) continue;
+              seen.add(key); messages.push({role:role,text:text});
+              if(messages.length>=100) break;
+            }
+            return JSON.stringify({
+              ok:true,
+              title:(document.title||'').slice(0,220),
+              url:location.origin+location.pathname,
+              messages:messages,
+              coverage:'currently_rendered_messages_only'
+            });
+          }catch(_){return JSON.stringify({ok:false,error:'chatgpt_message_read_failed'});}
+        })();
+    """.trimIndent()
+
+    private fun chatGptScrollConversationScript(direction: String): String =
+        """
+        (function(){
+          try{
+            if(location.protocol!=='https:' || (location.hostname!=='chatgpt.com' && location.hostname!=='www.chatgpt.com'))
+              return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
+            const msgs=[...document.querySelectorAll('[data-message-author-role],article')];
+            let best=null;
+            for(const n of msgs){
+              let p=n.parentElement;
+              while(p&&p!==document.body){
+                if(p.scrollHeight>p.clientHeight+30){best=p;break;}
+                p=p.parentElement;
+              }
+              if(best) break;
+            }
+            const target=best||document.scrollingElement||document.documentElement;
+            const before=target.scrollTop;
+            const delta=Math.max(350,(target.clientHeight||window.innerHeight)*0.8)*(__UP__?-1:1);
+            target.scrollTop=Math.max(0,Math.min(target.scrollHeight,target.scrollTop+delta));
+            return JSON.stringify({ok:true,moved:Math.abs(target.scrollTop-before)>1,top:Math.round(target.scrollTop),at_top:target.scrollTop<=4,at_bottom:(target.scrollTop+target.clientHeight)>=target.scrollHeight-8});
+          }catch(_){return JSON.stringify({ok:false,error:'chatgpt_conversation_scroll_failed'});}
+        })();
+        """.trimIndent().replace("__UP__", if (direction.equals("up", true)) "true" else "false")
+
+    private fun chatGptSendScript(message: String): String =
+        """
+        (function(){
+          try{
+            if(location.protocol!=='https:' || (location.hostname!=='chatgpt.com' && location.hostname!=='www.chatgpt.com'))
+              return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
+            if(document.querySelector('input[type=password],input[autocomplete*=one-time-code]'))
+              return JSON.stringify({ok:false,error:'chatgpt_login_required'});
+            const msg=__MESSAGE__;
+            let e=document.querySelector('#prompt-textarea')||document.querySelector('textarea')||document.querySelector('[contenteditable=true]');
+            if(!e) return JSON.stringify({ok:false,error:'chatgpt_composer_not_found'});
+            e.focus();
+            if(e.tagName==='TEXTAREA'||e.tagName==='INPUT'){
+              const proto=e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+              const setter=Object.getOwnPropertyDescriptor(proto,'value')&&Object.getOwnPropertyDescriptor(proto,'value').set;
+              if(setter) setter.call(e,msg); else e.value=msg;
+              e.dispatchEvent(new Event('input',{bubbles:true}));
+            }else{
+              e.textContent='';
+              try{document.execCommand('insertText',false,msg);}catch(_){e.textContent=msg;}
+              e.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:msg}));
+            }
+            const send=document.querySelector('button[data-testid="send-button"]')||
+              [...document.querySelectorAll('button')].find(b=>/(send|إرسال)/i.test((b.getAttribute('aria-label')||b.innerText||'').trim()));
+            if(!send||send.disabled) return JSON.stringify({ok:false,error:'chatgpt_send_button_unavailable'});
+            send.click();
+            return JSON.stringify({ok:true,action:'send_message'});
+          }catch(_){return JSON.stringify({ok:false,error:'chatgpt_send_failed'});}
+        })();
+        """.trimIndent().replace("__MESSAGE__", js(message))
+
+    private fun chatGptStatusScript(): String = """
+        (function(){
+          const sensitive=!!document.querySelector('input[type=password],input[autocomplete*=one-time-code]');
+          const composer=!!document.querySelector('#prompt-textarea,textarea,[contenteditable=true]');
+          const chats=[...document.querySelectorAll('a[href]')].some(a=>{try{return /(^|\/)c\/[^/?#]+/.test(new URL(a.href,location.href).pathname)}catch(_){return false}});
+          const body=(document.body&&document.body.innerText||'').slice(0,1200);
+          const login=sensitive||(!composer&&!chats&&/(log in|sign up|تسجيل الدخول|إنشاء حساب)/i.test(body));
+          return JSON.stringify({ok:true,host:location.hostname,logged_in:!login&&(composer||chats),login_required:login});
+        })();
+    """.trimIndent()
+
+    private fun chatGptReadInternal(payload: JSONObject): JSONObject {
+        return when (payload.optString("mode", "status")) {
+            "status" -> chatGptEvaluate(chatGptStatusScript())
+            "sync_index" -> {
+                val maxSteps = payload.optInt("max_steps", 40).coerceIn(1, 80)
+                if (payload.optBoolean("reset_to_top", true)) {
+                    val top = chatGptEvaluate(chatGptSidebarScrollScript(true))
+                    if (!top.optBoolean("ok", false)) return top
+                    try { Thread.sleep(250) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+                }
+                var steps = 0
+                var complete = false
+                var stagnant = 0
+                var previousCount = -1
+                while (steps < maxSteps) {
+                    val page = chatGptEvaluate(chatGptSidebarReadScript())
+                    if (!page.optBoolean("ok", false)) return page
+                    val items = page.optJSONArray("items") ?: JSONArray()
+                    val merged = HakimChatGptIndex.merge(applicationContext, items)
+                    val count = merged.optInt("count")
+                    if (count == previousCount) stagnant++ else stagnant = 0
+                    previousCount = count
+                    val side = page.optJSONObject("sidebar")
+                    if (side == null || side.optBoolean("at_bottom", true) || !side.optBoolean("can_scroll", false)) {
+                        complete = true
+                        break
+                    }
+                    val moved = chatGptEvaluate(chatGptSidebarScrollScript(false))
+                    if (!moved.optBoolean("ok", false)) return moved
+                    if (!moved.optBoolean("moved", false) && stagnant >= 1) {
+                        complete = true
+                        break
+                    }
+                    try { Thread.sleep(300) } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        break
+                    }
+                    steps++
+                }
+                JSONObject()
+                    .put("ok", true)
+                    .put("count", HakimChatGptIndex.load(applicationContext).length())
+                    .put("complete", complete)
+                    .put("steps", steps)
+                    .put("coverage", if (complete) "sidebar_scan_reached_bottom" else "partial_sidebar_scan")
+                    .put("scope", "chatgpt.com")
+            }
+            "index" -> JSONObject()
+                .put("ok", true)
+                .put("items", HakimChatGptIndex.load(applicationContext))
+                .put("scope", "chatgpt.com")
+            "search_index" -> {
+                val q = payload.optString("query").trim()
+                if (q.isBlank()) JSONObject().put("ok", false).put("error", "query_required").put("scope", "chatgpt.com")
+                else JSONObject()
+                    .put("ok", true)
+                    .put("matches", HakimChatGptIndex.search(applicationContext, q))
+                    .put("scope", "chatgpt.com")
+            }
+            "current_messages" -> chatGptEvaluate(chatGptMessagesScript())
+            else -> JSONObject().put("ok", false).put("error", "unsupported_chatgpt_read_mode").put("scope", "chatgpt.com")
+        }
+    }
+
+    private fun chatGptNavigateInternal(payload: JSONObject): JSONObject {
+        return when (payload.optString("mode")) {
+            "open_home" -> navigateChatGpt("https://chatgpt.com/")
+            "open_conversation" -> {
+                val href = payload.optString("href").trim().ifBlank {
+                    HakimChatGptIndex.resolveHref(applicationContext, payload.optString("title").trim()).orEmpty()
+                }
+                if (href.isBlank())
+                    JSONObject().put("ok", false).put("error", "conversation_not_indexed").put("scope", "chatgpt.com")
+                else navigateChatGpt(href)
+            }
+            "scroll_sidebar_down" -> chatGptEvaluate(chatGptSidebarScrollScript(false))
+            "scroll_sidebar_top" -> chatGptEvaluate(chatGptSidebarScrollScript(true))
+            "scroll_conversation_up" -> chatGptEvaluate(chatGptScrollConversationScript("up"))
+            "scroll_conversation_down" -> chatGptEvaluate(chatGptScrollConversationScript("down"))
+            else -> JSONObject().put("ok", false).put("error", "unsupported_chatgpt_navigation_mode").put("scope", "chatgpt.com")
+        }
+    }
+
+    private fun chatGptActionInternal(payload: JSONObject): JSONObject {
+        return when (payload.optString("mode")) {
+            "new_chat" -> navigateChatGpt("https://chatgpt.com/")
+            "send_message" -> {
+                val message = payload.optString("message")
+                if (message.isBlank() || message.length > 12000)
+                    JSONObject().put("ok", false).put("error", "invalid_message").put("scope", "chatgpt.com")
+                else chatGptEvaluate(chatGptSendScript(message))
+            }
+            else -> JSONObject().put("ok", false).put("error", "unsupported_chatgpt_action_mode").put("scope", "chatgpt.com")
+        }
+    }
 
     private fun readBrowser(): JSONObject {
         if (Looper.myLooper() == Looper.getMainLooper())

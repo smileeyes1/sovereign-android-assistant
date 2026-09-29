@@ -74,6 +74,8 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         secure_relay_connected?:unknown;
         browser_service_running?:unknown;
         execution_fabric?:Record<string,unknown>;
+        fault_containment?:Record<string,unknown>;
+        self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
       };
@@ -85,8 +87,11 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;
     const flag=(raw:unknown)=>typeof raw==="boolean"?raw:null;
+    const boundedCount=(raw:unknown)=>
+      typeof raw==="number"&&Number.isInteger(raw)&&raw>=0&&raw<=1024?raw:null;
     const result=decoded.result;
     const fabric=result?.execution_fabric;
+    const containment=result?.fault_containment;
     const diagnostics=result?.network_diagnostics;
     const autoUpdate=result?.auto_update;
     const safe={
@@ -106,6 +111,19 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         secure_relay_connected:flag(fabric?.secure_relay_connected),
         legacy_connected:flag(fabric?.legacy_connected)
       },
+      fault_containment:{
+        active:flag(containment?.fault_containment),
+        critical_path_silent_failures_forbidden:flag(containment?.critical_path_silent_failures_forbidden),
+        bounded_retry:flag(containment?.bounded_retry),
+        circuit_breaker:flag(containment?.circuit_breaker),
+        high_impact_fail_closed:flag(containment?.high_impact_fail_closed),
+        raw_exception_message_persisted:flag(containment?.raw_exception_message_persisted),
+        open_circuits:boundedCount(containment?.open_circuits),
+        critical_blocks:boundedCount(containment?.critical_blocks),
+        high_impact_blocked:flag(containment?.high_impact_blocked),
+        recovery_required:flag(containment?.recovery_required)
+      },
+      self_check:fixed(result?.self_check,["PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"]),
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
         Object.keys(diagnostics).length>0,
       auto_update:{

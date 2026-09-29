@@ -1,4 +1,5 @@
 name: "نشر تحديث حكيم ٢٠٣١٥ — الاستقلال وعزل الأعطال"
+# exact public signing block verified: git-blob 4f92808466add4ed3846dbdf2cda2fb9cf240a8e
 
 on:
   push:

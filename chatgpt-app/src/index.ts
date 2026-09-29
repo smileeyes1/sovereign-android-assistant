@@ -501,7 +501,9 @@ app.post("/oauth/register",async(req,res)=>{
 
 app.get("/oauth/authorize",async(req,res)=>{
   try{
-    if(one(req.query.response_type)!=="code") return oauthError(res,400,"unsupported_response_type","Only authorization code is supported.");
+    if(one(req.query.response_type)!=="code"){
+      return oauthError(res,400,"unsupported_response_type","Only authorization code is supported.");
+    }
     const clientId=one(req.query.client_id);
     const redirectUri=one(req.query.redirect_uri);
     const state=one(req.query.state);
@@ -509,30 +511,64 @@ app.get("/oauth/authorize",async(req,res)=>{
     const method=one(req.query.code_challenge_method);
     const resource=one(req.query.resource);
     const base=origin(req);
-    if(!isChatGPTClientId(clientId)) return oauthError(res,400,"invalid_client","Only ChatGPT CIMD clients are accepted.");
-    if(!isChatGPTRedirectUri(redirectUri)) return oauthError(res,400,"invalid_request","Invalid ChatGPT redirect URI.");
-    if(method!=="S256"||!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)) return oauthError(res,400,"invalid_request","PKCE S256 is required.");
-    if(resource!==base) return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
+    const client=await resolveOAuthClient(clientId,redirectUri);
+    if(!client) return oauthError(res,400,"invalid_client","Client or redirect URI is not registered.");
+    if(method!=="S256"||!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)){
+      return oauthError(res,400,"invalid_request","PKCE S256 is required.");
+    }
+    if(resource!==base){
+      return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
+    }
     const scopes=normalizeScopes(one(req.query.scope)||undefined);
-    const credential=createDeviceCredential();
-    await directRelayStore.registerCredential(credential,10*60_000);
+    const currentBinding=await deviceBindingStore.current();
+    const brokerReady=await deviceBindingStore.supportsClientAuthorization();
+
+    if(currentBinding&&!brokerReady){
+      noStore(res);
+      return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — حماية القناة الحالية</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
+<h1>القناة الحالية محفوظة</h1>
+<p>يوجد جهاز حكيم مرتبط بالفعل، ولن نستبدل قناته لإضافة عميل جديد.</p>
+<p class="box">تعدد العملاء يحتاج نسخة حكيم ٢٠٣١٧ أو أحدث مع موافقة محلية على الهاتف. لم يتم تغيير الاقتران الحالي ولم يصدر رمز وصول جديد.</p>
+</html>`);
+    }
+
+    const reuseBinding=!!currentBinding&&brokerReady;
+    const credential=currentBinding?.credential??createDeviceCredential();
+    if(!reuseBinding){
+      await directRelayStore.registerCredential(credential,10*60_000);
+    }
     const context=makeAuthorizeContext(oauthSecret,{
-      credential,clientId,redirectUri,state,codeChallenge,resource,scopes
+      credential,clientId,redirectUri,state,codeChallenge,resource,scopes,
+      reuseBinding,
+      clientLabel:client.label,
+      clientKind:client.kind
     });
-    const link=pairingUrl(credential,base.startsWith("https://")?base:undefined);
     noStore(res);
-    res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
+
+    if(reuseBinding){
+      return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — تفويض عميل</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}button{font-size:18px;padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
+<h1>استخدام جهاز حكيم المرتبط</h1>
+<p>العميل: <strong>${html(client.label)}</strong></p>
+<p class="box">لن تُستبدل قناة الهاتف. عند المتابعة سيصل إلى تطبيق حكيم طلب موافقة محلي لهذا العميل. لا يصدر رمز الوصول إلا بعد الموافقة.</p>
+<form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">إرسال طلب الموافقة إلى حكيم</button></form>
+</html>`);
+    }
+
+    const link=pairingUrl(credential,base.startsWith("https://")?base:undefined);
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
 <style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}a,button{font-size:18px}button{padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
-<h1>ربط جهاز حكيم</h1>
-<p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
+<h1>ربط جهاز حكيم لأول مرة</h1>
+<p>العميل: <strong>${html(client.label)}</strong></p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
-<p class="box">افتح زر الربط على هاتفك مباشرة. لا تنسخ الرابط إلى محادثة، ولا تشارك صورة تظهره؛ فهو يحتوي بيانات اقتران سرية مؤقتة.</p>
+<p class="box">افتح زر الربط على هاتفك مباشرة. لا تنسخ الرابط إلى محادثة ولا تشارك صورة تظهره؛ فهو يحتوي بيانات اقتران سرية مؤقتة.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
 ${reviewModeEnabled()?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
 </html>`);
   }catch(e){
-    oauthError(res,400,"invalid_request",e instanceof Error?e.message:"authorization_failed");
+    return oauthError(res,400,"invalid_request",e instanceof Error?e.message:"authorization_failed");
   }
 });
 

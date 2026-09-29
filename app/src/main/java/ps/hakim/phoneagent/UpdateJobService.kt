@@ -6,8 +6,14 @@ import android.app.job.JobService
 class UpdateJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         Thread {
-            try { AutoUpdater.checkNow(applicationContext) } catch (_: Exception) {}
-            jobFinished(params, false)
+            try {
+                val app = applicationContext
+                HakimFaultContainment.guard(app, "auto_update_job", "periodic_check") {
+                    AutoUpdater.checkNow(app)
+                }
+            } finally {
+                jobFinished(params, false)
+            }
         }.start()
         return true
     }

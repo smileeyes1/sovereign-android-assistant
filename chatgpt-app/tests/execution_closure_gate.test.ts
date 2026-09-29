@@ -8,7 +8,7 @@ const server=fs.readFileSync(path.join(root,"src/server.ts"),"utf8");
 const index=fs.readFileSync(path.join(root,"src/index.ts"),"utf8");
 
 function literalPublishOps(source:string){
-  return [...source.matchAll(/publishCommand\(credential,"([^"]+)"/g)].map(m=>m[1]);
+  return [...source.matchAll(/publishCommand\(credential,"([^"]+)"/g)].map(m=>m[1]!);
 }
 
 const EFFECTFUL_OPS=new Set([

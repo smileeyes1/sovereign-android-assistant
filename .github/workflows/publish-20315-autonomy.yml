@@ -1,4 +1,4 @@
-name: "نشر حكيم ٢٠٣١٥ — إصلاح الأصل بلا إشارة هاتف"
+name: "تثبيت حكيم ٢٠٣١٥ — القطعة الميدانية نفسها بلا إشارة هاتف"
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - publish/hakim-20315-autonomy-d1
     paths:
       - .github/workflows/publish-20315-autonomy.yml
-      - release-control/20315-autonomy-signing-block-v2-verified.b64
-      - tools/reconstruct_20315_autonomy.py
+      - release-control/20315-field-verified-signing-block.b64
+      - tools/reconstruct_20315_field_verified.py
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: جلب أثر CI 1281 المثبت
+      - name: جلب أثر CI 1280 المطابق للميدان
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -29,43 +29,46 @@ jobs:
           curl --fail --location --silent --show-error \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/11051287470/zip" \
+            "https://api.github.com/repos/smileeyes1/sovereign-android-assistant/actions/artifacts/11051412509/zip" \
             -o /tmp/hakim-ci.zip
-          echo "edc941fb62e2a0efa21e57f46b15bc9762b52c9f25ca87c1310871117190814f  /tmp/hakim-ci.zip" | sha256sum -c -
           unzip -q /tmp/hakim-ci.zip -d /tmp/hakim-ci
-          echo "479bd4bcbcefcc27cb1948d09b36e1c102682d39e755e32c319bc2d42629f6a4  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+          test -f /tmp/hakim-ci/release/app-release-unsigned.apk
+          echo "e3c7822bfb1f4f33ba1b3ef8b2e0cb73c30b1abbecec6fd1220e7b44469f0c70  /tmp/hakim-ci/release/app-release-unsigned.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/hakim-ci/release/app-release-unsigned.apk)" = "14149090"
 
-      - name: إعادة تركيب نفس APK D1 المصحح
+      - name: إعادة تركيب APK المثبت ميدانيا حرفيا
         run: |
           set -euo pipefail
-          base64 -d release-control/20315-autonomy-signing-block-v2-verified.b64 > /tmp/block.bin
-          echo "2e1af7dbd8e4a2e8caf3b77ca5274b4c398e1b815b540e2fbda7943dbba3ecb8  /tmp/block.bin" | sha256sum -c -
+          base64 -d release-control/20315-field-verified-signing-block.b64 > /tmp/block.bin
+          echo "1b0f719c990234abb2155cee5bd992c7fc3342a0de3a955101263d09db7ba4fa  /tmp/block.bin" | sha256sum -c -
           test "$(stat -c %s /tmp/block.bin)" = "2624"
-          python3 tools/reconstruct_20315_autonomy.py \
+          python3 tools/reconstruct_20315_field_verified.py \
             /tmp/hakim-ci/release/app-release-unsigned.apk \
-            release-control/20315-autonomy-signing-block-v2-verified.b64 \
+            release-control/20315-field-verified-signing-block.b64 \
             /tmp/HAKIM-20315-D1-AUTONOMY.apk
           python3 tools/verify_hakim_d1_v2_structure.py /tmp/HAKIM-20315-D1-AUTONOMY.apk
-          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/HAKIM-20315-D1-AUTONOMY.apk" | sha256sum -c -
+          echo "43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491  /tmp/HAKIM-20315-D1-AUTONOMY.apk" | sha256sum -c -
           test "$(stat -c %s /tmp/HAKIM-20315-D1-AUTONOMY.apk)" = "14151714"
           unzip -t /tmp/HAKIM-20315-D1-AUTONOMY.apk >/dev/null
 
-      - name: استبدال الأصل الخاطئ والتحقق
+      - name: اجعل القطعة الميدانية هي أصل الإصدار وتحقق بالدورة الكاملة
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="hakim-20315-d1-autonomy"
           ASSET="HAKIM-20315-D1-AUTONOMY.apk"
-          EXPECTED="sha256:27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2"
+          EXPECTED="sha256:43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491"
           CURRENT="$(gh release view "$TAG" --json assets --jq '.assets[] | select(.name=="HAKIM-20315-D1-AUTONOMY.apk") | .digest' || true)"
           if [ "$CURRENT" != "$EXPECTED" ]; then
             gh release delete-asset "$TAG" "$ASSET" -y || true
             gh release upload "$TAG" "/tmp/$ASSET#$ASSET"
           fi
-          gh release edit "$TAG" --notes "مرشح ٢٠٣١٥ من أثر CI #1281، موقّع بهوية D1 نفسها. الأصل المصحح SHA-256: 27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2. لا توجد إشارة تحديث هاتف في هذا التشغيل."
+          gh release edit "$TAG" --notes "حكيم ٢٠٣١٥ — القطعة الميدانية نفسها المثبتة والمتحقق منها على الهاتف. المصدر: الرأس 7bce31720b39bd6e3fd7134a67658eb25ea966b2، CI #1280 / run 36606143472 / artifact 11051412509. SHA-256: 43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491. D1/v2. تحقق ميداني: الاتصال والتعافي وقاطع الدائرة وSelf-Check. لا توجد إشارة تحديث هاتف في هذا التشغيل."
           URL="https://github.com/smileeyes1/sovereign-android-assistant/releases/download/$TAG/$ASSET"
           curl --fail --location --silent --show-error "$URL" -o /tmp/roundtrip.apk
-          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/roundtrip.apk" | sha256sum -c -
-          echo "RELEASE_REPAIR=PASS"
+          echo "43b26f82a9a5ab24c919ebafadfef986d791015f2e06497bb37bab9388d83491  /tmp/roundtrip.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/roundtrip.apk)" = "14151714"
+          python3 tools/verify_hakim_d1_v2_structure.py /tmp/roundtrip.apk
+          echo "FIELD_VERIFIED_RELEASE=PASS"
           echo "PHONE_UPDATE_SIGNAL=NOT_SENT"

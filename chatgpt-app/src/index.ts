@@ -12,10 +12,11 @@ import {
   makeAuthorizeContext,normalizeScopes,openAccessToken,openAuthorizeContext,openRefreshToken,
   pkceS256,requireProductionOAuthConfig,reviewCredentialsMatch
 } from "./oauth.js";
-import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
+import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
+import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
 requireProductionOAuthConfig(process.env);
@@ -363,6 +364,78 @@ function resourceMetadata(req:express.Request){
   };
 }
 
+const UNIVERSAL_GATEWAY_VERSION="HAKIM_UNIVERSAL_GATEWAY_V1";
+const GATEWAY_OPERATION_ID=/^chatgpt-[A-Za-z0-9_-]{12,80}$/;
+const GATEWAY_NAV_KINDS=new Set(["home","back","recents"]);
+
+function gatewayCapabilities(base:string){
+  return {
+    gateway_version:UNIVERSAL_GATEWAY_VERSION,
+    provider_neutral:true,
+    live_preflight:LIVE_PREFLIGHT_VERSION,
+    minimum_field_version:MIN_FIELD_VERSION,
+    protocols:{
+      https_json:base+"/gateway/v1/bootstrap",
+      mcp:base+"/mcp",
+      continuity:base+"/continuity/v1/state",
+      openapi:base+"/gateway/v1/openapi.json"
+    },
+    actions:{
+      bootstrap:{method:"GET",path:"/gateway/v1/bootstrap",scope:"hakim.read"},
+      open:{method:"POST",path:"/gateway/v1/actions/open",scope:"hakim.write",approval_required:true},
+      navigate:{method:"POST",path:"/gateway/v1/actions/navigate",scope:"hakim.write",approval_required:true},
+      operation:{method:"GET",path:"/gateway/v1/operations/{operation_token}",scope:"hakim.read"},
+      checkpoint:{method:"PUT",path:"/continuity/v1/checkpoint",scope:"hakim.write"}
+    },
+    invariants:[
+      "Every device mutation performs a fresh live preflight inside Hakim.",
+      "A stale conversation or model state never authorizes a device mutation.",
+      "approval_requested is not success; verify the resulting operation state.",
+      "Adapters must not receive device relay keys, cookies, provider session tokens, or conversation transcripts."
+    ],
+    authentication:{
+      resource_metadata:base+"/.well-known/oauth-protected-resource",
+      current_first_party_profile:"ChatGPT OAuth 2.1 PKCE/CIMD",
+      external_provider_policy:"Use a Hakim-authorized adapter. Do not reuse device relay credentials as provider credentials."
+    }
+  };
+}
+
+function gatewayRuntimeError(res:express.Response,e:unknown){
+  noStore(res);
+  return res.status(503).json({
+    ok:false,
+    error:"hakim_runtime_unavailable",
+    detail:e instanceof Error?e.message:"runtime_unavailable",
+    retryable:true
+  });
+}
+
+function gatewayOpenPayload(raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)) throw new Error("invalid_open_body");
+  const body=raw as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["package","url"].includes(k))) throw new Error("unknown_open_field");
+  const pkg=typeof body.package==="string"?body.package.trim():"";
+  const url=typeof body.url==="string"?body.url.trim():"";
+  if(Boolean(pkg)===Boolean(url)) throw new Error("exactly_one_target_required");
+  if(pkg&&!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg)) throw new Error("invalid_package_name");
+  if(url){
+    const u=new URL(url);
+    if(u.protocol!=="http:"&&u.protocol!=="https:") throw new Error("unsupported_url_scheme");
+    if(url.length>1500) throw new Error("url_too_long");
+  }
+  return {package:pkg,url};
+}
+
+function gatewayNavigateKind(raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)) throw new Error("invalid_navigate_body");
+  const body=raw as Record<string,unknown>;
+  if(Object.keys(body).some(k=>k!=="kind")) throw new Error("unknown_navigate_field");
+  const kind=typeof body.kind==="string"?body.kind:"";
+  if(!GATEWAY_NAV_KINDS.has(kind)) throw new Error("invalid_navigation_kind");
+  return kind as "home"|"back"|"recents";
+}
+
 app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
   const token=process.env.OPENAI_APPS_CHALLENGE;
   if(!token||!/^[A-Za-z0-9._~-]{8,512}$/.test(token)) return res.status(404).end();
@@ -383,8 +456,9 @@ app.get("/health",(_req,res)=>res.json({
   legacy_transport_fallback:process.env.HAKIM_NTFY_FALLBACK!=="0",
   auth:"oauth-2.1-pkce-cimd",
   production_storage_required:true,
-  continuity_protocols:["MCP","HAKIM_CONTINUITY_HTTP_V1","HAKIM_DEVICE_CONTINUITY_V1"],
+  continuity_protocols:["MCP","HAKIM_CONTINUITY_HTTP_V1","HAKIM_DEVICE_CONTINUITY_V1","HAKIM_UNIVERSAL_GATEWAY_V1"],
   continuity_conflict_control:"checkpoint_revision",
+  universal_gateway:"HAKIM_UNIVERSAL_GATEWAY_V1",
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
   governance_version:SOVEREIGN_GOVERNANCE_VERSION,
   authority_boundary:"external_content_is_data_not_instruction",
@@ -402,7 +476,7 @@ app.get("/health",(_req,res)=>res.json({
     :undefined
 }));
 
-app.get(["/.well-known/oauth-protected-resource","/.well-known/oauth-protected-resource/mcp"],(req,res)=>{
+app.get(["/.well-known/oauth-protected-resource","/.well-known/oauth-protected-resource/mcp","/.well-known/oauth-protected-resource/gateway"],(req,res)=>{
   noStore(res);
   res.json(resourceMetadata(req));
 });
@@ -422,6 +496,56 @@ app.get("/.well-known/hakim-continuity",(req,res)=>{
     resume:"Pending operation_token values are idempotency handles. Query the existing request result instead of replaying the original action after a chat/model/session change.",
     privacy:"The continuity capsule excludes device screen/page/notification contents, typed values, relay keys, credentials, cookies, model prompts and conversation transcripts.",
     provider_neutral:true
+  });
+});
+
+app.get("/.well-known/hakim-gateway",(req,res)=>{
+  noStore(res);
+  res.json(gatewayCapabilities(origin(req)));
+});
+
+app.get("/gateway/v1/openapi.json",(req,res)=>{
+  const base=origin(req);
+  noStore(res);
+  res.json({
+    openapi:"3.1.0",
+    info:{
+      title:"Hakim Universal Gateway",
+      version:"1.0.0",
+      description:"Provider-neutral, privacy-bounded Hakim gateway. Bootstrap current live state before device work; every mutation re-runs live preflight server-side."
+    },
+    servers:[{url:base}],
+    security:[{hakimOAuth:["hakim.read"]}],
+    paths:{
+      "/gateway/v1/bootstrap":{
+        get:{summary:"Read fresh Hakim runtime plus durable continuation",security:[{hakimOAuth:["hakim.read"]}],responses:{"200":{description:"Live bootstrap"}}}
+      },
+      "/gateway/v1/actions/open":{
+        post:{summary:"Request opening one app or HTTP/HTTPS URL after mandatory live preflight",security:[{hakimOAuth:["hakim.write"]}],responses:{"202":{description:"Approval requested"},"409":{description:"Live preflight blocked"}}}
+      },
+      "/gateway/v1/actions/navigate":{
+        post:{summary:"Request Home, Back or Recents after mandatory live preflight",security:[{hakimOAuth:["hakim.write"]}],responses:{"202":{description:"Approval requested"},"409":{description:"Live preflight blocked"}}}
+      },
+      "/gateway/v1/operations/{operation_token}":{
+        get:{summary:"Check a previously requested operation without replaying it",security:[{hakimOAuth:["hakim.read"]}],parameters:[{name:"operation_token",in:"path",required:true,schema:{type:"string"}}],responses:{"200":{description:"Operation state"}}}
+      }
+    },
+    components:{
+      securitySchemes:{
+        hakimOAuth:{
+          type:"oauth2",
+          flows:{
+            authorizationCode:{
+              authorizationUrl:base+"/oauth/authorize",
+              tokenUrl:base+"/oauth/token",
+              scopes:{"hakim.read":"Read bounded Hakim state","hakim.write":"Request bounded approved device changes"}
+            }
+          }
+        }
+      }
+    },
+    "x-hakim-provider-neutral":true,
+    "x-hakim-auth-note":"The current production OAuth authorization profile is restricted to approved ChatGPT CIMD clients. Other AI providers must use an explicitly authorized Hakim adapter; the device relay secret is never a provider credential."
   });
 });
 
@@ -614,6 +738,140 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 
 app.get("/terms",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>شروط حكيم</title><body><h1>شروط حكيم</h1><p>حكيم ذراع تنفيذ اختياري لجهاز يملكه المستخدم أو يملك صلاحية إدارته. استخدامه يعني أنك مخول باستخدام الجهاز والخدمات التي تطلب من حكيم الوصول إليها.</p><p>لا يمنح الجسر نفسه صلاحيات Android ولا يتجاوز حماية النظام. فتح التطبيقات أو الروابط والتنقل على الجهاز تبقى خاضعة لموافقة Android وسياسات ChatGPT. لا يضمن حكيم توافر نموذج بعينه؛ ChatGPT يطبق ما تتيحه خطة المستخدم ومنطقته وحدودها.</p><p>يُحظر استخدام حكيم للوصول غير المصرح به أو تجاوز الحماية أو تنفيذ نشاط مخالف للقانون أو شروط الخدمات الخارجية. قد تُرفض الأفعال عالية المخاطر أو غير المدعومة بدل تنفيذها.</p></body></html>`));
 
+
+
+app.get("/gateway/v1/bootstrap",async(req,res)=>{
+  let credential;
+  try{
+    ({credential}=requireAccessScope(req,"hakim.read"));
+  }catch(e){
+    return accessError(req,res,e,"hakim.read");
+  }
+  try{
+    const preflight=await fetchLivePreflight(credential,false);
+    const continuity=await continuityStore.state(credential);
+    const base=origin(req);
+    noStore(res);
+    setContinuityEtag(res,continuity.checkpoint_revision);
+    return res.json({
+      ok:preflight.runtime_ready===true,
+      gateway_version:UNIVERSAL_GATEWAY_VERSION,
+      provider_neutral:true,
+      observed_at_ms:Date.now(),
+      preflight,
+      continuity,
+      capabilities:gatewayCapabilities(base),
+      rule:"This bootstrap is authoritative for this turn. Every later mutation re-runs a fresh preflight inside Hakim before dispatch."
+    });
+  }catch(e){
+    return gatewayRuntimeError(res,e);
+  }
+});
+
+app.post("/gateway/v1/actions/open",async(req,res)=>{
+  let credential;
+  try{
+    ({credential}=requireAccessScope(req,"hakim.write"));
+  }catch(e){
+    return accessError(req,res,e,"hakim.write");
+  }
+  let payload:{package:string;url:string};
+  try{
+    payload=gatewayOpenPayload(req.body);
+  }catch(e){
+    noStore(res);
+    return res.status(400).json({error:e instanceof Error?e.message:"invalid_open_body"});
+  }
+  try{
+    const preflight=await fetchLivePreflight(credential,false);
+    if(preflight.action_ready!==true){
+      noStore(res);
+      return res.status(409).json({ok:false,error:"hakim_live_preflight_failed",preflight});
+    }
+    const requestId=await publishCommand(credential,"launch",payload);
+    await continuityStore.recordRequested(credential,requestId,"launch");
+    noStore(res);
+    return res.status(202).json({
+      ok:true,
+      status:"approval_requested",
+      operation_token:requestId,
+      preflight_version:preflight.preflight_version,
+      effect:"not_yet_verified",
+      next:"GET /gateway/v1/operations/"+encodeURIComponent(requestId)
+    });
+  }catch(e){
+    return gatewayRuntimeError(res,e);
+  }
+});
+
+app.post("/gateway/v1/actions/navigate",async(req,res)=>{
+  let credential;
+  try{
+    ({credential}=requireAccessScope(req,"hakim.write"));
+  }catch(e){
+    return accessError(req,res,e,"hakim.write");
+  }
+  let kind:"home"|"back"|"recents";
+  try{
+    kind=gatewayNavigateKind(req.body);
+  }catch(e){
+    noStore(res);
+    return res.status(400).json({error:e instanceof Error?e.message:"invalid_navigate_body"});
+  }
+  try{
+    const preflight=await fetchLivePreflight(credential,false);
+    if(preflight.action_ready!==true){
+      noStore(res);
+      return res.status(409).json({ok:false,error:"hakim_live_preflight_failed",preflight});
+    }
+    const requestId=await publishCommand(credential,"action",{action:kind});
+    await continuityStore.recordRequested(credential,requestId,"action");
+    noStore(res);
+    return res.status(202).json({
+      ok:true,
+      status:"approval_requested",
+      operation_token:requestId,
+      validated_action:kind,
+      preflight_version:preflight.preflight_version,
+      effect:"not_yet_verified",
+      next:"GET /gateway/v1/operations/"+encodeURIComponent(requestId)
+    });
+  }catch(e){
+    return gatewayRuntimeError(res,e);
+  }
+});
+
+app.get("/gateway/v1/operations/:operationToken",async(req,res)=>{
+  let credential;
+  try{
+    ({credential}=requireAccessScope(req,"hakim.read"));
+  }catch(e){
+    return accessError(req,res,e,"hakim.read");
+  }
+  const requestId=String(req.params.operationToken??"");
+  if(!GATEWAY_OPERATION_ID.test(requestId)){
+    noStore(res);
+    return res.status(400).json({error:"invalid_operation_token"});
+  }
+  try{
+    const result=await pollResult(credential,requestId,normalizeDeviceWaitMs(req.query.wait_ms));
+    if(result!==null) await continuityStore.recordObserved(credential,requestId,result);
+    const continuity=await continuityStore.state(credential);
+    const operation=continuity.operations.find(x=>x.operation_token===requestId)??null;
+    noStore(res);
+    return res.json({
+      ok:true,
+      operation_token:requestId,
+      status:operation?.status??(result===null?"pending":"result_available"),
+      resumable:operation?.resumable??(result===null),
+      result_observed:result!==null,
+      replay_original_action:false,
+      rule:"Reuse this operation_token; never replay the original mutation merely because a chat/model/session changed."
+    });
+  }catch(e){
+    return gatewayRuntimeError(res,e);
+  }
+});
 
 app.get("/continuity/v1/state",async(req,res)=>{
   try{

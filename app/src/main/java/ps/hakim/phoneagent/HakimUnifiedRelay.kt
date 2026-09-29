@@ -215,44 +215,56 @@ object HakimUnifiedRelay {
                 continue
             }
 
-            try {
-                directPollOnce(context, topic, resultTopic, relayKey)
-                lastLoopProgressAt = System.currentTimeMillis()
-                if (generation != loopGeneration || !running.get()) break
-                directFailures = 0
-                retryMs = 2_000L
-                connected = true
-                val connectedAt = System.currentTimeMillis()
-                prefs.edit()
-                    .putString("secure_relay_state", "direct_connected")
-                    .putString("connection_recovery_state", "healthy")
-                    .putLong("secure_relay_seen_at", connectedAt)
-                    .putLong("last_recovery_ok_at", connectedAt)
-                    .putLong("last_connected_at", connectedAt)
-                    .remove("secure_relay_error")
-                    .remove("last_recovery_error")
-                    .apply()
-                HakimCloudContinuity.refreshIfDue(
-                    context,
-                    bridgeBase(context),
-                    topic,
-                    relayKey
-                )
-                HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
-                continue
-            } catch (e: Exception) {
+            if (HakimFaultContainment.shouldAttempt(context, "secure_relay", "direct_poll")) {
+                try {
+                    directPollOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "direct_poll")
+                    lastLoopProgressAt = System.currentTimeMillis()
+                    if (generation != loopGeneration || !running.get()) break
+                    directFailures = 0
+                    retryMs = 2_000L
+                    connected = true
+                    val connectedAt = System.currentTimeMillis()
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_connected")
+                        .putString("connection_recovery_state", "healthy")
+                        .putLong("secure_relay_seen_at", connectedAt)
+                        .putLong("last_recovery_ok_at", connectedAt)
+                        .putLong("last_connected_at", connectedAt)
+                        .remove("secure_relay_error")
+                        .remove("last_recovery_error")
+                        .apply()
+                    HakimCloudContinuity.refreshIfDue(
+                        context,
+                        bridgeBase(context),
+                        topic,
+                        relayKey
+                    )
+                    HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
+                    continue
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "direct_poll", e)
+                    connected = false
+                    directFailures += 1
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_recovering")
+                        .putString("connection_recovery_state", "secure_relay_recovering")
+                        .putString("secure_relay_error", e.javaClass.simpleName)
+                        .apply()
+                }
+            } else {
                 connected = false
-                directFailures += 1
+                directFailures = maxOf(directFailures, 3)
                 prefs.edit()
-                    .putString("secure_relay_state", "direct_recovering")
+                    .putString("secure_relay_state", "direct_circuit_open")
                     .putString("connection_recovery_state", "secure_relay_recovering")
-                    .putString("secure_relay_error", e.javaClass.simpleName)
                     .apply()
             }
 
-            if (directFailures >= 3) {
+            if (directFailures >= 3 && HakimFaultContainment.shouldAttempt(context, "secure_relay", "legacy_poll")) {
                 try {
                     listenLegacyOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "legacy_poll")
                     lastLoopProgressAt = System.currentTimeMillis()
                     if (generation != loopGeneration || !running.get()) break
                     directFailures = 0
@@ -268,7 +280,8 @@ object HakimUnifiedRelay {
                         .apply()
                     HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                     continue
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "legacy_poll", e)
                     connected = false
                 }
             }
@@ -491,6 +504,16 @@ object HakimUnifiedRelay {
             sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
+        if (!HakimFaultContainment.canExecuteHighImpact(context)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "fault_containment_blocked")
+            )
+            return
+        }
         executor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
@@ -512,7 +535,8 @@ object HakimUnifiedRelay {
     private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
         val op = envelope.optString("op")
         val payload = decodePayload(envelope)
-        return when (op) {
+        return try {
+            val result = when (op) {
             "status" -> status(context)
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
@@ -538,7 +562,21 @@ object HakimUnifiedRelay {
                 JSONObject().put("ok", ok).put("error", if (ok) JSONObject.NULL else "action_failed")
             }
             "launch" -> launch(context, payload)
-            else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+                else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+            }
+            if (result.optBoolean("ok", false)) {
+                HakimFaultContainment.recordSuccess(context, "remote_op", op)
+            }
+            result
+        } catch (e: Exception) {
+            HakimFaultContainment.recordFailure(
+                context,
+                "remote_op",
+                op.ifBlank { "unknown" },
+                e,
+                critical = !READ_ONLY_OPS.contains(op)
+            )
+            JSONObject().put("ok", false).put("error", "operation_failed_safely")
         }
     }
 
@@ -569,6 +607,7 @@ object HakimUnifiedRelay {
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))

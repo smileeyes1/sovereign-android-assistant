@@ -9,6 +9,7 @@ import io.github.muntashirakon.adb.android.AdbMdns
 import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.Certificate
 import java.util.Date
@@ -101,6 +102,128 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
         autoConnect(context.applicationContext, 20_000L) || isConnected
     }.getOrDefault(false)
 
+    data class RemoteActionResult(
+        val ok: Boolean,
+        val error: String? = null,
+        val output: String? = null,
+    )
+
+    /** Verify both ADB authorization and a local-only target identity fingerprint. */
+    fun probeRemoteIdentity(host: String, port: Int): RemoteActionResult {
+        if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
+        return try {
+            runCatching { disconnect() }
+            setThrowOnUnauthorised(true)
+            val connected = connect(host, port) || isConnected
+            if (!connected) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            val identity = readRemoteIdentityHash()
+                ?: return RemoteActionResult(false, "ADB_TARGET_IDENTITY_UNAVAILABLE")
+            RemoteActionResult(true, output = identity)
+        } catch (t: Throwable) {
+            RemoteActionResult(false, classifyRemoteFailure(t))
+        } finally {
+            runCatching { disconnect() }
+        }
+    }
+
+    /** Remote ADB is restricted to a small Android/TV remote-control vocabulary. */
+    fun executeRemoteAction(
+        host: String,
+        port: Int,
+        expectedIdentitySha256: String,
+        action: String,
+        url: String? = null,
+        packageName: String? = null,
+    ): RemoteActionResult {
+        if (!isPrivateIpv4(host) || port != 5555) return RemoteActionResult(false, "INVALID_REMOTE_TARGET")
+        if (!expectedIdentitySha256.matches(Regex("^[0-9a-f]{64}$"))) {
+            return RemoteActionResult(false, "INVALID_REMOTE_IDENTITY")
+        }
+        val command = when (action) {
+            "home" -> "input keyevent KEYCODE_HOME"
+            "back" -> "input keyevent KEYCODE_BACK"
+            "up" -> "input keyevent KEYCODE_DPAD_UP"
+            "down" -> "input keyevent KEYCODE_DPAD_DOWN"
+            "left" -> "input keyevent KEYCODE_DPAD_LEFT"
+            "right" -> "input keyevent KEYCODE_DPAD_RIGHT"
+            "enter" -> "input keyevent KEYCODE_DPAD_CENTER"
+            "play_pause" -> "input keyevent KEYCODE_MEDIA_PLAY_PAUSE"
+            "volume_up" -> "input keyevent KEYCODE_VOLUME_UP"
+            "volume_down" -> "input keyevent KEYCODE_VOLUME_DOWN"
+            "mute" -> "input keyevent KEYCODE_VOLUME_MUTE"
+            "open_url" -> {
+                val safe = safeHttpUrl(url) ?: return RemoteActionResult(false, "INVALID_URL")
+                "am start -W -a android.intent.action.VIEW -d '$safe'"
+            }
+            "launch_package" -> {
+                val pkg = packageName?.trim().orEmpty()
+                if (!pkg.matches(Regex("^[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+$")))
+                    return RemoteActionResult(false, "INVALID_PACKAGE")
+                "monkey -p '$pkg' -c android.intent.category.LAUNCHER 1"
+            }
+            else -> return RemoteActionResult(false, "UNSUPPORTED_ACTION")
+        }
+        return try {
+            runCatching { disconnect() }
+            setThrowOnUnauthorised(true)
+            val connected = connect(host, port) || isConnected
+            if (!connected) return RemoteActionResult(false, "ADB_CONNECT_FAILED")
+            val actualIdentity = readRemoteIdentityHash()
+                ?: return RemoteActionResult(false, "ADB_TARGET_IDENTITY_UNAVAILABLE")
+            if (!MessageDigest.isEqual(
+                    expectedIdentitySha256.toByteArray(Charsets.US_ASCII),
+                    actualIdentity.toByteArray(Charsets.US_ASCII)
+                )) {
+                return RemoteActionResult(false, "ADB_TARGET_IDENTITY_CHANGED")
+            }
+            val stream = openStream("shell:$command")
+            val output = runCatching {
+                stream.openInputStream().bufferedReader(Charsets.UTF_8).use { it.readText().take(2000) }
+            }.getOrDefault("")
+            RemoteActionResult(true, output = output)
+        } catch (t: Throwable) {
+            RemoteActionResult(false, classifyRemoteFailure(t))
+        } finally {
+            runCatching { disconnect() }
+        }
+    }
+
+    private fun readRemoteIdentityHash(): String? {
+        val stream = openStream(
+            "shell:getprop ro.serialno; getprop ro.product.model; getprop ro.build.fingerprint"
+        )
+        val raw = stream.openInputStream().bufferedReader(Charsets.UTF_8).use {
+            it.readText().take(4096).trim()
+        }
+        if (raw.isBlank()) return null
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(("HAKIM-ADB-TARGET-v1\u0000" + raw).toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
+    private fun classifyRemoteFailure(t: Throwable): String {
+        val name = t.javaClass.simpleName
+        val message = (t.message ?: name).lowercase()
+        val approvalRequired =
+            name.contains("Authentication", ignoreCase = true) ||
+            "unauthor" in message || "authentication" in message || "auth" in message
+        return if (approvalRequired) "ADB_TARGET_APPROVAL_REQUIRED" else "ADB_REMOTE_ACTION_FAILED"
+    }
+
+    private fun safeHttpUrl(raw: String?): String? {
+        val value = raw?.trim().orEmpty()
+        if (value.length !in 8..1500) return null
+        if (!(value.startsWith("https://") || value.startsWith("http://"))) return null
+        if (value.any { it.isWhitespace() || it == '\'' || it == '"' || it == ';' || it == '\\' }) return null
+        return value
+    }
+
+    private fun isPrivateIpv4(ip: String): Boolean {
+        val p = ip.split(".").mapNotNull { it.toIntOrNull() }
+        if (p.size != 4 || p.any { it !in 0..255 }) return false
+        return p[0] == 10 || (p[0] == 172 && p[1] in 16..31) || (p[0] == 192 && p[1] == 168)
+    }
+
     companion object {
         private const val KEY_ALIAS = "hakim_native_local_adb_v1"
         private const val TEN_YEARS_MS = 3650L * 24L * 60L * 60L * 1000L
@@ -110,5 +233,7 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
             instance ?: synchronized(this) {
                 instance ?: HakimAdbConnectionManager(context.applicationContext).also { instance = it }
             }
+        fun remote(context: Context): HakimAdbConnectionManager =
+            HakimAdbConnectionManager(context.applicationContext)
     }
 }

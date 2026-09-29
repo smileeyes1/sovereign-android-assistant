@@ -23,3 +23,22 @@ jobs:
           fetch-depth: 0
       - name: Reject stale conversation baseline
         run: python3 scripts/verify-development-freshness.py
+      - name: Prove stale Android baseline is rejected
+        run: |
+          cp app/build.gradle "$RUNNER_TEMP/build.gradle"
+          sed -E -i 's/versionCode[[:space:]]+[0-9]+/versionCode 1/' app/build.gradle
+          set +e
+          python3 scripts/verify-development-freshness.py >"$RUNNER_TEMP/stale.out" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/stale.out"
+          test "$rc" -ne 0
+          grep -q 'FRESHNESS_GUARD=FAIL reason=stale_baseline' "$RUNNER_TEMP/stale.out"
+          mv "$RUNNER_TEMP/build.gradle" app/build.gradle
+      - name: Prove current-or-newer Android baseline is accepted
+        run: |
+          cp app/build.gradle "$RUNNER_TEMP/build.gradle"
+          sed -E -i 's/versionCode[[:space:]]+[0-9]+/versionCode 999999/' app/build.gradle
+          python3 scripts/verify-development-freshness.py | tee "$RUNNER_TEMP/fresh.out"
+          grep -q 'FRESHNESS_GUARD=PASS' "$RUNNER_TEMP/fresh.out"
+          mv "$RUNNER_TEMP/build.gradle" app/build.gradle

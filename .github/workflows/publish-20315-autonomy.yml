@@ -1,4 +1,5 @@
 name: "نشر تحديث حكيم ٢٠٣١٥ — الاستقلال وعزل الأعطال"
+# exact D1 block verified locally against CI #1281
 # exact public signing block verified: git-blob 4f92808466add4ed3846dbdf2cda2fb9cf240a8e
 
 on:
@@ -7,6 +8,8 @@ on:
       - publish/hakim-20315-autonomy-d1
     paths:
       - .github/workflows/publish-20315-autonomy.yml
+      - release-control/20315-autonomy-signing-block.b64
+      - tools/reconstruct_20315_autonomy.py
   workflow_dispatch:
 
 permissions:

@@ -69,3 +69,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 4:
         raise SystemExit("usage: reconstruct_20315_autonomy.py unsigned.apk signing-block.b64 output.apk")
     main(sys.argv[1], sys.argv[2], sys.argv[3])
+
+# release-trigger: repair-roundtrip-no-phone-signal

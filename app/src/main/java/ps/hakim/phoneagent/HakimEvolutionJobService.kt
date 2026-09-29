@@ -9,14 +9,14 @@ class HakimEvolutionJobService : JobService() {
             try {
                 val app = applicationContext
                 HakimFaultContainment.guard(app, "evolution_job", "periodic_cycle") {
-                    HakimConstitution.install(app)
-                    HakimLearning.initialize(app)
-                    HakimLearning.maintenance(app)
-                    HakimValueContinuityEngine.resumePending(app)
-                    HakimGoalSupervisor.resume(app)
-                    HakimGoalExecutor.tick(app)
-                    val report = HakimSelfCheck.run(app)
-                    HakimLearning.recordHealth(app, report)
+                    HakimConstitution.install(applicationContext)
+                    HakimLearning.initialize(applicationContext)
+                    HakimLearning.maintenance(applicationContext)
+                    HakimValueContinuityEngine.resumePending(applicationContext)
+                    HakimGoalSupervisor.resume(applicationContext)
+                    HakimGoalExecutor.tick(applicationContext)
+                    val report = HakimSelfCheck.run(applicationContext)
+                    HakimLearning.recordHealth(applicationContext, report)
                 }
             } finally {
                 jobFinished(params, false)

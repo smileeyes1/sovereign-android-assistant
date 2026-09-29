@@ -35,6 +35,6 @@ req(STATE["android"]["candidate"]["field_verified"] is False,"field_not_claimed"
 req(STATE["android"]["field_observed_current"]["version_code"]==STATE["android"]["latest_source_parent"]["version_code"],"field_baseline_matches_parent")
 req(PROMO["candidate_version"]==int(m.group(1)) and PROMO["same_signed_apk_field_verified"] is False,"promotion_gate")
 req("python3 tests/verify_20313_chatgpt_control.py" in WORKFLOW,"workflow_test")
-req('test "$VERSION_CODE" = "20315"' in WORKFLOW,"workflow_version")
+req(f'test "$VERSION_CODE" = "{int(m.group(1))}"' in WORKFLOW,"workflow_version")
 
 print("CHATGPT_CONTROL_20313=PASS scope=chatgpt.com encrypted_index=true accessibility=false field_verified=false")

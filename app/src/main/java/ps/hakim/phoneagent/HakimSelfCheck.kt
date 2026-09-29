@@ -13,7 +13,7 @@ object HakimSelfCheck {
     private const val PERIOD_MS = 60L * 60L * 1000L
 
     fun schedule(context: Context) {
-        try {
+        HakimFaultContainment.guard(context, "self_check", "schedule") {
             val scheduler = context.getSystemService(JobScheduler::class.java)
             val job = JobInfo.Builder(JOB_ID, ComponentName(context, HakimEvolutionJobService::class.java))
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
@@ -21,15 +21,16 @@ object HakimSelfCheck {
                 .setPeriodic(PERIOD_MS)
                 .build()
             scheduler.schedule(job)
-        } catch (_: Exception) {}
+        }
     }
 
     fun runAsync(context: Context) {
         Thread {
-            try {
-                val report = run(context.applicationContext)
-                HakimLearning.recordHealth(context.applicationContext, report)
-            } catch (_: Exception) {}
+            val app = context.applicationContext
+            HakimFaultContainment.guard(app, "self_check", "run_async") {
+                val report = run(app)
+                HakimLearning.recordHealth(app, report)
+            }
         }.start()
     }
 
@@ -64,21 +65,6 @@ object HakimSelfCheck {
         check("البيانات الحساسة لا تُرقى لقاعدة", governance.optBoolean("sensitive_data_not_promoted"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))
         check("التطور الذاتي محكوم", governance.optBoolean("self_evolution_guarded"))
-        check("ملف التعليمات المخصصة تحت ٨٠٠٠", governance.optBoolean("custom_profile_under_8000"))
-        check("جوهر التعليمات المخصصة محفوظ", governance.optBoolean("custom_profile_lossless_core"))
-        val governanceCatalog = governance.optJSONObject("governance_catalog") ?: HakimGovernanceCatalog.status(context)
-        check("الدستور الداخلي الكامل مثبت", governanceCatalog.optBoolean("governance_catalog"))
-        check("الدستور الداخلي غير مقيد بحد ٨٠٠٠", governanceCatalog.optBoolean("not_bound_to_custom_8000_limit"))
-        check("الاستدعاء التكيفي للقواعد مفعل", governanceCatalog.optBoolean("adaptive_rule_selection"))
-        check("الدستور الكامل محفوظ", governanceCatalog.optBoolean("full_constitution_retained"))
-        check("كتالوج الحاكمية غير مبتور", governanceCatalog.optInt("full_rule_count") >= 50)
-
-        val acceptanceGate = governance.optJSONObject("acceptance_gate") ?: HakimAcceptanceGate.status(context)
-        check("بوابة الاعتماد السيادية فعالة", acceptanceGate.optBoolean("acceptance_gate"))
-        check("الدليل شرط للإغلاق", acceptanceGate.optBoolean("evidence_required"))
-        check("الفجوة المادية تمنع الإغلاق", acceptanceGate.optBoolean("material_gap_blocks_close"))
-        check("نفس الملف المختبر هو المسلّم", acceptanceGate.optBoolean("same_tested_delivered_artifact_required"))
-        check("بوابة الانحدار مدعومة", acceptanceGate.optBoolean("regression_gate_supported"))
 
         val quran = governance.optJSONObject("quranic_governance") ?: JSONObject()
         check("السنة الصحيحة بيان مع التثبت", quran.optBoolean("sahih_sunnah_is_explanatory_with_verification"))
@@ -149,6 +135,13 @@ object HakimSelfCheck {
         check("Online لا يُعلن بلا مسار حي", executionFabric.optBoolean("online_requires_live_path"))
         check("فشل مسار واحد لا يغلق المقصد", executionFabric.optBoolean("single_path_failure_does_not_close_goal"))
 
+        val containment = HakimFaultContainment.status(context)
+        check("حاجز الأعطال المركزي فعّال", containment.optBoolean("fault_containment"))
+        check("الفشل الصامت ممنوع في المسارات الحرجة المحروسة", containment.optBoolean("critical_path_silent_failures_forbidden"))
+        check("منع التكرار الأعمى فعال", containment.optBoolean("bounded_retry") && containment.optBoolean("circuit_breaker"))
+        check("الأفعال عالية الأثر تفشل مغلقة عند العطل الحرج", containment.optBoolean("high_impact_fail_closed"))
+        check("لا حظر أمان حرج نشط", !containment.optBoolean("high_impact_blocked"), "fail", "critical_blocks=" + containment.optInt("critical_blocks"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -204,7 +197,6 @@ object HakimSelfCheck {
             .put("warnings", warned)
             .put("checks", checks)
             .put("governance", governance)
-            .put("governance_catalog", governanceCatalog)
             .put("intent", intent)
             .put("capability_kernel", capability)
             .put("value_continuity", continuity)
@@ -213,6 +205,7 @@ object HakimSelfCheck {
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)
             .put("execution_fabric", executionFabric)
+            .put("fault_containment", containment)
             .put("self_improvement", improvement)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))

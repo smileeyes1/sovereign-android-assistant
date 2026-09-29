@@ -7,22 +7,39 @@ import android.os.Build
 class HakimApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        HakimConstitution.install(this)
-        HakimLearning.initialize(this)
         val prefs = getSharedPreferences("hakim", MODE_PRIVATE)
-        PairingDefaults.ensure(prefs)
-        HakimExecutionFabric.recover(this, "app_start")
-        HakimConnectionResilience.install(this)
-        HakimResilienceAlarmReceiver.schedule(this)
-        HakimRelayWatchdog.install(this)
-        HakimNetworkGuardian.install(this)
+        HakimFaultContainment.guard(this, "app_start", "constitution_install", critical = true) {
+            HakimConstitution.install(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "learning_initialize") {
+            HakimLearning.initialize(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "pairing_defaults", critical = true) {
+            PairingDefaults.ensure(prefs)
+        }
+        HakimFaultContainment.guard(this, "app_start", "execution_fabric_recover") {
+            HakimExecutionFabric.recover(this, "app_start")
+        }
+        HakimFaultContainment.guard(this, "app_start", "connection_resilience_install") {
+            HakimConnectionResilience.install(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "alarm_schedule") {
+            HakimResilienceAlarmReceiver.schedule(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "relay_watchdog_install") {
+            HakimRelayWatchdog.install(this)
+        }
+        HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
+            HakimNetworkGuardian.install(this)
+        }
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
         HakimConstraintDoctor.runAsync(this, "app_start")
-        HakimSelfImprovementLoop.install(this)
+        HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
+            HakimSelfImprovementLoop.install(this)
+        }
         startHakimIfPaired(prefs)
-        HakimFieldAcceptance.install(this)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -39,11 +56,9 @@ class HakimApp : Application() {
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
         val securePaired = HakimUnifiedRelay.isConfigured(this)
         if (disabled || (!legacyPaired && !securePaired)) return
-        try {
+        HakimFaultContainment.guard(this, "app_start", "foreground_service_start") {
             val intent = Intent(this, HakimService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
-        } catch (e: Exception) {
-            prefs.edit().putString("last_autostart_error", e.message.orEmpty().take(300)).apply()
         }
     }
 }

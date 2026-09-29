@@ -20,10 +20,10 @@ jobs:
           set -euo pipefail
           URL='https://github.com/smileeyes1/sovereign-android-assistant/releases/download/hakim-20315-d1-autonomy/HAKIM-20315-D1-AUTONOMY.apk'
           curl --fail --location --silent --show-error "$URL" -o /tmp/hakim-20315.apk
-          echo "1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6  /tmp/hakim-20315.apk" | sha256sum -c -
-          test "$(stat -c %s /tmp/hakim-20315.apk)" = "14153186"
+          echo "27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2  /tmp/hakim-20315.apk" | sha256sum -c -
+          test "$(stat -c %s /tmp/hakim-20315.apk)" = "14151714"
 
-          META='{"version_code":20315,"sha256":"1e16da789caf1ab306e59a97e9bd6693f69091fc03058dfefbc769e1b94e6ce6","size":14153186}'
+          META='{"version_code":20315,"sha256":"27667e0a8b410b4edf2eb68b0f001d8dfcd4df2045c92554696d52920f7f33a2","size":14151714}'
           RESPONSE="$(curl --fail-with-body --silent --show-error \
             --data-binary "$META" \
             -H 'Title: HAKIM_UPDATE' \

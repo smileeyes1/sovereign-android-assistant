@@ -816,7 +816,7 @@ class HakimService : Service() {
               return JSON.stringify({ok:false,error:'chatgpt_scope_mismatch'});
             if(document.querySelector('input[type=password],input[autocomplete*=one-time-code]'))
               return JSON.stringify({ok:false,error:'chatgpt_login_required'});
-            const redact=(s)=>String(s||'').replace(/((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|otp|كلمة.?المرور|رمز.?التحقق)\s*[:=]\s*)\S+/gi,'$1[مخفي]');
+            const redact=(s)=>String(s||'').replace(/((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|otp|كلمة.?المرور|رمز.?التحقق)\s*[:=]\s*)\S+/gi,(_m,p)=>p+'[مخفي]');
             let nodes=[...document.querySelectorAll('[data-message-author-role]')];
             if(nodes.length===0) nodes=[...document.querySelectorAll('article')];
             const messages=[], seen=new Set();

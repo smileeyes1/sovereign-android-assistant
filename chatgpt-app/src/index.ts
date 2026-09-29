@@ -578,6 +578,7 @@ app.post("/oauth/authorize",async(req,res)=>{
     const reviewUser=one(req.body.review_user);
     const reviewPassword=one(req.body.review_password);
     const reviewRequested=reviewUser.length>0||reviewPassword.length>0;
+
     if(reviewRequested){
       if(!reviewAttemptAllowed(req.ip??"unknown")){
         return oauthError(res,429,"temporarily_unavailable","Too many reviewer login attempts.");
@@ -587,18 +588,48 @@ app.post("/oauth/authorize",async(req,res)=>{
       }
       context.credential.topic="hakim_review_"+randomSecret(18);
       context.credential.resultTopic="hakim_review_result_"+randomSecret(18);
-    }
-    if(!reviewRequested) await directRelayStore.registerCredential(context.credential,10*60_000);
-    const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
-    if(!paired){
-      noStore(res);
-      const retryBase=origin(req);
-      const link=pairingUrl(context.credential,retryBase.startsWith("https://")?retryBase:undefined);
-      return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
+    }else if(context.reuseBinding===true){
+      const current=await deviceBindingStore.current();
+      if(!current||!deviceBindingStore.sameCredential(current.credential,context.credential)){
+        return oauthError(res,409,"temporarily_unavailable","The canonical Hakim device binding changed. Restart authorization.");
+      }
+      if(!(await deviceBindingStore.supportsClientAuthorization())){
+        return oauthError(res,409,"temporarily_unavailable","Hakim 20317 or newer is required for multi-client approval.");
+      }
+
+      const clientLabel=(context.clientLabel??"AI client").replace(/[\u0000-\u001F\u007F]/g," ").trim().slice(0,80)||"AI client";
+      const requestId=await publishCommand(current.credential,"client_authorize",{
+        client_label:clientLabel,
+        client_id_hash:crypto.createHash("sha256").update(context.clientId,"utf8").digest("hex").slice(0,24),
+        requested_write:context.scopes.includes("hakim.write"),
+        requested_offline_access:context.scopes.includes("offline_access")
+      });
+      const result=await pollResult(current.credential,requestId,55_000);
+      if(!result){
+        noStore(res);
+        return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — انتظار الموافقة</title>
+<body><h1>لم تصل موافقة الهاتف بعد</h1><p>لم يصدر أي رمز وصول ولم تتغير قناة حكيم.</p>
+<form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">إعادة طلب الموافقة</button></form></body></html>`);
+      }
+      const message=result as {status?:unknown};
+      if(message.status==="rejected"){
+        return oauthError(res,403,"access_denied","The user rejected this AI client on the Hakim phone.");
+      }
+      if(!clientAuthorizationApproved(result)){
+        return oauthError(res,403,"access_denied","Hakim did not approve this client authorization request.");
+      }
+      context.credential=current.credential;
+    }else if(!reviewRequested){
+      await directRelayStore.registerCredential(context.credential,10*60_000);
+      const paired=await pollPairAck(context.credential,10_000);
+      if(!paired){
+        noStore(res);
+        const retryBase=origin(req);
+        const link=pairingUrl(context.credential,retryBase.startsWith("https://")?retryBase:undefined);
+        return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
-    }
-    if(!reviewRequested){
+      }
       await directRelayStore.markCredentialPaired(context.credential);
       const promoted=await deviceBindingStore.promoteApprovedPairing(context.credential);
       if(promoted.previous&&!deviceBindingStore.sameCredential(promoted.previous.credential,promoted.current.credential)){
@@ -611,6 +642,7 @@ app.post("/oauth/authorize",async(req,res)=>{
         await continuityStore.bindAlias(promoted.current.credential.topic,promoted.current.binding_id);
       }
     }
+
     const code=await codeStore.issue({
       credential:context.credential,
       clientId:context.clientId,
@@ -627,7 +659,7 @@ app.post("/oauth/authorize",async(req,res)=>{
     noStore(res);
     return res.redirect(302,redirect.toString());
   }catch(e){
-    return oauthError(res,400,"access_denied",e instanceof Error?e.message:"pairing_failed");
+    return oauthError(res,400,"access_denied",e instanceof Error?e.message:"authorization_failed");
   }
 });
 

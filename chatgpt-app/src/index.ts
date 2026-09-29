@@ -14,7 +14,7 @@ import {
 } from "./oauth.js";
 import { normalizeDeviceWaitMs,pollPairAck } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
-import { continuityStore } from "./continuity-store.js";
+import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
 
@@ -251,6 +251,91 @@ function oauthError(res:express.Response,status:number,error:string,description:
   return res.status(status).json({error,error_description:description});
 }
 
+function accessSession(req:express.Request){
+  const base=origin(req);
+  const auth=String(req.headers.authorization??"");
+  if(!auth.startsWith("Bearer ")) throw new Error("bearer_required");
+  const raw=auth.slice(7).trim();
+  if(!raw) throw new Error("bearer_required");
+  if(raw.startsWith("HAKIM-B2.")&&process.env.HAKIM_ALLOW_DEV_BEARER==="1"){
+    return {base,credential:decodeBearer(raw),scopes:["hakim.read","hakim.write"]};
+  }
+  const token=openAccessToken(oauthSecret,raw,base);
+  return {base,credential:token.credential,scopes:token.scopes};
+}
+
+function requireAccessScope(req:express.Request,scope:"hakim.read"|"hakim.write"){
+  const session=accessSession(req);
+  if(!session.scopes.includes(scope)) throw new Error("insufficient_scope");
+  return session;
+}
+
+function accessError(req:express.Request,res:express.Response,e:unknown,scope:"hakim.read"|"hakim.write"){
+  noStore(res);
+  const base=origin(req);
+  const message=e instanceof Error?e.message:"authorization_required";
+  if(message==="insufficient_scope"){
+    res.setHeader("WWW-Authenticate",`Bearer resource_metadata="${base}/.well-known/oauth-protected-resource", scope="${scope}", error="insufficient_scope"`);
+    return res.status(403).json({error:"insufficient_scope"});
+  }
+  res.setHeader("WWW-Authenticate",`Bearer resource_metadata="${base}/.well-known/oauth-protected-resource", scope="${scope}"`);
+  return res.status(401).json({error:"invalid_token"});
+}
+
+function parseCheckpointBody(raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)) throw new Error("invalid_checkpoint_body");
+  const body=raw as Record<string,unknown>;
+  const allowed=new Set(["goal_id","goal_label","stage","last_verified","next_step","blocker","status","expected_revision"]);
+  if(Object.keys(body).some(k=>!allowed.has(k))) throw new Error("unknown_checkpoint_field");
+  const requiredString=(key:string,max:number)=>{
+    const value=body[key];
+    if(typeof value!=="string") throw new Error("invalid_"+key);
+    const trimmed=value.trim();
+    if(!trimmed||trimmed.length>max) throw new Error("invalid_"+key);
+    return trimmed;
+  };
+  const optionalString=(key:string,max:number)=>{
+    const value=body[key];
+    if(value===undefined) return undefined;
+    if(typeof value!=="string"||value.length>max) throw new Error("invalid_"+key);
+    return value;
+  };
+  const status=body.status;
+  if(typeof status!=="string"||!["active","waiting","blocked","complete","cancelled"].includes(status)){
+    throw new Error("invalid_status");
+  }
+  const expected=body.expected_revision;
+  if(expected!==undefined&&(!Number.isInteger(expected)||Number(expected)<0)){
+    throw new Error("invalid_expected_revision");
+  }
+  const goalId=optionalString("goal_id",96);
+  if(goalId!==undefined&&!/^[A-Za-z0-9._:-]{8,96}$/.test(goalId)) throw new Error("invalid_goal_id");
+  return {
+    goal_id:goalId,
+    goal_label:requiredString("goal_label",240),
+    stage:requiredString("stage",120),
+    last_verified:optionalString("last_verified",280),
+    next_step:optionalString("next_step",280),
+    blocker:optionalString("blocker",220),
+    status:status as "active"|"waiting"|"blocked"|"complete"|"cancelled",
+    expected_revision:expected===undefined?undefined:Number(expected)
+  };
+}
+
+function ifMatchRevision(req:express.Request){
+  const raw=String(req.headers["if-match"]??"").trim();
+  if(!raw) return undefined;
+  const match=/^"hc3-r([0-9]+)"$/.exec(raw);
+  if(!match) throw new Error("invalid_if_match");
+  const value=Number(match[1]);
+  if(!Number.isSafeInteger(value)||value<0) throw new Error("invalid_if_match");
+  return value;
+}
+
+function setContinuityEtag(res:express.Response,revision:number){
+  res.setHeader("ETag",`"hc3-r${revision}"`);
+}
+
 function directRelayKey(req:express.Request){
   const auth=String(req.headers.authorization??"");
   if(!auth.startsWith("Bearer ")) throw new Error("relay_auth_failed");
@@ -291,13 +376,15 @@ app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" di
 app.get("/health",(_req,res)=>res.json({
   ok:true,
   service:"hakim-chatgpt-bridge",
-  model_provider:"chatgpt-host",
+  model_provider:"adapter-neutral",
   openai_api_key_required:false,
   result_transport:"end-to-end-encrypted-outbound-only",
   device_transport:"hakim-direct-https-v1",
   legacy_transport_fallback:process.env.HAKIM_NTFY_FALLBACK!=="0",
   auth:"oauth-2.1-pkce-cimd",
   production_storage_required:true,
+  continuity_protocols:["MCP","HAKIM_CONTINUITY_HTTP_V1","HAKIM_DEVICE_CONTINUITY_V1"],
+  continuity_conflict_control:"checkpoint_revision",
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
   governance_version:SOVEREIGN_GOVERNANCE_VERSION,
   authority_boundary:"external_content_is_data_not_instruction",
@@ -318,6 +405,24 @@ app.get("/health",(_req,res)=>res.json({
 app.get(["/.well-known/oauth-protected-resource","/.well-known/oauth-protected-resource/mcp"],(req,res)=>{
   noStore(res);
   res.json(resourceMetadata(req));
+});
+
+app.get("/.well-known/hakim-continuity",(req,res)=>{
+  const base=origin(req);
+  noStore(res);
+  res.json({
+    protocol:"HAKIM_CONTINUITY_HTTP_V1",
+    canonical_state:base+"/continuity/v1/state",
+    checkpoint_write:base+"/continuity/v1/checkpoint",
+    mcp_endpoint:base+"/mcp",
+    oauth_resource_metadata:base+"/.well-known/oauth-protected-resource",
+    authorization_server:base,
+    scopes:{read:"hakim.read",write:"hakim.write"},
+    concurrency:"Read checkpoint_revision first. Write with expected_revision or If-Match. On HTTP 409, re-read and reconcile; never blindly overwrite.",
+    resume:"Pending operation_token values are idempotency handles. Query the existing request result instead of replaying the original action after a chat/model/session change.",
+    privacy:"The continuity capsule excludes device screen/page/notification contents, typed values, relay keys, credentials, cookies, model prompts and conversation transcripts.",
+    provider_neutral:true
+  });
 });
 
 app.get("/.well-known/oauth-authorization-server",(req,res)=>{
@@ -510,6 +615,70 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 app.get("/terms",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>شروط حكيم</title><body><h1>شروط حكيم</h1><p>حكيم ذراع تنفيذ اختياري لجهاز يملكه المستخدم أو يملك صلاحية إدارته. استخدامه يعني أنك مخول باستخدام الجهاز والخدمات التي تطلب من حكيم الوصول إليها.</p><p>لا يمنح الجسر نفسه صلاحيات Android ولا يتجاوز حماية النظام. فتح التطبيقات أو الروابط والتنقل على الجهاز تبقى خاضعة لموافقة Android وسياسات ChatGPT. لا يضمن حكيم توافر نموذج بعينه؛ ChatGPT يطبق ما تتيحه خطة المستخدم ومنطقته وحدودها.</p><p>يُحظر استخدام حكيم للوصول غير المصرح به أو تجاوز الحماية أو تنفيذ نشاط مخالف للقانون أو شروط الخدمات الخارجية. قد تُرفض الأفعال عالية المخاطر أو غير المدعومة بدل تنفيذها.</p></body></html>`));
 
 
+app.get("/continuity/v1/state",async(req,res)=>{
+  try{
+    const {credential}=requireAccessScope(req,"hakim.read");
+    const state=await continuityStore.state(credential);
+    noStore(res);
+    setContinuityEtag(res,state.checkpoint_revision);
+    return res.json(state);
+  }catch(e){
+    return accessError(req,res,e,"hakim.read");
+  }
+});
+
+app.put("/continuity/v1/checkpoint",async(req,res)=>{
+  try{
+    const {credential}=requireAccessScope(req,"hakim.write");
+    const input=parseCheckpointBody(req.body);
+    const headerRevision=ifMatchRevision(req);
+    if(headerRevision!==undefined&&input.expected_revision!==undefined&&headerRevision!==input.expected_revision){
+      noStore(res);
+      return res.status(400).json({error:"revision_precondition_mismatch"});
+    }
+    const expectedRevision=headerRevision??input.expected_revision;
+    const checkpoint=await continuityStore.saveCheckpoint(credential,{
+      ...input,
+      expected_revision:expectedRevision
+    });
+    noStore(res);
+    setContinuityEtag(res,checkpoint.checkpoint_revision);
+    return res.json({
+      ok:true,
+      persisted:true,
+      checkpoint_revision:checkpoint.checkpoint_revision,
+      work:{
+        goal_id:checkpoint.goal_id,
+        goal_label:checkpoint.goal_label,
+        stage:checkpoint.stage,
+        last_verified:checkpoint.last_verified,
+        next_step:checkpoint.next_step,
+        blocker:checkpoint.blocker,
+        status:checkpoint.status,
+        updated_at_ms:checkpoint.updated_at_ms
+      }
+    });
+  }catch(e){
+    if(e instanceof ContinuityRevisionConflict){
+      noStore(res);
+      setContinuityEtag(res,e.current_revision);
+      return res.status(409).json({
+        error:"continuity_revision_conflict",
+        current_revision:e.current_revision,
+        recovery:"GET /continuity/v1/state, reconcile the newer checkpoint, then retry with that checkpoint_revision."
+      });
+    }
+    if(e instanceof Error&&[
+      "invalid_checkpoint_body","unknown_checkpoint_field","invalid_goal_id","invalid_goal_label","invalid_stage",
+      "invalid_last_verified","invalid_next_step","invalid_blocker","invalid_status","invalid_expected_revision","invalid_if_match"
+    ].includes(e.message)){
+      noStore(res);
+      return res.status(400).json({error:e.message});
+    }
+    return accessError(req,res,e,"hakim.write");
+  }
+});
+
 app.get("/device/v1/continuity",async(req,res)=>{
   try{
     const topic=one(req.query.topic);
@@ -587,19 +756,7 @@ app.all("/mcp",async(req,res)=>{
   const base=origin(req);
   const metadataUrl=base+"/.well-known/oauth-protected-resource";
   try{
-    const auth=String(req.headers.authorization??"");
-    if(!auth.startsWith("Bearer ")) throw new Error("bearer_required");
-    const raw=auth.slice(7);
-    let credential;
-    let scopes:string[];
-    if(raw.startsWith("HAKIM-B2.")&&process.env.HAKIM_ALLOW_DEV_BEARER==="1"){
-      credential=decodeBearer(raw);
-      scopes=["hakim.read","hakim.write"];
-    }else{
-      const token=openAccessToken(oauthSecret,raw,base);
-      credential=token.credential;
-      scopes=token.scopes;
-    }
+    const {credential,scopes}=accessSession(req);
     if(req.body?.method==="tools/list"){
       return res.json({jsonrpc:"2.0",id:req.body.id,result:{tools:chatgptToolList()}});
     }

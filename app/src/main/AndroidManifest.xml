@@ -117,6 +117,11 @@
 
 
         <service
+            android:name=".UpdateJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+
+        <service
             android:name=".HakimEvolutionJobService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />

@@ -12,6 +12,7 @@ type PendingObservation={
   relay_key:string;
   command_topic?:string;
   result_topic?:string;
+  version_code?:number;
   updated_at_ms:number;
 };
 
@@ -187,7 +188,8 @@ export class DeviceBindingStore{
         source:"observed_live_channel",
         bound_at_ms:Date.now(),
         updated_at_ms:Date.now(),
-        version_code:null
+        version_code:Number.isInteger(pending.version_code)&&Number(pending.version_code)>0
+          ?Number(pending.version_code):null
       };
       await this.atomicSealed(this.currentFile,bound);
       await fs.unlink(file).catch(()=>{});
@@ -216,15 +218,28 @@ export class DeviceBindingStore{
 
   async noteVersion(resultTopic:string,relayKey:string,versionCode:number){
     if(!TOPIC.test(resultTopic)||!KEY.test(relayKey)||!Number.isInteger(versionCode)||versionCode<=0) return;
-    await this.withLock("current",async()=>{
+    const keyHash=sha(relayKey);
+    await this.withLock(keyHash,async()=>{
       const current=await this.current();
-      if(!current) return;
-      if(!safeEqual(current.credential.resultTopic,resultTopic)||
-        !safeEqual(current.credential.relayKey,relayKey)) return;
-      if(current.version_code===versionCode) return;
-      current.version_code=versionCode;
-      current.updated_at_ms=Date.now();
-      await this.atomicSealed(this.currentFile,current);
+      if(current&&safeEqual(current.credential.resultTopic,resultTopic)&&
+        safeEqual(current.credential.relayKey,relayKey)){
+        if(current.version_code===versionCode) return;
+        current.version_code=versionCode;
+        current.updated_at_ms=Date.now();
+        await this.atomicSealed(this.currentFile,current);
+        return;
+      }
+      const file=this.observationFile(keyHash);
+      try{
+        const pending=this.open<PendingObservation>(await fs.readFile(file,"utf8"));
+        if(pending.version!=="HAKIM_DEVICE_OBSERVATION_V1"||
+          !safeEqual(pending.relay_key,relayKey)||
+          (pending.result_topic&&pending.result_topic!==resultTopic)) return;
+        pending.result_topic=resultTopic;
+        pending.version_code=versionCode;
+        pending.updated_at_ms=Date.now();
+        await this.atomicSealed(file,pending);
+      }catch{}
     });
   }
 

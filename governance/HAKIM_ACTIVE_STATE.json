@@ -29,14 +29,14 @@
     "candidate": {
       "version_code": 20313,
       "branch": "release/hakim-20313-chatgpt-control-candidate",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "scoped_chatgpt_web_history_index_read_navigation_and_approved_send",
-      "source_ci_run_id": 36597253198,
-      "source_ci_tested_head": "94b7d118bfe20aecbcbc6eba0986457a7ffefd26",
+      "purpose": "scoped_chatgpt_web_control_plus_fault_containment",
+      "source_ci_run_id": null,
+      "source_ci_tested_head": "",
       "field_signing_state": "BLOCKED_CI_D1_MATERIAL_UNAVAILABLE"
     },
     "field_observed_current": {
@@ -278,6 +278,11 @@
     "chatgpt_control_scope": "chatgpt.com_only",
     "chatgpt_control_storage": "encrypted_titles_and_conversation_links_only",
     "chatgpt_destructive_actions_exposed": false,
-    "chatgpt_control_source_ci_verified": true
+    "chatgpt_control_source_ci_verified": true,
+    "fault_containment_source_integrated": true,
+    "fault_containment_field_verified": false,
+    "high_impact_fault_gate": true,
+    "silent_exception_policy": "critical_paths_recorded_bounded_and_fail_closed",
+    "repeated_failure_policy": "circuit_breaker_then_reroute_or_wait"
   }
 }

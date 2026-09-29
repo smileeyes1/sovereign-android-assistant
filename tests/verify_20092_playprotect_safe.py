@@ -5,7 +5,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 BASELINE = (ROOT / "governance/LAST_VERIFIED_BASELINE.md").read_text(encoding="utf-8")
-APP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")\nAUTO = (ROOT / "app/src/main/java/ps/hakim/phoneagent/AutoUpdater.kt").read_text(encoding="utf-8")\nINSTALL_RECEIVER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/UpdateInstallReceiver.kt").read_text(encoding="utf-8")
+APP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
+AUTO = (ROOT / "app/src/main/java/ps/hakim/phoneagent/AutoUpdater.kt").read_text(encoding="utf-8")
+INSTALL_RECEIVER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/UpdateInstallReceiver.kt").read_text(encoding="utf-8")
 
 def req(cond: bool, reason: str):
     if not cond:
@@ -36,8 +38,9 @@ for needed in [
 req("c84359e422dad0aa205f59a153a1f29d7f4c4e81" in BASELINE, "cloud_baseline")
 req("20092" in BASELINE and "Play Protect" in BASELINE, "playprotect_field_evidence_not_recorded")
 req("20092" in BASELINE, "candidate_not_recorded")
-# Update discovery/check scheduling is safe and required for continuity. The Play Protect
-# gate must block installation authority, not the act of checking a signed update feed.
+
+# Safe update discovery/check scheduling is required for continuity.
+# Block installation authority, not the act of checking a pinned signed update feed.
 for needed_call in [
     "AutoUpdater.schedule(this)",
     "AutoUpdater.startRealtimeListener(this)",
@@ -59,7 +62,7 @@ req('installer_capability", false' in AUTO, "installer_capability_must_remain_fa
 req("ready_in_downloads" in AUTO, "verified_download_export_missing")
 req("ignored" in INSTALL_RECEIVER and "PackageInstaller" not in INSTALL_RECEIVER, "legacy_installer_revived")
 
-# Known failure: sensitive accessibility declaration must be detected.
+# Known failure sentinel: a sensitive accessibility declaration must still be detected.
 probe = MANIFEST + '\n<service android:name=".HakimAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" />'
 try:
     req('android.permission.BIND_ACCESSIBILITY_SERVICE' not in probe, "known_failure_sentinel")

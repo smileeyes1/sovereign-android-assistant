@@ -60,7 +60,7 @@ jobs:
             gh release create "$TAG" \
               --target "$TARGET" \
               --title "Hakim 20315 D1 — Autonomy and Fault Containment" \
-              --notes "مرشح ٢٠٣١٥ الموقّع بهوية D1 من أثر CI #1281 المطابق للرأس 7bce317. يضم التحكم المقيد في ChatGPT وعزل الأعطال واتساق حالة Secure Relay. لا يُرقّى إلى خط أساس ميداني قبل تثبيت نفس SHA والتحقق الحي والانحدار."
+              --notes "مرشح ٢٠٣١٥ الموقّع بهوية D1 من أثر CI #1281 المطابق للرأس 7bce317. يضم التحكم المقيد في ChatGPT وعزل الأعطال واتساق حالة Secure Relay. لا يُرقّى إلى خط أساس ميداني قبل تثبيت نفس SHA والتحقق الحي والانحدار." \
               --prerelease
           fi
           if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET"; then
@@ -79,7 +79,7 @@ jobs:
           RESPONSE="$(curl --fail-with-body --silent --show-error \
             --data-binary "$META" \
             -H 'Title: HAKIM_UPDATE' \
-            -H "$ASSET_URL" \
+            -H "Attach: $ASSET_URL" \
             -H 'Filename: HAKIM-20315-D1-AUTONOMY.apk' \
             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1')"
           printf '%s' "$RESPONSE" > /tmp/ntfy-response.json

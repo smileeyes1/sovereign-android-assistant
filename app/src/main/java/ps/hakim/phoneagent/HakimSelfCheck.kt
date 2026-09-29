@@ -13,7 +13,7 @@ object HakimSelfCheck {
     private const val PERIOD_MS = 60L * 60L * 1000L
 
     fun schedule(context: Context) {
-        try {
+        HakimFaultContainment.guard(context, "self_check", "schedule") {
             val scheduler = context.getSystemService(JobScheduler::class.java)
             val job = JobInfo.Builder(JOB_ID, ComponentName(context, HakimEvolutionJobService::class.java))
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
@@ -21,15 +21,16 @@ object HakimSelfCheck {
                 .setPeriodic(PERIOD_MS)
                 .build()
             scheduler.schedule(job)
-        } catch (_: Exception) {}
+        }
     }
 
     fun runAsync(context: Context) {
         Thread {
-            try {
-                val report = run(context.applicationContext)
-                HakimLearning.recordHealth(context.applicationContext, report)
-            } catch (_: Exception) {}
+            val app = context.applicationContext
+            HakimFaultContainment.guard(app, "self_check", "run_async") {
+                val report = run(app)
+                HakimLearning.recordHealth(app, report)
+            }
         }.start()
     }
 
@@ -134,6 +135,13 @@ object HakimSelfCheck {
         check("Online لا يُعلن بلا مسار حي", executionFabric.optBoolean("online_requires_live_path"))
         check("فشل مسار واحد لا يغلق المقصد", executionFabric.optBoolean("single_path_failure_does_not_close_goal"))
 
+        val containment = HakimFaultContainment.status(context)
+        check("حاجز الأعطال المركزي فعّال", containment.optBoolean("fault_containment"))
+        check("الفشل الصامت ممنوع في المسارات الحرجة المحروسة", containment.optBoolean("critical_path_silent_failures_forbidden"))
+        check("منع التكرار الأعمى فعال", containment.optBoolean("bounded_retry") && containment.optBoolean("circuit_breaker"))
+        check("الأفعال عالية الأثر تفشل مغلقة عند العطل الحرج", containment.optBoolean("high_impact_fail_closed"))
+        check("لا حظر أمان حرج نشط", !containment.optBoolean("high_impact_blocked"), "fail", "critical_blocks=" + containment.optInt("critical_blocks"))
+
         val mainPrefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         val userDisabled = mainPrefs.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = mainPrefs.getString("command_topic", "").orEmpty().isNotBlank() &&
@@ -197,6 +205,7 @@ object HakimSelfCheck {
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)
             .put("execution_fabric", executionFabric)
+            .put("fault_containment", containment)
             .put("self_improvement", improvement)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))

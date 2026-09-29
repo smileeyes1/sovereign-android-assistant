@@ -25,6 +25,7 @@ local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManage
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt")
+chatgpt_index = text("app/src/main/java/ps/hakim/phoneagent/HakimChatGptIndex.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version_match = re.search(r"versionCode\s+(\d+)", build)
@@ -69,6 +70,15 @@ require('.put("apk_sha256", installedApkSha256)' in health, "P0: نبضة الص
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")
 require('request_expired' in relay and 'duplicate_request' in relay, "P0: حواجز الانتهاء/الإعادة مفقودة")
 require('READ_ONLY_OPS' in relay and 'showApproval' in relay, "P0: بوابة الموافقة للأفعال المتغيرة مفقودة")
+require('"chatgpt_read"' in relay and '"chatgpt_navigate"' in relay and '"chatgpt_action"' in relay, "P0: مسارات ChatGPT غير موصولة بالقناة الآمنة")
+read_ops = relay.split("private val READ_ONLY_OPS", 1)[1].split("private val ALLOWED_OPS", 1)[0]
+require('"chatgpt_read"' in read_ops and '"chatgpt_navigate"' in read_ops, "P0: قراءة/تنقل ChatGPT ليستا read-only")
+require('"chatgpt_action"' not in read_ops, "P0: إجراء ChatGPT المتغير تجاوز بوابة الموافقة")
+require('fun chatGptRead(payload: JSONObject)' in service and 'fun chatGptNavigate(payload: JSONObject)' in service and 'fun chatGptAction(payload: JSONObject)' in service, "P0: واجهة ChatGPT المقيّدة مفقودة")
+require('chatgpt.com' in service and 'chatgpt_scope_mismatch' in service, "P0: حارس نطاق ChatGPT مفقود")
+require('chatgpt_login_required' in service and 'input[type=password]' in service, "P0: بوابة تسجيل الدخول الحساسة مفقودة")
+require('AndroidKeyStore' in chatgpt_index and 'AES/GCM/NoPadding' in chatgpt_index, "P0: فهرس ChatGPT غير مشفر")
+require('لا يخزن نصوص المحادثات' in chatgpt_index, "P0: تقليل بيانات فهرس ChatGPT غير مثبت")
 require('"[مخفي]"' in accessibility and 'isPassword' in accessibility, "P0: تنقيح الحقول الحساسة مفقود")
 require('[رمز مخفي]' in notifications, "P0: تنقيح رموز التحقق في الإشعارات مفقود")
 require('AndroidKeyStore' in local_adb and 'hakim_native_local_adb_v1' in local_adb, "P0: هوية ADB المحلية ليست محفوظة في AndroidKeyStore")

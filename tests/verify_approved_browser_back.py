@@ -4,6 +4,7 @@ app = Path(__file__).resolve().parents[1] / "app/src/main/java/ps/hakim/phoneage
 relay = (app / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 service = (app / "HakimService.kt").read_text(encoding="utf-8")
 read_only = relay.split("private val READ_ONLY_OPS", 1)[1].split("private val ALLOWED_OPS", 1)[0]
+allowed = relay.split("private val ALLOWED_OPS", 1)[1].split("private val running", 1)[0]
 handler = relay.split("private fun handleCarrier", 1)[1].split("private fun decryptCarrier", 1)[0]
 back = service.split("private fun backBrowser()", 1)[1].split("private fun sendSnapshot", 1)[0]
 
@@ -12,7 +13,7 @@ def require(condition, reason):
         raise SystemExit("APPROVED_BROWSER_BACK=FAIL reason=" + reason)
 
 require('"browser_back"' not in read_only, "approval_bypass")
-require('setOf("action", "launch", "browser_back")' in relay, "operation_not_allowed")
+require('"browser_back"' in allowed, "operation_not_allowed")
 require(handler.index("claimRemoteRequest(context, requestId)") < handler.index("savePending(context, envelope, resultTopic)"),
         "duplicate_request_can_be_approved")
 require("showApproval(context, requestId, op)" in handler, "phone_approval_missing")

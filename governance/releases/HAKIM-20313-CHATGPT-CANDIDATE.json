@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "version_code": 20313,
+  "version_name": "3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-v1",
+  "base_field_version": 20312,
+  "base_field_apk_sha256": "f2c99b9cef0f0664032fa9618140b8e2564fda7dcdf0e7c136f3d3f58bcdcbd0",
+  "base_signer_lineage": "D1",
+  "candidate_branch": "release/hakim-20313-chatgpt-control-candidate",
+  "capability": {
+    "scope": "chatgpt.com_only",
+    "reads": [
+      "status",
+      "encrypted conversation index",
+      "currently rendered messages"
+    ],
+    "read_navigation": [
+      "open home",
+      "open indexed conversation",
+      "scroll sidebar",
+      "scroll conversation"
+    ],
+    "mutations": [
+      "new chat",
+      "send message"
+    ],
+    "destructive_actions_exposed": false,
+    "login_secret_capture": false,
+    "accessibility_service_required": false
+  },
+  "promotion_gate": "SOURCE_CI_VERIFIED; D1_SIGNING_BLOCKED_CI; SAME_ARTIFACT_FIELD_TEST_PENDING",
+  "source_ci": {
+    "verified": true,
+    "run_id": 36597253198,
+    "tested_head": "94b7d118bfe20aecbcbc6eba0986457a7ffefd26",
+    "build": "PASS",
+    "page_16k": "PASS"
+  },
+  "signing": {
+    "field_d1_apk_created": false,
+    "reason": "CI_D1_MATERIAL_UNAVAILABLE"
+  }
+}

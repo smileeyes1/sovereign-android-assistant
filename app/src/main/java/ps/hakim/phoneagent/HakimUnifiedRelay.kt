@@ -51,8 +51,8 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate")
+    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "chatgpt_action")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
@@ -215,44 +215,56 @@ object HakimUnifiedRelay {
                 continue
             }
 
-            try {
-                directPollOnce(context, topic, resultTopic, relayKey)
-                lastLoopProgressAt = System.currentTimeMillis()
-                if (generation != loopGeneration || !running.get()) break
-                directFailures = 0
-                retryMs = 2_000L
-                connected = true
-                val connectedAt = System.currentTimeMillis()
-                prefs.edit()
-                    .putString("secure_relay_state", "direct_connected")
-                    .putString("connection_recovery_state", "healthy")
-                    .putLong("secure_relay_seen_at", connectedAt)
-                    .putLong("last_recovery_ok_at", connectedAt)
-                    .putLong("last_connected_at", connectedAt)
-                    .remove("secure_relay_error")
-                    .remove("last_recovery_error")
-                    .apply()
-                HakimCloudContinuity.refreshIfDue(
-                    context,
-                    bridgeBase(context),
-                    topic,
-                    relayKey
-                )
-                HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
-                continue
-            } catch (e: Exception) {
+            if (HakimFaultContainment.shouldAttempt(context, "secure_relay", "direct_poll")) {
+                try {
+                    directPollOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "direct_poll")
+                    lastLoopProgressAt = System.currentTimeMillis()
+                    if (generation != loopGeneration || !running.get()) break
+                    directFailures = 0
+                    retryMs = 2_000L
+                    connected = true
+                    val connectedAt = System.currentTimeMillis()
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_connected")
+                        .putString("connection_recovery_state", "healthy")
+                        .putLong("secure_relay_seen_at", connectedAt)
+                        .putLong("last_recovery_ok_at", connectedAt)
+                        .putLong("last_connected_at", connectedAt)
+                        .remove("secure_relay_error")
+                        .remove("last_recovery_error")
+                        .apply()
+                    HakimCloudContinuity.refreshIfDue(
+                        context,
+                        bridgeBase(context),
+                        topic,
+                        relayKey
+                    )
+                    HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
+                    continue
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "direct_poll", e)
+                    connected = false
+                    directFailures += 1
+                    prefs.edit()
+                        .putString("secure_relay_state", "direct_recovering")
+                        .putString("connection_recovery_state", "secure_relay_recovering")
+                        .putString("secure_relay_error", e.javaClass.simpleName)
+                        .apply()
+                }
+            } else {
                 connected = false
-                directFailures += 1
+                directFailures = maxOf(directFailures, 3)
                 prefs.edit()
-                    .putString("secure_relay_state", "direct_recovering")
+                    .putString("secure_relay_state", "direct_circuit_open")
                     .putString("connection_recovery_state", "secure_relay_recovering")
-                    .putString("secure_relay_error", e.javaClass.simpleName)
                     .apply()
             }
 
-            if (directFailures >= 3) {
+            if (directFailures >= 3 && HakimFaultContainment.shouldAttempt(context, "secure_relay", "legacy_poll")) {
                 try {
                     listenLegacyOnce(context, topic, resultTopic, relayKey)
+                    HakimFaultContainment.recordSuccess(context, "secure_relay", "legacy_poll")
                     lastLoopProgressAt = System.currentTimeMillis()
                     if (generation != loopGeneration || !running.get()) break
                     directFailures = 0
@@ -268,7 +280,8 @@ object HakimUnifiedRelay {
                         .apply()
                     HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
                     continue
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    HakimFaultContainment.recordFailure(context, "secure_relay", "legacy_poll", e)
                     connected = false
                 }
             }
@@ -467,7 +480,11 @@ object HakimUnifiedRelay {
             requestId.hashCode(),
             notification
                 .setContentTitle("حكيم — موافقة مطلوبة")
-                .setContentText(if (op == "browser_back") "الرجوع إلى الصفحة السابقة في متصفح حكيم" else "طلب تحكم على الهاتف: $op")
+                .setContentText(when (op) {
+                    "browser_back" -> "الرجوع إلى الصفحة السابقة في متصفح حكيم"
+                    "chatgpt_action" -> "تنفيذ إجراء داخل حساب ChatGPT (مثل إرسال رسالة)"
+                    else -> "طلب تحكم على الهاتف: $op"
+                })
                 .setSmallIcon(android.R.drawable.ic_lock_lock)
                 .setAutoCancel(true)
                 .addAction(android.R.drawable.ic_input_add, "موافقة", approve)
@@ -485,6 +502,27 @@ object HakimUnifiedRelay {
         }
         if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
             sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
+            return
+        }
+        if (!HakimFaultContainment.canExecuteHighImpact(context)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "fault_containment_blocked")
+            )
+            return
+        }
+        val op = envelope.optString("op").ifBlank { "unknown" }
+        if (!HakimFaultContainment.shouldAttempt(context, "remote_op", op)) {
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                "blocked",
+                JSONObject().put("ok", false).put("error", "operation_circuit_open")
+            )
             return
         }
         executor.execute {
@@ -508,10 +546,14 @@ object HakimUnifiedRelay {
     private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
         val op = envelope.optString("op")
         val payload = decodePayload(envelope)
-        return when (op) {
+        return try {
+            val result = when (op) {
             "status" -> status(context)
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
+            "chatgpt_read" -> HakimService.chatGptRead(payload)
+            "chatgpt_navigate" -> HakimService.chatGptNavigate(payload)
+            "chatgpt_action" -> HakimService.chatGptAction(payload)
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")
@@ -531,7 +573,27 @@ object HakimUnifiedRelay {
                 JSONObject().put("ok", ok).put("error", if (ok) JSONObject.NULL else "action_failed")
             }
             "launch" -> launch(context, payload)
-            else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+                else -> JSONObject().put("ok", false).put("error", "unsupported_operation")
+            }
+            if (result.optBoolean("ok", false)) {
+                HakimFaultContainment.recordSuccess(context, "remote_op", op)
+            } else {
+                HakimFaultContainment.recordFailure(
+                    context,
+                    "remote_op",
+                    op.ifBlank { "unknown" },
+                    IllegalStateException("operation_result_failed")
+                )
+            }
+            result
+        } catch (e: Exception) {
+            HakimFaultContainment.recordFailure(
+                context,
+                "remote_op",
+                op.ifBlank { "unknown" },
+                e
+            )
+            JSONObject().put("ok", false).put("error", "operation_failed_safely")
         }
     }
 
@@ -562,6 +624,7 @@ object HakimUnifiedRelay {
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))

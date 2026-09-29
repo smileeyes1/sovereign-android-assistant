@@ -7,11 +7,13 @@ class HakimConnectionRecoveryJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         Thread {
             try {
-                HakimConnectionResilience.recover(applicationContext, "periodic_watchdog")
-                HakimConstraintDoctor.run(applicationContext, "periodic_watchdog")
-                HakimSelfCheck.runAsync(applicationContext)
-                HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
-            } catch (_: Exception) {
+                val app = applicationContext
+                HakimFaultContainment.guard(app, "recovery_job", "periodic_watchdog") {
+                    HakimConnectionResilience.recover(app, "periodic_watchdog")
+                    HakimConstraintDoctor.run(app, "periodic_watchdog")
+                    HakimSelfCheck.runAsync(app)
+                    HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
+                }
             } finally {
                 jobFinished(params, false)
             }

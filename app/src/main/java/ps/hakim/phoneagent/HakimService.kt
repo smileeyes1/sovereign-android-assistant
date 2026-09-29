@@ -60,6 +60,10 @@ class HakimService : Service() {
         fun backActiveBrowser(): JSONObject = activeService?.backBrowser()
             ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
 
+        /** Local-only acceptance probe. Uses an isolated WebView and never reads the user's active page. */
+        fun fieldBrowserSelfTest(): JSONObject = activeService?.browserSelfTest()
+            ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
+
         /** قراءة ChatGPT محصورة في chatgpt.com ولا تتعامل مع حقول الدخول الحساسة. */
         fun chatGptRead(payload: JSONObject): JSONObject = activeService?.chatGptReadInternal(payload)
             ?: JSONObject().put("ok", false).put("error", "browser_service_unavailable")
@@ -1001,6 +1005,82 @@ class HakimService : Service() {
             }
             else -> JSONObject().put("ok", false).put("error", "unsupported_chatgpt_action_mode").put("scope", "chatgpt.com")
         }
+    }
+
+    private fun browserSelfTest(): JSONObject {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return JSONObject().put("ok", false).put("error", "field_browser_self_test_on_ui_thread")
+        }
+
+        fun probe(html: String): JSONObject {
+            val done = CountDownLatch(1)
+            val response = AtomicReference(JSONObject().put("error", "probe_not_completed"))
+            Handler(Looper.getMainLooper()).post {
+                val testView = runCatching { WebView(this) }.getOrNull()
+                if (testView == null) {
+                    response.set(JSONObject().put("error", "webview_create_failed"))
+                    done.countDown()
+                    return@post
+                }
+                testView.settings.javaScriptEnabled = true
+                testView.settings.domStorageEnabled = false
+                testView.settings.allowFileAccess = false
+                testView.settings.allowContentAccess = false
+                testView.webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        val target = view ?: return
+                        target.evaluateJavascript(snapshotScript()) { raw ->
+                            val page = runCatching { JSONObject(decodeJsString(raw)) }.getOrNull()
+                            response.set(page ?: JSONObject().put("error", "snapshot_parse_failed"))
+                            runCatching { target.destroy() }
+                            done.countDown()
+                        }
+                    }
+                }
+                runCatching {
+                    testView.loadDataWithBaseURL(
+                        "https://selftest.hakim.invalid/",
+                        html,
+                        "text/html",
+                        "UTF-8",
+                        null
+                    )
+                }.onFailure {
+                    response.set(JSONObject().put("error", "probe_load_failed"))
+                    runCatching { testView.destroy() }
+                    done.countDown()
+                }
+            }
+            return if (runCatching { done.await(6, TimeUnit.SECONDS) }.getOrDefault(false)) response.get()
+            else JSONObject().put("error", "probe_timeout")
+        }
+
+        val safe = probe(
+            "<html><head><title>اختبار حكيم الآمن</title></head>" +
+                "<body><p>نص حكيم آمن للتحقق المحلي</p></body></html>"
+        )
+        val sensitive = probe(
+            "<html><head><title>اختبار خصوصية حكيم</title></head>" +
+                "<body><input type='password' value='سر-اختبار-لا-يخرج'/>" +
+                "<p>صفحة حساسة</p></body></html>"
+        )
+
+        val safeReadable =
+            !safe.has("error") &&
+                !safe.optBoolean("privacy_gate") &&
+                !safe.optBoolean("blocked") &&
+                safe.optString("text").contains("نص حكيم آمن")
+        val privacyGated =
+            !sensitive.has("error") &&
+                sensitive.optBoolean("privacy_gate") &&
+                !sensitive.toString().contains("سر-اختبار-لا-يخرج")
+
+        return JSONObject()
+            .put("ok", safeReadable && privacyGated)
+            .put("safe_readable", safeReadable)
+            .put("privacy_gate", privacyGated)
+            .put("safe_error", safe.optString("error", ""))
+            .put("sensitive_error", sensitive.optString("error", ""))
     }
 
     private fun readBrowser(): JSONObject {

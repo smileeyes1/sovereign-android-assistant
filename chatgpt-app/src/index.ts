@@ -455,6 +455,7 @@ app.get("/.well-known/hakim-continuity",(req,res)=>{
     mcp_endpoint:base+"/mcp",
     oauth_resource_metadata:base+"/.well-known/oauth-protected-resource",
     authorization_server:base,
+    client_registration:base+"/oauth/register",
     scopes:{read:"hakim.read",write:"hakim.write"},
     concurrency:"Read checkpoint_revision first. Write with expected_revision or If-Match. On HTTP 409, re-read and reconcile; never blindly overwrite.",
     resume:"Pending operation_token values are idempotency handles. Query the existing request result instead of replaying the original action after a chat/model/session change.",
@@ -470,6 +471,7 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
     issuer:base,
     authorization_endpoint:base+"/oauth/authorize",
     token_endpoint:base+"/oauth/token",
+    registration_endpoint:base+"/oauth/register",
     response_types_supported:["code"],
     grant_types_supported:["authorization_code","refresh_token"],
     code_challenge_methods_supported:["S256"],
@@ -478,6 +480,23 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
     client_id_metadata_document_supported:true,
     authorization_response_iss_parameter_supported:true
   });
+});
+
+app.post("/oauth/register",async(req,res)=>{
+  try{
+    if(!registrationAttemptAllowed(req.ip??"unknown")){
+      noStore(res);
+      return res.status(429).json({error:"temporarily_unavailable"});
+    }
+    const client=await oauthClientRegistry.register(req.body);
+    noStore(res);
+    return res.status(201).json(oauthClientRegistry.publicRegistration(client));
+  }catch(e){
+    noStore(res);
+    const message=e instanceof Error?e.message:"invalid_client_metadata";
+    const status=message==="client_registry_capacity_reached"?503:400;
+    return res.status(status).json({error:message});
+  }
 });
 
 app.get("/oauth/authorize",async(req,res)=>{

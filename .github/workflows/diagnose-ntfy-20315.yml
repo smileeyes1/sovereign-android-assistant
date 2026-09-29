@@ -1,0 +1,48 @@
+name: "تشخيص إشارة حكيم ٢٠٣١٥ — قراءة فقط"
+
+on:
+  push:
+    branches:
+      - publish/hakim-20315-autonomy-d1
+    paths:
+      - .github/workflows/diagnose-ntfy-20315.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: قراءة الحدث المنشور بشكل معقم
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error             'https://ntfy.sh/hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1/json?poll=1&since=6h'             -o /tmp/events.ndjson
+          python3 - <<'PY'
+          import json
+          target='nXcLLTue6euz'
+          found=None
+          for line in open('/tmp/events.ndjson',encoding='utf-8'):
+              try: x=json.loads(line)
+              except Exception: continue
+              if x.get('id')==target:
+                  found=x
+                  break
+          if not found:
+              raise SystemExit('TARGET_EVENT_NOT_FOUND')
+          a=found.get('attachment')
+          msg=found.get('message')
+          out={
+            'event_id': found.get('id'),
+            'event': found.get('event'),
+            'title': found.get('title'),
+            'message_has_20315': isinstance(msg,str) and '"version_code":20315' in msg,
+            'message_length': len(msg) if isinstance(msg,str) else None,
+            'attachment_present': isinstance(a,dict),
+            'attachment_url_https': isinstance(a,dict) and isinstance(a.get('url'),str) and a.get('url').startswith('https://'),
+            'attachment_name': a.get('name') if isinstance(a,dict) else None,
+            'attachment_size': a.get('size') if isinstance(a,dict) else None,
+          }
+          print('NTFY_20315_DIAG='+json.dumps(out,separators=(',',':')))
+          PY

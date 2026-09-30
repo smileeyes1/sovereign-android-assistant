@@ -634,7 +634,7 @@ object HakimUnifiedRelay {
             .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
-            .put("learning", HakimLearning.snapshot(context))
+            .put("learning", HakimLearning.snapshot(context))\n            .put("network_protection", HakimNetworkProtectionTask.status(context))
     }
 
     private fun launch(context: Context, payload: JSONObject): JSONObject {

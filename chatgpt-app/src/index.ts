@@ -367,6 +367,7 @@ function developmentWorkerView(record:Awaited<ReturnType<typeof developmentReque
     trigger:record.trigger,
     severity:record.severity,
     fingerprint:record.fingerprint,
+    evidence:record.evidence,
     state:record.state,
     lease_expires_at_ms:record.lease_expires_at_ms,
     attempt_count:record.attempt_count??0,
@@ -1170,6 +1171,9 @@ app.post(
             "development_schema_invalid","development_control_version_invalid","development_request_id_invalid",
             "development_package_invalid","development_version_invalid","development_time_invalid",
             "development_trigger_invalid","development_severity_invalid","development_fingerprint_invalid",
+            "development_evidence_invalid","development_evidence_code_invalid",
+            "development_evidence_failure_count_invalid","development_evidence_self_check_invalid",
+            "development_evidence_candidate_state_invalid","development_evidence_action_code_invalid",
             "development_constraints_invalid","development_constraints_weakened"
           ].includes(message)?message:"rejected"
         }));

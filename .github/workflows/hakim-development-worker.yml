@@ -22,9 +22,9 @@ jobs:
       contents: read
       id-token: write
     outputs:
-      has_request: \${{ steps.lease.outputs.has_request }}
-      request_b64: \${{ steps.lease.outputs.request_b64 }}
-      request_id: \${{ steps.lease.outputs.request_id }}
+      has_request: ${{ steps.lease.outputs.has_request }}
+      request_b64: ${{ steps.lease.outputs.request_b64 }}
+      request_id: ${{ steps.lease.outputs.request_id }}
     steps:
       - name: استئجار طلب تطوير واحد
         id: lease
@@ -32,8 +32,8 @@ jobs:
         run: |
           set -euo pipefail
           oidc_json="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer \${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "\${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker")"
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker")"
           oidc_token="$(jq -er '.value' <<<"$oidc_json")"
           http_code="$(curl --silent --show-error \
             -o lease.json -w '%{http_code}' \
@@ -81,12 +81,12 @@ jobs:
       contents: read
       copilot-requests: write
     outputs:
-      change_state: \${{ steps.package.outputs.change_state }}
+      change_state: ${{ steps.package.outputs.change_state }}
     steps:
       - name: جلب خط التطوير المثبت
         uses: actions/checkout@v4
         with:
-          ref: \${{ env.HAKIM_DEVELOPMENT_BASE }}
+          ref: ${{ env.HAKIM_DEVELOPMENT_BASE }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -96,12 +96,12 @@ jobs:
           node-version: "22"
 
       - name: تثبيت Copilot CLI بإصدار مثبت
-        run: npm install --global "@github/copilot@\${COPILOT_CLI_VERSION}"
+        run: npm install --global "@github/copilot@${COPILOT_CLI_VERSION}"
 
       - name: تجهيز طلب التطوير المحكوم
         shell: bash
         env:
-          REQUEST_B64: \${{ needs.intake.outputs.request_b64 }}
+          REQUEST_B64: ${{ needs.intake.outputs.request_b64 }}
         run: |
           set -euo pipefail
           printf '%s' "$REQUEST_B64" | base64 -d > development-lease.json
@@ -113,7 +113,7 @@ jobs:
 
       - name: تنفيذ إصلاح واحد عالي القيمة في مساحة معزولة
         env:
-          GITHUB_TOKEN: \${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -158,14 +158,14 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t changed < <(git diff --name-only)
-          if (( \${#changed[@]} == 0 )); then
+          if (( ${#changed[@]} == 0 )); then
             echo "change_state=no_change" >> "$GITHUB_OUTPUT"
             : > candidate.patch
             printf '%s\n' '{"state":"no_change"}' > candidate-meta.json
             exit 0
           fi
 
-          printf '%s\n' "\${changed[@]}" > changed-files.txt
+          printf '%s\n' "${changed[@]}" > changed-files.txt
           forbidden='^(\.github/|release-control/|governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT\.json$|governance/field-signing|Dockerfile$|railway\.toml$)'
           if grep -Eq "$forbidden" changed-files.txt; then
             echo "رفض: محاولة تعديل مسار محمي" >&2
@@ -184,7 +184,7 @@ jobs:
           fi
 
           test_changed=false
-          for file in "\${changed[@]}"; do
+          for file in "${changed[@]}"; do
             case "$file" in
               tests/*|chatgpt-app/tests/*|*Test.kt|*Tests.kt) test_changed=true ;;
             esac
@@ -211,7 +211,7 @@ jobs:
       - name: حفظ المرشح دون صلاحية كتابة للمستودع
         uses: actions/upload-artifact@v4
         with:
-          name: hakim-development-candidate-\${{ github.run_id }}
+          name: hakim-development-candidate-${{ github.run_id }}
           path: |
             candidate.patch
             candidate-meta.json
@@ -233,41 +233,41 @@ jobs:
       - name: جلب خط التطوير
         uses: actions/checkout@v4
         with:
-          ref: \${{ env.HAKIM_DEVELOPMENT_BASE }}
+          ref: ${{ env.HAKIM_DEVELOPMENT_BASE }}
           fetch-depth: 0
 
       - name: تنزيل المرشح
         uses: actions/download-artifact@v4
         with:
-          name: hakim-development-candidate-\${{ github.run_id }}
+          name: hakim-development-candidate-${{ github.run_id }}
           path: /tmp/hakim-candidate
 
       - name: معالجة النتيجة ونشر المرشح بعد CI
         shell: bash
         env:
-          GH_TOKEN: \${{ github.token }}
-          REQUEST_ID: \${{ needs.intake.outputs.request_id }}
-          CHANGE_STATE: \${{ needs.develop.outputs.change_state }}
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ needs.intake.outputs.request_id }}
+          CHANGE_STATE: ${{ needs.develop.outputs.change_state }}
         run: |
           set -euo pipefail
 
           get_oidc() {
             curl --fail --silent --show-error \
-              -H "Authorization: bearer \${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-              "\${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker" |
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker" |
               jq -er '.value'
           }
 
           acknowledge() {
             local outcome="$1"
-            local sha="\${2:-}"
-            local pr="\${3:-}"
+            local sha="${2:-}"
+            local pr="${3:-}"
             local token
             token="$(get_oidc)"
             jq -n \
               --arg outcome "$outcome" \
               --arg sha "$sha" \
-              --argjson pr "\${pr:-null}" \
+              --argjson pr "${pr:-null}" \
               '{
                 outcome:$outcome
               } + (if $sha=="" then {} else {result_sha:$sha} end)
@@ -290,8 +290,8 @@ jobs:
           git apply candidate.patch
           git diff --check
 
-          branch="auto/hakim-dev-\${REQUEST_ID//:/-}"
-          branch="\${branch//[^A-Za-z0-9._\/-]/-}"
+          branch="auto/hakim-dev-${REQUEST_ID//:/-}"
+          branch="${branch//[^A-Za-z0-9._\/-]/-}"
           git switch -c "$branch"
           git config user.name "hakim-development-worker[bot]"
           git config user.email "hakim-development-worker[bot]@users.noreply.github.com"
@@ -351,12 +351,12 @@ jobs:
       - name: تحرير الطلب بعد فشل العامل
         shell: bash
         env:
-          REQUEST_ID: \${{ needs.intake.outputs.request_id }}
+          REQUEST_ID: ${{ needs.intake.outputs.request_id }}
         run: |
           set -euo pipefail
           oidc_json="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer \${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "\${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker")"
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=hakim-development-worker")"
           token="$(jq -er '.value' <<<"$oidc_json")"
           curl --fail --silent --show-error \
             -X POST \

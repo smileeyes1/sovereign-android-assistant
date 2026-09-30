@@ -37,8 +37,9 @@ test("portable MCP package points only to production HTTPS bridge",()=>{
 test("public tool surface is narrow and fully annotated",()=>{
   const tools=chatgptToolList(true) as any[];
   assert.deepEqual(tools.map(t=>t.name),[
-    "get_device_status","get_video_capabilities","plan_video_project","open_target","navigate_device",
-    "get_continuation_state","save_continuation_checkpoint","get_request_result"
+    "get_device_status","get_video_capabilities","plan_video_project",
+    "get_film_os_capabilities","create_film_project","get_film_project",
+    "open_target","navigate_device","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]);
   for(const tool of tools){
     assert.equal(typeof tool.annotations?.readOnlyHint,"boolean",tool.name);
@@ -63,8 +64,9 @@ test("submission packet has review cases and annotation justifications",()=>{
   assert.equal([...submission.matchAll(/^### P\d+\b/gm)].length,5);
   assert.equal([...submission.matchAll(/^### N\d+\b/gm)].length,3);
   for(const tool of [
-    "get_device_status","get_video_capabilities","plan_video_project","open_target","navigate_device",
-    "get_continuation_state","save_continuation_checkpoint","get_request_result"
+    "get_device_status","get_video_capabilities","plan_video_project",
+    "get_film_os_capabilities","create_film_project","get_film_project",
+    "open_target","navigate_device","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]){
     assert.ok(submission.includes("### "+tool),tool+" justification missing");
   }

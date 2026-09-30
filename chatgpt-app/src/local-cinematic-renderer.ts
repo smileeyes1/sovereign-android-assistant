@@ -191,11 +191,7 @@ async function render(job:JobState,dir:string){
   const filter=[
     "[0:v][1:v]overlay=x='80+(W-w-160)*t/"+moveDur+"':y='H/2-h/2':shortest=1[tmp1]",
     "[tmp1][2:v]overlay=x='W-250+18*sin(t*1.4)':y='H/2+105+16*sin(t*2.2)':shortest=1[tmp2]",
-    "[tmp2]eq=contrast=1.06:saturation=0.88:brightness=-0.015",
-    "vignette=PI/5",
-    "fade=t=in:st=0:d=0.55",
-    "fade=t=out:st="+fadeOut+":d=0.55",
-    "format=yuv420p[v]",
+    "[tmp2]eq=contrast=1.06:saturation=0.88:brightness=-0.015,vignette=PI/5,fade=t=in:st=0:d=0.55,fade=t=out:st="+fadeOut+":d=0.55,format=yuv420p[v]",
     "[3:a]volume=0.018,afade=t=in:st=0:d=0.8,afade=t=out:st="+Math.max(0,d-0.9).toFixed(2)+":d=0.8[a]"
   ].join(";");
 

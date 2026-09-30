@@ -37,8 +37,12 @@ for token in [
 ]:
     req(token in WORKFLOW,"missing:"+token)
 
-develop=WORKFLOW.split("\n  develop:",1)[1].split("\n  publish:",1)[0]
-publish=WORKFLOW.split("\n  publish:",1)[1].split("\n  acknowledge-agent-failure:",1)[0]
+develop=WORKFLOW.split("
+  develop:",1)[1].split("
+  publish:",1)[0]
+publish=WORKFLOW.split("
+  publish:",1)[1].split("
+  acknowledge-agent-failure:",1)[0]
 
 req("contents: write" not in develop,"agent_has_repo_write")
 req("pull-requests: write" not in develop,"agent_has_pr_write")
@@ -58,7 +62,8 @@ for forbidden in [
 ]:
     req(forbidden not in WORKFLOW,"long_lived_secret_surface:"+forbidden)
 
-req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")\nreq("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
+req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")
+req("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
 req("release/hakim-20316-autoupdate-rootfix-candidate" not in WORKFLOW,"worker_writes_field_line_directly")
 
 print("HAKIM_DEVELOPMENT_WORKER_GATE=PASS")

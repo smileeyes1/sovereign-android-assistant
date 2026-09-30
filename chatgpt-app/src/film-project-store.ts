@@ -58,8 +58,7 @@ export async function createGoldenNumberFiveProject(env:NodeJS.ProcessEnv=proces
     language:golden.blueprint.language,
     locale:golden.blueprint.locale,
     style:golden.blueprint.style,
-    educational:true,
-    paid_approved:false
+    educational:true
   },env);
   const dir=await ensure(env);
   const enriched={

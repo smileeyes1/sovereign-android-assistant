@@ -13,8 +13,7 @@ test("Film OS blueprint is closed-loop and fail-closed",()=>{
     title:"اختبار",
     goal:"فيلم أصلي",
     format:"film",
-    duration_sec:120,
-    paid_approved:false
+    duration_sec:120
   });
   assert.equal(p.film_os_version,FILM_OS_VERSION);
   assert.equal(p.budget_policy.free_only,true);
@@ -28,18 +27,18 @@ test("Film OS blueprint is closed-loop and fail-closed",()=>{
   assert.ok(p.lifecycle.includes("FILM_QA"));
 });
 
-test("provider router rejects every paid provider even when approval is passed",()=>{
+test("provider router has no paid override path and always rejects paid providers",()=>{
   const result=routeFilmShot(
     {duration_sec:5,min_resolution_rank:2,camera_control:true},
     [
       {id:"paid",available:true,rights_ok:true,privacy_ok:true,paid:true,max_duration_sec:10,max_resolution_rank:3,image_reference:true,video_reference:false,audio_generation:true,lip_sync:true,camera_control:true,multi_shot:true,identity_continuity:10,motion_quality:10,camera_quality:10,audio_quality:10,latency_score:10,cost_score:1,verified:true},
       {id:"free-unverified",available:true,rights_ok:true,privacy_ok:true,paid:false,max_duration_sec:10,max_resolution_rank:3,image_reference:true,video_reference:false,audio_generation:true,lip_sync:true,camera_control:true,multi_shot:true,identity_continuity:10,motion_quality:10,camera_quality:10,audio_quality:10,latency_score:10,cost_score:10,verified:false},
       {id:"free-ok",available:true,rights_ok:true,privacy_ok:true,paid:false,max_duration_sec:10,max_resolution_rank:2,image_reference:true,video_reference:false,audio_generation:false,lip_sync:false,camera_control:true,multi_shot:false,identity_continuity:7,motion_quality:7,camera_quality:7,audio_quality:0,latency_score:7,cost_score:10,verified:true}
-    ],
-    true
+    ]
   );
   assert.equal(result.ok,true);
   assert.equal(result.provider?.id,"free-ok");
+  assert.equal("paid_approved" in result,false);
 });
 
 test("number five golden production freezes exact educational truth",()=>{

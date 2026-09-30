@@ -26,7 +26,9 @@ import {
 import {
   resolvePublicZeroGpuArtifact,resumePublicZeroGpuJobs
 } from "./public-zerogpu-renderer.js";
-import { resumeAutonomousFilmProjects } from "./autonomous-film-runner.js";
+import { advanceFilmProject,resumeAutonomousFilmProjects } from "./autonomous-film-runner.js";
+import { createGoldenNumberFiveProject } from "./film-project-store.js";
+import { getCinematicRenderStatus } from "./cinematic-executor.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -1205,6 +1207,64 @@ async function maybeRunVideoStartupSelftest(){
   }
 }
 
+async function maybeRunAutonomyStartupSelftest(){
+  if(process.env.HAKIM_AUTONOMY_SELFTEST_ON_START!=="1") return;
+  try{
+    const project=await createGoldenNumberFiveProject();
+    const started=await advanceFilmProject(project.project_id);
+    const jobId=typeof (started as any)?.job_id==="string"?(started as any).job_id:null;
+    if((started as any)?.state==="waiting_free_capacity"){
+      console.log("HAKIM_AUTONOMY_SELFTEST "+JSON.stringify({
+        ok:true,
+        state:"waiting_free_capacity",
+        cost_usd:0,
+        paid_fallback:false,
+        artifact_verified:false,
+        rule:"production_route_verified_free_quota_wait"
+      }));
+      return;
+    }
+    if(!jobId){
+      console.log("HAKIM_AUTONOMY_SELFTEST "+JSON.stringify({
+        ok:false,state:(started as any)?.state??"unknown",
+        cost_usd:0,paid_fallback:false,
+        rule:"production_route_did_not_return_job"
+      }));
+      return;
+    }
+    const deadline=Date.now()+90_000;
+    let status:any=null;
+    while(Date.now()<deadline){
+      status=await getCinematicRenderStatus(jobId);
+      if(["completed","failed","waiting_free_capacity"].includes(String(status?.status))) break;
+      await new Promise(resolve=>setTimeout(resolve,5_000));
+    }
+    const a=status?.artifact;
+    console.log("HAKIM_AUTONOMY_SELFTEST "+JSON.stringify({
+      ok:status?.render_success===true||status?.status==="waiting_free_capacity",
+      state:status?.status??"timeout",
+      cost_usd:0,
+      paid_fallback:false,
+      artifact_verified:status?.artifact_verified===true,
+      sha256:typeof a?.sha256==="string"&&/^[0-9a-f]{64}$/i.test(a.sha256)?a.sha256:null,
+      duration_sec:typeof a?.duration_sec==="number"?a.duration_sec:null,
+      width:typeof a?.width==="number"?a.width:null,
+      height:typeof a?.height==="number"?a.height:null,
+      fps:typeof a?.fps==="number"?a.fps:null,
+      playback_passed:a?.playback_passed===true,
+      retry_at_ms:typeof status?.retry_at_ms==="number"?status.retry_at_ms:null,
+      cinematic_approval:status?.cinematic_approval===true,
+      rule:"one_shot_production_autonomy_selftest"
+    }));
+  }catch(error){
+    console.log("HAKIM_AUTONOMY_SELFTEST "+JSON.stringify({
+      ok:false,state:"error",cost_usd:0,paid_fallback:false,
+      error:error instanceof Error?error.message.slice(0,300):"autonomy_selftest_failed",
+      rule:"one_shot_production_autonomy_selftest"
+    }));
+  }
+}
+
 async function resumeAutonomousWork(){
   try{
     await resumePublicZeroGpuJobs();
@@ -1221,6 +1281,7 @@ const port=Number(process.env.PORT??3000);
 app.listen(port,"0.0.0.0",()=>{
   console.log(`Hakim ChatGPT bridge listening on :${port}`);
   void maybeRunVideoStartupSelftest();
+  void maybeRunAutonomyStartupSelftest();
   void resumeAutonomousWork();
 });
 const autonomyTimer=setInterval(()=>{void resumeAutonomousWork();},15*60_000);

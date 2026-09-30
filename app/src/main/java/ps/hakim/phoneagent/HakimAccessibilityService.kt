@@ -68,6 +68,34 @@ class HakimAccessibilityService : AccessibilityService() {
         else -> false
     }
 
+    fun foregroundPackage(): String =
+        rootInActiveWindow?.packageName?.toString().orEmpty()
+
+    fun clickAnyText(labels: List<String>): Boolean {
+        for (label in labels) {
+            if (label.isNotBlank() && clickText(label)) return true
+        }
+        return false
+    }
+
+    fun setFirstEditableText(value: String): Boolean {
+        if (value.isBlank()) return false
+        val root = rootInActiveWindow ?: return false
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isEditable && !isSensitive(node)) {
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value)
+                }
+                if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) return true
+            }
+            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
+        }
+        return false
+    }
+
     private fun isSensitive(n: AccessibilityNodeInfo): Boolean {
         if (n.isPassword) return true
         val probe = listOf(

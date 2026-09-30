@@ -135,6 +135,14 @@ object HakimSelfCheck {
         check("توقيع D1 حاكم للترقية الميدانية", improvement.optBoolean("d1_required_for_field_update"))
         check("الجديد لا يرث النجاح", improvement.optBoolean("new_candidate_does_not_inherit_success"))
 
+        val development = HakimDevelopmentControlPlane.status(context)
+        check("طبقة طلب التطوير المحكومة فعالة", development.optBoolean("development_control_plane"))
+        check("لا تعديل مصدر على الهاتف", !development.optBoolean("source_mutation_on_device"))
+        check("لا سر GitHub على الهاتف", !development.optBoolean("github_secret_on_device"))
+        check("فرع معزول مطلوب للتطوير", development.optBoolean("isolated_branch_required"))
+        check("CI واختبار الانحدار إلزاميان", development.optBoolean("ci_required") && development.optBoolean("regression_test_required"))
+        check("التثبيت الميداني خلف بوابة مستقلة", development.optBoolean("field_install_separate_gate"))
+
         val executionFabric = HakimExecutionFabric.status(context)
         check("نسيج التنفيذ فعّال", executionFabric.optBoolean("execution_fabric"))
         check("Online لا يُعلن بلا مسار حي", executionFabric.optBoolean("online_requires_live_path"))
@@ -212,6 +220,7 @@ object HakimSelfCheck {
             .put("execution_fabric", executionFabric)
             .put("fault_containment", containment)
             .put("self_improvement", improvement)
+            .put("development_control", development)
             .put("connection_recovery", recovery)
             .put("learning", HakimLearning.snapshot(context))
 

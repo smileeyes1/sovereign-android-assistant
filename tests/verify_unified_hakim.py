@@ -24,6 +24,9 @@ local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManage
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 arabic_policy = text("app/src/main/java/ps/hakim/phoneagent/HakimArabicPolicy.kt")
+palestinian_profile = text("app/src/main/java/ps/hakim/phoneagent/HakimPalestinianArabicProfile.kt")
+arabic_gate = text("app/src/main/java/ps/hakim/phoneagent/HakimArabicOutputGate.kt")
+intent_engine = text("app/src/main/java/ps/hakim/phoneagent/HakimIntentEngine.kt")
 constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
 main_activity = text("app/src/main/java/ps/hakim/phoneagent/MainActivity.kt")
 command_center = text("app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt")
@@ -98,16 +101,19 @@ require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست م
 
 # العقد العربي الافتراضي: يمنع الانحدار إلى واجهة/مخرجات مختلطة أو مقلوبة.
 require('android:supportsRtl="true"' in manifest, "P0: دعم RTL على مستوى تطبيق حكيم غير مثبت")
-require("ARABIC-FIRST-RTL-2026-09-26-v1" in arabic_policy, "P0: نسخة العقد العربي المركزي مفقودة")
+require("ARABIC-FIRST-RTL-AR-PS-2026-09-30-v2" in arabic_policy, "P0: نسخة العقد العربي الفلسطيني المركزي مفقودة")
 require("arabic_default" in arabic_policy and "rtl_default" in arabic_policy, "P0: العربية/RTL ليستا افتراضيتين")
 require("right_alignment_default" in arabic_policy, "P0: المحاذاة العربية الافتراضية غير مثبتة")
 require("٠١٢٣٤٥٦٧٨٩" in arabic_policy, "P0: الأرقام الشرقية غير مثبتة في العقد العربي")
 require("math_bidi_isolation_required" in arabic_policy and "\\u2066" in arabic_policy and "\\u2069" in arabic_policy, "P0: عزل الرياضيات عن BiDi غير مثبت")
 require("technical_ltr_exception" in arabic_policy, "P0: استثناء URL/الكود من RTL غير مثبت")
-require('<html lang=\\\"ar\\\" dir=\\\"rtl\\\">' in arabic_policy, "P0: عقد HTML العربي RTL مفقود")
+require('<html lang=\\\"ar-PS\\\" dir=\\\"rtl\\\">' in arabic_policy, "P0: عقد HTML العربي الفلسطيني RTL مفقود")
 require("STUDENT-EYE" in arabic_policy and "OVERLAP" in arabic_policy and "CLIP" in arabic_policy, "P0: فحص عين الطالب/الهندسة مفقود")
 require("HakimArabicPolicy.install(context)" in constitution, "P0: العقد العربي لا يُثبت مع دستور حكيم")
 require("HakimArabicPolicy.promptContract()" in constitution, "P0: العقد العربي لا يصل إلى محرك النية/النموذج")
+require('LOCALE_TAG = "ar-PS"' in palestinian_profile, "P0: المحلية الفلسطينية ar-PS مفقودة")
+require("HakimPalestinianArabicProfile.promptContract(raw)" in intent_engine, "P0: الهوية الفلسطينية لا تصل إلى الموجّه المحكوم")
+require("AR-PS-OUTPUT-GATE-2026-09-30-v1" in arabic_gate, "P0: بوابة قبول المخرجات العربية مفقودة")
 require('"arabic_policy"' in constitution, "P0: حالة العقد العربي غير مكشوفة في حالة الدستور")
 for ui_name, ui_text in [
     ("MainActivity", main_activity),

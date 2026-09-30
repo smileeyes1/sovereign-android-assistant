@@ -1,0 +1,88 @@
+name: Public ZeroGPU Direct HTTP Chain
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-direct-http-chain.yml"
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prove direct HTTP image-to-video contract
+        run: |
+          python - <<'PY'
+          import json, urllib.request, time
+
+          def post(url,payload):
+            body=json.dumps(payload).encode()
+            req=urllib.request.Request(url,data=body,headers={"Content-Type":"application/json"},method="POST")
+            with urllib.request.urlopen(req,timeout=30) as r:
+              return json.load(r)
+
+          def sse(url,timeout=120):
+            deadline=time.time()+timeout
+            req=urllib.request.Request(url,headers={"Accept":"text/event-stream"})
+            with urllib.request.urlopen(req,timeout=timeout) as r:
+              event=None; data=[]
+              while time.time()<deadline:
+                raw=r.readline()
+                if not raw: break
+                line=raw.decode("utf-8","replace").rstrip("\r\n")
+                if not line:
+                  if event=="complete" and data:
+                    return json.loads("\n".join(data))
+                  if event in ("error","failed"):
+                    raise RuntimeError("\n".join(data))
+                  event=None; data=[]
+                  continue
+                if line.startswith("event:"):
+                  event=line[6:].strip()
+                elif line.startswith("data:"):
+                  data.append(line[5:].lstrip())
+            raise RuntimeError("sse_no_complete")
+
+          z="https://mrfakename-z-image-turbo.hf.space"
+          w="https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space"
+
+          zi=post(z+"/gradio_api/call/v2/generate_image",{
+            "prompt":"Original simple glowing friendly non-human cartoon companion, golden rounded body, two expressive eyes, clean studio garden background, no text, no logo",
+            "height":512,"width":512,"num_inference_steps":2,"seed":42,"randomize_seed":False
+          })
+          zid=zi["event_id"]
+          zdata=sse(z+"/gradio_api/call/generate_image/"+zid,120)
+          print("Z_COMPLETE",json.dumps(zdata)[:3000])
+          if not isinstance(zdata,list) or not zdata:
+            raise RuntimeError("bad_zimage_output")
+          image=zdata[0]
+          if not isinstance(image,dict):
+            raise RuntimeError("zimage_filedata_missing")
+
+          wi=post(w+"/gradio_api/call/v2/generate_video",{
+            "input_image":image,
+            "prompt":"The same glowing original companion makes one gentle curious movement, stable identity, smooth camera, no text",
+            "steps":4,
+            "negative_prompt":"text, logo, watermark, morphing, duplicate character, flicker",
+            "duration_seconds":0.5,
+            "guidance_scale":1.0,
+            "guidance_scale_2":1.0,
+            "seed":42,
+            "randomize_seed":False
+          })
+          wid=wi["event_id"]
+          wdata=sse(w+"/gradio_api/call/generate_video/"+wid,180)
+          print("W_COMPLETE",json.dumps(wdata)[:3000])
+          if not isinstance(wdata,list) or not wdata:
+            raise RuntimeError("bad_wan_output")
+          video=wdata[0]
+          if not isinstance(video,dict) or not (video.get("url") or video.get("path")):
+            raise RuntimeError("wan_video_filedata_missing")
+          print("DIRECT_HTTP_CHAIN_VERIFIED")
+          PY

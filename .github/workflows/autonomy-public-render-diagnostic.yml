@@ -1,0 +1,54 @@
+name: Autonomy Public Renderer Diagnostic
+
+on:
+  push:
+    branches:
+      - experiment/autonomy-public-render-diagnostic
+    paths:
+      - ".github/workflows/autonomy-public-render-diagnostic.yml"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        working-directory: chatgpt-app
+        run: npm install --no-audit --no-fund
+      - name: Run public renderer diagnostic
+        working-directory: chatgpt-app
+        env:
+          HAKIM_DATA_DIR: /tmp/hakim-autonomy-diagnostic
+          HAKIM_PUBLIC_ZERO_GPU_ENABLED: "1"
+          HAKIM_VIDEO_PUBLIC_BASE_URL: https://example.invalid
+        run: |
+          node --import tsx - <<'NODE'
+          import { submitPublicZeroGpuRender,getPublicZeroGpuStatus } from "./src/public-zerogpu-renderer.ts";
+          const started=await submitPublicZeroGpuRender({
+            prompt:"Original simple glowing non-human cartoon companion in a school garden, gentle motion, no text, no logo",
+            duration_sec:0.5,
+            seed:42,
+            public_safe_synthetic:true
+          });
+          let status=null;
+          const deadline=Date.now()+180000;
+          while(Date.now()<deadline){
+            status=await getPublicZeroGpuStatus(started.job_id);
+            if(["completed","failed","waiting_free_capacity"].includes(String(status.status))) break;
+            await new Promise(r=>setTimeout(r,3000));
+          }
+          const safe={
+            status:status?.status??"timeout",
+            error:typeof status?.error==="string"?status.error.slice(0,500):null,
+            retry_at_ms:status?.retry_at_ms??null,
+            artifact_verified:status?.artifact_verified===true,
+            render_success:status?.render_success===true,
+            adapter:status?.adapter??null
+          };
+          console.log("AUTONOMY_DIAGNOSTIC "+JSON.stringify(safe));
+          if(safe.status==="failed") process.exitCode=1;
+          NODE

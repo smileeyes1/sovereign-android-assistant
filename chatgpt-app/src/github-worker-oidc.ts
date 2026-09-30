@@ -56,7 +56,9 @@ export async function verifyGitHubWorkerOidc(
 ):Promise<GitHubWorkerIdentity>{
   const parts=token.split(".");
   if(parts.length!==3) throw new Error("worker_oidc_malformed");
-  const [encodedHeader,encodedPayload,encodedSignature]=parts;
+  const encodedHeader=parts[0]!;
+  const encodedPayload=parts[1]!;
+  const encodedSignature=parts[2]!;
   const header=decodeJson(encodedHeader);
   const payload=decodeJson(encodedPayload);
   if(header.alg!=="RS256"||typeof header.kid!=="string") throw new Error("worker_oidc_algorithm_invalid");

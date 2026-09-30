@@ -58,7 +58,7 @@ for forbidden in [
 ]:
     req(forbidden not in WORKFLOW,"long_lived_secret_surface:"+forbidden)
 
-req("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
+req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")\nreq("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
 req("release/hakim-20316-autoupdate-rootfix-candidate" not in WORKFLOW,"worker_writes_field_line_directly")
 
 print("HAKIM_DEVELOPMENT_WORKER_GATE=PASS")

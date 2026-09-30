@@ -1,0 +1,25 @@
+name: Hakim Resume Bootstrap Smoke
+
+on:
+  push:
+    branches:
+      - release/hakim-chatgpt-plugin-v1-rc1
+    paths:
+      - "chatgpt-app/src/server.ts"
+      - "chatgpt-app/tests/resume_bootstrap_smoke.test.ts"
+      - ".github/workflows/hakim-resume-bootstrap-smoke.yml"
+
+jobs:
+  verify-resume:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatgpt-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: node --import tsx --test tests/resume_bootstrap_smoke.test.ts

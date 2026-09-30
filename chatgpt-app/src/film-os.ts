@@ -17,6 +17,9 @@ export function filmOsCapabilities(){
     artifact_hash_gate:true,
     golden_number_five_spec:true,
     golden_number_five_rendered:false,
+    free_only:true,
+    paid_provider_route:false,
+    zero_automatic_or_manual_spend:true,
     paid_without_explicit_approval:false,
     rule:"Film OS readiness is not proof that a cinematic generative master has been rendered."
   };
@@ -96,9 +99,13 @@ export function buildFilmBlueprint(raw:FilmProjectInput){
     style:text(raw.style,320,"سينمائي أصلي متماسك"),
     educational,
     budget_policy:{
-      free_first:true,
-      paid_approved:raw.paid_approved===true,
-      paid_without_explicit_approval:false,
+      free_only:true,
+      free_first:false,
+      paid_approved:false,
+      paid_provider_route:false,
+      zero_automatic_or_manual_spend:true,
+      external_free_quota_may_be_limited:true,
+      no_paid_fallback:true,
       cheapest_provider_does_not_override_quality_gate:true
     },
     authority_order:[

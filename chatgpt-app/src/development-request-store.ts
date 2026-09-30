@@ -27,6 +27,13 @@ export type DevelopmentRecord={
   trigger:string;
   severity:string;
   fingerprint:string;
+  evidence:{
+    code:"rollback_forward_requested"|"self_check_fail_closed"|"consecutive_runtime_failures";
+    failure_count:number;
+    self_check_status:string;
+    candidate_state:string;
+    action_code:string;
+  };
   state:DevelopmentState;
   lease_owner?:string;
   lease_expires_at_ms?:number;
@@ -95,6 +102,27 @@ export class DevelopmentRequestStore{
     if(typeof r.severity!=="string"||!SEVERITIES.has(r.severity)) throw new Error("development_severity_invalid");
     if(typeof r.fingerprint!=="string"||!FINGERPRINT.test(r.fingerprint)) throw new Error("development_fingerprint_invalid");
 
+    const e=r.evidence;
+    if(!e||typeof e!=="object"||Array.isArray(e)) throw new Error("development_evidence_invalid");
+    const evidence=e as Record<string,unknown>;
+    const evidenceCode=evidence.code;
+    if(typeof evidenceCode!=="string"||![
+      "rollback_forward_requested","self_check_fail_closed","consecutive_runtime_failures"
+    ].includes(evidenceCode)) throw new Error("development_evidence_code_invalid");
+    const failureCount=evidence.failure_count;
+    if(typeof failureCount!=="number"||!Number.isSafeInteger(failureCount)||failureCount<0||failureCount>1000)
+      throw new Error("development_evidence_count_invalid");
+    const selfCheckStatus=typeof evidence.self_check_status==="string"?evidence.self_check_status:"";
+    if(!["","PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"].includes(selfCheckStatus))
+      throw new Error("development_evidence_self_check_invalid");
+    const candidateState=typeof evidence.candidate_state==="string"?evidence.candidate_state:"";
+    if(!["","POST_INSTALL_OBSERVING","POST_INSTALL_HEALTHY","POST_INSTALL_WAITING_EVIDENCE",
+      "ROLLBACK_FORWARD_REQUIRED","BASELINE_HEALTHY","OBSERVING"].includes(candidateState))
+      throw new Error("development_evidence_candidate_state_invalid");
+    const actionCode=typeof evidence.action_code==="string"?evidence.action_code:"";
+    if(actionCode.length>48||!/^[a-z0-9_-]*$/.test(actionCode))
+      throw new Error("development_evidence_action_invalid");
+
     const c=r.constraints;
     if(!c||typeof c!=="object"||Array.isArray(c)) throw new Error("development_constraints_invalid");
     const constraints=c as Record<string,unknown>;
@@ -122,6 +150,13 @@ export class DevelopmentRequestStore{
       trigger:r.trigger,
       severity:r.severity,
       fingerprint:r.fingerprint,
+      evidence:{
+        code:evidenceCode as "rollback_forward_requested"|"self_check_fail_closed"|"consecutive_runtime_failures",
+        failure_count:failureCount,
+        self_check_status:selfCheckStatus,
+        candidate_state:candidateState,
+        action_code:actionCode
+      },
       state:"pending",
       attempt_count:0,
       constraints:{

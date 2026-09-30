@@ -1,0 +1,155 @@
+name: Public Z-Image to Wan2.2 Golden
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-zimage-wan22-golden.yml"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+      - name: Generate Noor reference image anonymously
+        run: |
+          python - <<'PY'
+          import os, shutil, hashlib
+          from pathlib import Path
+          from gradio_client import Client
+
+          out=Path("public-golden")
+          out.mkdir(exist_ok=True)
+          c=Client("mrfakename/Z-Image-Turbo", verbose=False)
+          prompt=(
+            "Original cinematic 3D animated-series character design for young children: "
+            "a small non-human magical companion named Noor, soft rounded body, warm golden glow, "
+            "two large friendly expressive eyes, tiny floating arms, subtle pearly texture, "
+            "clear silhouette, charming but not babyish, premium feature-animation quality, "
+            "standing in a beautiful school garden at sunrise beside a wooden treasure box, "
+            "soft volumetric light, cinematic depth of field, balanced composition, "
+            "no text, no numbers, no logo, no watermark, no resemblance to any existing copyrighted character."
+          )
+          result=c.predict(
+            prompt=prompt,
+            height=768,
+            width=1344,
+            num_inference_steps=9,
+            seed=42,
+            randomize_seed=False,
+            api_name="/generate_image",
+          )
+          print("IMAGE_RESULT",repr(result))
+
+          candidate=None
+          def walk(x):
+            global candidate
+            if candidate is not None: return
+            if isinstance(x,str) and x.lower().endswith((".png",".jpg",".jpeg",".webp")):
+              candidate=x
+            elif isinstance(x,dict):
+              for v in x.values(): walk(v)
+            elif isinstance(x,(list,tuple)):
+              for v in x: walk(v)
+            else:
+              p=getattr(x,"path",None)
+              if isinstance(p,str): walk(p)
+          walk(result)
+          if not candidate: raise RuntimeError("no_image_path_in_result")
+          src=Path(candidate)
+          if not src.exists(): raise RuntimeError("returned_image_missing:"+candidate)
+          dest=out/"noor-reference.png"
+          shutil.copy2(src,dest)
+          print("IMAGE_SHA256",hashlib.sha256(dest.read_bytes()).hexdigest())
+          PY
+      - name: Animate Noor with Wan2.2 14B anonymously
+        run: |
+          python - <<'PY'
+          import shutil, hashlib
+          from pathlib import Path
+          from gradio_client import Client, handle_file
+
+          out=Path("public-golden")
+          c=Client("zerogpu-aoti/wan2-2-fp8da-aoti-faster", verbose=False)
+          prompt=(
+            "The same original glowing companion Noor notices the wooden treasure box, gently hovers forward, "
+            "tilts with curiosity, then turns toward camera with a joyful friendly expression. "
+            "Professional animated-series motion, smooth slow camera push-in, natural parallax, stable identity, "
+            "stable face and body, coherent garden background, cinematic sunrise lighting, subtle magical particles, "
+            "family-friendly educational mood, no text, no numbers, no logos."
+          )
+          negative=(
+            "text, letters, numbers, logo, watermark, duplicate character, extra limbs, malformed anatomy, "
+            "flicker, morphing, unstable background, sudden camera jump, horror, violence, sexual content"
+          )
+          result=c.predict(
+            input_image=handle_file(str(out/"noor-reference.png")),
+            prompt=prompt,
+            steps=6,
+            negative_prompt=negative,
+            duration_seconds=3.0,
+            guidance_scale=1.0,
+            guidance_scale_2=1.0,
+            seed=42,
+            randomize_seed=False,
+            api_name="/generate_video",
+          )
+          print("VIDEO_RESULT",repr(result))
+
+          candidate=None
+          def walk(x):
+            global candidate
+            if candidate is not None: return
+            if isinstance(x,str) and x.lower().endswith((".mp4",".webm")):
+              candidate=x
+            elif isinstance(x,dict):
+              for v in x.values(): walk(v)
+            elif isinstance(x,(list,tuple)):
+              for v in x: walk(v)
+            else:
+              p=getattr(x,"path",None)
+              if isinstance(p,str): walk(p)
+          walk(result)
+          if not candidate: raise RuntimeError("no_video_path_in_result")
+          src=Path(candidate)
+          if not src.exists(): raise RuntimeError("returned_video_missing:"+candidate)
+          dest=out/"noor-wan22-golden.mp4"
+          shutil.copy2(src,dest)
+          print("VIDEO_SHA256",hashlib.sha256(dest.read_bytes()).hexdigest())
+          PY
+      - name: Verify generated video
+        run: |
+          test -s public-golden/noor-reference.png
+          test -s public-golden/noor-wan22-golden.mp4
+          ffprobe -v error             -show_entries format=duration,size,format_name             -show_entries stream=codec_type,codec_name,width,height,r_frame_rate,nb_frames             -of json public-golden/noor-wan22-golden.mp4 | tee public-golden/ffprobe.json
+          python - <<'PY'
+          import json
+          p=json.load(open("public-golden/ffprobe.json"))
+          streams=p.get("streams",[])
+          v=next((s for s in streams if s.get("codec_type")=="video"),None)
+          if not v: raise SystemExit("NO_VIDEO_STREAM")
+          d=float(p.get("format",{}).get("duration",0) or 0)
+          size=int(p.get("format",{}).get("size",0) or 0)
+          if d<=0 or size<4096: raise SystemExit("INVALID_VIDEO")
+          print("WAN22_GOLDEN_VERIFIED",json.dumps({
+            "duration_sec":d,"size_bytes":size,
+            "codec":v.get("codec_name"),"width":v.get("width"),"height":v.get("height"),
+            "fps":v.get("r_frame_rate"),"frames":v.get("nb_frames")
+          }))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-public-zimage-wan22-golden
+          path: public-golden/
+          retention-days: 1

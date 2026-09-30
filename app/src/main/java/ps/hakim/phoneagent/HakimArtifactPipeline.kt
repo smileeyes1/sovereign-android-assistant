@@ -92,6 +92,7 @@ object HakimArtifactPipeline {
 
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            append(HakimPalestinianArabicProfile.promptContract(request.originalPrompt))
             appendLine(HakimConstitution.taskContext(context, request.originalPrompt, "ملف نهائي قابل للاستخدام والتحقق", 1))
             appendLine("أنت مولّد محتوى فقط داخل مصنع حكيم، ولست مسؤولًا عن إنشاء الملف.")
             appendLine("مهم جدًا: لا تقل إنك لا تستطيع إنشاء PDF أو binary؛ لا تنشئ PDF أصلًا.")
@@ -122,6 +123,7 @@ object HakimArtifactPipeline {
         failedText: String
     ): String = buildString {
         append(HakimConstitution.promptPrefix(context))
+        append(HakimPalestinianArabicProfile.promptContract(request.originalPrompt))
         appendLine(HakimConstitution.taskContext(context, request.originalPrompt, "إصلاح ملف بعد فشل تحقق", 1))
         appendLine("أعد المحاولة كمحتوى وثيقة فقط.")
         appendLine("لا تتحدث عن القدرة على إنشاء ملفات ولا عن PDF ولا عن أدوات التحويل.")
@@ -162,6 +164,16 @@ object HakimArtifactPipeline {
 
         // الأرقام الغربية تُحوّل إلى شرقية في المخرجات العربية الافتراضية.
         content = HakimArtifactRequest.toEasternDigits(content)
+
+        val arabicGate = HakimArabicOutputGate.validateText(
+            content,
+            audience = HakimArabicOutputGate.audienceForPrompt(request.originalPrompt),
+            explicitNonArabic = HakimPalestinianArabicProfile.explicitNonArabicRequested(request.originalPrompt)
+        )
+        require(arabicGate.passed) {
+            "لم يجتز المحتوى بوابة العربية الفلسطينية: " +
+                arabicGate.checks.filterNot { it.ok }.joinToString(",") { it.code }
+        }
 
         // لا نسمح بتسريب عبارات تشغيلية للمستند النهائي.
         val forbidden = listOf(

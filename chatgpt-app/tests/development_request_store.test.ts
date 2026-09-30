@@ -63,8 +63,8 @@ test("development intake stores only bounded structured evidence",async()=>{
 
     const rows=await store.list();
     assert.equal(rows.length,1);
-    const files=await fs.readdir(path.join(dir,"development-intake-v1"));
-    const raw=await fs.readFile(path.join(dir,"development-intake-v1",files[0]!),"utf8");
+    const files=await fs.readdir(path.join(dir,"development-intake-v2"));
+    const raw=await fs.readFile(path.join(dir,"development-intake-v2",files[0]!),"utf8");
     assert.equal(raw.includes("this free text must not be persisted"),false);
     assert.equal(raw.includes(key),false);
     assert.equal(raw.includes(topic),false);
@@ -98,5 +98,32 @@ test("non-health results never become development requests",async()=>{
     const other=encryptResult(key,{status:"ok",result:{development_request:request()}});
     assert.equal(await store.capture(topic,key,other),null);
     assert.equal((await store.list()).length,0);
+  });
+});
+
+
+test("development request lease is resumable and completion is owner-bound",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    await store.capture(topic,key,carrier(request({request_id:"dev-mg123def-"+"c".repeat(12)})));
+    const first=await store.claimNext("gh:run-12345678",60_000);
+    assert.equal(first?.state,"leased");
+    assert.equal(first?.request_id,"dev-mg123def-"+"c".repeat(12));
+    assert.equal(await store.claimNext("gh:run-87654321",60_000),null);
+
+    await assert.rejects(
+      ()=>store.complete(first!.request_id,"gh:run-87654321","success"),
+      /development_lease_owner_mismatch/
+    );
+
+    const done=await store.complete(first!.request_id,"gh:run-12345678","success",{
+      result_sha:"d".repeat(40),
+      pr_number:321
+    });
+    assert.equal(done.state,"completed");
+    assert.equal(done.outcome,"success");
+    assert.equal(done.result_sha,"d".repeat(40));
+    assert.equal(done.pr_number,321);
   });
 });

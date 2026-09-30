@@ -18,6 +18,7 @@ import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.j
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
+import { resolveLocalArtifact } from "./local-cinematic-renderer.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -715,6 +716,25 @@ app.get("/pair",async(req,res)=>{
 <h1>ربط تطويري فقط</h1><p><a href="${html(link)}">ربط الهاتف</a></p><p style="word-break:break-all">${html(bearer)}</p></html>`);
 });
 
+
+app.get("/video/v1/artifacts/:jobId/:token.mp4",async(req,res)=>{
+  try{
+    const artifact=await resolveLocalArtifact(String(req.params.jobId??""),String(req.params.token??""));
+    if(!artifact){
+      noStore(res);
+      return res.status(404).json({error:"video_artifact_not_found"});
+    }
+    noStore(res);
+    res.setHeader("Content-Type","video/mp4");
+    res.setHeader("Content-Disposition",`attachment; filename="${String(req.params.jobId)}.mp4"`);
+    res.setHeader("X-Content-Type-Options","nosniff");
+    res.setHeader("X-Hakim-Artifact-Sha256",artifact.sha256);
+    return res.sendFile(artifact.file);
+  }catch{
+    noStore(res);
+    return res.status(404).json({error:"video_artifact_not_found"});
+  }
+});
 
 app.get("/support",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>دعم حكيم</title><body><h1>دعم حكيم</h1><p>حكيم يربط ChatGPT بجهاز Android يملكه المستخدم أو يملك صلاحية إدارته. إذا تعذر الربط، تحقق من أن تطبيق حكيم مثبت ومفتوح وأن الجهاز متصل بالإنترنت، ثم أعد عملية الاقتران.</p><p>للأعطال أو بلاغات الأمان والخصوصية، استخدم <a href="https://github.com/smileeyes1/sovereign-android-assistant/issues">GitHub Issues</a>. لا ترسل رموز الربط أو مفاتيح الوصول أو لقطات أو محتوى حساسًا في بلاغ عام.</p><p>يمكن فصل التطبيق من إعدادات Plugins/Apps في ChatGPT، وإعادة الاقتران تتطلب تفويضًا جديدًا.</p></body></html>`));
 

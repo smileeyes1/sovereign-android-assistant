@@ -484,6 +484,17 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
 app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
 
 
+
+app.get("/mobile-task/network-protection",(_req,res)=>{
+  noStore(res);
+  const deepLink="hakim://task/network-protection";
+  const escaped=html(deepLink);
+  res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>حكيم — حماية الشبكة</title>
+<style>body{font-family:system-ui;margin:0;background:#f5f7fb;color:#111}.wrap{max-width:640px;margin:auto;padding:28px}.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 30px #0001}.btn{display:block;text-align:center;padding:14px 18px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-weight:700;margin-top:18px}.muted{color:#666;font-size:14px}</style>
+<div class="wrap"><div class="card"><h1>حماية الشبكة عبر حكيم</h1><p>هذا الرابط لا يغيّر أي إعداد بذاته. يفتح مهمة حماية الشبكة داخل تطبيق حكيم على أندرويد، وأي تغيير يبقى خلف موافقة محلية والتحقق من النتيجة.</p><a class="btn" href="${escaped}">فتح حكيم على الهاتف</a><p class="muted">إذا لم يفتح التطبيق تلقائيًا، اضغط الزر مرة واحدة.</p></div></div>
+<script>setTimeout(()=>{location.href=${JSON.stringify(deepLink)}},350)</script></html>`);
+});
+
 app.get("/health",(_req,res)=>res.json({
   ok:true,
   service:"hakim-chatgpt-bridge",

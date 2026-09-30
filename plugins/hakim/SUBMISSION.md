@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** get_device_status, get_video_capabilities, plan_video_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
+- **Public tool surface:** get_device_status, get_video_capabilities, plan_video_project, get_film_os_capabilities, create_film_project, get_film_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
 
 ## Starter prompts
 
@@ -97,6 +97,9 @@ Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabl
 - `get_device_status`
 - `get_video_capabilities`
 - `plan_video_project`
+- `get_film_os_capabilities`
+- `create_film_project`
+- `get_film_project`
 - `open_target`
 - `navigate_device`
 - `get_continuation_state`
@@ -121,6 +124,22 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `readOnlyHint=true`: creates a bounded production plan only; it does not render a video.
 - `openWorldHint=false`: planning is executed through Hakim's paired-device planning contract and does not itself invoke an external provider.
 - `destructiveHint=false`: it creates no media artifact, consumes no paid rendering resource, and changes no device state.
+
+### get_film_os_capabilities
+- `readOnlyHint=true`: reads only Film OS capability metadata and does not create media or mutate a project.
+- `openWorldHint=false`: does not contact rendering providers or external services.
+- `destructiveHint=false`: performs no render, purchase, upload, deletion, or device action.
+
+### create_film_project
+- `readOnlyHint=false`: creates a bounded Film OS project record in the Hakim durable data directory.
+- `openWorldHint=false`: the operation is local to the Hakim bridge and does not contact a renderer.
+- `destructiveHint=false`: it creates project metadata only; it does not overwrite existing projects, render media, purchase credits, or mutate the paired device.
+- `idempotentHint=true`: the tool creates a fresh isolated project record; repeated calls never replay an external action.
+
+### get_film_project
+- `readOnlyHint=true`: reads one Film OS project by its pseudorandom project identifier.
+- `openWorldHint=false`: reads only the authenticated Hakim bridge data store.
+- `destructiveHint=false`: performs no mutation or external action.
 
 ### open_target
 - `readOnlyHint=false`: requests a visible state change on the paired Android device.

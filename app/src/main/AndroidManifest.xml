@@ -30,6 +30,7 @@
         android:usesCleartextTraffic="false"
         android:label="حكيم"
         android:supportsRtl="true"
+        android:localeConfig="@xml/locales_config"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <activity

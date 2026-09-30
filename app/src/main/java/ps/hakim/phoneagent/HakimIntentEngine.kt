@@ -95,6 +95,7 @@ object HakimIntentEngine {
         val plan = resolve(context, raw)
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            append(HakimPalestinianArabicProfile.promptContract(raw))
             appendLine("[محرك النية]")
             appendLine("النية: ${plan.intent}")
             appendLine("الغاية: ${plan.goal}")

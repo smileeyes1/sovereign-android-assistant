@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hakim_accessibility_description">تمكين حكيم من قراءة واجهة الهاتف وتنفيذ الأوامر المصرح بها محليًا، مع حجب الحقول الحساسة.</string>
+</resources>

@@ -76,6 +76,7 @@ jobs:
           python3 tests/verify_20305_control_channel_recovery.py
           python3 tests/verify_20306_direct_channel.py
           python3 tests/verify_20306_arabic_policy.py
+          python3 tests/verify_ar_ps_language.py
           python3 tests/verify_20307_network_diagnostics.py
           python3 tests/verify_20308_autostart.py
           python3 tests/verify_20309_lan_survey.py

@@ -1218,8 +1218,9 @@ class CommandCenterActivity : ComponentActivity() {
         Thread {
             val result = engine.complete(instruction, snapshot) { delta ->
                 runOnUiThread {
-                    if (currentDirectEngine === engine) {
-                        if (artifactMode) streamingBuffer.append(delta) else appendStreamingDelta(delta)
+                    if (currentDirectEngine === engine && delta.isNotBlank()) {
+                        // Fail-closed language policy: buffer model text until the final ar-PS gate passes.
+                        streamingBuffer.append(delta)
                     }
                 }
             }
@@ -1287,11 +1288,39 @@ class CommandCenterActivity : ComponentActivity() {
                             executeGeneratedPdfArtifact(text, artifactText)
                             return@runOnUiThread
                         }
+                        val finalText = HakimProductOutput.clean(
+                            result.text.ifBlank { streamingBuffer.toString() }
+                        ).trim()
+                        val arabicGate = HakimArabicOutputGate.validateText(
+                            finalText,
+                            audience = HakimArabicOutputGate.audienceForPrompt(text),
+                            explicitNonArabic = HakimPalestinianArabicProfile.explicitNonArabicRequested(text)
+                        )
+                        if (!arabicGate.passed) {
+                            HakimResiliencePolicy.recordFailure(
+                                this,
+                                engine.id,
+                                true,
+                                "ar_ps_output_gate_failed"
+                            )
+                            retryDirectOrBlock(
+                                text = text,
+                                instruction = instruction,
+                                failedEngine = engine,
+                                excluded = excluded,
+                                reason = "لم يجتز الرد بوابة العربية الفلسطينية؛ لم يُعرض الرد غير المعتمد.",
+                                finalStatus = "تعذر اعتماد الرد لغويًا",
+                                deliveryAttachments = routedAttachments
+                            )
+                            return@runOnUiThread
+                        }
+
                         HakimResiliencePolicy.recordSuccess(this, engine.id)
-                        finishStreamingReply(result.text)
+                        streamingBuffer.setLength(0)
+                        finishStreamingReply(finalText)
                         HakimExecutiveLoop.complete(
                             this,
-                            "عاد الرد النهائي إلى محادثة حكيم"
+                            "عاد الرد النهائي إلى محادثة حكيم بعد اجتياز بوابة العربية الفلسطينية"
                         )
                         recordRoute("direct:" + engine.id, true)
                         command.setText("")

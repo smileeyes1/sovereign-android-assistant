@@ -24,7 +24,7 @@ jobs:
           import urllib.request
 
           base=os.environ["SPACE_BASE"].rstrip("/")
-          endpoint=base+"/run/generate_video"
+          submit_endpoint=base+"/gradio_api/call/v2/generate_video"
           image_url="https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png"
           payload={
             "input_image":{
@@ -44,7 +44,7 @@ jobs:
           }
           body=json.dumps(payload).encode()
           req=urllib.request.Request(
-            endpoint,
+            submit_endpoint,
             data=body,
             headers={
               "Content-Type":"application/json",
@@ -61,10 +61,41 @@ jobs:
             print("GOLDEN_RENDER_REQUEST_FAILED", repr(exc))
             raise
 
-          print("HTTP_STATUS", status)
-          print("RESPONSE_PREFIX", raw[:2000])
-          data=json.loads(raw)
-          file_obj=data.get("output")
+          print("SUBMIT_HTTP_STATUS", status)
+          print("SUBMIT_RESPONSE", raw[:2000])
+          submitted=json.loads(raw)
+          event_id=submitted.get("event_id")
+          if not isinstance(event_id,str) or len(event_id)<8:
+            raise SystemExit("missing_event_id")
+
+          result_endpoint=base+"/gradio_api/call/generate_video/"+event_id
+          result_req=urllib.request.Request(
+            result_endpoint,
+            headers={
+              "Accept":"text/event-stream",
+              "User-Agent":"Hakim-Golden-Render/1.0"
+            }
+          )
+          with urllib.request.urlopen(result_req, timeout=900) as resp:
+            stream=resp.read().decode()
+          print("RESULT_STREAM_PREFIX", stream[:3000])
+
+          complete=None
+          for block in stream.split("\n\n"):
+            event=""
+            data_lines=[]
+            for line in block.splitlines():
+              if line.startswith("event:"):
+                event=line[6:].strip()
+              elif line.startswith("data:"):
+                data_lines.append(line[5:].lstrip())
+            if event=="complete" and data_lines:
+              complete=json.loads("\n".join(data_lines))
+            if event in {"error","failed"}:
+              raise SystemExit("zerogpu_render_failed:"+("\n".join(data_lines))[:500])
+          if not isinstance(complete,list) or not complete:
+            raise SystemExit("missing_complete_output")
+          file_obj=complete[0]
           if not isinstance(file_obj, dict):
             raise SystemExit("missing_output_file")
           file_url=file_obj.get("url") or file_obj.get("path")
@@ -82,7 +113,7 @@ jobs:
           if len(video)<4096:
             raise SystemExit("video_too_small")
           open("golden.mp4","wb").write(video)
-          open("response.json","w",encoding="utf-8").write(json.dumps(data,ensure_ascii=False,indent=2))
+          open("response.json","w",encoding="utf-8").write(json.dumps({"submit":submitted,"complete":complete},ensure_ascii=False,indent=2))
           print("VIDEO_BYTES",len(video))
           PY
 

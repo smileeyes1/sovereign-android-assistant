@@ -32,7 +32,8 @@ req('HakimProductOutput.containsRawMarkup(saved)' in CENTER,"persisted_raw_marku
 req('if (role == "حكيم") HakimProductOutput.clean(message)' in CENTER,"messages_not_sanitized")
 req('HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"pdf_acceptance_missing")
 req('val artifactMode = HakimProductOutput.requestsPdfArtifact(text)' in CENTER,"artifact_mode_missing")
-direct_block=CENTER.split('val result = engine.complete(instruction, snapshot)',1)[1].split('val latency =',1)[0]
+direct_fn=CENTER.split('private fun executeDirectModel',1)[1].split('private fun retryDirectOrBlock',1)[0]
+direct_block=direct_fn.split('val result = engine.complete(instruction, snapshot)',1)[1].split('val latency =',1)[0]
 req('streamingBuffer.append(delta)' in direct_block,"model_stream_not_buffered")
 req('appendStreamingDelta(delta)' not in direct_block,"unverified_stream_visible_before_gate")
 req('Fail-closed language policy' in CENTER,"ar_ps_stream_gate_missing")

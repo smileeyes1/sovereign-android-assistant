@@ -18,7 +18,7 @@ workflow=text(".github/workflows/android.yml")
 contract=text("governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json")
 
 for token in [
-    "HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v1",
+    "HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v2",
     'source_mutation_on_device", false',
     'github_secret_on_device", false',
     'isolated_branch_required", true',
@@ -34,6 +34,12 @@ for token in [
 ]:
     req(token in control,"control:"+token)
 
+req('.put("evidence", JSONObject()' in control,"structured_evidence_missing")
+req('"evidence_summary"' not in control,"free_text_evidence_must_not_leave_phone")
+req('"goal"' not in control,"free_text_goal_must_not_leave_phone")
+req('"failure_count"' in control and '"action_code"' in control,"runtime_failure_evidence_missing")
+req('"self_check_status"' in control and '"candidate_state"' in control,"bounded_state_evidence_missing")
+req("lastFailureAction" in control,"sanitized_failure_action_missing")
 req("HakimDevelopmentControlPlane.requestForBeacon(context)" in health,"health_request_missing")
 req('.put("development_control", HakimDevelopmentControlPlane.status(context))' in health,"health_status_missing")
 req('health.put("development_request", developmentRequest)' in health,"development_request_not_embedded")

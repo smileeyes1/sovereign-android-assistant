@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { buildCinematicPlan,cinematicCapabilities } from "./cinematic-director.js";
+import { autonomyKernelSummary } from "./autonomy-kernel.js";
 import { cinematicExecutorEnabled,cinematicExecutorSummary,getCinematicRenderStatus,submitCinematicRender } from "./cinematic-executor.js";
 import { filmOsCapabilities } from "./film-os.js";
 import { createFilmProject,createGoldenNumberFiveProject,getFilmProject } from "./film-project-store.js";
@@ -234,6 +235,15 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
       name:"resume_hakim",
       title:"استئناف حكيم — ابدأ هنا في أي محادثة جديدة",
       description:governedReadDescription("بوابة الاستئناف الموحّدة والمرجع الأعلى لأي مهمة تخص حكيم بعد فتح محادثة جديدة أو تبديل النموذج/الجلسة. تعيد في نداء واحد الحالة الحية للهاتف، نقطة الاستمرارية الدائمة، قدرات مصنع الفيديو الحالية، وهوية إصدار الجسر. استخدمها قبل الاعتماد على أي وصف قديم."),
+      inputSchema:{type:"object",properties:{},additionalProperties:false},
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
+    {
+      name:"get_autonomy_status",
+      title:"حالة استقلال حكيم",
+      description:governedReadDescription("يعرض عقد الاستقلال المجاني: صفر تكلفة، المحلي أولًا، تعدد المزودات، الاستئناف من نقطة التحقق، ومنع الدفع التلقائي. لا يدّعي سعة سحابية غير محدودة."),
       inputSchema:{type:"object",properties:{},additionalProperties:false},
       annotations:READ_ANNOTATIONS,
       securitySchemes:readSecurity,
@@ -589,6 +599,7 @@ export function createHakimServer(
       preflight,
       continuity,
       video:capabilities,
+      autonomy:autonomyKernelSummary(),
       bridge,
       resume_rule:"For any Hakim task after a chat/model/session change, use this response as the current baseline. Reuse pending operation tokens instead of replaying actions. Never downgrade to older conversation state when fresher evidence exists.",
       zero_burden:"No user restatement is required when this tool and the durable Hakim connection are available."
@@ -647,6 +658,18 @@ export function createHakimServer(
       return text(tagDeviceEvidence(result??{ok:false,status:"pending",request_id:requestId},requestId));
     });
   }
+
+  server.registerTool("get_autonomy_status",{
+    title:"حالة استقلال حكيم",
+    description:governedReadDescription(
+      "اقرأ عقد الاستقلال المجاني الحالي: المحلي أولًا، صفر دفع تلقائي، استئناف ذاتي وتدهور ذكي عند نفاد الحصص الخارجية."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    return text(autonomyKernelSummary());
+  });
 
   server.registerTool("get_video_capabilities",{
     title:"قدرات مصنع الفيديو السينمائي",

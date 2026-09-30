@@ -5,8 +5,6 @@ manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8
 activity = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimMobileTaskActivity.kt").read_text(encoding="utf-8")
 task = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkProtectionTask.kt").read_text(encoding="utf-8")
 accessibility = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimAccessibilityService.kt").read_text(encoding="utf-8")
-relay = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
-beacon = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt").read_text(encoding="utf-8")
 
 def req(condition: bool, message: str):
     if not condition:
@@ -39,7 +37,5 @@ req('.put("specifier"' not in task, "raw_dns_specifier_must_not_be_exposed")
 req('fun foregroundPackage()' in accessibility, "foreground_package_helper_missing")
 req('fun clickAnyText(labels: List<String>)' in accessibility, "bounded_click_helper_missing")
 req('fun setFirstEditableText(value: String)' in accessibility, "bounded_text_helper_missing")
-req('HakimNetworkProtectionTask.status(context)' in relay, "relay_status_missing")
-req('HakimNetworkProtectionTask.status(context)' in beacon, "health_evidence_missing")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

@@ -725,8 +725,7 @@ export function createHakimServer(
       duration_sec:input.duration_sec,
       aspect:input.aspect,
       style:input.style,
-      educational:input.educational,
-      paid_approved:false
+      educational:input.educational
     }));
   });
 

@@ -54,7 +54,7 @@ test("real HTTP /mcp exposes only public-safe catalog by default",async(t)=>{
   });
   assert.equal(response.status,200);
   const body=await response.json() as any;
-  assert.equal(body.result.tools.length,13);
+  assert.equal(body.result.tools.length,14);
 
   const byName=new Map(body.result.tools.map((x:any)=>[x.name,x]));
   for(const name of ["resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","get_film_project","get_continuation_state","get_request_result"]){
@@ -62,6 +62,11 @@ test("real HTTP /mcp exposes only public-safe catalog by default",async(t)=>{
     assert.deepEqual(tool.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
     assert.equal(tool.annotations.readOnlyHint,true);
   }
+  const advanceFilm:any=byName.get("advance_film_project");
+  assert.deepEqual(advanceFilm.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
+  assert.equal(advanceFilm.annotations.readOnlyHint,false);
+  assert.equal(advanceFilm.annotations.openWorldHint,true);
+
   const createFilm:any=byName.get("create_film_project");
   assert.deepEqual(createFilm.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
   assert.equal(createFilm.annotations.readOnlyHint,false);

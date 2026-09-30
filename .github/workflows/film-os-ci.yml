@@ -1,0 +1,30 @@
+name: Hakim Film OS CI
+
+on:
+  push:
+    branches:
+      - film-os-v1
+    paths:
+      - "chatgpt-app/src/film-*.ts"
+      - "chatgpt-app/tests/film_os.test.ts"
+      - ".github/workflows/film-os-ci.yml"
+  pull_request:
+    paths:
+      - "chatgpt-app/src/film-*.ts"
+      - "chatgpt-app/tests/film_os.test.ts"
+      - ".github/workflows/film-os-ci.yml"
+
+jobs:
+  verify-film-os:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatgpt-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: node --import tsx --test tests/film_os.test.ts

@@ -1010,7 +1010,7 @@ app.get("/device/v1/continuity",async(req,res)=>{
 app.post("/development/v1/lease",async(req,res)=>{
   try{
     const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
-    const workerId="gh:"+identity.run_id+":"+identity.run_attempt+":"+identity.jti.slice(0,16);
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
     const claimed=await developmentRequestStore.claimNext(workerId);
     noStore(res);
     if(!claimed) return res.status(204).end();
@@ -1030,7 +1030,7 @@ app.post("/development/v1/lease",async(req,res)=>{
 app.post("/development/v1/:requestId/complete",async(req,res)=>{
   try{
     const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
-    const workerId="gh:"+identity.run_id+":"+identity.run_attempt+":"+identity.jti.slice(0,16);
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
     const body=(req.body&&typeof req.body==="object"&&!Array.isArray(req.body))
       ?req.body as Record<string,unknown>:{};
     const allowed=new Set(["outcome","result_sha","pr_number"]);

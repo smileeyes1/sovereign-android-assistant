@@ -19,7 +19,7 @@ function makeToken(overrides:Record<string,unknown>={}){
     nbf:now-5,
     repository:"smileeyes1/sovereign-android-assistant",
     ref:"refs/heads/main",
-    job_workflow_ref:"smileeyes1/sovereign-android-assistant/.github/workflows/hakim-development-worker.yml@refs/heads/main",
+    workflow_ref:"smileeyes1/sovereign-android-assistant/.github/workflows/hakim-development-worker.yml@refs/heads/main",
     event_name:"workflow_dispatch",
     run_id:"123456789",
     run_attempt:"1",
@@ -47,7 +47,7 @@ test("rejects token from another repository",async()=>{
 });
 
 test("rejects wrong workflow and wrong event",async()=>{
-  const a=makeToken({job_workflow_ref:"smileeyes1/sovereign-android-assistant/.github/workflows/other.yml@refs/heads/main"});
+  const a=makeToken({workflow_ref:"smileeyes1/sovereign-android-assistant/.github/workflows/other.yml@refs/heads/main"});
   await assert.rejects(()=>verifyGitHubWorkerOidc(a.token,a.jwks),/worker_oidc_workflow_invalid/);
   const b=makeToken({event_name:"pull_request"});
   await assert.rejects(()=>verifyGitHubWorkerOidc(b.token,b.jwks),/worker_oidc_event_invalid/);

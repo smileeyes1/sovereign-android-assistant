@@ -1,0 +1,39 @@
+name: Public ZeroGPU Probe V2
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-zerogpu-probe-v2.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Gradio client
+        run: pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+      - name: Probe public Hugging Face ZeroGPU Space without token
+        env:
+          SPACE_ID: numanajmal0/wan-video-api
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          from gradio_client import Client
+          space=os.environ["SPACE_ID"]
+          print("SPACE",space)
+          client=Client(space, verbose=False)
+          info=client.view_api(print_info=False, return_format="dict")
+          print("GRADIO_API_JSON")
+          print(json.dumps(info, indent=2, default=str))
+          base="https://numanajmal0-wan-video-api.hf.space"
+          with urllib.request.urlopen(base+"/gradio_api/openapi.json", timeout=30) as r:
+              data=json.load(r)
+          print("OPENAPI_PATHS")
+          print(json.dumps(sorted(data.get("paths",{}).keys()), indent=2))
+          PY

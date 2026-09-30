@@ -4,7 +4,6 @@ export type FilmProviderCapability={
   rights_ok:boolean;
   privacy_ok:boolean;
   paid:boolean;
-  paid_approved?:boolean;
   max_duration_sec:number;
   max_resolution_rank:number;
   image_reference:boolean;
@@ -33,9 +32,9 @@ export type FilmShotRequirement={
   multi_shot?:boolean;
 };
 
-function supports(p:FilmProviderCapability,r:FilmShotRequirement,paidApproved:boolean){
+function supports(p:FilmProviderCapability,r:FilmShotRequirement){
   if(!p.available||!p.rights_ok||!p.privacy_ok||!p.verified) return false;
-  if(p.paid&&!(paidApproved||p.paid_approved===true)) return false;
+  if(p.paid) return false;
   if(p.max_duration_sec<r.duration_sec) return false;
   if(p.max_resolution_rank<r.min_resolution_rank) return false;
   if(r.image_reference&&!p.image_reference) return false;
@@ -49,10 +48,9 @@ function supports(p:FilmProviderCapability,r:FilmShotRequirement,paidApproved:bo
 
 export function routeFilmShot(
   requirement:FilmShotRequirement,
-  providers:FilmProviderCapability[],
-  paidApproved=false
+  providers:FilmProviderCapability[]
 ){
-  const eligible=providers.filter(p=>supports(p,requirement,paidApproved));
+  const eligible=providers.filter(p=>supports(p,requirement));
   const ranked=eligible.map(p=>{
     const score=
       p.identity_continuity*5+
@@ -68,15 +66,13 @@ export function routeFilmShot(
     return {
       ok:false,
       provider:null,
-      reason:"no_verified_provider_satisfies_hard_gates",
-      paid_approved:paidApproved
+      reason:"no_verified_provider_satisfies_hard_gates"
     };
   }
   return {
     ok:true,
     provider:ranked[0]!.provider,
     score:ranked[0]!.score,
-    candidates:ranked.map(x=>({id:x.provider.id,score:x.score})),
-    paid_approved:paidApproved
+    candidates:ranked.map(x=>({id:x.provider.id,score:x.score}))
   };
 }

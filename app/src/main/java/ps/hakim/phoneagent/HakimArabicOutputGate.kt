@@ -63,8 +63,9 @@ object HakimArabicOutputGate {
     }
 
     fun validateHtml(html: String, earlyGradeStudent: Boolean = false): Result {
+        val visibleText = visibleHtmlText(html)
         val base = validateText(
-            html,
+            visibleText,
             audience = if (earlyGradeStudent) Audience.EARLY_GRADE_STUDENT else Audience.GENERAL
         )
         val lower = html.lowercase()
@@ -81,4 +82,12 @@ object HakimArabicOutputGate {
         val all = base.checks + extra
         return Result(all.all { it.ok }, all)
     }
+
+    private fun visibleHtmlText(html: String): String = html
+        .replace(Regex("""(?is)<script\\b[^>]*>.*?</script>"""), " ")
+        .replace(Regex("""(?is)<style\\b[^>]*>.*?</style>"""), " ")
+        .replace(Regex("""(?s)<[^>]+>"""), " ")
+        .replace("&nbsp;", " ")
+        .replace(Regex("""\\s+"""), " ")
+        .trim()
 }

@@ -34,6 +34,9 @@ export type DevelopmentRecord={
   outcome?:DevelopmentOutcome;
   result_sha?:string;
   pr_number?:number;
+  attempt_count?:number;
+  next_attempt_at_ms?:number;
+  last_wait_reason?:string;
   constraints:{
     source_mutation_on_device:false;
     github_secret_on_device:false;
@@ -120,6 +123,7 @@ export class DevelopmentRequestStore{
       severity:r.severity,
       fingerprint:r.fingerprint,
       state:"pending",
+      attempt_count:0,
       constraints:{
         source_mutation_on_device:false,
         github_secret_on_device:false,
@@ -167,9 +171,11 @@ export class DevelopmentRequestStore{
     for(const record of await this.list()){
       const expired=record.state==="leased"&&(record.lease_expires_at_ms??0)<=now;
       if(record.state!=="pending"&&!expired) continue;
+      if(record.state==="pending"&&(record.next_attempt_at_ms??0)>now) continue;
       const claimed:DevelopmentRecord={
         ...record,
         state:"leased",
+        attempt_count:(record.attempt_count??0)+1,
         lease_owner:workerId,
         lease_expires_at_ms:now+boundedLease
       };
@@ -211,6 +217,38 @@ export class DevelopmentRequestStore{
     delete completed.lease_expires_at_ms;
     await this.writeAtomic(file,completed);
     return completed;
+  }
+
+  async defer(
+    requestId:string,
+    workerIdRaw:string,
+    reason:"free_engine_unavailable"|"insufficient_evidence"|"safe_patch_not_found"|"transient_runner_failure",
+    delayMs:number
+  ):Promise<DevelopmentRecord>{
+    if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
+    const workerId=safeWorkerId(workerIdRaw);
+    if(!["free_engine_unavailable","insufficient_evidence","safe_patch_not_found","transient_runner_failure"].includes(reason)){
+      throw new Error("development_defer_reason_invalid");
+    }
+    if(!Number.isSafeInteger(delayMs)||delayMs<5*60_000||delayMs>24*60*60_000){
+      throw new Error("development_defer_delay_invalid");
+    }
+    const file=this.fileFor(requestId);
+    const current=await this.readRecord(file);
+    if(current.state!=="leased") throw new Error("development_request_not_leased");
+    if(current.lease_owner!==workerId) throw new Error("development_lease_owner_mismatch");
+    if((current.lease_expires_at_ms??0)<Date.now()) throw new Error("development_lease_expired");
+
+    const deferred:DevelopmentRecord={
+      ...current,
+      state:"pending",
+      next_attempt_at_ms:Date.now()+delayMs,
+      last_wait_reason:reason
+    };
+    delete deferred.lease_owner;
+    delete deferred.lease_expires_at_ms;
+    await this.writeAtomic(file,deferred);
+    return deferred;
   }
 
   private fileFor(requestId:string){

@@ -146,3 +146,54 @@ test("expired development lease returns to the queue",async()=>{
     assert.equal(reclaimed?.lease_owner,"gh:run-22222222");
   });
 });
+
+
+test("deferred development request waits then returns to the queue",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const id="dev-mg123jkl-"+"1".repeat(12);
+    await store.capture(topic,key,carrier(request({request_id:id,fingerprint:"2".repeat(64)})));
+    const first=await store.claimNext("gh:run-33333333",60_000);
+    assert.equal(first?.request_id,id);
+    assert.equal(first?.attempt_count,1);
+
+    const deferred=await store.defer(
+      id,
+      "gh:run-33333333",
+      "free_engine_unavailable",
+      5*60_000
+    );
+    assert.equal(deferred.state,"pending");
+    assert.equal(deferred.last_wait_reason,"free_engine_unavailable");
+    assert.ok((deferred.next_attempt_at_ms??0)>Date.now());
+    assert.equal(await store.claimNext("gh:run-44444444",60_000),null);
+
+    const file=path.join(dir,"development-intake-v2",id+".json");
+    const raw=JSON.parse(await fs.readFile(file,"utf8"));
+    raw.next_attempt_at_ms=Date.now()-1;
+    await fs.writeFile(file,JSON.stringify(raw),"utf8");
+
+    const second=await store.claimNext("gh:run-44444444",60_000);
+    assert.equal(second?.request_id,id);
+    assert.equal(second?.attempt_count,2);
+  });
+});
+
+test("defer is owner-bound and delay-bounded",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const id="dev-mg123mno-"+"3".repeat(12);
+    await store.capture(topic,key,carrier(request({request_id:id,fingerprint:"4".repeat(64)})));
+    await store.claimNext("gh:run-55555555",60_000);
+    await assert.rejects(
+      ()=>store.defer(id,"gh:run-66666666","safe_patch_not_found",5*60_000),
+      /development_lease_owner_mismatch/
+    );
+    await assert.rejects(
+      ()=>store.defer(id,"gh:run-55555555","safe_patch_not_found",60_000),
+      /development_defer_delay_invalid/
+    );
+  });
+});

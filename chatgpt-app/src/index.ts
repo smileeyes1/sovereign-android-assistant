@@ -367,6 +367,7 @@ function developmentWorkerView(record:Awaited<ReturnType<typeof developmentReque
     fingerprint:record.fingerprint,
     state:record.state,
     lease_expires_at_ms:record.lease_expires_at_ms,
+    attempt_count:record.attempt_count??0,
     constraints:record.constraints
   };
 }
@@ -1070,6 +1071,44 @@ app.post("/development/v1/:requestId/complete",async(req,res)=>{
   }catch(error){
     noStore(res);
     const message=error instanceof Error?error.message:"development_completion_failed";
+    const auth=message.startsWith("worker_oidc_");
+    return res.status(auth?401:409).json({ok:false,error:auth?"worker_unauthorized":message});
+  }
+});
+
+app.post("/development/v1/:requestId/defer",async(req,res)=>{
+  try{
+    const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
+    const body=(req.body&&typeof req.body==="object"&&!Array.isArray(req.body))
+      ?req.body as Record<string,unknown>:{};
+    const allowed=new Set(["reason","delay_ms"]);
+    if(Object.keys(body).some(k=>!allowed.has(k))) throw new Error("development_defer_body_invalid");
+    const reason=body.reason;
+    const delayMs=body.delay_ms;
+    if(typeof reason!=="string"||![
+      "free_engine_unavailable","insufficient_evidence","safe_patch_not_found","transient_runner_failure"
+    ].includes(reason)) throw new Error("development_defer_reason_invalid");
+    if(typeof delayMs!=="number"||!Number.isSafeInteger(delayMs))
+      throw new Error("development_defer_delay_invalid");
+    const deferred=await developmentRequestStore.defer(
+      req.params.requestId,
+      workerId,
+      reason as "free_engine_unavailable"|"insufficient_evidence"|"safe_patch_not_found"|"transient_runner_failure",
+      delayMs
+    );
+    noStore(res);
+    return res.json({
+      ok:true,
+      request_id:deferred.request_id,
+      state:deferred.state,
+      next_attempt_at_ms:deferred.next_attempt_at_ms??null,
+      attempt_count:deferred.attempt_count??0,
+      wait_reason:deferred.last_wait_reason??null
+    });
+  }catch(error){
+    noStore(res);
+    const message=error instanceof Error?error.message:"development_defer_failed";
     const auth=message.startsWith("worker_oidc_");
     return res.status(auth?401:409).json({ok:false,error:auth?"worker_unauthorized":message});
   }

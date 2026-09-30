@@ -252,7 +252,9 @@ async function probe(file:string){
   const size=Number(p.format?.size);
   const width=Number(video?.width),height=Number(video?.height);
   const rate=typeof video?.r_frame_rate==="string"?video.r_frame_rate:"";
-  const [n,d]=rate.split("/").map(Number);
+  const parts=rate.split("/").map(Number);
+  const n=Number(parts[0]??0);
+  const d=Number(parts[1]??0);
   const fps=d? n/d:Number(rate);
   const playback=!!video&&duration>0&&size>4096&&width>=480&&height>=360&&fps>=12;
   return {
@@ -329,7 +331,7 @@ async function render(job:JobState,dir:string){
     job.error=technical?undefined:"public_zerogpu_quality_gate_failed";
     job.updated_at_ms=Date.now();
     if(technical) await noteSuccess(dir);
-    else await noteFailure(dir,job.error);
+    else await noteFailure(dir,job.error??"public_zerogpu_quality_gate_failed");
     await saveJob(dir,job);
   }catch(error){
     const message=error instanceof Error?error.message:"public_zerogpu_failed";

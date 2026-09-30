@@ -13,6 +13,13 @@ const MAX_PENDING=64;
 const DEFAULT_LEASE_MS=20*60_000;
 
 export type DevelopmentOutcome="success"|"no_change"|"failed";
+export type DevelopmentEvidence={
+  code:"rollback_forward_requested"|"self_check_fail_closed"|"consecutive_runtime_failures"|"legacy_unstructured";
+  failure_count:number;
+  self_check_status:""|"PASS"|"PASS_WITH_WARNINGS"|"FAIL_CLOSED"|"NOT_TESTED";
+  candidate_state:string;
+  action_code:string;
+};
 export type DevelopmentState="pending"|"leased"|"completed"|"failed";
 
 export type DevelopmentRecord={
@@ -27,6 +34,7 @@ export type DevelopmentRecord={
   trigger:string;
   severity:string;
   fingerprint:string;
+  evidence:DevelopmentEvidence;
   state:DevelopmentState;
   lease_owner?:string;
   lease_expires_at_ms?:number;
@@ -56,6 +64,45 @@ function sha(value:string){
 
 function bool(obj:Record<string,unknown>,key:string,expected:boolean){
   return obj[key]===expected;
+}
+
+function boundedEvidence(raw:unknown,controlVersion:string):DevelopmentEvidence{
+  if(raw===undefined&&controlVersion.endsWith("-v1")){
+    return {
+      code:"legacy_unstructured",
+      failure_count:0,
+      self_check_status:"",
+      candidate_state:"",
+      action_code:""
+    };
+  }
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)) throw new Error("development_evidence_invalid");
+  const e=raw as Record<string,unknown>;
+  const allowedCodes=new Set(["rollback_forward_requested","self_check_fail_closed","consecutive_runtime_failures"]);
+  if(typeof e.code!=="string"||!allowedCodes.has(e.code)) throw new Error("development_evidence_code_invalid");
+  const failureCount=e.failure_count;
+  if(typeof failureCount!=="number"||!Number.isSafeInteger(failureCount)||failureCount<0||failureCount>1000){
+    throw new Error("development_evidence_failure_count_invalid");
+  }
+  const selfCheck=typeof e.self_check_status==="string"?e.self_check_status:"";
+  if(!["","PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"].includes(selfCheck)){
+    throw new Error("development_evidence_self_check_invalid");
+  }
+  const candidateState=typeof e.candidate_state==="string"?e.candidate_state:"";
+  if(candidateState.length>48||!/^[A-Za-z0-9_\-]*$/.test(candidateState)){
+    throw new Error("development_evidence_candidate_state_invalid");
+  }
+  const actionCode=typeof e.action_code==="string"?e.action_code:"";
+  if(actionCode.length>48||!/^[a-z0-9_\-]*$/.test(actionCode)){
+    throw new Error("development_evidence_action_code_invalid");
+  }
+  return {
+    code:e.code as DevelopmentEvidence["code"],
+    failure_count:failureCount,
+    self_check_status:selfCheck as DevelopmentEvidence["self_check_status"],
+    candidate_state:candidateState,
+    action_code:actionCode
+  };
 }
 
 function safeWorkerId(raw:string){
@@ -94,6 +141,7 @@ export class DevelopmentRequestStore{
     if(typeof r.trigger!=="string"||!TRIGGERS.has(r.trigger)) throw new Error("development_trigger_invalid");
     if(typeof r.severity!=="string"||!SEVERITIES.has(r.severity)) throw new Error("development_severity_invalid");
     if(typeof r.fingerprint!=="string"||!FINGERPRINT.test(r.fingerprint)) throw new Error("development_fingerprint_invalid");
+    const evidence=boundedEvidence(r.evidence,r.control_version);
 
     const c=r.constraints;
     if(!c||typeof c!=="object"||Array.isArray(c)) throw new Error("development_constraints_invalid");
@@ -122,6 +170,7 @@ export class DevelopmentRequestStore{
       trigger:r.trigger,
       severity:r.severity,
       fingerprint:r.fingerprint,
+      evidence,
       state:"pending",
       attempt_count:0,
       constraints:{

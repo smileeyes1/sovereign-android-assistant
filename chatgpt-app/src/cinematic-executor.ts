@@ -3,6 +3,10 @@ import { CINEMATIC_DIRECTOR_VERSION } from "./cinematic-director.js";
 import {
   getLocalRenderStatus,localRendererAvailable,submitLocalRender
 } from "./local-cinematic-renderer.js";
+import { chooseAutonomyRoute } from "./autonomy-kernel.js";
+import {
+  getPublicZeroGpuStatus,publicZeroGpuEnabled,publicZeroGpuResourceStatus,submitPublicZeroGpuRender
+} from "./public-zerogpu-renderer.js";
 
 const EXECUTOR_VERSION="HAKIM_VIDEO_EXECUTOR_V1";
 type ExecutorAdapter="rest"|"gradio"|"local";
@@ -42,6 +46,7 @@ function planRecord(plan:unknown):Record<string,unknown>{
 }
 
 export function cinematicExecutorEnabled(env:NodeJS.ProcessEnv=process.env){
+  if(env.HAKIM_VIDEO_AUTONOMY_ENABLED==="1"&&env.HAKIM_VIDEO_RENDER_ENABLED==="1") return true;
   if(adapter(env)==="local") return localRendererAvailable(env);
   const common=env.HAKIM_VIDEO_RENDER_ENABLED==="1" &&
     clean(env.HAKIM_VIDEO_EXECUTOR_NAME,80)!=="" &&
@@ -52,9 +57,11 @@ export function cinematicExecutorEnabled(env:NodeJS.ProcessEnv=process.env){
 
 export function cinematicExecutorSummary(env:NodeJS.ProcessEnv=process.env){
   const kind=adapter(env);
+  const autonomy=env.HAKIM_VIDEO_AUTONOMY_ENABLED==="1";
   return {
     executor_version:EXECUTOR_VERSION,
     enabled:cinematicExecutorEnabled(env),
+    execution_mode:autonomy?"autonomy":"single_adapter",
     adapter:kind,
     name:clean(env.HAKIM_VIDEO_EXECUTOR_NAME,80)||(kind==="local"?"hakim-local-cinematic-fallback":null),
     endpoint_configured:kind==="local"?true:endpoint(env)!==null,
@@ -68,7 +75,12 @@ export function cinematicExecutorSummary(env:NodeJS.ProcessEnv=process.env){
     render_verified:false,
     success_requires_artifact:true,
     gradio_quota_note:kind==="gradio"?"quota_is_enforced_by_hugging_face":null,
-    local_note:kind==="local"?"verified_mp4_fallback_not_generative_cinema":null
+    local_note:kind==="local"?"verified_mp4_fallback_not_generative_cinema":null,
+    autonomy:{
+      enabled:autonomy,
+      public_zerogpu_enabled:publicZeroGpuEnabled(env),
+      policy:"zero_cost_route_selection_with_durable_wait_on_free_quota"
+    }
   };
 }
 
@@ -158,6 +170,32 @@ async function submitGradio(plan:unknown,env:NodeJS.ProcessEnv){
 
 export async function submitCinematicRender(plan:unknown,env:NodeJS.ProcessEnv=process.env){
   if(!cinematicExecutorEnabled(env)) throw new Error("video_executor_unavailable");
+  if(env.HAKIM_VIDEO_AUTONOMY_ENABLED==="1"){
+    const p=planRecord(plan);
+    const execution=typeof p.execution_policy==="object"&&p.execution_policy!==null?
+      p.execution_policy as Record<string,unknown>:{};
+    const publicSafe=execution.synthetic_public_safe===true&&execution.contains_personal_data!==true;
+    if(publicSafe&&publicZeroGpuEnabled(env)){
+      const resource=await publicZeroGpuResourceStatus(env);
+      const decision=chooseAutonomyRoute(
+        {capability:"generative_video",allows_public_data:true,contains_personal_data:false},
+        [resource]
+      );
+      const prompt=clean(p.goal,1200)||clean(p.style,600)||"Original cinematic animated educational shot";
+      const continuity=typeof p.continuity_bible==="object"&&p.continuity_bible!==null?
+        JSON.stringify(p.continuity_bible).slice(0,1200):"";
+      const compiled=[prompt,continuity].filter(Boolean).join(". ");
+      if(decision.ok||decision.state==="waiting_free_capacity"){
+        return submitPublicZeroGpuRender({
+          prompt:compiled,
+          duration_sec:boundedNumber(p.duration_sec,0.5,3,1.5),
+          seed:42,
+          public_safe_synthetic:true
+        },env);
+      }
+    }
+    if(localRendererAvailable(env)) return submitLocalRender(plan,env);
+  }
   const kind=adapter(env);
   if(kind==="local") return submitLocalRender(plan,env);
   return kind==="gradio"?submitGradio(plan,env):submitRest(plan,env);
@@ -310,6 +348,7 @@ async function statusGradio(id:string,env:NodeJS.ProcessEnv){
 export async function getCinematicRenderStatus(jobId:string,env:NodeJS.ProcessEnv=process.env){
   if(!cinematicExecutorEnabled(env)) throw new Error("video_executor_unavailable");
   const id=validateJobId(jobId);
+  if(id.startsWith("zgpu-")) return getPublicZeroGpuStatus(id,env);
   const kind=adapter(env);
   if(kind==="local") return getLocalRenderStatus(id,env);
   return kind==="gradio"?statusGradio(id,env):statusRest(id,env);

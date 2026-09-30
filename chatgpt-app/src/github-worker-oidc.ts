@@ -66,7 +66,7 @@ export async function verifyGitHubWorkerOidc(
   if(!jwk) throw new Error("worker_oidc_key_unknown");
   let key:crypto.KeyObject;
   try{
-    key=crypto.createPublicKey({key:jwk as crypto.JsonWebKey,format:"jwk"});
+    key=crypto.createPublicKey({key:jwk as any,format:"jwk"});
   }catch{
     throw new Error("worker_oidc_key_invalid");
   }

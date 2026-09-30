@@ -13,8 +13,7 @@ export function buildNumberFiveGoldenProduction(){
     language:"العربية",
     locale:"ar-PS",
     style:"فيلم كرتوني سينمائي أصلي دافئ؛ شخصيات ثابتة الهوية؛ إضاءة وقصة وحركة كاميرا بمستوى مسلسل أطفال احترافي",
-    educational:true,
-    paid_approved:false
+    educational:true
   });
 
   const characters=[

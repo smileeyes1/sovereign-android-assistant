@@ -61,6 +61,7 @@ object HakimHealthBeacon {
             versionName = info.versionName.orEmpty()
         } catch (_: Exception) {}
         val installedApkSha256 = apkSha256(context)
+        val developmentRequest = HakimDevelopmentControlPlane.requestForBeacon(context)
 
         val health = JSONObject()
             .put("request_id", "health-$now")
@@ -75,11 +76,13 @@ object HakimHealthBeacon {
             .put("recovery", HakimConnectionResilience.status(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
+            .put("development_control", HakimDevelopmentControlPlane.status(context))
             .put("field_acceptance", HakimFieldAcceptance.status(context))
             .put("sovereign_acceptance_gate", HakimAcceptanceGate.status(context))
             .put("governance_catalog", HakimGovernanceCatalog.status(context))
             .put("constitution", HakimConstitution.VERSION)
             .put("reason", reason.take(80))
+        if (developmentRequest != null) health.put("development_request", developmentRequest)
 
         if (secureConfigured) {
             val secureOk = HakimUnifiedRelay.sendHealthBeacon(context, health)
@@ -90,6 +93,7 @@ object HakimHealthBeacon {
                     .putString("installed_apk_sha256", installedApkSha256)
                     .remove("last_health_beacon_error")
                     .apply()
+                HakimDevelopmentControlPlane.markEmitted(context, developmentRequest)
                 return true
             }
         }
@@ -123,6 +127,7 @@ object HakimHealthBeacon {
                     .putLong("last_health_beacon_at", now)
                     .putString("installed_apk_sha256", installedApkSha256)
                     .apply()
+                if (ok) HakimDevelopmentControlPlane.markEmitted(context, developmentRequest)
                 ok
             }
         } catch (e: Exception) {

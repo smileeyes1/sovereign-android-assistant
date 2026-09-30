@@ -23,6 +23,10 @@ import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js
 import {
   getLocalRenderStatus,resolveLocalArtifact,submitLocalRender
 } from "./local-cinematic-renderer.js";
+import {
+  resolvePublicZeroGpuArtifact,resumePublicZeroGpuJobs
+} from "./public-zerogpu-renderer.js";
+import { resumeAutonomousFilmProjects } from "./autonomous-film-runner.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -750,7 +754,11 @@ app.get("/pair",async(req,res)=>{
 
 app.get("/video/v1/artifacts/:jobId/:token.mp4",async(req,res)=>{
   try{
-    const artifact=await resolveLocalArtifact(String(req.params.jobId??""),String(req.params.token??""));
+    const jobId=String(req.params.jobId??"");
+    const token=String(req.params.token??"");
+    const artifact=jobId.startsWith("zgpu-")
+      ?await resolvePublicZeroGpuArtifact(jobId,token)
+      :await resolveLocalArtifact(jobId,token);
     if(!artifact){
       noStore(res);
       return res.status(404).json({error:"video_artifact_not_found"});
@@ -775,6 +783,7 @@ app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang=
 <h2>لماذا نعالجه</h2>
 <p>نستخدم هذه البيانات حصراً للمصادقة، توجيه أوامر حكيم المأذونة، إعادة نتيجة الطلب، منع إعادة التشغيل/التلاعب، وتشخيص الأعطال التشغيلية دون تسجيل محتوى الجهاز عمدًا.</p>
 <h2>المستلمون والمعالِجون</h2>
+<p>عند تفعيل الرندر المجاني العام، يسمح حكيم بإرسال وصف وأصول صناعية غير حساسة فقط إلى مساحة ZeroGPU عامة. يمنع المسار البرمجي إرسال صور المستخدم أو بيانات الطلبة أو أي بيانات شخصية إلى الحوسبة العامة. نفاد الحصة المجانية يؤدي إلى انتظار محفوظ ولا يسمح بالتحول إلى دفع.</p>
 <p>قد تمر البيانات عبر ChatGPT/OpenAI وفق إعدادات حساب المستخدم، وعبر Railway لاستضافة الجسر، وعبر جسر حكيم نفسه كناقل HTTPS أساسي للبيانات المشفرة طرفًا لطرف. وقد يُستخدم ntfy كمسار احتياطي مشفر أثناء الهجرة أو التعافي، ولا يحصل على مفاتيح فك محتوى أوامر حكيم ونتائجه. إذا فتح المستخدم بلاغ دعم عام على GitHub، فإن ما يكتبه هناك يخضع لإعدادات GitHub؛ لذلك نحذر من نشر الأسرار أو اللقطات الحساسة.</p>
 <h2>الاحتفاظ</h2>
 <p>لا يستخدم الجسر محتوى الجهاز الخام كقاعدة معرفة دائمة. تُحفظ أوامر القراءة الآمنة المشفرة في طابور مؤقت لمدة تصل إلى ٣٠ دقيقة، بينما تبقى الأفعال ذات الأثر قصيرة العمر؛ وقد تبقى النتائج المشفرة مؤقتًا حتى نحو ساعة لتسمح بالاستئناف. يحتفظ سجل الاستمرارية ببيانات checkpoint التشغيلية المحدودة وبيانات العملية لمدة تصل إلى ٣٠ يومًا، مع حد أقصى للسجل وتنظيف دوري. رموز تفويض OAuth أحادية الاستخدام تنتهي بعد دقيقتين، ورموز الوصول تنتهي بعد ساعة، ورموز التجديد تنتهي بعد ٣٠ يومًا ما لم يُفصل الربط قبل ذلك. قد تحتفظ منصة الاستضافة بسجلات تشغيلية/شبكية وفق سياساتها، لكن حكيم لا يتعمد كتابة مفاتيح الربط أو بيانات الاعتماد أو محتوى الجهاز الخام إلى السجلات.</p>
@@ -1196,8 +1205,23 @@ async function maybeRunVideoStartupSelftest(){
   }
 }
 
+async function resumeAutonomousWork(){
+  try{
+    await resumePublicZeroGpuJobs();
+    await resumeAutonomousFilmProjects();
+  }catch(error){
+    console.log("HAKIM_AUTONOMY_RESUME "+JSON.stringify({
+      ok:false,
+      error:error instanceof Error?error.message.slice(0,240):"autonomy_resume_failed"
+    }));
+  }
+}
+
 const port=Number(process.env.PORT??3000);
 app.listen(port,"0.0.0.0",()=>{
   console.log(`Hakim ChatGPT bridge listening on :${port}`);
   void maybeRunVideoStartupSelftest();
+  void resumeAutonomousWork();
 });
+const autonomyTimer=setInterval(()=>{void resumeAutonomousWork();},15*60_000);
+autonomyTimer.unref?.();

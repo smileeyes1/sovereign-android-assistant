@@ -1,0 +1,136 @@
+name: Hakim Golden Render Public ZeroGPU
+
+on:
+  push:
+    branches:
+      - experiment/hakim-golden-render-public-zero
+    paths:
+      - ".github/workflows/golden-render-public-zero.yml"
+
+jobs:
+  golden-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render one anonymous ZeroGPU golden clip
+        env:
+          SPACE_BASE: https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space
+        run: |
+          python - <<'PY'
+          import json, os, sys, time
+          from urllib.parse import urljoin
+          import urllib.request
+
+          base=os.environ["SPACE_BASE"].rstrip("/")
+          endpoint=base+"/run/generate_video"
+          image_url="https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png"
+          payload={
+            "input_image":{
+              "path":image_url,
+              "url":image_url,
+              "orig_name":"bus.png",
+              "meta":{"_type":"gradio.FileData"}
+            },
+            "prompt":"Cinematic slow push-in toward the parked bus on a sunny street. Subtle natural tree movement and realistic reflections, stable vehicle geometry, physically plausible motion, controlled camera movement, natural depth of field, restrained filmic contrast, coherent lighting, premium commercial cinematography.",
+            "steps":4,
+            "negative_prompt":"low quality, blurry, warped bus, duplicated vehicle, deformed geometry, temporal flicker, morphing, unstable background, random camera shake, subtitles, watermark, text, logo",
+            "duration_seconds":1.5,
+            "guidance_scale":1.0,
+            "guidance_scale_2":1.0,
+            "seed":42,
+            "randomize_seed":False
+          }
+          body=json.dumps(payload).encode()
+          req=urllib.request.Request(
+            endpoint,
+            data=body,
+            headers={
+              "Content-Type":"application/json",
+              "Accept":"application/json",
+              "User-Agent":"Hakim-Golden-Render/1.0"
+            },
+            method="POST"
+          )
+          try:
+            with urllib.request.urlopen(req, timeout=900) as resp:
+              raw=resp.read().decode()
+              status=resp.status
+          except Exception as exc:
+            print("GOLDEN_RENDER_REQUEST_FAILED", repr(exc))
+            raise
+
+          print("HTTP_STATUS", status)
+          print("RESPONSE_PREFIX", raw[:2000])
+          data=json.loads(raw)
+          file_obj=data.get("output")
+          if not isinstance(file_obj, dict):
+            raise SystemExit("missing_output_file")
+          file_url=file_obj.get("url") or file_obj.get("path")
+          if not isinstance(file_url,str) or not file_url:
+            raise SystemExit("missing_output_url")
+          if file_url.startswith("/"):
+            file_url=urljoin(base+"/",file_url.lstrip("/"))
+          if not file_url.startswith("http"):
+            raise SystemExit("non_http_output_url")
+
+          print("OUTPUT_URL", file_url)
+          out_req=urllib.request.Request(file_url,headers={"User-Agent":"Hakim-Golden-Render/1.0"})
+          with urllib.request.urlopen(out_req, timeout=180) as resp:
+            video=resp.read()
+          if len(video)<4096:
+            raise SystemExit("video_too_small")
+          open("golden.mp4","wb").write(video)
+          open("response.json","w",encoding="utf-8").write(json.dumps(data,ensure_ascii=False,indent=2))
+          print("VIDEO_BYTES",len(video))
+          PY
+
+      - name: Probe MP4 and create evidence
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -show_entries format=duration,size,format_name -show_entries stream=codec_type,codec_name,width,height,r_frame_rate -of json golden.mp4 > ffprobe.json
+          sha256sum golden.mp4 | tee sha256.txt
+          python - <<'PY'
+          import hashlib,json,os
+          p="golden.mp4"
+          probe=json.load(open("ffprobe.json"))
+          streams=probe.get("streams",[])
+          video=[s for s in streams if s.get("codec_type")=="video"]
+          if not video:
+            raise SystemExit("missing_video_stream")
+          fmt=probe.get("format",{})
+          duration=float(fmt.get("duration") or 0)
+          size=int(fmt.get("size") or os.path.getsize(p))
+          if duration<=0:
+            raise SystemExit("invalid_duration")
+          if size<4096:
+            raise SystemExit("invalid_size")
+          evidence={
+            "ok":True,
+            "artifact":"golden.mp4",
+            "sha256":hashlib.sha256(open(p,"rb").read()).hexdigest(),
+            "duration_sec":duration,
+            "size_bytes":size,
+            "video_stream":video[0],
+            "technical_playback_probe":True,
+            "cinematic_visual_qa":"pending",
+            "quality_gates_passed":False,
+            "render_success_claimed":False,
+            "rule":"technical_artifact_exists_but_cinematic_qa_is_still_required"
+          }
+          json.dump(evidence,open("golden-evidence.json","w"),ensure_ascii=False,indent=2)
+          print(json.dumps(evidence,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-golden-render-public-zero
+          path: |
+            golden.mp4
+            golden-evidence.json
+            ffprobe.json
+            sha256.txt
+            response.json
+          if-no-files-found: error

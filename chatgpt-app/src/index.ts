@@ -91,6 +91,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
+        network_protection?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
@@ -107,6 +108,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const containment=result?.fault_containment;
     const diagnostics=result?.network_diagnostics;
     const autoUpdate=result?.auto_update;
+    const networkProtection=result?.network_protection;
     const safe={
       event:"hakim_status_probe",
       ok:flag(result?.ok),
@@ -139,6 +141,14 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       self_check:fixed(result?.self_check,["PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"]),
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
         Object.keys(diagnostics).length>0,
+      network_protection:{
+        state:fixed(networkProtection?.state,[
+          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+        ]),
+        running:flag(networkProtection?.running),
+        verified:flag(networkProtection?.verified),
+        family_dns_active:flag(networkProtection?.family_dns_active)
+      },
       auto_update:{
         state:fixed(autoUpdate?.state,[
           "unknown","scheduled","checking","up_to_date","update_found","downloading",
@@ -177,6 +187,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         constitution?:unknown;
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
+        network_protection?:Record<string,unknown>;
       };
     };
     if(decoded?.status!=="health") return;
@@ -188,6 +199,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
       /^[A-Z0-9._-]{8,120}$/.test(result.constitution)?result.constitution:null;
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
+    const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;
     const bool=(raw:unknown)=>typeof raw==="boolean"?raw:null;
@@ -207,6 +219,14 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         material_gap_blocks_close:bool(gate?.material_gap_blocks_close),
         same_tested_delivered_artifact_required:bool(gate?.same_tested_delivered_artifact_required),
         regression_gate_supported:bool(gate?.regression_gate_supported)
+      },
+      network_protection:{
+        state:fixed(networkProtection?.state,[
+          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+        ]),
+        running:bool(networkProtection?.running),
+        verified:bool(networkProtection?.verified),
+        family_dns_active:bool(networkProtection?.family_dns_active)
       },
       governance_catalog:{
         active:bool(catalog?.governance_catalog),

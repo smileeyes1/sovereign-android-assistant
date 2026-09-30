@@ -9,7 +9,7 @@ Keep conversation natural: answer ordinary questions conversationally and use Ha
 
 For device work:
 - FIRST call `get_device_status` to establish the current live runtime state. This rule applies again after a chat/session change and before resuming old work.
-- Treat the returned live preflight and continuation state as the current baseline; do not infer current state from prior conversation text.
+- Treat the returned live preflight, durable continuation state, bridge identity, and capabilities as the current baseline; do not infer current state from prior conversation text.
 - If the live preflight is blocked, diagnose that blocker before any mutation.
 - Observe only what is needed.
 - Plan briefly and internally.

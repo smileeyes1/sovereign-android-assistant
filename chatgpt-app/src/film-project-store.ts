@@ -119,8 +119,10 @@ export async function markFilmShotJob(
   if(!shots.some((s:any)=>s?.shot_id===shotId)) throw new Error("film_shot_not_found");
   const now=Date.now();
   const shot_runtime={...(project.shot_runtime??{})};
+  const previous=shot_runtime[shotId]??{};
   shot_runtime[shotId]={
-    ...(shot_runtime[shotId]??{}),
+    ...previous,
+    attempts:Number(previous.attempts||0)+1,
     status:"rendering",
     job_id:jobId,
     provider,

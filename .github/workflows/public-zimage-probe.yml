@@ -1,0 +1,31 @@
+name: Public Z-Image ZeroGPU Probe
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-zimage-probe.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+      - name: Inspect anonymous API
+        env:
+          SPACE_ID: mrfakename/Z-Image-Turbo
+        run: |
+          python - <<'PY'
+          import json, os
+          from gradio_client import Client
+          c=Client(os.environ["SPACE_ID"], verbose=False)
+          info=c.view_api(print_info=False, return_format="dict")
+          print("ZIMAGE_API_JSON")
+          print(json.dumps(info, indent=2, default=str))
+          PY

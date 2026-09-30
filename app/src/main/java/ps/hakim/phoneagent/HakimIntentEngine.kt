@@ -112,6 +112,7 @@ object HakimIntentEngine {
         val plan = resolve(context, raw)
         return buildString {
             append(HakimConstitution.promptPrefix(context))
+            append(HakimPalestinianArabicProfile.promptContract(raw))
             appendLine(HakimConstitution.taskContext(context, plan.goal, plan.completion.joinToString("؛ ")))
             val tolActive = TOL_TOKEN.containsMatchIn(raw)
             val allActive = ALL_TOKEN.containsMatchIn(raw)

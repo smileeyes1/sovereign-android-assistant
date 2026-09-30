@@ -228,6 +228,15 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
   }));
 
   const tools:any[]=[
+    {
+      name:"resume_hakim",
+      title:"استئناف حكيم — ابدأ هنا في أي محادثة جديدة",
+      description:governedReadDescription("بوابة الاستئناف الموحّدة والمرجع الأعلى لأي مهمة تخص حكيم بعد فتح محادثة جديدة أو تبديل النموذج/الجلسة. تعيد في نداء واحد الحالة الحية للهاتف، نقطة الاستمرارية الدائمة، قدرات مصنع الفيديو الحالية، وهوية إصدار الجسر. استخدمها قبل الاعتماد على أي وصف قديم."),
+      inputSchema:{type:"object",properties:{},additionalProperties:false},
+      annotations:READ_ANNOTATIONS,
+      securitySchemes:readSecurity,
+      _meta:{securitySchemes:readSecurity}
+    },
     ...readTools,
     {
       name:"get_video_capabilities",
@@ -489,6 +498,55 @@ export function createHakimServer(
     return result;
   };
   const readCatalog=activeReadCatalog(publicSafe);
+
+  server.registerTool("resume_hakim",{
+    title:"استئناف حكيم — المرجع الحي للمحادثات الجديدة",
+    description:governedReadDescription(
+      "استدعِ هذه الأداة أولًا بعد أي محادثة/جلسة/نموذج جديد أو قبل استئناف عمل قديم. تعيد الحالة الحية، الاستمرارية الدائمة، قدرات الفيديو وهوية الجسر الحالية. هذه البيانات تتقدم على وصف المحادثات السابقة عند التعارض."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    const continuity=await continuityStore.state(credential);
+    const capabilities={...cinematicCapabilities(),executor:cinematicExecutorSummary()};
+    const rawSha=String(process.env.RAILWAY_GIT_COMMIT_SHA??"").trim().toLowerCase();
+    const bridge={
+      continuity_bootstrap:"HAKIM_RESUME_BOOTSTRAP_V1_2026-09-30",
+      commit_sha:/^[0-9a-f]{40}$/.test(rawSha)?rawSha:null,
+      environment:process.env.RAILWAY_ENVIRONMENT_NAME??null,
+      service:process.env.RAILWAY_SERVICE_NAME??null
+    };
+    let preflight:unknown;
+    try{
+      preflight=await fetchLivePreflight(credential,reviewMode);
+    }catch(error){
+      preflight={
+        preflight_version:"HAKIM_LIVE_PREFLIGHT_V1",
+        observed_at_ms:Date.now(),
+        fresh:false,
+        runtime_ready:false,
+        action_ready:false,
+        reason:"live_preflight_unavailable",
+        error:error instanceof Error?error.message.slice(0,220):"live_preflight_unavailable"
+      };
+    }
+    return text(tagExternalData({
+      ok:(preflight as {runtime_ready?:unknown})?.runtime_ready===true,
+      authoritative_order:[
+        "fresh_live_preflight",
+        "durable_continuity_checkpoint",
+        "current_bridge_capabilities_and_version",
+        "prior_conversation_descriptions"
+      ],
+      preflight,
+      continuity,
+      video:capabilities,
+      bridge,
+      resume_rule:"For any Hakim task after a chat/model/session change, use this response as the current baseline. Reuse pending operation tokens instead of replaying actions. Never downgrade to older conversation state when fresher evidence exists.",
+      zero_burden:"No user restatement is required when this tool and the durable Hakim connection are available."
+    },"resume_hakim"));
+  });
 
   const blockOnPreflight=(preflight:ReturnType<typeof livePreflightSummary>|Record<string,unknown>,purpose:string)=>{
     const actionReady=(preflight as {action_ready?:unknown}).action_ready===true;

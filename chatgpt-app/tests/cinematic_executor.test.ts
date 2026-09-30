@@ -176,3 +176,19 @@ test("Gradio render only becomes verified when playback and cinematic gates pass
     globalThis.fetch=original;
   }
 });
+
+
+test("local fallback executor needs no external endpoint or secret",()=>{
+  const env={
+    HAKIM_VIDEO_RENDER_ENABLED:"1",
+    HAKIM_VIDEO_EXECUTOR_ADAPTER:"local"
+  } as NodeJS.ProcessEnv;
+  assert.equal(cinematicExecutorEnabled(env),true);
+  const summary=cinematicExecutorSummary(env) as any;
+  assert.equal(summary.adapter,"local");
+  assert.equal(summary.external_auth_required,false);
+  assert.equal(summary.deterministic_fallback,true);
+  assert.equal(summary.generative_ai,false);
+  assert.equal(summary.free_only,true);
+  assert.equal(summary.paid_render_allowed,false);
+});

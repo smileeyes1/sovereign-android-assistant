@@ -3,13 +3,14 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Client,handle_file } from "@gradio/client";
 
 export const PUBLIC_ZEROGPU_VERSION="HAKIM_PUBLIC_ZEROGPU_WAN22_V1_2026-09-30";
 const JOB=/^zgpu-[0-9a-f]{24}$/;
 const TOKEN=/^[A-Za-z0-9_-]{32,120}$/;
 const RETENTION_MS=48*60*60*1000;
-const ZIMAGE="https://mrfakename-z-image-turbo.hf.space";
-const WAN22="https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space";
+const ZIMAGE="mrfakename/Z-Image-Turbo";
+const WAN22="zerogpu-aoti/wan2-2-fp8da-aoti-faster";
 const running=new Set<string>();
 
 type JobState={
@@ -141,46 +142,41 @@ export async function publicZeroGpuResourceStatus(env:NodeJS.ProcessEnv=process.
   };
 }
 
-async function sseComplete(url:string,timeoutMs:number){
-  const response=await fetch(url,{
-    headers:{Accept:"text/event-stream"},
-    signal:AbortSignal.timeout(timeoutMs)
-  });
-  if(!response.ok) throw new Error("gradio_sse_http_"+response.status);
-  const raw=await response.text();
-  let complete:unknown=null;
-  let failure="";
-  for(const block of raw.split(/\n\n+/)){
-    let event="";
-    const data:string[]=[];
-    for(const line of block.split(/\n/)){
-      if(line.startsWith("event:")) event=line.slice(6).trim();
-      else if(line.startsWith("data:")) data.push(line.slice(5).trimStart());
-    }
-    if(event==="complete"&&data.length){
-      try{complete=JSON.parse(data.join("\n"));}catch{}
-    }
-    if((event==="error"||event==="failed")&&data.length) failure=data.join("\n");
+type GradioPrediction={data?:unknown};
+
+async function withTimeout<T>(promise:Promise<T>,timeoutMs:number,label:string){
+  let timer:NodeJS.Timeout|undefined;
+  try{
+    return await Promise.race([
+      promise,
+      new Promise<T>((_,reject)=>{
+        timer=setTimeout(()=>reject(new Error(label+"_timeout")),timeoutMs);
+        timer.unref?.();
+      })
+    ]);
+  }finally{
+    if(timer) clearTimeout(timer);
   }
-  if(failure) throw new Error("gradio_failed:"+failure.slice(0,1000));
-  if(!Array.isArray(complete)) throw new Error("gradio_no_complete");
-  return complete;
 }
 
-async function gradioCall(base:string,endpoint:string,payload:Record<string,unknown>,timeoutMs:number){
-  const response=await fetch(base+"/gradio_api/call/v2/"+endpoint,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload),
-    signal:AbortSignal.timeout(30_000)
-  });
-  if(!response.ok){
-    const detail=(await response.text()).slice(0,800);
-    throw new Error("gradio_submit_http_"+response.status+":"+detail);
+async function gradioPredict(
+  space:string,
+  endpoint:string,
+  payload:Record<string,unknown>,
+  timeoutMs:number
+){
+  try{
+    const client=await withTimeout(Client.connect(space),60_000,"gradio_connect");
+    const result=await withTimeout(
+      client.predict(endpoint,payload) as Promise<GradioPrediction>,
+      timeoutMs,
+      "gradio_predict"
+    );
+    return Array.isArray(result?.data)?result.data:[result?.data];
+  }catch(error){
+    const message=error instanceof Error?error.message:String(error);
+    throw new Error("gradio_client_failed:"+message.slice(0,1000));
   }
-  const data=await response.json() as {event_id?:unknown};
-  if(typeof data.event_id!=="string"||data.event_id.length<8) throw new Error("gradio_event_id_missing");
-  return sseComplete(base+"/gradio_api/call/"+endpoint+"/"+encodeURIComponent(data.event_id),timeoutMs);
 }
 
 function outputUrl(value:unknown){
@@ -207,21 +203,6 @@ async function download(url:string,file:string,timeoutMs:number){
   const buf=Buffer.from(await response.arrayBuffer());
   if(buf.length<1024||buf.length>max) throw new Error("artifact_invalid_size");
   await fs.writeFile(file,buf);
-}
-
-async function uploadToWan(file:string){
-  const buf=await fs.readFile(file);
-  const form=new FormData();
-  form.append("files",new Blob([buf],{type:"image/png"}),"reference.png");
-  const response=await fetch(WAN22+"/gradio_api/upload",{
-    method:"POST",
-    body:form,
-    signal:AbortSignal.timeout(45_000)
-  });
-  if(!response.ok) throw new Error("gradio_upload_http_"+response.status+":"+(await response.text()).slice(0,600));
-  const paths=await response.json() as unknown;
-  if(!Array.isArray(paths)||typeof paths[0]!=="string") throw new Error("gradio_upload_path_missing");
-  return paths[0] as string;
 }
 
 function run(command:string,args:string[],timeoutMs:number){
@@ -290,10 +271,10 @@ async function render(job:JobState,dir:string){
 
     const reference=job.reference_file||path.join(dir,job.job_id+"-reference.png");
     if(!job.reference_file){
-      const image=await gradioCall(ZIMAGE,"generate_image",{
+      const image=await gradioPredict(ZIMAGE,"/generate_image",{
         prompt:job.prompt+" Single polished keyframe, character fully visible, no text, no numbers, no logo.",
         height:768,width:1344,num_inference_steps:6,seed:job.seed,randomize_seed:false
-      },120_000);
+      },180_000);
       const url=outputUrl(image);
       if(!url) throw new Error("zimage_output_missing");
       await download(url,reference,45_000);
@@ -302,9 +283,8 @@ async function render(job:JobState,dir:string){
       await saveJob(dir,job);
     }
 
-    const uploaded=await uploadToWan(reference);
-    const video=await gradioCall(WAN22,"generate_video",{
-      input_image:{path:uploaded,orig_name:"reference.png",meta:{_type:"gradio.FileData"}},
+    const video=await gradioPredict(WAN22,"/generate_video",{
+      input_image:handle_file(reference),
       prompt:job.prompt,
       steps:4,
       negative_prompt:job.negative_prompt,
@@ -313,7 +293,7 @@ async function render(job:JobState,dir:string){
       guidance_scale_2:1.0,
       seed:job.seed,
       randomize_seed:false
-    },240_000);
+    },300_000);
     const url=outputUrl(video);
     if(!url) throw new Error("wan22_output_missing");
     const output=path.join(dir,job.job_id+".mp4");

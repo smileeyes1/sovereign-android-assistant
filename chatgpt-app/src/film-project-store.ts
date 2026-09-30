@@ -84,3 +84,106 @@ export async function getFilmProject(projectId:string,env:NodeJS.ProcessEnv=proc
     throw error;
   }
 }
+
+
+function projectShots(project:any){
+  if(Array.isArray(project?.golden?.shots)) return project.golden.shots as any[];
+  if(Array.isArray(project?.shots)) return project.shots as any[];
+  return [];
+}
+
+export async function getNextFilmShot(projectId:string,env:NodeJS.ProcessEnv=process.env){
+  const project=await getFilmProject(projectId,env) as any;
+  const shots=projectShots(project);
+  const states=project?.shot_runtime&&typeof project.shot_runtime==="object"?project.shot_runtime:{};
+  const next=shots.find((shot:any)=>{
+    const id=typeof shot?.shot_id==="string"?shot.shot_id:"";
+    const state=states[id];
+    return id&&state?.status!=="completed"&&state?.status!=="rendering";
+  })??null;
+  return {project,shot:next,state:next?states[next.shot_id]??null:null};
+}
+
+export async function markFilmShotJob(
+  projectId:string,
+  shotId:string,
+  jobId:string,
+  provider:string,
+  env:NodeJS.ProcessEnv=process.env
+){
+  if(!PROJECT_ID.test(projectId)) throw new Error("invalid_film_project_id");
+  if(!/^[A-Za-z0-9._:-]{2,80}$/.test(shotId)) throw new Error("invalid_film_shot_id");
+  const dir=await ensure(env);
+  const project=await getFilmProject(projectId,env) as any;
+  const shots=projectShots(project);
+  if(!shots.some((s:any)=>s?.shot_id===shotId)) throw new Error("film_shot_not_found");
+  const now=Date.now();
+  const shot_runtime={...(project.shot_runtime??{})};
+  shot_runtime[shotId]={
+    ...(shot_runtime[shotId]??{}),
+    status:"rendering",
+    job_id:jobId,
+    provider,
+    updated_at_ms:now
+  };
+  const updated={...project,revision:Number(project.revision||0)+1,updated_at_ms:now,shot_runtime};
+  await atomicWrite(path.join(dir,projectId+".json"),updated);
+  return updated;
+}
+
+export async function markFilmShotResult(
+  projectId:string,
+  shotId:string,
+  result:Record<string,unknown>,
+  env:NodeJS.ProcessEnv=process.env
+){
+  if(!PROJECT_ID.test(projectId)) throw new Error("invalid_film_project_id");
+  if(!/^[A-Za-z0-9._:-]{2,80}$/.test(shotId)) throw new Error("invalid_film_shot_id");
+  const dir=await ensure(env);
+  const project=await getFilmProject(projectId,env) as any;
+  const shots=projectShots(project);
+  if(!shots.some((s:any)=>s?.shot_id===shotId)) throw new Error("film_shot_not_found");
+  const now=Date.now();
+  const status=result.status==="completed"?"completed":
+    result.status==="waiting_free_capacity"?"waiting_free_capacity":
+    result.status==="failed"?"failed":"rendering";
+  const shot_runtime={...(project.shot_runtime??{})};
+  shot_runtime[shotId]={
+    ...(shot_runtime[shotId]??{}),
+    status,
+    job_id:typeof result.job_id==="string"?result.job_id:shot_runtime[shotId]?.job_id??null,
+    provider:typeof result.adapter==="string"?result.adapter:shot_runtime[shotId]?.provider??null,
+    artifact:result.artifact??null,
+    artifact_verified:result.artifact_verified===true,
+    render_success:result.render_success===true,
+    cinematic_approval:result.cinematic_approval===true,
+    retry_at_ms:typeof result.retry_at_ms==="number"?result.retry_at_ms:null,
+    updated_at_ms:now
+  };
+  const completed=shots.filter((s:any)=>shot_runtime[s.shot_id]?.status==="completed").length;
+  const projectStatus=completed===shots.length&&shots.length>0?"SHOT_QA":project.status;
+  const updated={
+    ...project,
+    revision:Number(project.revision||0)+1,
+    updated_at_ms:now,
+    status:projectStatus,
+    shot_runtime,
+    render_progress:{completed_shots:completed,total_shots:shots.length}
+  };
+  await atomicWrite(path.join(dir,projectId+".json"),updated);
+  return updated;
+}
+
+export async function listFilmProjects(env:NodeJS.ProcessEnv=process.env){
+  const dir=await ensure(env);
+  const names=await fs.readdir(dir).catch(()=>[]);
+  const out:any[]=[];
+  for(const name of names){
+    if(!name.startsWith("film-")||!name.endsWith(".json")) continue;
+    try{
+      const p=JSON.parse(await fs.readFile(path.join(dir,name),"utf8"));
+      if(PROJECT_ID.test(String(p?.project_id||""))) out.push(p);
+    }catch{}
+  }
+  return out;
+}

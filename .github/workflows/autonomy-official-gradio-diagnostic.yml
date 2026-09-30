@@ -1,0 +1,63 @@
+name: Autonomy Official Gradio Diagnostic
+
+on:
+  push:
+    branches:
+      - fix/hakim-autonomy-gradio-client-v1
+    paths:
+      - "chatgpt-app/src/public-zerogpu-renderer.ts"
+      - "chatgpt-app/package.json"
+      - ".github/workflows/autonomy-official-gradio-diagnostic.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        working-directory: chatgpt-app
+        run: npm install --no-audit --no-fund
+      - name: Build
+        working-directory: chatgpt-app
+        run: npm run build
+      - name: Probe exact production renderer
+        working-directory: chatgpt-app
+        env:
+          HAKIM_DATA_DIR: /tmp/hakim-gradio-official
+          HAKIM_PUBLIC_ZERO_GPU_ENABLED: "1"
+          HAKIM_VIDEO_PUBLIC_BASE_URL: https://example.invalid
+        run: |
+          node --import tsx - <<'NODE'
+          import {submitPublicZeroGpuRender,getPublicZeroGpuStatus} from "./src/public-zerogpu-renderer.ts";
+          const started=await submitPublicZeroGpuRender({
+            prompt:"Original simple glowing non-human cartoon companion in a school garden, gentle motion, no text, no logo",
+            duration_sec:0.5,
+            seed:42,
+            public_safe_synthetic:true
+          });
+          let status=null;
+          const deadline=Date.now()+240000;
+          while(Date.now()<deadline){
+            status=await getPublicZeroGpuStatus(started.job_id);
+            if(["completed","failed","waiting_free_capacity"].includes(String(status.status))) break;
+            await new Promise(r=>setTimeout(r,3000));
+          }
+          const safe={
+            status:status?.status??"timeout",
+            error:typeof status?.error==="string"?status.error.slice(0,500):null,
+            retry_at_ms:status?.retry_at_ms??null,
+            artifact_verified:status?.artifact_verified===true,
+            render_success:status?.render_success===true,
+            adapter:status?.adapter??null,
+            duration_sec:status?.artifact?.duration_sec??null,
+            width:status?.artifact?.width??null,
+            height:status?.artifact?.height??null
+          };
+          console.log("AUTONOMY_OFFICIAL_GRADIO "+JSON.stringify(safe));
+          if(!["completed","waiting_free_capacity"].includes(safe.status)) process.exit(1);
+          if(safe.status==="completed"&&!safe.artifact_verified) process.exit(1);
+          NODE

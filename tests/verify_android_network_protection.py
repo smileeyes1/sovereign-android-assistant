@@ -24,7 +24,7 @@ req('AlertDialog.Builder' in activity and 'موافقة وبدء' in activity, "
 req('HakimNetworkProtectionTask.start' in activity, "bounded_task_not_invoked")
 
 req('family-filter-dns.cleanbrowsing.org' in task, "family_dns_missing")
-req('Settings.ACTION_PRIVATE_DNS_SETTINGS' in task, "private_dns_settings_route_missing")
+req('android.settings.PRIVATE_DNS_SETTINGS' in task, "private_dns_settings_route_missing")
 req('Settings.Global.getString' in task, "dns_verification_read_missing")
 req('Settings.Global.put' not in task, "direct_secure_settings_write_forbidden")
 req('WRITE_SECURE_SETTINGS' not in task, "secure_settings_permission_forbidden")

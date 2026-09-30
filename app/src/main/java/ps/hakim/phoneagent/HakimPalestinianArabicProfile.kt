@@ -46,6 +46,20 @@ object HakimPalestinianArabicProfile {
         }
     }
 
+    fun explicitNonArabicRequested(raw: String): Boolean {
+        val q = raw.lowercase()
+        val markers = listOf(
+            "اكتب بالإنجليزية", "اكتب بالانجليزية",
+            "بالإنجليزية فقط", "بالانجليزية فقط",
+            "ترجم إلى الإنجليزية", "ترجم الى الانجليزية",
+            "اكتب بالفرنسية", "بالفرنسية فقط",
+            "اكتب بالإسبانية", "اكتب بالاسبانية",
+            "اكتب بالألمانية", "اكتب بالالمانية",
+            "in english only", "write in english"
+        )
+        return markers.any { q.contains(it) }
+    }
+
     fun promptContract(raw: String = ""): String {
         val register = resolveRegister(raw)
         val registerText = when (register) {

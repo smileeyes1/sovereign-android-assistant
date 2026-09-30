@@ -42,7 +42,6 @@ export type FilmProjectInput={
   locale?:string;
   style?:string;
   educational?:boolean;
-  paid_approved?:boolean;
 };
 
 export type FilmShotContract={

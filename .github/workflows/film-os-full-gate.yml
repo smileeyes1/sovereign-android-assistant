@@ -1,0 +1,35 @@
+name: Hakim Film OS Full Gate
+
+on:
+  push:
+    branches:
+      - film-os-v1
+    paths:
+      - "chatgpt-app/**"
+      - "plugins/hakim/**"
+      - "Dockerfile"
+      - ".github/workflows/film-os-full-gate.yml"
+
+jobs:
+  full-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        working-directory: chatgpt-app
+        run: npm install --no-audit --no-fund
+      - name: Test all bridge contracts
+        working-directory: chatgpt-app
+        run: npm test
+      - name: Build TypeScript
+        working-directory: chatgpt-app
+        run: npm run build
+      - name: Build exact production Docker image
+        run: docker build -t hakim-film-os:test -f Dockerfile .
+      - name: Smoke-test existing local MP4 renderer
+        run: |
+          docker run --rm --entrypoint node             -e HAKIM_VIDEO_RENDER_ENABLED=1             -e HAKIM_VIDEO_EXECUTOR_ADAPTER=local             hakim-film-os:test dist/src/local-renderer-smoke.js

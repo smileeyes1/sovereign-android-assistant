@@ -23,7 +23,7 @@ function endpoint(env:NodeJS.ProcessEnv){
 
 function adapter(env:NodeJS.ProcessEnv):ExecutorAdapter{
   if(env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="gradio") return "gradio";
-  if(env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="local"||!env.HAKIM_VIDEO_EXECUTOR_ADAPTER) return "local";
+  if(env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="local") return "local";
   return "rest";
 }
 

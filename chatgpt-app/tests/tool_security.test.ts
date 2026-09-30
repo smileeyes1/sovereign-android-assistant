@@ -15,11 +15,11 @@ const credential:DeviceCredential={
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{
   const tools=chatgptToolList(true) as any[];
-  assert.equal(tools.length,13);
+  assert.equal(tools.length,14);
   const byName=new Map(tools.map(t=>[t.name,t]));
   assert.deepEqual([...byName.keys()].sort(),[
     "resume_hakim","get_autonomy_status","create_film_project","get_continuation_state","get_device_status","get_film_os_capabilities","get_film_project",
-    "get_request_result","get_video_capabilities","plan_video_project","navigate_device","open_target","save_continuation_checkpoint"
+    "get_request_result","get_video_capabilities","plan_video_project","advance_film_project","navigate_device","open_target","save_continuation_checkpoint"
   ].sort());
 
   for(const name of ["resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","get_film_project","get_continuation_state","get_request_result"]){
@@ -30,6 +30,12 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
     assert.equal(t.annotations.openWorldHint,false);
     assert.equal(t.annotations.destructiveHint,false);
   }
+
+  const advance:any=byName.get("advance_film_project");
+  assert.deepEqual(advance.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
+  assert.equal(advance.annotations.readOnlyHint,false);
+  assert.equal(advance.annotations.openWorldHint,true);
+  assert.equal(advance.annotations.destructiveHint,false);
 
   const checkpoint:any=byName.get("save_continuation_checkpoint");
   assert.deepEqual(checkpoint.securitySchemes,[{type:"oauth2",scopes:["hakim.write"]}]);
@@ -59,9 +65,9 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,17);
+  assert.equal(tools.length,18);
   for(const name of [
-    "resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","create_film_project","get_film_project",
+    "resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","create_film_project","advance_film_project","get_film_project",
     "read_browser_page","get_current_ui","list_notifications","capture_screenshot",
     "open_target","perform_ui_action","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");
@@ -113,6 +119,10 @@ test("public reviewer mode is isolated from real device transport and redacts co
 
     const filmGet=await client.callTool({name:"get_film_project",arguments:{project_id:"film-000000000000000000000001"}});
     assert.equal((filmGet.structuredContent as any)?.demo,true);
+
+    const filmAdvance=await client.callTool({name:"advance_film_project",arguments:{project_id:"film-000000000000000000000001"}});
+    assert.equal((filmAdvance.structuredContent as any)?.demo,true);
+    assert.equal((filmAdvance.structuredContent as any)?.cost_usd,0);
 
     const launch=await client.callTool({name:"open_target",arguments:{package:"com.example.safe"}});
     assert.equal((launch.structuredContent as any)?.demo,true);

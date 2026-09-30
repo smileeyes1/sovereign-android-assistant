@@ -89,7 +89,7 @@ export async function verifyGitHubWorkerOidc(
 
   const repository=claimString(payload,"repository");
   const ref=claimString(payload,"ref");
-  const workflowRef=claimString(payload,"job_workflow_ref");
+  const workflowRef=claimString(payload,"workflow_ref");
   if(repository!==REPOSITORY) throw new Error("worker_oidc_repository_invalid");
   if(ref!=="refs/heads/main") throw new Error("worker_oidc_ref_invalid");
   if(workflowRef!==WORKFLOW_REF_PREFIX) throw new Error("worker_oidc_workflow_invalid");

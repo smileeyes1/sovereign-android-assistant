@@ -40,6 +40,8 @@ const FINAL_STATUSES=new Set<ContinuityStatus>(["ok","error","failed","rejected"
 const GOAL_ID=/^[A-Za-z0-9._:-]{8,96}$/;
 const CONTROL=/[\u0000-\u001F\u007F]/g;
 const SECRET_HINT=/(?:bearer\s+[a-z0-9._~-]+|(?:password|passwd|secret|api[_ -]?key|access[_ -]?token|refresh[_ -]?token)\s*[:=])/i;
+const BINDING_ID=/^hb1_[A-Za-z0-9_-]{32,80}$/;
+const CONTINUITY_ID=/^hc3-[0-9a-f]{24}$/;
 
 export class ContinuityRevisionConflict extends Error{
   readonly current_revision:number;
@@ -71,8 +73,11 @@ function safeField(raw:string,max:number){
   return value;
 }
 
-function continuityId(topic:string){
+function topicContinuityId(topic:string){
   return "hc3-"+crypto.createHash("sha256").update("HAKIM-CONTINUITY-ID-v1\0"+topic).digest("hex").slice(0,24);
+}
+function bindingContinuityId(bindingId:string){
+  return "hc3-"+crypto.createHash("sha256").update("HAKIM-CONTINUITY-BINDING-v1\0"+bindingId).digest("hex").slice(0,24);
 }
 
 export class ContinuityStore{
@@ -84,7 +89,39 @@ export class ContinuityStore{
   }
 
   async init(){
-    await fs.mkdir(this.root,{recursive:true});
+    await Promise.all([
+      fs.mkdir(this.root,{recursive:true}),
+      fs.mkdir(path.join(this.root,"aliases"),{recursive:true,mode:0o700})
+    ]);
+  }
+
+  private aliasFile(topic:string){
+    return path.join(this.root,"aliases",crypto.createHash("sha256").update(topic).digest("hex")+".txt");
+  }
+
+  async bindAlias(topic:string,bindingId:string){
+    if(!BINDING_ID.test(bindingId)) throw new Error("invalid_continuity_binding_id");
+    const id=bindingContinuityId(bindingId);
+    const file=this.aliasFile(topic);
+    try{
+      const current=(await fs.readFile(file,"utf8")).trim();
+      if(current!==id) throw new Error("continuity_alias_conflict");
+      return id;
+    }catch(e){
+      if((e as NodeJS.ErrnoException).code!=="ENOENT") throw e;
+    }
+    const tmp=file+"."+crypto.randomBytes(6).toString("hex")+".tmp";
+    await fs.writeFile(tmp,id,{encoding:"utf8",mode:0o600,flag:"wx"});
+    await fs.rename(tmp,file);
+    return id;
+  }
+
+  private async continuityIdForTopic(topic:string){
+    try{
+      const id=(await fs.readFile(this.aliasFile(topic),"utf8")).trim();
+      if(CONTINUITY_ID.test(id)) return id;
+    }catch{}
+    return topicContinuityId(topic);
   }
 
   private deviceKey(c:DeviceCredential){
@@ -266,12 +303,36 @@ export class ContinuityStore{
     });
   }
 
+  async migrateCheckpoint(from:DeviceCredential,to:DeviceCredential,bindingId:string){
+    const stableId=await this.bindAlias(from.topic,bindingId);
+    await this.bindAlias(to.topic,bindingId);
+    if(from.topic===to.topic) return {migrated:false,continuity_id:stableId};
+
+    const source=await this.read(from);
+    const target=await this.read(to);
+    if(!source.work) return {migrated:false,continuity_id:stableId};
+
+    const sourceWins=!target.work||source.work.updated_at_ms>=target.work.updated_at_ms;
+    if(!sourceWins) return {migrated:false,continuity_id:stableId};
+
+    target.work={...source.work};
+    target.checkpoint_revision=Math.max(source.checkpoint_revision,target.checkpoint_revision)+1;
+    target.updated_at_ms=Date.now();
+    // Deliberately do not copy operation tokens across a credential rotation.
+    // They are tied to the previous channel/key and must never be replayed implicitly.
+    await this.write(to,target);
+    return {migrated:true,continuity_id:stableId};
+  }
+
   async stateForTopic(topic:string){
-    return this.publicState(await this.readFile(this.fileForTopic(topic)),continuityId(topic));
+    return this.publicState(
+      await this.readFile(this.fileForTopic(topic)),
+      await this.continuityIdForTopic(topic)
+    );
   }
 
   async state(c:DeviceCredential){
-    return this.publicState(await this.read(c),continuityId(c.topic));
+    return this.publicState(await this.read(c),await this.continuityIdForTopic(c.topic));
   }
 
   private publicState(journal:DeviceJournal,id:string){

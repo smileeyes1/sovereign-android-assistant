@@ -4,7 +4,7 @@ export const CARRIER_PREFIX = "HC1.";
 export const CARRIER_AAD = "HAKIM-CARRIER-v1";
 export const RESULT_PREFIX = "HR1.";
 export const RESULT_AAD = "HAKIM-RESULT-v1";
-export const ALLOWED_OPS = ["status","ui","notifications","screenshot","browser_read","network_devices","action","launch","network_authorize","network_control","network_revoke"] as const;
+export const ALLOWED_OPS = ["status","ui","notifications","screenshot","browser_read","network_devices","action","launch","network_authorize","network_control","network_revoke","client_authorize"] as const;
 export type HakimOp = typeof ALLOWED_OPS[number];
 
 export type DeviceCredential = {

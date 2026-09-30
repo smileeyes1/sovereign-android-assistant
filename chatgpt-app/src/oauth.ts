@@ -45,6 +45,9 @@ type AuthorizeContext={
   codeChallenge:string;
   resource:string;
   scopes:string[];
+  reuseBinding?:boolean;
+  clientLabel?:string;
+  clientKind?:"chatgpt"|"registered";
   iat:number;
   exp:number;
 };

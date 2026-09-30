@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "node:crypto";
 import cors from "cors";
 import os from "node:os";
 import path from "node:path";
@@ -15,6 +16,8 @@ import {
 import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
+import { DeviceBindingStore } from "./device-binding-store.js";
+import { OAuthClientRegistry } from "./oauth-client-registry.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
@@ -33,16 +36,21 @@ app.use(express.urlencoded({extended:false,limit:"64kb"}));
 const oauthSecret=process.env.HAKIM_OAUTH_SECRET ?? randomSecret(48);
 const dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev");
 const codeStore=new FileCodeStore(dataDir);
+const deviceBindingStore=new DeviceBindingStore(dataDir,oauthSecret);
+const oauthClientRegistry=new OAuthClientRegistry(dataDir);
 await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
 await continuityStore.init();
+await deviceBindingStore.init();
+await oauthClientRegistry.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);
 relayCleanupTimer.unref?.();
 
 const reviewAttempts=new Map<string,{count:number;windowStart:number}>();
+const registrationAttempts=new Map<string,{count:number;windowStart:number}>();
 const statusProbeCooldownByTopic=new Map<string,number>();
 const statusProbeRequests=new Map<string,{sentAt:number}>();
 const STATUS_PROBE_COOLDOWN_MS=5*60_000;
@@ -153,7 +161,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     // Never log carrier/key/raw device data on probe decode failures.
   }
 }
-function logSanitizedHealthBeacon(key:string,carrier:string){
+function logSanitizedHealthBeacon(key:string,carrier:string):number|null{
   try{
     const decoded=decryptResult(key,carrier) as {
       status?:unknown;
@@ -167,9 +175,9 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         governance_catalog?:Record<string,unknown>;
       };
     };
-    if(decoded?.status!=="health") return;
+    if(decoded?.status!=="health") return null;
     const result=decoded.result;
-    if(!result||typeof result!=="object") return;
+    if(!result||typeof result!=="object") return null;
     const apkSha=typeof result.apk_sha256==="string"&&/^[0-9a-f]{64}$/i.test(result.apk_sha256)
       ?result.apk_sha256.toLowerCase():null;
     const constitution=typeof result.constitution==="string"&&
@@ -206,8 +214,11 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
       }
     };
     console.log("HAKIM_HEALTH_EVIDENCE "+JSON.stringify(safe));
+    return typeof result.version_code==="number"&&Number.isInteger(result.version_code)&&result.version_code>0
+      ?result.version_code:null;
   }catch{
     // Never log raw carriers, relay keys, UI/page content, selected domains or goal data.
+    return null;
   }
 }
 
@@ -221,6 +232,33 @@ function reviewAttemptAllowed(ip:string){
   current.count+=1;
   if(current.count>20) return false;
   return true;
+}
+
+function registrationAttemptAllowed(ip:string){
+  const now=Date.now();
+  const current=registrationAttempts.get(ip);
+  if(!current||now-current.windowStart>60_000){
+    registrationAttempts.set(ip,{count:1,windowStart:now});
+    return true;
+  }
+  current.count+=1;
+  return current.count<=10;
+}
+
+async function resolveOAuthClient(clientId:string,redirectUri:string){
+  if(isChatGPTClientId(clientId)){
+    if(!isChatGPTRedirectUri(redirectUri)) return null;
+    return {kind:"chatgpt" as const,label:"ChatGPT"};
+  }
+  const registered=await oauthClientRegistry.resolve(clientId,redirectUri);
+  if(!registered) return null;
+  return {kind:"registered" as const,label:registered.client_name};
+}
+
+function clientAuthorizationApproved(raw:unknown){
+  if(!raw||typeof raw!=="object") return false;
+  const message=raw as {status?:unknown;result?:{ok?:unknown;client_authorization?:unknown}};
+  return message.status==="ok"&&message.result?.ok===true&&message.result?.client_authorization===true;
 }
 function reviewModeEnabled(){
   return !!process.env.HAKIM_REVIEW_USER&&!!process.env.HAKIM_REVIEW_PASSWORD;
@@ -491,6 +529,7 @@ app.get("/.well-known/hakim-continuity",(req,res)=>{
     mcp_endpoint:base+"/mcp",
     oauth_resource_metadata:base+"/.well-known/oauth-protected-resource",
     authorization_server:base,
+    client_registration:base+"/oauth/register",
     scopes:{read:"hakim.read",write:"hakim.write"},
     concurrency:"Read checkpoint_revision first. Write with expected_revision or If-Match. On HTTP 409, re-read and reconcile; never blindly overwrite.",
     resume:"Pending operation_token values are idempotency handles. Query the existing request result instead of replaying the original action after a chat/model/session change.",
@@ -556,6 +595,7 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
     issuer:base,
     authorization_endpoint:base+"/oauth/authorize",
     token_endpoint:base+"/oauth/token",
+    registration_endpoint:base+"/oauth/register",
     response_types_supported:["code"],
     grant_types_supported:["authorization_code","refresh_token"],
     code_challenge_methods_supported:["S256"],
@@ -566,9 +606,28 @@ app.get("/.well-known/oauth-authorization-server",(req,res)=>{
   });
 });
 
+app.post("/oauth/register",async(req,res)=>{
+  try{
+    if(!registrationAttemptAllowed(req.ip??"unknown")){
+      noStore(res);
+      return res.status(429).json({error:"temporarily_unavailable"});
+    }
+    const client=await oauthClientRegistry.register(req.body);
+    noStore(res);
+    return res.status(201).json(oauthClientRegistry.publicRegistration(client));
+  }catch(e){
+    noStore(res);
+    const message=e instanceof Error?e.message:"invalid_client_metadata";
+    const status=message==="client_registry_capacity_reached"?503:400;
+    return res.status(status).json({error:message});
+  }
+});
+
 app.get("/oauth/authorize",async(req,res)=>{
   try{
-    if(one(req.query.response_type)!=="code") return oauthError(res,400,"unsupported_response_type","Only authorization code is supported.");
+    if(one(req.query.response_type)!=="code"){
+      return oauthError(res,400,"unsupported_response_type","Only authorization code is supported.");
+    }
     const clientId=one(req.query.client_id);
     const redirectUri=one(req.query.redirect_uri);
     const state=one(req.query.state);
@@ -576,30 +635,64 @@ app.get("/oauth/authorize",async(req,res)=>{
     const method=one(req.query.code_challenge_method);
     const resource=one(req.query.resource);
     const base=origin(req);
-    if(!isChatGPTClientId(clientId)) return oauthError(res,400,"invalid_client","Only ChatGPT CIMD clients are accepted.");
-    if(!isChatGPTRedirectUri(redirectUri)) return oauthError(res,400,"invalid_request","Invalid ChatGPT redirect URI.");
-    if(method!=="S256"||!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)) return oauthError(res,400,"invalid_request","PKCE S256 is required.");
-    if(resource!==base) return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
+    const client=await resolveOAuthClient(clientId,redirectUri);
+    if(!client) return oauthError(res,400,"invalid_client","Client or redirect URI is not registered.");
+    if(method!=="S256"||!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)){
+      return oauthError(res,400,"invalid_request","PKCE S256 is required.");
+    }
+    if(resource!==base){
+      return oauthError(res,400,"invalid_target","The OAuth resource must match this Hakim bridge.");
+    }
     const scopes=normalizeScopes(one(req.query.scope)||undefined);
-    const credential=createDeviceCredential();
-    await directRelayStore.registerCredential(credential,10*60_000);
+    const currentBinding=await deviceBindingStore.current();
+    const brokerReady=await deviceBindingStore.supportsClientAuthorization();
+
+    if(currentBinding&&!brokerReady){
+      noStore(res);
+      return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — حماية القناة الحالية</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
+<h1>القناة الحالية محفوظة</h1>
+<p>يوجد جهاز حكيم مرتبط بالفعل، ولن نستبدل قناته لإضافة عميل جديد.</p>
+<p class="box">تعدد العملاء يحتاج نسخة حكيم ٢٠٣١٧ أو أحدث مع موافقة محلية على الهاتف. لم يتم تغيير الاقتران الحالي ولم يصدر رمز وصول جديد.</p>
+</html>`);
+    }
+
+    const reuseBinding=!!currentBinding&&brokerReady;
+    const credential=currentBinding?.credential??createDeviceCredential();
+    if(!reuseBinding){
+      await directRelayStore.registerCredential(credential,10*60_000);
+    }
     const context=makeAuthorizeContext(oauthSecret,{
-      credential,clientId,redirectUri,state,codeChallenge,resource,scopes
+      credential,clientId,redirectUri,state,codeChallenge,resource,scopes,
+      reuseBinding,
+      clientLabel:client.label,
+      clientKind:client.kind
     });
-    const link=pairingUrl(credential,base.startsWith("https://")?base:undefined);
     noStore(res);
-    res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
+
+    if(reuseBinding){
+      return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — تفويض عميل</title>
+<style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}button{font-size:18px;padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
+<h1>استخدام جهاز حكيم المرتبط</h1>
+<p>العميل: <strong>${html(client.label)}</strong></p>
+<p class="box">لن تُستبدل قناة الهاتف. عند المتابعة سيصل إلى تطبيق حكيم طلب موافقة محلي لهذا العميل. لا يصدر رمز الوصول إلا بعد الموافقة.</p>
+<form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">إرسال طلب الموافقة إلى حكيم</button></form>
+</html>`);
+    }
+
+    const link=pairingUrl(credential,base.startsWith("https://")?base:undefined);
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ربط حكيم</title>
 <style>body{font-family:system-ui;max-width:680px;margin:auto;padding:32px;line-height:1.8}a,button{font-size:18px}button{padding:12px 18px}.box{background:#f5f5f5;padding:14px;border-radius:14px}</style>
-<h1>ربط جهاز حكيم</h1>
-<p>ChatGPT سيستخدم قدرات حسابك نفسه. هذه الخطوة تربط فقط جهاز حكيم بهذا الاتصال؛ لا يوجد مفتاح OpenAI API.</p>
+<h1>ربط جهاز حكيم لأول مرة</h1>
+<p>العميل: <strong>${html(client.label)}</strong></p>
 <p><a href="${html(link)}">١) ربط الهاتف</a></p>
-<p class="box">افتح زر الربط على هاتفك مباشرة. لا تنسخ الرابط إلى محادثة، ولا تشارك صورة تظهره؛ فهو يحتوي بيانات اقتران سرية مؤقتة.</p>
+<p class="box">افتح زر الربط على هاتفك مباشرة. لا تنسخ الرابط إلى محادثة ولا تشارك صورة تظهره؛ فهو يحتوي بيانات اقتران سرية مؤقتة.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><button type="submit">٢) تحقق من الهاتف وأكمل</button></form>
 ${reviewModeEnabled()?`<details class="box"><summary>وصول المراجع</summary><form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(context)}"><label>اسم المراجع <input name="review_user" autocomplete="username"></label><br><label>كلمة المرور <input name="review_password" type="password" autocomplete="current-password"></label><br><button type="submit">دخول مراجعة آمن</button></form></details>`:""}
 <p class="box">لن يصدر رمز الوصول حتى يؤكد تطبيق حكيم الاقتران برسالة مشفرة.</p>
 </html>`);
   }catch(e){
-    oauthError(res,400,"invalid_request",e instanceof Error?e.message:"authorization_failed");
+    return oauthError(res,400,"invalid_request",e instanceof Error?e.message:"authorization_failed");
   }
 });
 
@@ -609,6 +702,7 @@ app.post("/oauth/authorize",async(req,res)=>{
     const reviewUser=one(req.body.review_user);
     const reviewPassword=one(req.body.review_password);
     const reviewRequested=reviewUser.length>0||reviewPassword.length>0;
+
     if(reviewRequested){
       if(!reviewAttemptAllowed(req.ip??"unknown")){
         return oauthError(res,429,"temporarily_unavailable","Too many reviewer login attempts.");
@@ -618,18 +712,61 @@ app.post("/oauth/authorize",async(req,res)=>{
       }
       context.credential.topic="hakim_review_"+randomSecret(18);
       context.credential.resultTopic="hakim_review_result_"+randomSecret(18);
-    }
-    if(!reviewRequested) await directRelayStore.registerCredential(context.credential,10*60_000);
-    const paired=reviewRequested ? true : await pollPairAck(context.credential,10_000);
-    if(!paired){
-      noStore(res);
-      const retryBase=origin(req);
-      const link=pairingUrl(context.credential,retryBase.startsWith("https://")?retryBase:undefined);
-      return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
+    }else if(context.reuseBinding===true){
+      const current=await deviceBindingStore.current();
+      if(!current||!deviceBindingStore.sameCredential(current.credential,context.credential)){
+        return oauthError(res,409,"temporarily_unavailable","The canonical Hakim device binding changed. Restart authorization.");
+      }
+      if(!(await deviceBindingStore.supportsClientAuthorization())){
+        return oauthError(res,409,"temporarily_unavailable","Hakim 20317 or newer is required for multi-client approval.");
+      }
+
+      const clientLabel=(context.clientLabel??"AI client").replace(/[\u0000-\u001F\u007F]/g," ").trim().slice(0,80)||"AI client";
+      const requestId=await publishCommand(current.credential,"client_authorize",{
+        client_label:clientLabel,
+        client_id_hash:crypto.createHash("sha256").update(context.clientId,"utf8").digest("hex").slice(0,24),
+        requested_write:context.scopes.includes("hakim.write"),
+        requested_offline_access:context.scopes.includes("offline_access")
+      });
+      const result=await pollResult(current.credential,requestId,55_000);
+      if(!result){
+        noStore(res);
+        return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — انتظار الموافقة</title>
+<body><h1>لم تصل موافقة الهاتف بعد</h1><p>لم يصدر أي رمز وصول ولم تتغير قناة حكيم.</p>
+<form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">إعادة طلب الموافقة</button></form></body></html>`);
+      }
+      const message=result as {status?:unknown};
+      if(message.status==="rejected"){
+        return oauthError(res,403,"access_denied","The user rejected this AI client on the Hakim phone.");
+      }
+      if(!clientAuthorizationApproved(result)){
+        return oauthError(res,403,"access_denied","Hakim did not approve this client authorization request.");
+      }
+      context.credential=current.credential;
+    }else if(!reviewRequested){
+      await directRelayStore.registerCredential(context.credential,10*60_000);
+      const paired=await pollPairAck(context.credential,10_000);
+      if(!paired){
+        noStore(res);
+        const retryBase=origin(req);
+        const link=pairingUrl(context.credential,retryBase.startsWith("https://")?retryBase:undefined);
+        return res.status(409).type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — لم يثبت الربط</title>
 <body><h1>لم يصل تأكيد الهاتف بعد</h1><p><a href="${html(link)}">افتح رابط ربط الهاتف</a> ثم أعد التحقق.</p>
 <form method="post" action="/oauth/authorize"><input type="hidden" name="context" value="${html(one(req.body.context))}"><button type="submit">تحقق مجددًا</button></form></body></html>`);
+      }
+      await directRelayStore.markCredentialPaired(context.credential);
+      const promoted=await deviceBindingStore.promoteApprovedPairing(context.credential);
+      if(promoted.previous&&!deviceBindingStore.sameCredential(promoted.previous.credential,promoted.current.credential)){
+        await continuityStore.migrateCheckpoint(
+          promoted.previous.credential,
+          promoted.current.credential,
+          promoted.current.binding_id
+        );
+      }else{
+        await continuityStore.bindAlias(promoted.current.credential.topic,promoted.current.binding_id);
+      }
     }
-    if(!reviewRequested) await directRelayStore.markCredentialPaired(context.credential);
+
     const code=await codeStore.issue({
       credential:context.credential,
       clientId:context.clientId,
@@ -646,7 +783,7 @@ app.post("/oauth/authorize",async(req,res)=>{
     noStore(res);
     return res.redirect(302,redirect.toString());
   }catch(e){
-    return oauthError(res,400,"access_denied",e instanceof Error?e.message:"pairing_failed");
+    return oauthError(res,400,"access_denied",e instanceof Error?e.message:"authorization_failed");
   }
 });
 
@@ -942,6 +1079,8 @@ app.get("/device/v1/continuity",async(req,res)=>{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
     await directRelayStore.authorizeCommandTopic(topic,key);
+    const observed=await deviceBindingStore.observe("command",topic,key);
+    if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
     const state=await continuityStore.stateForTopic(topic);
     noStore(res);
     return res.json({
@@ -961,6 +1100,9 @@ app.get("/device/v1/commands",async(req,res)=>{
     const topic=one(req.query.topic);
     const key=directRelayKey(req);
     const waitMs=normalizeDeviceWaitMs(one(req.query.wait_ms));
+    await directRelayStore.authorizeCommandTopic(topic,key);
+    const observed=await deviceBindingStore.observe("command",topic,key);
+    if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
     const command=await directRelayStore.leaseCommand(topic,key,waitMs);
     noStore(res);
     if(command){
@@ -1000,8 +1142,11 @@ app.post(
       if(typeof req.body!=="string") throw new Error("result_body_required");
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
+      const observed=await deviceBindingStore.observe("result",topic,key);
+      if(observed) await continuityStore.bindAlias(observed.credential.topic,observed.binding_id);
       logSanitizedStatusProbe(topic,key,carrier);
-      logSanitizedHealthBeacon(key,carrier);
+      const healthVersion=logSanitizedHealthBeacon(key,carrier);
+      if(healthVersion!==null) await deviceBindingStore.noteVersion(topic,key,healthVersion);
       noStore(res);
       return res.status(202).json({accepted:true});
     }catch(e){

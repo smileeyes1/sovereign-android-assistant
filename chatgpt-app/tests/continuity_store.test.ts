@@ -268,3 +268,35 @@ test("operation updates do not advance checkpoint revision",async()=>{
     assert.equal(state.checkpoint_revision,checkpoint.checkpoint_revision);
   });
 });
+
+
+test("approved channel rotation preserves checkpoint identity but never copies old pending operations",async()=>{
+  await withDir(async dir=>{
+    const oldCredential=createDeviceCredential();
+    const newCredential=createDeviceCredential();
+    const store=new ContinuityStore(dir);
+    await store.init();
+
+    const checkpoint=await store.saveCheckpoint(oldCredential,{
+      goal_label:"استمرارية عبر تبديل القناة",
+      stage:"قبل التبديل",
+      last_verified:"الخط القديم مثبت",
+      next_step:"أكمل من الوسيط",
+      status:"active"
+    });
+    await store.recordRequested(oldCredential,"chatgpt-oldchannel-1234","status");
+    const bindingId="hb1_"+("a".repeat(43));
+
+    const migrated=await store.migrateCheckpoint(oldCredential,newCredential,bindingId);
+    assert.equal(migrated.migrated,true);
+
+    const oldState=await store.state(oldCredential);
+    const newState=await store.state(newCredential);
+    assert.equal(oldState.continuity_id,newState.continuity_id);
+    assert.equal(newState.work?.goal_id,checkpoint.goal_id);
+    assert.equal(newState.work?.stage,"قبل التبديل");
+    assert.equal(newState.pending_count,0);
+    assert.equal(oldState.pending_count,1);
+    assert.ok(newState.checkpoint_revision>checkpoint.checkpoint_revision);
+  });
+});

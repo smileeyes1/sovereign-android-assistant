@@ -127,3 +127,22 @@ test("development request lease is resumable and completion is owner-bound",asyn
     assert.equal(done.pr_number,321);
   });
 });
+
+
+test("expired development lease returns to the queue",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const id="dev-mg123ghi-"+"e".repeat(12);
+    await store.capture(topic,key,carrier(request({request_id:id,fingerprint:"f".repeat(64)})));
+    const first=await store.claimNext("gh:run-11111111",60_000);
+    assert.equal(first?.request_id,id);
+    const file=path.join(dir,"development-intake-v2",id+".json");
+    const raw=JSON.parse(await fs.readFile(file,"utf8"));
+    raw.lease_expires_at_ms=Date.now()-1;
+    await fs.writeFile(file,JSON.stringify(raw),"utf8");
+    const reclaimed=await store.claimNext("gh:run-22222222",60_000);
+    assert.equal(reclaimed?.request_id,id);
+    assert.equal(reclaimed?.lease_owner,"gh:run-22222222");
+  });
+});

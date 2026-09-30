@@ -89,7 +89,8 @@ test("completed without verified artifact remains not successful",async()=>{
     const result=await getCinematicRenderStatus("video-job-12345678",enabledEnv) as any;
     assert.equal(result.render_success,false);
     assert.equal(result.artifact_verified,false);
-    assert.equal(result.artifact,null);
+    assert.equal(result.artifact.sha256,"a".repeat(64));
+    assert.equal(result.artifact.quality_gates_passed,false);
   }finally{
     globalThis.fetch=original;
   }

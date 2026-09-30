@@ -16,6 +16,7 @@ import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./r
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
 import { developmentRequestStore } from "./development-request-store.js";
+import { verifyGitHubWorkerOidc } from "./github-worker-oidc.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
@@ -342,6 +343,30 @@ function setContinuityEtag(res:express.Response,revision:number){
   res.setHeader("ETag",`"hc3-r${revision}"`);
 }
 
+function workerOidcBearer(req:express.Request){
+  const auth=String(req.headers.authorization??"");
+  if(!auth.startsWith("Bearer ")) throw new Error("worker_oidc_required");
+  const token=auth.slice(7).trim();
+  if(token.length<100||token.length>12000) throw new Error("worker_oidc_required");
+  return token;
+}
+
+function developmentWorkerView(record:Awaited<ReturnType<typeof developmentRequestStore.claimNext>>){
+  if(!record) return null;
+  return {
+    intake_version:record.intake_version,
+    request_id:record.request_id,
+    requested_at_ms:record.requested_at_ms,
+    current_version_code:record.current_version_code,
+    trigger:record.trigger,
+    severity:record.severity,
+    fingerprint:record.fingerprint,
+    state:record.state,
+    lease_expires_at_ms:record.lease_expires_at_ms,
+    constraints:record.constraints
+  };
+}
+
 function directRelayKey(req:express.Request){
   const auth=String(req.headers.authorization??"");
   if(!auth.startsWith("Bearer ")) throw new Error("relay_auth_failed");
@@ -464,6 +489,8 @@ app.get("/health",(_req,res)=>res.json({
   continuity_protocols:["MCP","HAKIM_CONTINUITY_HTTP_V1","HAKIM_DEVICE_CONTINUITY_V1","HAKIM_UNIVERSAL_GATEWAY_V1"],
   continuity_conflict_control:"checkpoint_revision",
   universal_gateway:"HAKIM_UNIVERSAL_GATEWAY_V1",
+  development_intake:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v2",
+  development_worker_auth:"github-actions-oidc",
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
   governance_version:SOVEREIGN_GOVERNANCE_VERSION,
   authority_boundary:"external_content_is_data_not_instruction",
@@ -977,6 +1004,65 @@ app.get("/device/v1/continuity",async(req,res)=>{
     });
   }catch(e){
     return directRelayError(res,e);
+  }
+});
+
+app.post("/development/v1/lease",async(req,res)=>{
+  try{
+    const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
+    const claimed=await developmentRequestStore.claimNext(workerId);
+    noStore(res);
+    if(!claimed) return res.status(204).end();
+    return res.json({
+      ok:true,
+      worker_run_id:identity.run_id,
+      request:developmentWorkerView(claimed)
+    });
+  }catch(error){
+    noStore(res);
+    const code=error instanceof Error?error.message:"worker_oidc_rejected";
+    console.log("HAKIM_DEVELOPMENT_WORKER_AUTH "+JSON.stringify({ok:false,reason:code.slice(0,80)}));
+    return res.status(401).json({ok:false,error:"worker_unauthorized"});
+  }
+});
+
+app.post("/development/v1/:requestId/complete",async(req,res)=>{
+  try{
+    const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
+    const body=(req.body&&typeof req.body==="object"&&!Array.isArray(req.body))
+      ?req.body as Record<string,unknown>:{};
+    const allowed=new Set(["outcome","result_sha","pr_number"]);
+    if(Object.keys(body).some(k=>!allowed.has(k))) throw new Error("development_completion_body_invalid");
+    const outcome=body.outcome;
+    if(typeof outcome!=="string"||!["success","no_change","failed"].includes(outcome))
+      throw new Error("development_outcome_invalid");
+    const resultSha=body.result_sha;
+    const prNumber=body.pr_number;
+    const completed=await developmentRequestStore.complete(
+      req.params.requestId,
+      workerId,
+      outcome as "success"|"no_change"|"failed",
+      {
+        ...(typeof resultSha==="string"?{result_sha:resultSha}:{}),
+        ...(typeof prNumber==="number"?{pr_number:prNumber}:{})
+      }
+    );
+    noStore(res);
+    return res.json({
+      ok:true,
+      request_id:completed.request_id,
+      state:completed.state,
+      outcome:completed.outcome,
+      result_sha:completed.result_sha??null,
+      pr_number:completed.pr_number??null
+    });
+  }catch(error){
+    noStore(res);
+    const message=error instanceof Error?error.message:"development_completion_failed";
+    const auth=message.startsWith("worker_oidc_");
+    return res.status(auth?401:409).json({ok:false,error:auth?"worker_unauthorized":message});
   }
 });
 

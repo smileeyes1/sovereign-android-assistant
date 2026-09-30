@@ -10,9 +10,13 @@ const CONTROL_VERSION=/^HAKIM-DEVELOPMENT-CONTROL-[0-9-]+-v[0-9]+$/;
 const TRIGGERS=new Set(["field_candidate_regression","self_check_failed","repeated_runtime_failure"]);
 const SEVERITIES=new Set(["critical","high"]);
 const MAX_PENDING=64;
+const DEFAULT_LEASE_MS=20*60_000;
 
-type DevelopmentRecord={
-  intake_version:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v1";
+export type DevelopmentOutcome="success"|"no_change"|"failed";
+export type DevelopmentState="pending"|"leased"|"completed"|"failed";
+
+export type DevelopmentRecord={
+  intake_version:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v2";
   request_id:string;
   device_id:string;
   received_at_ms:number;
@@ -23,6 +27,13 @@ type DevelopmentRecord={
   trigger:string;
   severity:string;
   fingerprint:string;
+  state:DevelopmentState;
+  lease_owner?:string;
+  lease_expires_at_ms?:number;
+  completed_at_ms?:number;
+  outcome?:DevelopmentOutcome;
+  result_sha?:string;
+  pr_number?:number;
   constraints:{
     source_mutation_on_device:false;
     github_secret_on_device:false;
@@ -44,11 +55,17 @@ function bool(obj:Record<string,unknown>,key:string,expected:boolean){
   return obj[key]===expected;
 }
 
+function safeWorkerId(raw:string){
+  const value=raw.trim();
+  if(!/^[A-Za-z0-9._:-]{8,160}$/.test(value)) throw new Error("development_worker_id_invalid");
+  return value;
+}
+
 export class DevelopmentRequestStore{
   readonly root:string;
 
   constructor(dataDir=process.env.HAKIM_DATA_DIR ?? path.join(os.tmpdir(),"hakim-oauth-dev")){
-    this.root=path.join(dataDir,"development-intake-v1");
+    this.root=path.join(dataDir,"development-intake-v2");
   }
 
   async init(){
@@ -91,7 +108,7 @@ export class DevelopmentRequestStore{
     if(!valid) throw new Error("development_constraints_weakened");
 
     const record:DevelopmentRecord={
-      intake_version:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v1",
+      intake_version:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v2",
       request_id:r.request_id,
       device_id:sha(resultTopic).slice(0,24),
       received_at_ms:Date.now(),
@@ -102,6 +119,7 @@ export class DevelopmentRequestStore{
       trigger:r.trigger,
       severity:r.severity,
       fingerprint:r.fingerprint,
+      state:"pending",
       constraints:{
         source_mutation_on_device:false,
         github_secret_on_device:false,
@@ -116,7 +134,14 @@ export class DevelopmentRequestStore{
     };
 
     await this.init();
-    await this.writeAtomic(path.join(this.root,record.request_id+".json"),record);
+    const file=this.fileFor(record.request_id);
+    try{
+      const existing=JSON.parse(await fs.readFile(file,"utf8")) as DevelopmentRecord;
+      return existing;
+    }catch(e){
+      if((e as NodeJS.ErrnoException).code!=="ENOENT") throw e;
+    }
+    await this.writeAtomic(file,record);
     await this.trim();
     return record;
   }
@@ -127,12 +152,73 @@ export class DevelopmentRequestStore{
     const out:DevelopmentRecord[]=[];
     for(const name of names){
       try{
-        out.push(JSON.parse(await fs.readFile(path.join(this.root,name),"utf8")) as DevelopmentRecord);
+        out.push(await this.readRecord(path.join(this.root,name)));
       }catch{
         await fs.unlink(path.join(this.root,name)).catch(()=>{});
       }
     }
     return out.sort((a,b)=>a.received_at_ms-b.received_at_ms);
+  }
+
+  async claimNext(workerIdRaw:string,leaseMs=DEFAULT_LEASE_MS):Promise<DevelopmentRecord|null>{
+    const workerId=safeWorkerId(workerIdRaw);
+    const boundedLease=Math.max(60_000,Math.min(leaseMs,60*60_000));
+    const now=Date.now();
+    for(const record of await this.list()){
+      const expired=record.state==="leased"&&(record.lease_expires_at_ms??0)<=now;
+      if(record.state!=="pending"&&!expired) continue;
+      const claimed:DevelopmentRecord={
+        ...record,
+        state:"leased",
+        lease_owner:workerId,
+        lease_expires_at_ms:now+boundedLease
+      };
+      await this.writeAtomic(this.fileFor(record.request_id),claimed);
+      return claimed;
+    }
+    return null;
+  }
+
+  async complete(
+    requestId:string,
+    workerIdRaw:string,
+    outcome:DevelopmentOutcome,
+    result:{result_sha?:string;pr_number?:number}={}
+  ):Promise<DevelopmentRecord>{
+    if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
+    const workerId=safeWorkerId(workerIdRaw);
+    if(!["success","no_change","failed"].includes(outcome)) throw new Error("development_outcome_invalid");
+    const file=this.fileFor(requestId);
+    const current=await this.readRecord(file);
+    if(current.state!=="leased") throw new Error("development_request_not_leased");
+    if(current.lease_owner!==workerId) throw new Error("development_lease_owner_mismatch");
+    if((current.lease_expires_at_ms??0)<Date.now()) throw new Error("development_lease_expired");
+
+    const resultSha=result.result_sha?.trim();
+    if(resultSha!==undefined&&!/^[0-9a-f]{40}$/i.test(resultSha)) throw new Error("development_result_sha_invalid");
+    const prNumber=result.pr_number;
+    if(prNumber!==undefined&&(!Number.isSafeInteger(prNumber)||prNumber<1)) throw new Error("development_pr_number_invalid");
+
+    const completed:DevelopmentRecord={
+      ...current,
+      state:outcome==="failed"?"failed":"completed",
+      completed_at_ms:Date.now(),
+      outcome,
+      ...(resultSha?{result_sha:resultSha.toLowerCase()}:{ }),
+      ...(prNumber?{pr_number:prNumber}:{ })
+    };
+    delete completed.lease_owner;
+    delete completed.lease_expires_at_ms;
+    await this.writeAtomic(file,completed);
+    return completed;
+  }
+
+  private fileFor(requestId:string){
+    return path.join(this.root,requestId+".json");
+  }
+
+  private async readRecord(file:string):Promise<DevelopmentRecord>{
+    return JSON.parse(await fs.readFile(file,"utf8")) as DevelopmentRecord;
   }
 
   private async writeAtomic(file:string,value:unknown){
@@ -142,9 +228,11 @@ export class DevelopmentRequestStore{
   }
 
   private async trim(){
-    const names=(await fs.readdir(this.root)).filter(x=>x.endsWith(".json")).sort();
-    for(const name of names.slice(0,Math.max(0,names.length-MAX_PENDING))){
-      await fs.unlink(path.join(this.root,name)).catch(()=>{});
+    const records=await this.list();
+    const removable=records.filter(x=>x.state==="completed"||x.state==="failed");
+    const over=Math.max(0,records.length-MAX_PENDING);
+    for(const record of removable.slice(0,over)){
+      await fs.unlink(this.fileFor(record.request_id)).catch(()=>{});
     }
   }
 }

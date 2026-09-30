@@ -1109,9 +1109,32 @@ class CommandCenterActivity : ComponentActivity() {
         refreshOperations()
 
         val title = if (text.contains("ورقة عمل") || text.contains("ورقه عمل")) "ورقة عمل" else "مستند حكيم"
+        val audience = HakimArabicOutputGate.audienceForPrompt(text)
+        val preparedContent = if (audience == HakimArabicOutputGate.Audience.EARLY_GRADE_STUDENT) {
+            HakimArabicPolicy.toEasternDigits(rawContent)
+        } else {
+            rawContent
+        }
+        val arabicGate = HakimArabicOutputGate.validateText(
+            preparedContent,
+            audience = audience,
+            explicitNonArabic = HakimPalestinianArabicProfile.explicitNonArabicRequested(text)
+        )
+        if (!arabicGate.passed) {
+            appendConversation("حكيم", "لم يُسلَّم الملف لأن محتواه لم يجتز بوابة العربية الفلسطينية.")
+            HakimExecutiveLoop.record(
+                this,
+                HakimExecutiveLoop.Phase.GATED,
+                "منع PDF مولد من محتوى لم يجتز ar-PS"
+            )
+            recordRoute("generated_pdf_ar_ps_gate", false)
+            status.text = "تعذر اعتماد محتوى الملف"
+            refreshOperations()
+            return
+        }
 
         Thread {
-            val result = HakimLocalArtifactFactory.createTextPdf(this, title, rawContent).map { created ->
+            val result = HakimLocalArtifactFactory.createTextPdf(this, title, preparedContent).map { created ->
                 HakimAcceptanceGate.verifyAndBindArtifact(
                     this,
                     created.uri,

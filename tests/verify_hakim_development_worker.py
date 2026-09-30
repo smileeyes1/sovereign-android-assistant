@@ -11,15 +11,18 @@ for token in [
     'cron: "*/5 * * * *"',
     "cancel-in-progress: false",
     "HAKIM_DEVELOPMENT_BASE: autonomous/hakim-development",
-    'COPILOT_CLI_VERSION: "1.0.88"',
+    'LLAMA_CPP_TAG: "b11193"',
+    'LLAMA_CPP_SHA256: "def277c3a4f0c5e2ec3b1413971878d7d5e7da7eee64f5120a0cd8f024f5a364"',
+    'HAKIM_LOCAL_MODEL_SHA256: "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"',
+    "Qwen2.5-Coder-1.5B-Instruct-GGUF",
     "id-token: write",
-    "copilot-requests: write",
     "contents: read",
     "contents: write",
     "pull-requests: write",
     "actions: write",
     "audience=hakim-development-worker",
     "/development/v1/lease",
+    "/defer",
     "/complete",
     "source_mutation_on_device == false",
     "github_secret_on_device == false",
@@ -27,29 +30,30 @@ for token in [
     "same_artifact_field_evidence_required == true",
     "no_permission_expansion == true",
     "governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json",
-    "لا تعدّل أي workflow أو عقد حوكمة أو ملفات توقيع/إصدار/نشر",
-    "لا تعمل commit أو push أو PR",
+    "NO_SAFE_PATCH",
+    "BEGIN_PATCH",
+    "END_PATCH",
+    "git apply --check candidate.patch",
     "git diff --check",
     "python3 tests/verify_unified_hakim.py",
     "gh workflow run android.yml --ref",
     "gh run watch",
     "gh pr merge",
+    "transient_runner_failure",
+    "safe_patch_not_found",
 ]:
     req(token in WORKFLOW,"missing:"+token)
 
-develop=WORKFLOW.split("
-  develop:",1)[1].split("
-  publish:",1)[0]
-publish=WORKFLOW.split("
-  publish:",1)[1].split("
-  acknowledge-agent-failure:",1)[0]
+develop=WORKFLOW.split("\n  develop:",1)[1].split("\n  publish:",1)[0]
+publish=WORKFLOW.split("\n  publish:",1)[1].split("\n  acknowledge-agent-failure:",1)[0]
 
 req("contents: write" not in develop,"agent_has_repo_write")
 req("pull-requests: write" not in develop,"agent_has_pr_write")
 req("actions: write" not in develop,"agent_has_actions_write")
-req("copilot-requests: write" in develop,"agent_missing_copilot")
-req("copilot-requests: write" not in publish,"publisher_has_copilot")
+req("copilot-requests" not in develop,"paid_credit_agent_permission_present")
+req("GITHUB_TOKEN:" not in develop,"agent_receives_github_token")
 req("contents: write" in publish and "pull-requests: write" in publish,"publisher_missing_scoped_write")
+req("copilot" not in publish.lower(),"publisher_has_ai_surface")
 req("persist-credentials: false" in develop,"agent_checkout_persists_credentials")
 
 for forbidden in [
@@ -59,11 +63,17 @@ for forbidden in [
     "ghp_",
     "github_pat_",
     "HAKIM_SIGNING",
+    "@github/copilot",
+    "copilot -p",
 ]:
-    req(forbidden not in WORKFLOW,"long_lived_secret_surface:"+forbidden)
+    req(forbidden not in WORKFLOW,"forbidden_surface:"+forbidden)
 
 req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")
 req("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
 req("release/hakim-20316-autoupdate-rootfix-candidate" not in WORKFLOW,"worker_writes_field_line_directly")
+req("uses-permission" in WORKFLOW,"android_permission_guard_missing")
+req("versionCode|versionName|applicationId" in WORKFLOW,"identity_guard_missing")
+req("github.com/ggml-org/llama.cpp/releases/download/" in WORKFLOW,"llama_binary_not_pinned")
+req("huggingface.co/Qwen/" in WORKFLOW,"local_model_not_pinned")
 
 print("HAKIM_DEVELOPMENT_WORKER_GATE=PASS")

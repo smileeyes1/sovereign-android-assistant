@@ -18,7 +18,9 @@ import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.j
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
-import { resolveLocalArtifact } from "./local-cinematic-renderer.js";
+import {
+  getLocalRenderStatus,resolveLocalArtifact,submitLocalRender
+} from "./local-cinematic-renderer.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -1052,5 +1054,50 @@ app.all("/mcp",async(req,res)=>{
   }
 });
 
+async function maybeRunVideoStartupSelftest(){
+  if(process.env.HAKIM_VIDEO_SELFTEST_ON_START!=="1") return;
+  try{
+    const submitted=await submitLocalRender({
+      goal:"Hakim production synthetic video self-test",
+      duration_sec:8,
+      aspect:"16:9",
+      realism:"cinematic"
+    });
+    const deadline=Date.now()+75_000;
+    let status:any=null;
+    while(Date.now()<deadline){
+      status=await getLocalRenderStatus(submitted.job_id);
+      if(status.status==="completed"||status.status==="failed") break;
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+    const a=status?.artifact;
+    console.log("HAKIM_VIDEO_SELFTEST "+JSON.stringify({
+      ok:status?.render_success===true&&status?.artifact_verified===true,
+      status:status?.status??"timeout",
+      sha256:typeof a?.sha256==="string"&&/^[0-9a-f]{64}$/.test(a.sha256)?a.sha256:null,
+      duration_sec:typeof a?.duration_sec==="number"?a.duration_sec:null,
+      size_bytes:typeof a?.size_bytes==="number"?a.size_bytes:null,
+      playback_passed:a?.playback_passed===true,
+      quality_gates_passed:a?.quality_gates_passed===true,
+      cinematic_approval:a?.cinematic_approval===true,
+      fps:typeof a?.fps==="number"?a.fps:null,
+      width:typeof a?.width==="number"?a.width:null,
+      height:typeof a?.height==="number"?a.height:null,
+      has_audio:a?.has_audio===true,
+      renderer:typeof a?.renderer==="string"?a.renderer:null,
+      rule:"startup_selftest_proves_local_mp4_pipeline_only"
+    }));
+  }catch(error){
+    console.log("HAKIM_VIDEO_SELFTEST "+JSON.stringify({
+      ok:false,status:"error",
+      error:error instanceof Error?error.message.slice(0,300):"selftest_failed",
+      rule:"startup_selftest_proves_local_mp4_pipeline_only"
+    }));
+  }
+}
+
 const port=Number(process.env.PORT??3000);
-app.listen(port,"0.0.0.0",()=>console.log(`Hakim ChatGPT bridge listening on :${port}`));
+app.listen(port,"0.0.0.0",()=>{
+  console.log(`Hakim ChatGPT bridge listening on :${port}`);
+  void maybeRunVideoStartupSelftest();
+});

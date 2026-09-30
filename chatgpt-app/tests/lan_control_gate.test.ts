@@ -42,7 +42,7 @@ test("enabled LAN catalog is pseudonymous and restricted",()=>{
   try{
     process.env.HAKIM_LAN_CONTROL="1";
     const tools=chatgptToolList(true) as any[];
-    assert.equal(tools.length,17);
+    assert.equal(tools.length,18);
     const byName=new Map(tools.map(t=>[t.name,t]));
 
     const list:any=byName.get("list_network_devices");

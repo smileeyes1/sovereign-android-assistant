@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim uses `resume_hakim` as the canonical first read in a new chat/model/session, combining fresh device preflight, durable continuation, bridge identity, and current video capabilities. HAKIM FILM OS adds durable film projects with world/character locks, shot contracts, provider-neutral routing, QA gates, and a grade-one number ٥ Golden Production. Creating/restoring a film project does not itself render media or spend money. The public plugin can also check device connectivity, open selected apps or HTTP/HTTPS links, navigate Home/Back/Recents, and check prior operation results. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed.
+- **Long description:** Hakim uses `resume_hakim` as the canonical first read in a new chat/model/session, combining fresh device preflight, durable continuation, bridge identity, and current video capabilities. HAKIM FILM OS adds durable film projects with world/character locks, shot contracts, provider-neutral routing, QA gates, and a grade-one number ٥ Golden Production. Creating/restoring a film project does not itself render media or spend money. `advance_film_project` may start the next synthetic/public-safe film shot through a verified zero-cost route; completed shots are frozen and free-quota exhaustion becomes a resumable wait, never a paid fallback. The public plugin can also check device connectivity, open selected apps or HTTP/HTTPS links, navigate Home/Back/Recents, and check prior operation results. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** resume_hakim, get_device_status, get_video_capabilities, plan_video_project, get_film_os_capabilities, create_film_project, get_film_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
+- **Public tool surface:** resume_hakim, get_device_status, get_video_capabilities, plan_video_project, get_film_os_capabilities, create_film_project, advance_film_project, get_film_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
 
 ## Starter prompts
 
@@ -100,6 +100,7 @@ Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabl
 - `plan_video_project`
 - `get_film_os_capabilities`
 - `create_film_project`
+- `advance_film_project`
 - `get_film_project`
 - `open_target`
 - `navigate_device`
@@ -115,6 +116,11 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `readOnlyHint=true`: combines live preflight, durable continuation, bridge identity, and video capability metadata without replaying work.
 - `openWorldHint=false`: it reads only the paired Hakim runtime and bridge-local state.
 - `destructiveHint=false`: it performs no mutation or rendering.
+
+### get_autonomy_status
+- `readOnlyHint=true`: reads only the zero-cost autonomy contract and current capability metadata.
+- `openWorldHint=false`: reading the contract does not contact an external rendering provider.
+- `destructiveHint=false`: it starts no job and changes no device or project state.
 
 ### get_device_status
 - `readOnlyHint=true`: retrieves only a minimal connection/status summary and changes no device or server state.
@@ -141,6 +147,12 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `openWorldHint=false`: project creation stays inside the Hakim bridge and does not invoke a renderer.
 - `destructiveHint=false`: it does not overwrite another project, render media, spend credits, or mutate the phone.
 - `idempotentHint=true`: the operation has no external side effect; each project receives a new isolated identifier.
+
+### advance_film_project
+- `readOnlyHint=false`: may start or resume the next bounded Film OS shot.
+- `openWorldHint=true`: a public-safe synthetic shot may use a verified public ZeroGPU endpoint.
+- `destructiveHint=false`: it never deletes user data, purchases credits, or mutates the paired phone.
+- Paid fallback is forbidden; quota exhaustion is persisted as a resumable wait.
 
 ### get_film_project
 - `readOnlyHint=true`: reads one durable Film OS project by its project identifier.

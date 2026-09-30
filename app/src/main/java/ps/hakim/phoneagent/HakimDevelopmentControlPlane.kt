@@ -12,7 +12,7 @@ import java.security.MessageDigest
  * قابل للتحقق إلى طبقة التطوير المعزولة عبر القناة الآمنة القائمة.
  */
 object HakimDevelopmentControlPlane {
-    const val VERSION = "HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v1"
+    const val VERSION = "HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v2"
     private const val PREFS = "hakim_development_control"
     private const val MIN_REPEAT_MS = 6L * 60L * 60L * 1000L
 
@@ -20,14 +20,23 @@ object HakimDevelopmentControlPlane {
         val required: Boolean,
         val trigger: String,
         val severity: String,
-        val evidence: String
-    )
+        val evidenceCode: String,
+        val failureCount: Int = 0,
+        val selfCheckStatus: String = "",
+        val candidateState: String = "",
+        val actionCode: String = ""
+    ) {
+        fun fingerprintMaterial(): String = listOf(
+            trigger, severity, evidenceCode, failureCount.toString(),
+            selfCheckStatus, candidateState, actionCode
+        ).joinToString("|")
+    }
 
     fun shouldSignal(context: Context): Boolean {
         val need = evaluateNeed(context)
         if (!need.required) return false
         val p = prefs(context)
-        val fingerprint = fingerprint(need.trigger + "|" + need.severity + "|" + need.evidence)
+        val fingerprint = fingerprint(need.fingerprintMaterial())
         val lastFingerprint = p.getString("last_emitted_fingerprint", "").orEmpty()
         val lastAt = p.getLong("last_emitted_at", 0L)
         return fingerprint != lastFingerprint || System.currentTimeMillis() - lastAt >= MIN_REPEAT_MS
@@ -38,7 +47,7 @@ object HakimDevelopmentControlPlane {
         if (!need.required || !shouldSignal(context)) return null
         val now = System.currentTimeMillis()
         val version = currentVersion(context)
-        val fingerprint = fingerprint(need.trigger + "|" + need.severity + "|" + need.evidence)
+        val fingerprint = fingerprint(need.fingerprintMaterial())
         return JSONObject()
             .put("schema_version", 1)
             .put("control_version", VERSION)
@@ -48,9 +57,14 @@ object HakimDevelopmentControlPlane {
             .put("current_version_code", version)
             .put("trigger", need.trigger)
             .put("severity", need.severity)
-            .put("evidence_summary", need.evidence.take(500))
+            .put("evidence", JSONObject()
+                .put("code", need.evidenceCode)
+                .put("failure_count", need.failureCount.coerceIn(0, 1000))
+                .put("self_check_status", need.selfCheckStatus.take(32))
+                .put("candidate_state", need.candidateState.take(48))
+                .put("action_code", need.actionCode.take(48))
+            )
             .put("fingerprint", fingerprint)
-            .put("goal", "تشخيص السبب الجذري وإنشاء إصلاح آمن قابل للرجوع مع اختبار يمنع الانحدار")
             .put("constraints", JSONObject()
                 .put("source_mutation_on_device", false)
                 .put("github_secret_on_device", false)
@@ -101,17 +115,52 @@ object HakimDevelopmentControlPlane {
         val selfStatus = context.getSharedPreferences("hakim_governance", Context.MODE_PRIVATE)
             .getString("last_self_check_status", "NOT_TESTED").orEmpty()
 
+        val consecutiveFailures = learning.optInt("consecutive_failures").coerceIn(0, 1000)
+        val actionCode = lastFailureAction(learning)
+
         return when {
             improvement.optBoolean("rollback_forward_requested") ->
-                Need(true, "field_candidate_regression", "critical",
-                    "rollback_forward_requested=true;state=" + improvement.optString("state"))
+                Need(
+                    required = true,
+                    trigger = "field_candidate_regression",
+                    severity = "critical",
+                    evidenceCode = "rollback_forward_requested",
+                    selfCheckStatus = selfStatus,
+                    candidateState = improvement.optString("state").take(48)
+                )
             selfStatus == "FAIL_CLOSED" ->
-                Need(true, "self_check_failed", "critical", "self_check=FAIL_CLOSED")
+                Need(
+                    required = true,
+                    trigger = "self_check_failed",
+                    severity = "critical",
+                    evidenceCode = "self_check_fail_closed",
+                    selfCheckStatus = "FAIL_CLOSED"
+                )
             learning.optBoolean("improvement_needed") ->
-                Need(true, "repeated_runtime_failure", "high",
-                    "consecutive_failures=" + learning.optInt("consecutive_failures"))
+                Need(
+                    required = true,
+                    trigger = "repeated_runtime_failure",
+                    severity = "high",
+                    evidenceCode = "consecutive_runtime_failures",
+                    failureCount = consecutiveFailures,
+                    actionCode = actionCode
+                )
             else -> Need(false, "none", "none", "no_material_development_gap")
         }
+    }
+
+    private fun lastFailureAction(learning: JSONObject): String {
+        val events = learning.optJSONArray("events") ?: return ""
+        for (i in events.length() - 1 downTo 0) {
+            val event = events.optJSONObject(i) ?: continue
+            if (event.optString("kind") == "failure") {
+                return event.optString("action")
+                    .lowercase()
+                    .replace(Regex("[^a-z0-9_\\-]"), "_")
+                    .take(48)
+            }
+        }
+        return ""
     }
 
     private fun fingerprint(value: String): String =

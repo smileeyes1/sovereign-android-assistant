@@ -15,14 +15,14 @@ const credential:DeviceCredential={
 
 test("public ChatGPT tool catalog is privacy-minimized",()=>{
   const tools=chatgptToolList(true) as any[];
-  assert.equal(tools.length,12);
+  assert.equal(tools.length,13);
   const byName=new Map(tools.map(t=>[t.name,t]));
   assert.deepEqual([...byName.keys()].sort(),[
-    "resume_hakim","create_film_project","get_continuation_state","get_device_status","get_film_os_capabilities","get_film_project",
+    "resume_hakim","get_autonomy_status","create_film_project","get_continuation_state","get_device_status","get_film_os_capabilities","get_film_project",
     "get_request_result","get_video_capabilities","plan_video_project","navigate_device","open_target","save_continuation_checkpoint"
   ].sort());
 
-  for(const name of ["resume_hakim","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","get_film_project","get_continuation_state","get_request_result"]){
+  for(const name of ["resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","get_film_project","get_continuation_state","get_request_result"]){
     const t:any=byName.get(name);
     assert.ok(t,name+" missing");
     assert.deepEqual(t.securitySchemes,[{type:"oauth2",scopes:["hakim.read"]}]);
@@ -59,9 +59,9 @@ test("public ChatGPT tool catalog is privacy-minimized",()=>{
 test("private tool catalog remains available only when explicitly selected",()=>{
   const tools=chatgptToolList(false) as any[];
   const byName=new Map(tools.map(t=>[t.name,t]));
-  assert.equal(tools.length,16);
+  assert.equal(tools.length,17);
   for(const name of [
-    "resume_hakim","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","create_film_project","get_film_project",
+    "resume_hakim","get_autonomy_status","get_device_status","get_video_capabilities","plan_video_project","get_film_os_capabilities","create_film_project","get_film_project",
     "read_browser_page","get_current_ui","list_notifications","capture_screenshot",
     "open_target","perform_ui_action","get_continuation_state","save_continuation_checkpoint","get_request_result"
   ]) assert.ok(byName.has(name),name+" missing in private catalog");

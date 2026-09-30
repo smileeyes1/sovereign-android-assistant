@@ -42,12 +42,13 @@ object HakimArabicOutputGate {
     ): Result {
         val checks = mutableListOf<Check>()
         val trimmed = text.trim()
+        val naturalText = naturalLanguageText(trimmed)
         checks += Check("NON_EMPTY", trimmed.isNotEmpty(), "يجب ألا يكون المخرج فارغًا")
 
         if (!explicitNonArabic && audience != Audience.TECHNICAL) {
-            val hasArabic = trimmed.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' }
+            val hasArabic = naturalText.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' }
             checks += Check("ARABIC_PRESENT", hasArabic, "العربية هي لغة المخرج الافتراضية")
-            val leak = englishUiLeak.find(trimmed)?.value.orEmpty()
+            val leak = englishUiLeak.find(naturalText)?.value.orEmpty()
             checks += Check("NO_COMMON_ENGLISH_UI_LEAK", leak.isEmpty(), leak)
         }
 
@@ -60,6 +61,17 @@ object HakimArabicOutputGate {
         }
 
         return Result(checks.all { it.ok }, checks)
+    }
+
+    fun audienceForPrompt(prompt: String): Audience {
+        val q = prompt.lowercase()
+        return if (
+            listOf(
+                "الصف الأول", "الصف الاول", "صف أول", "صف اول",
+                "الصف الثاني", "صف ثاني",
+                "first grade", "second grade"
+            ).any { q.contains(it) }
+        ) Audience.EARLY_GRADE_STUDENT else Audience.GENERAL
     }
 
     fun validateHtml(html: String, earlyGradeStudent: Boolean = false): Result {
@@ -82,6 +94,13 @@ object HakimArabicOutputGate {
         val all = base.checks + extra
         return Result(all.all { it.ok }, all)
     }
+
+    private fun naturalLanguageText(text: String): String = text
+        .replace(Regex("""(?s)\x60\x60\x60.*?\x60\x60\x60"""), " ")
+        .replace(Regex("""\x60[^\x60]+\x60"""), " ")
+        .replace(Regex("""https?://\S+"""), " ")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
 
     private fun visibleHtmlText(html: String): String = html
         .replace(Regex("""(?is)<script\b[^>]*>.*?</script>"""), " ")

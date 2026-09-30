@@ -91,6 +91,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
+        network_protection?:Record<string,unknown>;
       };
     };
     const requestId=typeof decoded?.request_id==="string"?decoded.request_id:"";
@@ -107,6 +108,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const containment=result?.fault_containment;
     const diagnostics=result?.network_diagnostics;
     const autoUpdate=result?.auto_update;
+    const networkProtection=result?.network_protection;
     const safe={
       event:"hakim_status_probe",
       ok:flag(result?.ok),
@@ -139,6 +141,14 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       self_check:fixed(result?.self_check,["PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"]),
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
         Object.keys(diagnostics).length>0,
+      network_protection:{
+        state:fixed(networkProtection?.state,[
+          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+        ]),
+        running:flag(networkProtection?.running),
+        verified:flag(networkProtection?.verified),
+        family_dns_active:flag(networkProtection?.family_dns_active)
+      },
       auto_update:{
         state:fixed(autoUpdate?.state,[
           "unknown","scheduled","checking","up_to_date","update_found","downloading",
@@ -177,6 +187,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         constitution?:unknown;
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
+        network_protection?:Record<string,unknown>;
       };
     };
     if(decoded?.status!=="health") return;
@@ -188,6 +199,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
       /^[A-Z0-9._-]{8,120}$/.test(result.constitution)?result.constitution:null;
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
+    const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;
     const bool=(raw:unknown)=>typeof raw==="boolean"?raw:null;
@@ -207,6 +219,14 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         material_gap_blocks_close:bool(gate?.material_gap_blocks_close),
         same_tested_delivered_artifact_required:bool(gate?.same_tested_delivered_artifact_required),
         regression_gate_supported:bool(gate?.regression_gate_supported)
+      },
+      network_protection:{
+        state:fixed(networkProtection?.state,[
+          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+        ]),
+        running:bool(networkProtection?.running),
+        verified:bool(networkProtection?.verified),
+        family_dns_active:bool(networkProtection?.family_dns_active)
       },
       governance_catalog:{
         active:bool(catalog?.governance_catalog),
@@ -483,6 +503,17 @@ app.get("/.well-known/openai-apps-challenge",(_req,res)=>{
 
 app.get("/",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>حكيم — ذراع ChatGPT التنفيذي</title><style>body{font-family:system-ui;max-width:760px;margin:auto;padding:40px;line-height:1.8}a{color:inherit}.box{padding:18px;border:1px solid #ddd;border-radius:16px;margin:18px 0}</style><h1>حكيم</h1><p>جسر آمن يجعل ChatGPT طبقة المحادثة والاستدلال، ويجعل تطبيق حكيم على جهاز المستخدم ذراع تنفيذ مأذونًا.</p><div class="box"><strong>لا يحتاج مفتاح OpenAI API.</strong><br>الأوامر والنتائج مشفرة، ولا توجد قناة shell أو root. الأفعال التي تغيّر حالة الهاتف تبقى خلف موافقة Android.</div><p><a href="/privacy">الخصوصية</a> · <a href="/terms">الشروط</a> · <a href="/support">الدعم</a> · <a href="/health">الحالة</a></p></html>`));
 
+
+
+app.get("/mobile-task/network-protection",(_req,res)=>{
+  noStore(res);
+  const deepLink="hakim://task/network-protection";
+  const escaped=html(deepLink);
+  res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>حكيم — حماية الشبكة</title>
+<style>body{font-family:system-ui;margin:0;background:#f5f7fb;color:#111}.wrap{max-width:640px;margin:auto;padding:28px}.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 30px #0001}.btn{display:block;text-align:center;padding:14px 18px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-weight:700;margin-top:18px}.muted{color:#666;font-size:14px}</style>
+<div class="wrap"><div class="card"><h1>حماية الشبكة عبر حكيم</h1><p>هذا الرابط لا يغيّر أي إعداد بذاته. يفتح مهمة حماية الشبكة داخل تطبيق حكيم على أندرويد، وأي تغيير يبقى خلف موافقة محلية والتحقق من النتيجة.</p><a class="btn" href="${escaped}">فتح حكيم على الهاتف</a><p class="muted">إذا لم يفتح التطبيق تلقائيًا، اضغط الزر مرة واحدة.</p></div></div>
+<script>setTimeout(()=>{location.href=${JSON.stringify(deepLink)}},350)</script></html>`);
+});
 
 app.get("/health",(_req,res)=>res.json({
   ok:true,

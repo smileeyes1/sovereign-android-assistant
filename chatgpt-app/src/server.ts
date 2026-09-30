@@ -5,6 +5,7 @@ import { autonomyKernelSummary } from "./autonomy-kernel.js";
 import { cinematicExecutorEnabled,cinematicExecutorSummary,getCinematicRenderStatus,submitCinematicRender } from "./cinematic-executor.js";
 import { filmOsCapabilities } from "./film-os.js";
 import { createFilmProject,createGoldenNumberFiveProject,getFilmProject } from "./film-project-store.js";
+import { advanceFilmProject } from "./autonomous-film-runner.js";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
 import { pollResult,publishCommand } from "./relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
@@ -273,7 +274,9 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
           aspect:{type:"string",enum:VIDEO_ASPECTS},
           style:{type:"string",maxLength:240},
           realism:{type:"string",enum:VIDEO_REALISM},
-          educational:{type:"boolean"}
+          educational:{type:"boolean"},
+          synthetic_public_safe:{type:"boolean"},
+          contains_personal_data:{type:"boolean"}
         },
         required:["goal"],
         additionalProperties:false
@@ -310,6 +313,20 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
         additionalProperties:false
       },
       annotations:CHECKPOINT_ANNOTATIONS,
+      securitySchemes:writeSecurity,
+      _meta:{securitySchemes:writeSecurity}
+    },
+    {
+      name:"advance_film_project",
+      title:"تشغيل مشروع Film OS ذاتيًا",
+      description:"ابدأ أو استأنف اللقطة التالية من مشروع Film OS عبر نواة الاستقلال المجانية. اللقطات الناجحة لا تعاد، ونفاد الحصة المجانية يصبح انتظارًا محفوظًا لا انتقالًا إلى الدفع.",
+      inputSchema:{
+        type:"object",
+        properties:{project_id:{type:"string",pattern:"^film-[0-9a-f]{24}$"}},
+        required:["project_id"],
+        additionalProperties:false
+      },
+      annotations:VIDEO_RENDER_ANNOTATIONS,
       securitySchemes:writeSecurity,
       _meta:{securitySchemes:writeSecurity}
     },
@@ -752,6 +769,22 @@ export function createHakimServer(
     }));
   });
 
+  server.registerTool("advance_film_project",{
+    title:"تشغيل مشروع Film OS ذاتيًا",
+    description:"ابدأ أو استأنف اللقطة التالية فقط. يستخدم حكيم المسار المجاني المتاح، ويحفظ job_id والتقدم داخل المشروع، ولا يعيد اللقطات المكتملة.",
+    inputSchema:{project_id:z.string().regex(/^film-[0-9a-f]{24}$/)},
+    annotations:VIDEO_RENDER_ANNOTATIONS
+  },async({project_id})=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode){
+      return text({
+        ok:true,demo:true,project_id,state:"waiting_free_capacity",
+        cost_usd:0,rule:"review_fixture_no_real_render"
+      });
+    }
+    return text(await advanceFilmProject(project_id));
+  });
+
   server.registerTool("get_film_project",{
     title:"استرجاع مشروع Film OS",
     description:governedReadDescription(
@@ -782,12 +815,21 @@ export function createHakimServer(
         aspect:z.enum(VIDEO_ASPECTS).optional(),
         style:z.string().max(240).optional(),
         realism:z.enum(VIDEO_REALISM).optional(),
-        educational:z.boolean().optional()
+        educational:z.boolean().optional(),
+        synthetic_public_safe:z.boolean().optional(),
+        contains_personal_data:z.boolean().optional()
       },
       annotations:VIDEO_RENDER_ANNOTATIONS
     },async(input)=>{
       if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
-      const plan=buildCinematicPlan(input);
+      const plan={
+        ...buildCinematicPlan(input),
+        execution_policy:{
+          synthetic_public_safe:input.synthetic_public_safe===true,
+          contains_personal_data:input.contains_personal_data===true,
+          free_only:true
+        }
+      };
       if(reviewMode){
         return text({
           ok:true,demo:true,status:"accepted",job_id:"review-video-job-0001",

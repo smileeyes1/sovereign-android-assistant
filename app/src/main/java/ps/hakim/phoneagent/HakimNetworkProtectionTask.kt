@@ -134,6 +134,13 @@ object HakimNetworkProtectionTask {
             "موفّر DNS الخاص",
             "مزود DNS الخاص"
         )
+        val settingsRouteLabels = listOf(
+            "Hotspot & Connections",
+            "Hotspot and Connections",
+            "نقطة الاتصال والاتصالات",
+            "نقطة الاتصال",
+            "الاتصالات"
+        )
         val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
 
         repeat(36) {
@@ -149,8 +156,8 @@ object HakimNetworkProtectionTask {
                             Thread.sleep(250)
                             service.clickAnyText(saveLabels)
                         }
-                    } else {
-                        service.clickAnyText(privateDnsLabels)
+                    } else if (!service.clickAnyText(privateDnsLabels)) {
+                        service.clickAnyText(settingsRouteLabels)
                     }
                 }
             }
@@ -163,31 +170,54 @@ object HakimNetworkProtectionTask {
         if (sameState(before, snapshot(context))) return true
         if (!openPrivateDnsSettings(context)) return false
 
-        repeat(20) {
+        val privateDnsLabels = listOf(
+            "Private DNS",
+            "DNS الخاص",
+            "DNS خاص",
+            "نظام أسماء النطاقات الخاص",
+            "نظام أسماء النطاقات (DNS) الخاص"
+        )
+        val settingsRouteLabels = listOf(
+            "Hotspot & Connections",
+            "Hotspot and Connections",
+            "نقطة الاتصال والاتصالات",
+            "نقطة الاتصال",
+            "الاتصالات"
+        )
+        val providerLabels = listOf(
+            "Private DNS provider hostname",
+            "Private DNS provider",
+            "اسم مضيف موفّر DNS الخاص",
+            "اسم مضيف مزود DNS الخاص"
+        )
+        val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
+
+        repeat(28) {
             val service = HakimAccessibilityService.instance
             if (service != null && service.foregroundPackage().contains("settings", ignoreCase = true)) {
+                var acted = false
                 when (before.mode) {
                     "hostname" -> {
-                        service.clickAnyText(
-                            listOf(
-                                "Private DNS provider hostname",
-                                "Private DNS provider",
-                                "اسم مضيف موفّر DNS الخاص",
-                                "اسم مضيف مزود DNS الخاص"
-                            )
-                        )
-                        Thread.sleep(200)
-                        if (before.specifier.isNotBlank()) {
-                            service.setFirstEditableText(before.specifier)
+                        acted = service.clickAnyText(providerLabels)
+                        if (acted) {
+                            Thread.sleep(250)
+                            if (before.specifier.isNotBlank()) {
+                                service.setFirstEditableText(before.specifier)
+                            }
                         }
                     }
-                    "off" -> service.clickAnyText(listOf("Off", "إيقاف", "متوقف"))
-                    else -> service.clickAnyText(listOf("Automatic", "تلقائي", "تلقائية"))
+                    "off" -> acted = service.clickAnyText(listOf("Off", "إيقاف", "متوقف"))
+                    else -> acted = service.clickAnyText(listOf("Automatic", "تلقائي", "تلقائية"))
                 }
-                Thread.sleep(200)
-                service.clickAnyText(listOf("Save", "حفظ", "OK", "موافق", "تم"))
+
+                if (acted) {
+                    Thread.sleep(200)
+                    service.clickAnyText(saveLabels)
+                } else if (!service.clickAnyText(privateDnsLabels)) {
+                    service.clickAnyText(settingsRouteLabels)
+                }
             }
-            Thread.sleep(500)
+            Thread.sleep(550)
             if (sameState(before, snapshot(context))) return true
         }
         return sameState(before, snapshot(context))

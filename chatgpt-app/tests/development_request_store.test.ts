@@ -17,7 +17,7 @@ const topic="hakim_result_"+"B".repeat(24);
 function request(overrides:Record<string,unknown>={}){
   return {
     schema_version:1,
-    control_version:"HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v1",
+    control_version:"HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v2",
     request_id:"dev-mg123abc-"+"a".repeat(12),
     requested_at_ms:Date.now(),
     package:"ps.hakim.stable",
@@ -25,6 +25,13 @@ function request(overrides:Record<string,unknown>={}){
     trigger:"self_check_failed",
     severity:"critical",
     fingerprint:"b".repeat(64),
+    evidence:{
+      code:"self_check_fail_closed",
+      failure_count:0,
+      self_check_status:"FAIL_CLOSED",
+      candidate_state:"",
+      action_code:""
+    },
     evidence_summary:"this free text must not be persisted",
     goal:"this free text must not be persisted",
     constraints:{
@@ -60,6 +67,8 @@ test("development intake stores only bounded structured evidence",async()=>{
     assert.equal(saved?.current_version_code,20316);
     assert.equal(saved?.constraints.source_mutation_on_device,false);
     assert.equal(saved?.constraints.github_secret_on_device,false);
+    assert.equal(saved?.evidence.code,"self_check_fail_closed");
+    assert.equal(saved?.evidence.self_check_status,"FAIL_CLOSED");
 
     const rows=await store.list();
     assert.equal(rows.length,1);
@@ -195,5 +204,40 @@ test("defer is owner-bound and delay-bounded",async()=>{
       ()=>store.defer(id,"gh:run-55555555","safe_patch_not_found",60_000),
       /development_defer_delay_invalid/
     );
+  });
+});
+
+
+test("v2 development request requires bounded structured evidence",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    const missing=request({evidence:undefined});
+    await assert.rejects(()=>store.capture(topic,key,carrier(missing)),/development_evidence_invalid/);
+
+    const unbounded=request({
+      evidence:{
+        code:"consecutive_runtime_failures",
+        failure_count:50000,
+        self_check_status:"",
+        candidate_state:"",
+        action_code:"browser_click"
+      }
+    });
+    await assert.rejects(()=>store.capture(topic,key,carrier(unbounded)),/development_evidence_failure_count_invalid/);
+  });
+});
+
+test("v1 request remains readable as legacy evidence without free text",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    const legacy=request({
+      control_version:"HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v1",
+      evidence:undefined
+    });
+    const saved=await store.capture(topic,key,carrier(legacy));
+    assert.equal(saved?.evidence.code,"legacy_unstructured");
+    const files=await fs.readdir(path.join(dir,"development-intake-v2"));
+    const raw=await fs.readFile(path.join(dir,"development-intake-v2",files[0]!),"utf8");
+    assert.equal(raw.includes("this free text must not be persisted"),false);
   });
 });

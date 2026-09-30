@@ -20,6 +20,7 @@ def git(*args, check=True):
 git("fetch", "--no-tags", "--prune", "origin", "+refs/heads/*:refs/remotes/origin/*")
 
 event = os.getenv("GITHUB_EVENT_NAME", "")
+force = os.getenv("HAKIM_FRESHNESS_FORCE", "") == "1"
 base = os.getenv("GITHUB_BASE_REF", "")
 changed = []
 if event == "pull_request" and base:
@@ -30,7 +31,7 @@ elif event == "push":
 # Bootstrap/policy-only changes may install the guard even when main itself is historical.
 # Any Android source/config change, and every manual run, is enforced fail-closed.
 android_changed = any(p == "app/build.gradle" or p.startswith("app/") for p in changed)
-if event in {"pull_request", "push"} and not android_changed:
+if not force and event in {"pull_request", "push"} and not android_changed:
     print("FRESHNESS_GUARD=PASS mode=policy_only_no_android_change")
     sys.exit(0)
 

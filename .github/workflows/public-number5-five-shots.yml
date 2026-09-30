@@ -1,0 +1,88 @@
+name: Public Number 5 Five-Shot Render
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-number5-five-shots.yml"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+      - name: Generate master character reference and five cinematic shots
+        run: |
+          python - <<'PY'
+          import hashlib, shutil, json
+          from pathlib import Path
+          from gradio_client import Client, handle_file
+
+          out=Path("number5-film")
+          out.mkdir(exist_ok=True)
+
+          z=Client("mrfakename/Z-Image-Turbo", verbose=False)
+          image_prompt=(
+            "Original premium 3D animated-series character for children: Noor, a small warm golden glowing non-human companion, "
+            "soft rounded body, two large expressive friendly eyes, tiny floating arms, subtle pearly texture, clear memorable silhouette, "
+            "beside a wooden treasure chest in a beautiful school garden at sunrise, empty clean space around the character for educational magic, "
+            "cinematic depth of field, warm volumetric light, polished feature-animation quality, family-friendly, "
+            "no text, no numbers, no logo, no watermark, no resemblance to any existing copyrighted character."
+          )
+          ir=z.predict(
+            prompt=image_prompt,height=768,width=1344,num_inference_steps=9,
+            seed=42,randomize_seed=False,api_name="/generate_image"
+          )
+          ref=Path(ir[0] if isinstance(ir,(list,tuple)) else ir)
+          if not ref.exists(): raise RuntimeError("reference_missing")
+          master=out/"noor-master.png"
+          shutil.copy2(ref,master)
+          print("REFERENCE_SHA256",hashlib.sha256(master.read_bytes()).hexdigest())
+
+          w=Client("zerogpu-aoti/wan2-2-fp8da-aoti-faster", verbose=False)
+          shots=[
+            ("S01","Noor notices the treasure chest, floats one small step closer, tilts with curiosity, then looks toward camera. Smooth slow push-in, stable identity, coherent garden, warm sunrise cinematic animation."),
+            ("S02","Noor becomes excited and gently raises both tiny arms as if inviting children to count magical objects appearing in the open space beside the chest. Clear pause for counting, stable face and body, controlled camera."),
+            ("S03","Noor moves beside the chest and points toward an empty clean patch of grass as if presenting a second group of objects for counting. Friendly teaching gesture, calm readable motion, stable identity."),
+            ("S04","Noor watches five imagined lights gather toward the center, follows them with the eyes, then smiles as if a number has been discovered. Gentle magical particles, slow cinematic camera, stable background."),
+            ("S05","Noor celebrates joyfully with a small hop and open-arm gesture, looking up as if stars sparkle around. Warm triumphant ending, controlled motion, stable identity, premium animated-series look.")
+          ]
+          negative=(
+            "text, letters, numbers, logo, watermark, duplicate character, extra limbs, malformed body, "
+            "flicker, morphing, unstable face, unstable background, sudden camera jump, horror, violence, sexual content"
+          )
+          evidence=[]
+          for idx,(sid,prompt) in enumerate(shots,1):
+            print("START",sid,flush=True)
+            result=w.predict(
+              input_image=handle_file(str(master)),
+              prompt=prompt,
+              steps=4,
+              negative_prompt=negative,
+              duration_seconds=1.5,
+              guidance_scale=1.0,
+              guidance_scale_2=1.0,
+              seed=42+idx,
+              randomize_seed=False,
+              api_name="/generate_video",
+            )
+            src=Path(result[0] if isinstance(result,(list,tuple)) else result)
+            if not src.exists(): raise RuntimeError(sid+"_missing")
+            dest=out/(sid+".mp4")
+            shutil.copy2(src,dest)
+            h=hashlib.sha256(dest.read_bytes()).hexdigest()
+            evidence.append({"shot":sid,"sha256":h,"bytes":dest.stat().st_size})
+            print("SHOT_OK",sid,h,dest.stat().st_size,flush=True)
+          (out/"render-evidence.json").write_text(json.dumps(evidence,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-number5-five-shots
+          path: number5-film/
+          retention-days: 1

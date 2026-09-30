@@ -18,6 +18,9 @@ class HakimEvolutionJobService : JobService() {
                     AutoUpdater.checkNow(applicationContext)
                     val report = HakimSelfCheck.run(applicationContext)
                     HakimLearning.recordHealth(applicationContext, report)
+                    if (HakimDevelopmentControlPlane.shouldSignal(applicationContext)) {
+                        HakimHealthBeacon.sendNow(applicationContext, "development_request")
+                    }
                 }
             } finally {
                 jobFinished(params, false)

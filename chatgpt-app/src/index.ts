@@ -365,6 +365,7 @@ function developmentWorkerView(record:Awaited<ReturnType<typeof developmentReque
     trigger:record.trigger,
     severity:record.severity,
     fingerprint:record.fingerprint,
+    evidence:record.evidence,
     state:record.state,
     lease_expires_at_ms:record.lease_expires_at_ms,
     attempt_count:record.attempt_count??0,

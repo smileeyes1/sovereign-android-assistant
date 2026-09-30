@@ -72,6 +72,11 @@ object HakimSelfCheck {
         check("لا سببية تقنية غيبية منسوبة للوحي", !quran.optBoolean("technical_causality_claimed"))
         check("لا إكراه ديني تقني", !quran.optBoolean("religious_coercion_allowed"))
 
+        val arabic = governance.optJSONObject("arabic_policy") ?: JSONObject()
+        check("العربية الفلسطينية ar-PS افتراضية", arabic.optString("locale") == HakimPalestinianArabicProfile.LOCALE_TAG)
+        check("السياق الفلسطيني الافتراضي مفعّل", arabic.optBoolean("palestinian_context_default"))
+        check("بوابة قبول العربية مطلوبة", arabic.optBoolean("output_gate_required"))
+
         val ledger = governance.optJSONObject("rule_ledger") ?: JSONObject()
         check("سجل القواعد مشفر محليًا", ledger.optBoolean("encrypted_local_ledger"))
         check("المهام المؤقتة لا تُحفظ كنص", !ledger.optBoolean("temporary_tasks_persisted"))

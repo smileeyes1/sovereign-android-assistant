@@ -16,7 +16,7 @@ def req(v, reason):
 
 req('android:supportsRtl="true"' in MANIFEST,"manifest_rtl")
 for token in [
-    "ARABIC-FIRST-RTL-2026-09-26-v1",
+    "ARABIC-FIRST-RTL-AR-PS-2026-09-30-v2",
     "arabic_default",
     "rtl_default",
     "right_alignment_default",

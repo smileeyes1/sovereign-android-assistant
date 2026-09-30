@@ -104,6 +104,23 @@
         </activity>
 
         <activity
+            android:name=".HakimMobileTaskActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="hakim"
+                    android:host="task"
+                    android:path="/network-protection" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".MainActivity"
             android:exported="false"
             android:launchMode="singleTop"

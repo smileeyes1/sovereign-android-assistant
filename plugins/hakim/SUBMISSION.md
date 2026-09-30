@@ -5,7 +5,7 @@
 - **Name:** Hakim
 - **Category:** Productivity
 - **Short description:** Connect ChatGPT to Hakim
-- **Long description:** Hakim connects ChatGPT to an authorized Android device through a privacy-minimized execution bridge. The public plugin can check device connectivity, inspect the current video-factory capability state, plan a video project without rendering it, request opening a specific app or HTTP/HTTPS link, navigate Home/Back/Recents, recover a privacy-safe continuation record after a chat/session change, save a bounded work checkpoint, and check whether a prior operation completed. It does not expose raw screenshots, notifications, arbitrary taps, free-form text entry, shell, or root. State-changing actions remain behind Hakim/Android approval gates. Video planning never claims a rendered artifact or GPU/provider availability that has not been verified.
+- **Long description:** Hakim uses `resume_hakim` as the canonical first read in a new chat/model/session, combining fresh device preflight, durable continuation, bridge identity, and current video capabilities. HAKIM FILM OS adds durable film projects with world/character locks, shot contracts, provider-neutral routing, QA gates, and a grade-one number ٥ Golden Production. Creating/restoring a film project does not itself render media or spend money. The public plugin can also check device connectivity, open selected apps or HTTP/HTTPS links, navigate Home/Back/Recents, and check prior operation results. Raw screenshots, notifications, arbitrary taps, free-form text entry, shell, and root are not exposed.
 - **Website:** https://hakim-chatgpt-bridge-production.up.railway.app
 - **Support:** https://hakim-chatgpt-bridge-production.up.railway.app/support
 - **Privacy:** https://hakim-chatgpt-bridge-production.up.railway.app/privacy
@@ -13,7 +13,7 @@
 - **MCP endpoint:** https://hakim-chatgpt-bridge-production.up.railway.app/mcp
 - **MCP URL type:** Universal
 - **Authentication:** OAuth 2.1 authorization code + PKCE (S256), with reviewer fixture credentials
-- **Public tool surface:** get_device_status, get_video_capabilities, plan_video_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
+- **Public tool surface:** resume_hakim, get_device_status, get_video_capabilities, plan_video_project, get_film_os_capabilities, create_film_project, get_film_project, open_target, navigate_device, get_continuation_state, save_continuation_checkpoint, get_request_result
 
 ## Starter prompts
 
@@ -45,7 +45,7 @@
 
 ### P5 — Resume or check existing work
 **Prompt:** Continue my last Hakim operation after changing chats, or check whether operation `review-12345678` completed.  
-**Expected behavior:** Use `get_continuation_state` to recover recent safe operation metadata when needed, then use `get_request_result` with the same operation token. Never replay the original state-changing request merely because the chat changed.  
+**Expected behavior:** Use `resume_hakim` first. If an operation token is pending, use `get_request_result` with that same token. Never replay the original state-changing request merely because the chat changed.  
 **Expected result:** A redacted continuation/completion state containing operation type, token, and status only; no raw device content, typed values, URLs, relay keys, or credentials.
 
 ## Negative review cases
@@ -94,9 +94,13 @@ Do not commit the token to GitHub.
 ## Public safety profile
 
 Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabled only during review through Railway environment variables. The public catalog must contain exactly:
+- `resume_hakim`
 - `get_device_status`
 - `get_video_capabilities`
 - `plan_video_project`
+- `get_film_os_capabilities`
+- `create_film_project`
+- `get_film_project`
 - `open_target`
 - `navigate_device`
 - `get_continuation_state`
@@ -106,6 +110,11 @@ Production submission uses `HAKIM_PUBLIC_SAFE=1`. Reviewer credentials are enabl
 Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are not part of the public submission.
 
 ## Tool annotation justifications
+
+### resume_hakim
+- `readOnlyHint=true`: combines live preflight, durable continuation, bridge identity, and video capability metadata without replaying work.
+- `openWorldHint=false`: it reads only the paired Hakim runtime and bridge-local state.
+- `destructiveHint=false`: it performs no mutation or rendering.
 
 ### get_device_status
 - `readOnlyHint=true`: retrieves only a minimal connection/status summary and changes no device or server state.
@@ -121,6 +130,22 @@ Private/development capabilities require explicit `HAKIM_PUBLIC_SAFE=0` and are 
 - `readOnlyHint=true`: creates a bounded production plan only; it does not render a video.
 - `openWorldHint=false`: planning is executed through Hakim's paired-device planning contract and does not itself invoke an external provider.
 - `destructiveHint=false`: it creates no media artifact, consumes no paid rendering resource, and changes no device state.
+
+### get_film_os_capabilities
+- `readOnlyHint=true`: reads Film OS capability metadata only.
+- `openWorldHint=false`: it does not invoke a renderer or outside provider.
+- `destructiveHint=false`: it changes no project or device state.
+
+### create_film_project
+- `readOnlyHint=false`: creates a bounded project record in Hakim durable storage.
+- `openWorldHint=false`: project creation stays inside the Hakim bridge and does not invoke a renderer.
+- `destructiveHint=false`: it does not overwrite another project, render media, spend credits, or mutate the phone.
+- `idempotentHint=true`: the operation has no external side effect; each project receives a new isolated identifier.
+
+### get_film_project
+- `readOnlyHint=true`: reads one durable Film OS project by its project identifier.
+- `openWorldHint=false`: it reads only Hakim bridge-local project storage.
+- `destructiveHint=false`: it performs no write or external action.
 
 ### open_target
 - `readOnlyHint=false`: requests a visible state change on the paired Android device.

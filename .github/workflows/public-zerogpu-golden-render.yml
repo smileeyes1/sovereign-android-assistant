@@ -1,0 +1,124 @@
+name: Public ZeroGPU Golden Render
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-zerogpu-golden-render.yml"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install client and probe tools
+        run: |
+          pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Generate smallest safe cinematic clip anonymously
+        env:
+          SPACE_ID: numanajmal0/wan-video-api
+        run: |
+          python - <<'PY'
+          import json, os, shutil, hashlib
+          from pathlib import Path
+          from gradio_client import Client
+
+          out=Path("zerogpu-golden")
+          out.mkdir(exist_ok=True)
+          client=Client(os.environ["SPACE_ID"], verbose=False)
+
+          health=client.predict(api_name="/health")
+          print("HEALTH",json.dumps(health,default=str))
+
+          prompt=(
+            "A charming original glowing cartoon companion named Noor in a cinematic children's "
+            "school garden at warm sunrise, expressive friendly eyes, soft rounded non-human design, "
+            "gentle body movement, subtle breathing and a small curious turn toward a wooden treasure box, "
+            "professional animated-series lighting, coherent background, smooth controlled camera push-in, "
+            "high character consistency, no text, no numbers, no logos, family-friendly educational tone."
+          )
+          negative=(
+            "text, letters, numbers, logo, watermark, duplicate character, extra limbs, malformed anatomy, "
+            "flicker, morphing, unstable background, sudden camera jump, horror, violence, sexual content"
+          )
+
+          result=client.predict(
+            model_key="wan-base",
+            prompt=prompt,
+            negative_prompt=negative,
+            width=320,
+            height=320,
+            num_frames=21,
+            steps=4,
+            guidance_scale=4.0,
+            seed=42,
+            lora_scale=0.0,
+            custom_ckpt="",
+            api_name="/generate",
+          )
+          print("RAW_RESULT",repr(result))
+
+          candidate=None
+          def walk(x):
+            global candidate
+            if candidate is not None:
+              return
+            if isinstance(x,str) and (x.endswith(".mp4") or x.endswith(".webm")):
+              candidate=x
+            elif isinstance(x,dict):
+              for v in x.values(): walk(v)
+            elif isinstance(x,(list,tuple)):
+              for v in x: walk(v)
+            else:
+              p=getattr(x,"path",None)
+              if isinstance(p,str): walk(p)
+
+          walk(result)
+          if not candidate:
+            raise RuntimeError("no_video_path_in_result")
+
+          src=Path(candidate)
+          if not src.exists():
+            raise RuntimeError("returned_video_missing:"+candidate)
+          dest=out/"noor-golden.mp4"
+          shutil.copy2(src,dest)
+          h=hashlib.sha256(dest.read_bytes()).hexdigest()
+          (out/"sha256.txt").write_text(h+"  "+dest.name+"\n")
+          print("SHA256",h)
+          print("FILE",dest)
+          PY
+      - name: Verify generated video stream
+        run: |
+          test -s zerogpu-golden/noor-golden.mp4
+          ffprobe -v error             -show_entries format=duration,size,format_name             -show_entries stream=codec_type,codec_name,width,height,r_frame_rate,nb_frames             -of json zerogpu-golden/noor-golden.mp4 | tee zerogpu-golden/ffprobe.json
+          python - <<'PY'
+          import json
+          p=json.load(open("zerogpu-golden/ffprobe.json"))
+          streams=p.get("streams",[])
+          v=next((s for s in streams if s.get("codec_type")=="video"),None)
+          if not v: raise SystemExit("NO_VIDEO_STREAM")
+          d=float(p.get("format",{}).get("duration",0) or 0)
+          size=int(p.get("format",{}).get("size",0) or 0)
+          if d<=0 or size<4096: raise SystemExit("INVALID_VIDEO")
+          print("GOLDEN_RENDER_VERIFIED",json.dumps({
+            "duration_sec":d,
+            "size_bytes":size,
+            "codec":v.get("codec_name"),
+            "width":v.get("width"),
+            "height":v.get("height"),
+            "fps":v.get("r_frame_rate"),
+            "frames":v.get("nb_frames")
+          }))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-public-zerogpu-golden
+          path: zerogpu-golden/
+          retention-days: 1

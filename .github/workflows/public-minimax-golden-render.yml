@@ -1,0 +1,116 @@
+name: Public MiniMax ZeroGPU Golden Render
+
+on:
+  push:
+    branches:
+      - experiment/public-zerogpu-probe-v2
+    paths:
+      - ".github/workflows/public-minimax-golden-render.yml"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install --disable-pip-version-check --quiet "gradio_client>=1.12,<2"
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+      - name: Generate original Noor character clip anonymously
+        env:
+          SPACE_ID: mrfakename/minimax-h3-ultra-fast
+        run: |
+          python - <<'PY'
+          import json, os, shutil, hashlib
+          from pathlib import Path
+          from gradio_client import Client
+
+          out=Path("minimax-golden")
+          out.mkdir(exist_ok=True)
+          c=Client(os.environ["SPACE_ID"], verbose=False)
+
+          prompt=(
+            "Professional cinematic 3D animated-series shot for young children. "
+            "An original small glowing non-human companion named Noor, with a soft rounded silhouette, "
+            "warm golden glow, two expressive friendly eyes, tiny floating arms, no resemblance to any existing character. "
+            "Noor hovers beside a wooden treasure box in a beautiful school garden at sunrise. "
+            "The character notices the box, leans forward with curiosity, then turns gently toward camera with a joyful expression. "
+            "Smooth controlled slow camera push-in, natural parallax, stable anatomy and identity, coherent garden background, "
+            "rich but soft cinematic lighting, polished feature-animation rendering, family-friendly educational mood. "
+            "No text, no numbers, no logos, no watermark. Soft garden ambience and delicate magical chime, no spoken dialogue."
+          )
+          result=c.predict(
+            prompt=prompt,
+            image_path=None,
+            last_image_path=None,
+            canvas="960x544 · 16:9 fast",
+            duration=5,
+            steps=20,
+            seed=42,
+            upsample=False,
+            acceleration="Balanced",
+            lora_preset="None",
+            lora_repo="",
+            lora_filename="",
+            lora_strength=1.0,
+            generation_preset="Balanced — best overall (recommended)",
+            references=None,
+            api_name="/generate",
+          )
+          print("RAW_RESULT",repr(result))
+
+          candidate=None
+          def walk(x):
+            global candidate
+            if candidate is not None: return
+            if isinstance(x,str) and (x.endswith(".mp4") or x.endswith(".webm")):
+              candidate=x
+            elif isinstance(x,dict):
+              for v in x.values(): walk(v)
+            elif isinstance(x,(list,tuple)):
+              for v in x: walk(v)
+            else:
+              p=getattr(x,"path",None)
+              if isinstance(p,str): walk(p)
+          walk(result)
+          if not candidate: raise RuntimeError("no_video_path_in_result")
+          src=Path(candidate)
+          if not src.exists(): raise RuntimeError("returned_video_missing:"+candidate)
+          dest=out/"noor-minimax-golden.mp4"
+          shutil.copy2(src,dest)
+          h=hashlib.sha256(dest.read_bytes()).hexdigest()
+          (out/"sha256.txt").write_text(h+"  "+dest.name+"\n")
+          print("SHA256",h)
+          PY
+      - name: Verify video
+        run: |
+          test -s minimax-golden/noor-minimax-golden.mp4
+          ffprobe -v error             -show_entries format=duration,size,format_name             -show_entries stream=codec_type,codec_name,width,height,r_frame_rate,nb_frames             -of json minimax-golden/noor-minimax-golden.mp4 | tee minimax-golden/ffprobe.json
+          python - <<'PY'
+          import json
+          p=json.load(open("minimax-golden/ffprobe.json"))
+          streams=p.get("streams",[])
+          v=next((s for s in streams if s.get("codec_type")=="video"),None)
+          a=next((s for s in streams if s.get("codec_type")=="audio"),None)
+          if not v: raise SystemExit("NO_VIDEO_STREAM")
+          d=float(p.get("format",{}).get("duration",0) or 0)
+          size=int(p.get("format",{}).get("size",0) or 0)
+          if d<=0 or size<4096: raise SystemExit("INVALID_VIDEO")
+          print("MINIMAX_GOLDEN_VERIFIED",json.dumps({
+            "duration_sec":d,"size_bytes":size,
+            "codec":v.get("codec_name"),"width":v.get("width"),"height":v.get("height"),
+            "fps":v.get("r_frame_rate"),"frames":v.get("nb_frames"),
+            "has_audio":bool(a),"audio_codec":a.get("codec_name") if a else None
+          }))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-public-minimax-golden
+          path: minimax-golden/
+          retention-days: 1

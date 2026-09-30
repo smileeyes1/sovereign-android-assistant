@@ -51,7 +51,7 @@ object HakimNetworkProtectionTask {
         }
 
         val settingsIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Intent(Settings.ACTION_PRIVATE_DNS_SETTINGS)
+            Intent("android.settings.PRIVATE_DNS_SETTINGS")
         } else {
             Intent(Settings.ACTION_WIRELESS_SETTINGS)
         }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -132,7 +132,7 @@ object HakimNetworkProtectionTask {
         if (sameState(before, snapshot(context))) return true
         runCatching {
             val i = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                Intent(Settings.ACTION_PRIVATE_DNS_SETTINGS)
+                Intent("android.settings.PRIVATE_DNS_SETTINGS")
             } else {
                 Intent(Settings.ACTION_WIRELESS_SETTINGS)
             }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

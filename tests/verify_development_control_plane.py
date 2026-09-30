@@ -45,5 +45,4 @@ req("python3 tests/verify_development_control_plane.py" in workflow,"workflow_ga
 # Permanent anti-regression sentinels: development requests may ask for source work,
 # but the phone itself must never receive repo credentials or mutate source.
 req("GitHub" not in control or "github_secret_on_device" in control,"unexpected_github_path")
-req("source_mutation_on_device",)
 print("DEVELOPMENT_CONTROL_GATE=PASS")

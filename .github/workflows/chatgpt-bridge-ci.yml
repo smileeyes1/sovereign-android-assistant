@@ -39,3 +39,10 @@ jobs:
       - name: Build Railway Docker image
         working-directory: .
         run: docker build -t hakim-chatgpt-bridge:test -f Dockerfile .
+      - name: Smoke-test local MP4 renderer inside production image
+        working-directory: .
+        run: |
+          docker run --rm --entrypoint node \
+            -e HAKIM_VIDEO_RENDER_ENABLED=1 \
+            -e HAKIM_VIDEO_EXECUTOR_ADAPTER=local \
+            hakim-chatgpt-bridge:test dist/src/local-renderer-smoke.js

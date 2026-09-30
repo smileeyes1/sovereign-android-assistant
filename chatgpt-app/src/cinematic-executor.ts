@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
 import { CINEMATIC_DIRECTOR_VERSION } from "./cinematic-director.js";
+import {
+  getLocalRenderStatus,localRendererAvailable,submitLocalRender
+} from "./local-cinematic-renderer.js";
 
 const EXECUTOR_VERSION="HAKIM_VIDEO_EXECUTOR_V1";
-type ExecutorAdapter="rest"|"gradio";
+type ExecutorAdapter="rest"|"gradio"|"local";
 
 function clean(value:unknown,max:number){
   return typeof value==="string"?value.trim().slice(0,max):"";
@@ -19,7 +22,9 @@ function endpoint(env:NodeJS.ProcessEnv){
 }
 
 function adapter(env:NodeJS.ProcessEnv):ExecutorAdapter{
-  return env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="gradio"?"gradio":"rest";
+  if(env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="gradio") return "gradio";
+  if(env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="local") return "local";
+  return "rest";
 }
 
 function secret(env:NodeJS.ProcessEnv){
@@ -37,6 +42,7 @@ function planRecord(plan:unknown):Record<string,unknown>{
 }
 
 export function cinematicExecutorEnabled(env:NodeJS.ProcessEnv=process.env){
+  if(adapter(env)==="local") return localRendererAvailable(env);
   const common=env.HAKIM_VIDEO_RENDER_ENABLED==="1" &&
     clean(env.HAKIM_VIDEO_EXECUTOR_NAME,80)!=="" &&
     endpoint(env)!==null;
@@ -50,15 +56,19 @@ export function cinematicExecutorSummary(env:NodeJS.ProcessEnv=process.env){
     executor_version:EXECUTOR_VERSION,
     enabled:cinematicExecutorEnabled(env),
     adapter:kind,
-    name:clean(env.HAKIM_VIDEO_EXECUTOR_NAME,80)||null,
-    endpoint_configured:endpoint(env)!==null,
-    secret_configured:secret(env)!=="",
-    auth_mode:kind==="gradio"?"zerogpu_public_or_platform_session":"hmac",
+    name:clean(env.HAKIM_VIDEO_EXECUTOR_NAME,80)||(kind==="local"?"hakim-local-cinematic-fallback":null),
+    endpoint_configured:kind==="local"?true:endpoint(env)!==null,
+    secret_configured:kind==="local"?false:secret(env)!=="",
+    auth_mode:kind==="gradio"?"zerogpu_public_or_platform_session":kind==="local"?"none_local_runtime":"hmac",
+    external_auth_required:kind!=="local",
+    generative_ai:kind!=="local",
+    deterministic_fallback:kind==="local",
     free_only:true,
     paid_render_allowed:false,
     render_verified:false,
     success_requires_artifact:true,
-    gradio_quota_note:kind==="gradio"?"quota_is_enforced_by_hugging_face":null
+    gradio_quota_note:kind==="gradio"?"quota_is_enforced_by_hugging_face":null,
+    local_note:kind==="local"?"verified_mp4_fallback_not_generative_cinema":null
   };
 }
 
@@ -148,7 +158,9 @@ async function submitGradio(plan:unknown,env:NodeJS.ProcessEnv){
 
 export async function submitCinematicRender(plan:unknown,env:NodeJS.ProcessEnv=process.env){
   if(!cinematicExecutorEnabled(env)) throw new Error("video_executor_unavailable");
-  return adapter(env)==="gradio"?submitGradio(plan,env):submitRest(plan,env);
+  const kind=adapter(env);
+  if(kind==="local") return submitLocalRender(plan,env);
+  return kind==="gradio"?submitGradio(plan,env):submitRest(plan,env);
 }
 
 function parseSseComplete(raw:string){
@@ -298,5 +310,7 @@ async function statusGradio(id:string,env:NodeJS.ProcessEnv){
 export async function getCinematicRenderStatus(jobId:string,env:NodeJS.ProcessEnv=process.env){
   if(!cinematicExecutorEnabled(env)) throw new Error("video_executor_unavailable");
   const id=validateJobId(jobId);
-  return adapter(env)==="gradio"?statusGradio(id,env):statusRest(id,env);
+  const kind=adapter(env);
+  if(kind==="local") return getLocalRenderStatus(id,env);
+  return kind==="gradio"?statusGradio(id,env):statusRest(id,env);
 }

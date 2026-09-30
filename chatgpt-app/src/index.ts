@@ -18,6 +18,9 @@ import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.j
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
+import {
+  getLocalRenderStatus,resolveLocalArtifact,submitLocalRender
+} from "./local-cinematic-renderer.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -716,6 +719,25 @@ app.get("/pair",async(req,res)=>{
 });
 
 
+app.get("/video/v1/artifacts/:jobId/:token.mp4",async(req,res)=>{
+  try{
+    const artifact=await resolveLocalArtifact(String(req.params.jobId??""),String(req.params.token??""));
+    if(!artifact){
+      noStore(res);
+      return res.status(404).json({error:"video_artifact_not_found"});
+    }
+    noStore(res);
+    res.setHeader("Content-Type","video/mp4");
+    res.setHeader("Content-Disposition",`attachment; filename="${String(req.params.jobId)}.mp4"`);
+    res.setHeader("X-Content-Type-Options","nosniff");
+    res.setHeader("X-Hakim-Artifact-Sha256",artifact.sha256);
+    return res.sendFile(artifact.file);
+  }catch{
+    noStore(res);
+    return res.status(404).json({error:"video_artifact_not_found"});
+  }
+});
+
 app.get("/support",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>دعم حكيم</title><body><h1>دعم حكيم</h1><p>حكيم يربط ChatGPT بجهاز Android يملكه المستخدم أو يملك صلاحية إدارته. إذا تعذر الربط، تحقق من أن تطبيق حكيم مثبت ومفتوح وأن الجهاز متصل بالإنترنت، ثم أعد عملية الاقتران.</p><p>للأعطال أو بلاغات الأمان والخصوصية، استخدم <a href="https://github.com/smileeyes1/sovereign-android-assistant/issues">GitHub Issues</a>. لا ترسل رموز الربط أو مفاتيح الوصول أو لقطات أو محتوى حساسًا في بلاغ عام.</p><p>يمكن فصل التطبيق من إعدادات Plugins/Apps في ChatGPT، وإعادة الاقتران تتطلب تفويضًا جديدًا.</p></body></html>`));
 
 app.get("/privacy",(_req,res)=>res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>خصوصية حكيم</title><body><h1>سياسة خصوصية حكيم</h1>
@@ -1032,5 +1054,50 @@ app.all("/mcp",async(req,res)=>{
   }
 });
 
+async function maybeRunVideoStartupSelftest(){
+  if(process.env.HAKIM_VIDEO_SELFTEST_ON_START!=="1") return;
+  try{
+    const submitted=await submitLocalRender({
+      goal:"Hakim production synthetic video self-test",
+      duration_sec:8,
+      aspect:"16:9",
+      realism:"cinematic"
+    });
+    const deadline=Date.now()+75_000;
+    let status:any=null;
+    while(Date.now()<deadline){
+      status=await getLocalRenderStatus(submitted.job_id);
+      if(status.status==="completed"||status.status==="failed") break;
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+    const a=status?.artifact;
+    console.log("HAKIM_VIDEO_SELFTEST "+JSON.stringify({
+      ok:status?.render_success===true&&status?.artifact_verified===true,
+      status:status?.status??"timeout",
+      sha256:typeof a?.sha256==="string"&&/^[0-9a-f]{64}$/.test(a.sha256)?a.sha256:null,
+      duration_sec:typeof a?.duration_sec==="number"?a.duration_sec:null,
+      size_bytes:typeof a?.size_bytes==="number"?a.size_bytes:null,
+      playback_passed:a?.playback_passed===true,
+      quality_gates_passed:a?.quality_gates_passed===true,
+      cinematic_approval:a?.cinematic_approval===true,
+      fps:typeof a?.fps==="number"?a.fps:null,
+      width:typeof a?.width==="number"?a.width:null,
+      height:typeof a?.height==="number"?a.height:null,
+      has_audio:a?.has_audio===true,
+      renderer:typeof a?.renderer==="string"?a.renderer:null,
+      rule:"startup_selftest_proves_local_mp4_pipeline_only"
+    }));
+  }catch(error){
+    console.log("HAKIM_VIDEO_SELFTEST "+JSON.stringify({
+      ok:false,status:"error",
+      error:error instanceof Error?error.message.slice(0,300):"selftest_failed",
+      rule:"startup_selftest_proves_local_mp4_pipeline_only"
+    }));
+  }
+}
+
 const port=Number(process.env.PORT??3000);
-app.listen(port,"0.0.0.0",()=>console.log(`Hakim ChatGPT bridge listening on :${port}`));
+app.listen(port,"0.0.0.0",()=>{
+  console.log(`Hakim ChatGPT bridge listening on :${port}`);
+  void maybeRunVideoStartupSelftest();
+});

@@ -22,6 +22,10 @@ import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js
 import {
   getLocalRenderStatus,resolveLocalArtifact,submitLocalRender
 } from "./local-cinematic-renderer.js";
+import {
+  resolvePublicZeroGpuArtifact,resumePublicZeroGpuJobs
+} from "./public-zerogpu-renderer.js";
+import { resumeAutonomousFilmProjects } from "./autonomous-film-runner.js";
 
 requireProductionOAuthConfig(process.env);
 
@@ -723,7 +727,11 @@ app.get("/pair",async(req,res)=>{
 
 app.get("/video/v1/artifacts/:jobId/:token.mp4",async(req,res)=>{
   try{
-    const artifact=await resolveLocalArtifact(String(req.params.jobId??""),String(req.params.token??""));
+    const jobId=String(req.params.jobId??"");
+    const token=String(req.params.token??"");
+    const artifact=jobId.startsWith("zgpu-")
+      ?await resolvePublicZeroGpuArtifact(jobId,token)
+      :await resolveLocalArtifact(jobId,token);
     if(!artifact){
       noStore(res);
       return res.status(404).json({error:"video_artifact_not_found"});
@@ -1110,8 +1118,23 @@ async function maybeRunVideoStartupSelftest(){
   }
 }
 
+async function resumeAutonomousWork(){
+  try{
+    await resumePublicZeroGpuJobs();
+    await resumeAutonomousFilmProjects();
+  }catch(error){
+    console.log("HAKIM_AUTONOMY_RESUME "+JSON.stringify({
+      ok:false,
+      error:error instanceof Error?error.message.slice(0,240):"autonomy_resume_failed"
+    }));
+  }
+}
+
 const port=Number(process.env.PORT??3000);
 app.listen(port,"0.0.0.0",()=>{
   console.log(`Hakim ChatGPT bridge listening on :${port}`);
   void maybeRunVideoStartupSelftest();
+  void resumeAutonomousWork();
 });
+const autonomyTimer=setInterval(()=>{void resumeAutonomousWork();},15*60_000);
+autonomyTimer.unref?.();

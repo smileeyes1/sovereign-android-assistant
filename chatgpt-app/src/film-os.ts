@@ -1,5 +1,27 @@
 export const FILM_OS_VERSION="HAKIM_FILM_OS_V1_2026-09-30";
 
+export function filmOsCapabilities(){
+  return {
+    ok:true,
+    film_os_version:FILM_OS_VERSION,
+    project_memory:"durable_json_under_hakim_data_dir",
+    closed_loop:true,
+    world_bible:true,
+    character_bible:true,
+    shot_contracts:true,
+    provider_router:true,
+    hybrid_deterministic_compositor:true,
+    selective_regeneration:true,
+    shot_qa:true,
+    film_qa:true,
+    artifact_hash_gate:true,
+    golden_number_five_spec:true,
+    golden_number_five_rendered:false,
+    paid_without_explicit_approval:false,
+    rule:"Film OS readiness is not proof that a cinematic generative master has been rendered."
+  };
+}
+
 export type FilmAudience={
   label:string;
   min_age?:number;

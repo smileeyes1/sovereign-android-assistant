@@ -1,0 +1,113 @@
+name: Hakim Hugging Face ZeroGPU Autodeploy
+
+on:
+  push:
+    branches:
+      - experiment/hakim-hf-space-autodeploy
+    paths:
+      - ".github/workflows/hf-zerogpu-autodeploy.yml"
+      - "zerogpu-worker/**"
+
+jobs:
+  deploy-space:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require existing Hugging Face token
+        run: |
+          if [ -z "${HF_TOKEN:-}" ]; then
+            echo "HF_TOKEN_MISSING"
+            echo "No Hugging Face token is configured in this repository. No Space was created."
+            exit 42
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Hub client
+        run: python -m pip install --upgrade "huggingface_hub>=1.2,<2"
+
+      - name: Create or update free ZeroGPU Space
+        run: |
+          python - <<'PY'
+          import json, os, time
+          from huggingface_hub import HfApi
+
+          token=os.environ["HF_TOKEN"]
+          api=HfApi(token=token)
+          who=api.whoami(token=token)
+          owner=who.get("name") or who.get("fullname")
+          if not owner:
+              raise SystemExit("HF_WHOAMI_FAILED")
+
+          repo_id=f"{owner}/hakim-cinematic-worker"
+          print("HF_OWNER", owner)
+          print("HF_SPACE_REPO", repo_id)
+
+          # Free-only policy: request ZeroGPU. Never fall back to paid GPU hardware.
+          api.create_repo(
+              repo_id=repo_id,
+              repo_type="space",
+              space_sdk="gradio",
+              space_hardware="zero-a10g",
+              private=False,
+              exist_ok=True,
+              token=token,
+          )
+
+          api.upload_folder(
+              repo_id=repo_id,
+              repo_type="space",
+              folder_path="zerogpu-worker",
+              path_in_repo=".",
+              ignore_patterns=["tests/**","__pycache__/**","*.pyc"],
+              commit_message="Deploy Hakim ZeroGPU cinematic worker",
+              token=token,
+          )
+
+          runtime=None
+          for _ in range(40):
+              runtime=api.get_space_runtime(repo_id=repo_id, token=token)
+              stage=str(getattr(runtime,"stage",None))
+              hardware=str(getattr(runtime,"hardware",None))
+              requested=str(getattr(runtime,"requested_hardware",None))
+              print("RUNTIME",stage,hardware,requested)
+              if stage in {"RUNNING","RUNNING_BUILDING","BUILDING","APP_STARTING"}:
+                  if stage=="RUNNING":
+                      break
+              elif stage in {"BUILD_ERROR","RUNTIME_ERROR","PAUSED"}:
+                  break
+              time.sleep(10)
+
+          evidence={
+              "repo_id":repo_id,
+              "url":f"https://huggingface.co/spaces/{repo_id}",
+              "app_url":"https://"+repo_id.replace("/","-").lower()+".hf.space",
+              "stage":str(getattr(runtime,"stage",None)) if runtime else None,
+              "hardware":str(getattr(runtime,"hardware",None)) if runtime else None,
+              "requested_hardware":str(getattr(runtime,"requested_hardware",None)) if runtime else None,
+              "free_only":True,
+              "paid_fallback":False,
+          }
+          print(json.dumps(evidence,ensure_ascii=False,indent=2))
+          open("hf-space-evidence.json","w",encoding="utf-8").write(
+              json.dumps(evidence,ensure_ascii=False,indent=2)
+          )
+
+          if evidence["requested_hardware"] not in {"zero-a10g","None",None} and evidence["hardware"]!="zero-a10g":
+              raise SystemExit("NON_ZERO_GPU_HARDWARE_REQUESTED")
+          if evidence["stage"] in {"BUILD_ERROR","RUNTIME_ERROR"}:
+              raise SystemExit("HF_SPACE_FAILED")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hakim-hf-space-evidence
+          path: hf-space-evidence.json
+          if-no-files-found: ignore

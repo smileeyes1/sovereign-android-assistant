@@ -327,73 +327,6 @@ export function chatgptToolList(publicSafe=isPublicSafeDefault()){
     }
   ];
 
-  server.registerTool("get_film_os_capabilities",{
-    title:"قدرات استوديو حكيم السينمائي",
-    description:governedReadDescription(
-      "اقرأ حالة HAKIM FILM OS محليًا: الذاكرة، كتب العالم والشخصيات، عقود اللقطات، QA وGolden Production. لا ينفذ رندرًا."
-    ),
-    inputSchema:{},
-    annotations:READ_ANNOTATIONS
-  },async()=>{
-    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
-    return text(filmOsCapabilities());
-  });
-
-  server.registerTool("create_film_project",{
-    title:"إنشاء مشروع Film OS",
-    description:"أنشئ مشروع فيلم دائمًا داخل حكيم دون تشغيل مزود فيديو. preset=number5_grade1 ينشئ اختبار العدد ٥ الذهبي بعقود اللقطات وقواعد العد الحتمي.",
-    inputSchema:{
-      preset:z.enum(["custom","number5_grade1"]).optional(),
-      title:z.string().max(160).optional(),
-      goal:z.string().max(1600).optional(),
-      format:z.enum(["short","episode","film","educational"]).optional(),
-      duration_sec:z.number().int().min(8).max(7200).optional(),
-      aspect:z.enum(VIDEO_ASPECTS).optional(),
-      style:z.string().max(320).optional(),
-      educational:z.boolean().optional()
-    },
-    annotations:CHECKPOINT_ANNOTATIONS
-  },async(input)=>{
-    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
-    if(reviewMode){
-      return text({
-        ok:true,demo:true,project_id:"film-000000000000000000000001",
-        status:"SHOT_CONTRACTS_READY",preset:input.preset??"custom",
-        rule:"review_fixture_no_persistent_write"
-      });
-    }
-    if(input.preset==="number5_grade1") return text(await createGoldenNumberFiveProject());
-    if(!input.title?.trim()||!input.goal?.trim()) throw new Error("film_title_and_goal_required");
-    return text(await createFilmProject({
-      title:input.title,
-      goal:input.goal,
-      format:input.format,
-      duration_sec:input.duration_sec,
-      aspect:input.aspect,
-      style:input.style,
-      educational:input.educational,
-      paid_approved:false
-    }));
-  });
-
-  server.registerTool("get_film_project",{
-    title:"استرجاع مشروع Film OS",
-    description:governedReadDescription(
-      "استرجع مشروع فيلم محفوظًا في حكيم لمتابعة العمل من جلسة أو محادثة أخرى دون إعادة الإنشاء."
-    ),
-    inputSchema:{project_id:z.string().regex(/^film-[0-9a-f]{24}$/)},
-    annotations:READ_ANNOTATIONS
-  },async({project_id})=>{
-    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
-    if(reviewMode){
-      return text({
-        ok:true,demo:true,project_id,status:"SHOT_CONTRACTS_READY",
-        rule:"review_fixture_no_persistent_read"
-      });
-    }
-    return text(await getFilmProject(project_id));
-  });
-
   if(cinematicExecutorEnabled()){
     tools.push({
       name:"render_video_project",
@@ -688,6 +621,73 @@ export function createHakimServer(
   },async(input)=>{
     if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
     return text(buildCinematicPlan(input));
+  });
+
+  server.registerTool("get_film_os_capabilities",{
+    title:"قدرات استوديو حكيم السينمائي",
+    description:governedReadDescription(
+      "اقرأ حالة HAKIM FILM OS محليًا: الذاكرة، كتب العالم والشخصيات، عقود اللقطات، QA وGolden Production. لا ينفذ رندرًا."
+    ),
+    inputSchema:{},
+    annotations:READ_ANNOTATIONS
+  },async()=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    return text(filmOsCapabilities());
+  });
+
+  server.registerTool("create_film_project",{
+    title:"إنشاء مشروع Film OS",
+    description:"أنشئ مشروع فيلم دائمًا داخل حكيم دون تشغيل مزود فيديو. preset=number5_grade1 ينشئ اختبار العدد ٥ الذهبي بعقود اللقطات وقواعد العد الحتمي.",
+    inputSchema:{
+      preset:z.enum(["custom","number5_grade1"]).optional(),
+      title:z.string().max(160).optional(),
+      goal:z.string().max(1600).optional(),
+      format:z.enum(["short","episode","film","educational"]).optional(),
+      duration_sec:z.number().int().min(8).max(7200).optional(),
+      aspect:z.enum(VIDEO_ASPECTS).optional(),
+      style:z.string().max(320).optional(),
+      educational:z.boolean().optional()
+    },
+    annotations:CHECKPOINT_ANNOTATIONS
+  },async(input)=>{
+    if(!has("hakim.write")) return authError("hakim.write",resourceMetadataUrl);
+    if(reviewMode){
+      return text({
+        ok:true,demo:true,project_id:"film-000000000000000000000001",
+        status:"SHOT_CONTRACTS_READY",preset:input.preset??"custom",
+        rule:"review_fixture_no_persistent_write"
+      });
+    }
+    if(input.preset==="number5_grade1") return text(await createGoldenNumberFiveProject());
+    if(!input.title?.trim()||!input.goal?.trim()) throw new Error("film_title_and_goal_required");
+    return text(await createFilmProject({
+      title:input.title,
+      goal:input.goal,
+      format:input.format,
+      duration_sec:input.duration_sec,
+      aspect:input.aspect,
+      style:input.style,
+      educational:input.educational,
+      paid_approved:false
+    }));
+  });
+
+  server.registerTool("get_film_project",{
+    title:"استرجاع مشروع Film OS",
+    description:governedReadDescription(
+      "استرجع مشروع فيلم محفوظًا في حكيم لمتابعة العمل من جلسة أو محادثة أخرى دون إعادة الإنشاء."
+    ),
+    inputSchema:{project_id:z.string().regex(/^film-[0-9a-f]{24}$/)},
+    annotations:READ_ANNOTATIONS
+  },async({project_id})=>{
+    if(!has("hakim.read")) return authError("hakim.read",resourceMetadataUrl);
+    if(reviewMode){
+      return text({
+        ok:true,demo:true,project_id,status:"SHOT_CONTRACTS_READY",
+        rule:"review_fixture_no_persistent_read"
+      });
+    }
+    return text(await getFilmProject(project_id));
   });
 
   if(cinematicExecutorEnabled()){

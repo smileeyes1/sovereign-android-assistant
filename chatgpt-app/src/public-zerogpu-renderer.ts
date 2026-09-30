@@ -166,7 +166,7 @@ async function gradioPredict(
   timeoutMs:number
 ){
   try{
-    const client=await withTimeout(Client.connect(space),60_000,"gradio_connect");
+    const client:any=await withTimeout(Client.connect(space),60_000,"gradio_connect");
     const result=await withTimeout(
       client.predict(endpoint,payload) as Promise<GradioPrediction>,
       timeoutMs,

@@ -15,6 +15,7 @@ health=text("app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt")
 evolution=text("app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService.kt")
 selfcheck=text("app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt")
 workflow=text(".github/workflows/android.yml")
+contract=text("governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json")
 
 for token in [
     "HAKIM-DEVELOPMENT-CONTROL-2026-09-30-v1",
@@ -41,6 +42,16 @@ req("HakimDevelopmentControlPlane.shouldSignal(applicationContext)" in evolution
 req('HakimHealthBeacon.sendNow(applicationContext, "development_request")' in evolution,"evolution_beacon_missing")
 req("val development = HakimDevelopmentControlPlane.status(context)" in selfcheck,"selfcheck_control_missing")
 req("python3 tests/verify_development_control_plane.py" in workflow,"workflow_gate_missing")
+for token in [
+    '"controller": "HAKIM"',
+    '"single_model_dependency_forbidden": true',
+    '"wip_limit": 1',
+    '"same_failure_requires_strategy_change": true',
+    '"automatic_test_deletion_to_force_pass": false',
+    '"field_install_requires_separate_authorization": true',
+    '"distinguish_source_success_build_success_and_field_success": true'
+]:
+    req(token in contract,"contract:"+token)
 
 # Permanent anti-regression sentinels: development requests may ask for source work,
 # but the phone itself must never receive repo credentials or mutate source.

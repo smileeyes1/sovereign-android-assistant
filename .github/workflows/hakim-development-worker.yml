@@ -259,7 +259,7 @@ jobs:
           fi
 
           printf '%s\n' "${changed[@]}" > changed-files.txt
-          forbidden='^(\.github/|release-control/|governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT\.json$|governance/field-signing|Dockerfile$|railway\.toml$)'
+          forbidden='^(\.github/|release-control/|governance/|scripts/|Dockerfile$|railway\.toml$|build\.gradle$|settings\.gradle$|gradle\.properties$|app/build\.gradle$|app/src/main/AndroidManifest\.xml$|app/src/main/java/ps/hakim/phoneagent/(HakimUnifiedRelay|HakimRemoteApprovalReceiver|HakimAccessibilityService|HakimCapabilityKernel|HakimConstitution|HakimAcceptanceGate|HakimSelfImprovementLoop|HakimFieldAcceptance|AutoUpdater|HakimApp)\.kt$)'
           if grep -Eq "$forbidden" changed-files.txt; then
             echo "رفض: محاولة تعديل مسار محمي" >&2
             cat changed-files.txt >&2

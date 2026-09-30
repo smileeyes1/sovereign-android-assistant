@@ -15,6 +15,7 @@ import {
 import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
+import { developmentRequestStore } from "./development-request-store.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
 import { LIVE_PREFLIGHT_VERSION,MIN_FIELD_VERSION,fetchLivePreflight } from "./live-preflight.js";
 import { GOVERNANCE_SUMMARY,SOVEREIGN_GOVERNANCE_VERSION } from "./governance.js";
@@ -40,6 +41,7 @@ await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
 await continuityStore.init();
+await developmentRequestStore.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
 const relayCleanupTimer=setInterval(()=>{void directRelayStore.cleanup();},60_000);
@@ -1024,6 +1026,18 @@ app.post(
       await directRelayStore.pushResult(topic,key,carrier);
       logSanitizedStatusProbe(topic,key,carrier);
       logSanitizedHealthBeacon(key,carrier);
+      void developmentRequestStore.capture(topic,key,carrier).catch(error=>{
+        const message=error instanceof Error?error.message:"development_intake_failed";
+        console.log("HAKIM_DEVELOPMENT_INTAKE "+JSON.stringify({
+          accepted:false,
+          reason:[
+            "development_schema_invalid","development_control_version_invalid","development_request_id_invalid",
+            "development_package_invalid","development_version_invalid","development_time_invalid",
+            "development_trigger_invalid","development_severity_invalid","development_fingerprint_invalid",
+            "development_constraints_invalid","development_constraints_weakened"
+          ].includes(message)?message:"rejected"
+        }));
+      });
       noStore(res);
       return res.status(202).json({accepted:true});
     }catch(e){

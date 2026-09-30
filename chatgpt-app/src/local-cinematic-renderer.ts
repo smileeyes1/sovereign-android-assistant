@@ -247,7 +247,7 @@ async function render(job:JobState,dir:string){
 
 export function localRendererAvailable(env:NodeJS.ProcessEnv=process.env){
   return env.HAKIM_VIDEO_RENDER_ENABLED==="1"&&
-    (env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="local"||!env.HAKIM_VIDEO_EXECUTOR_ADAPTER);
+    env.HAKIM_VIDEO_EXECUTOR_ADAPTER==="local";
 }
 
 export async function submitLocalRender(plan:unknown,env:NodeJS.ProcessEnv=process.env){

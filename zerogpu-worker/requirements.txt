@@ -1,0 +1,9 @@
+spaces
+gradio==6.1.0
+torch==2.8.0
+git+https://github.com/huggingface/diffusers.git
+transformers>=4.46
+accelerate>=1.2
+imageio[ffmpeg]>=2.36
+ftfy>=6.3
+numpy>=2.1

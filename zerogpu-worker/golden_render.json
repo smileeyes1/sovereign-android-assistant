@@ -1,0 +1,26 @@
+{
+  "goal": "A small red toy car rolls smoothly across a warm wooden school desk at sunrise, then stops beside two polished blue marbles. The camera performs a slow controlled dolly-in. Natural window light, soft volumetric dust, realistic materials, shallow depth of field, subtle reflections, physically plausible motion, premium cinematic commercial look.",
+  "audience": "general",
+  "duration_sec": 2,
+  "aspect": "16:9",
+  "style": "cinematic photorealism, restrained warm grade, natural contrast",
+  "realism": "cinematic",
+  "educational": false,
+  "master_look": {
+    "cadence_fps": 24,
+    "shutter_angle": 180,
+    "camera_rule": "slow motivated dolly only",
+    "lighting": "warm sunrise window key with soft ambient fill",
+    "color": "restrained warm cinematic grade"
+  },
+  "shots": [
+    {
+      "shot_id": "S01",
+      "duration_sec": 2,
+      "framing": "medium_close",
+      "lens_mm": 50,
+      "camera_move": "gentle_dolly",
+      "generation_strategy": "hero_quality"
+    }
+  ]
+}

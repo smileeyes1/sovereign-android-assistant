@@ -1,0 +1,42 @@
+name: Hakim ZeroGPU Worker CI
+
+on:
+  pull_request:
+    paths:
+      - "zerogpu-worker/**"
+      - ".github/workflows/zerogpu-worker-ci.yml"
+  push:
+    branches:
+      - release/hakim-chatgpt-plugin-v1-rc1
+    paths:
+      - "zerogpu-worker/**"
+      - ".github/workflows/zerogpu-worker-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zerogpu-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip pytest
+      - run: python -m py_compile contract.py
+      - run: pytest -q
+      - name: Guard Space metadata and free-only contract
+        run: |
+          grep -q '^sdk: gradio$' README.md
+          grep -q '^app_file: app.py$' README.md
+          grep -q 'quality_gates_passed.*False' contract.py
+          grep -q 'cinematic_approval.*False' contract.py
+          grep -q 'paid_path.*False' app.py
+      - name: Package Hugging Face Space payload
+        run: zip -r ../hakim-zerogpu-space.zip README.md app.py contract.py requirements.txt golden_render.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-zerogpu-space
+          path: hakim-zerogpu-space.zip
+          if-no-files-found: error

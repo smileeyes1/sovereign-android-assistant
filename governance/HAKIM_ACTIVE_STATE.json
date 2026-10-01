@@ -20,12 +20,12 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20313,
-      "commit": "a882a24c5d3e7cf23a795ac8824ddc57a9bc3b76",
-      "ci_run_number": 1224,
+      "version_code": 20316,
+      "commit": "a80da9f45ddf6354c37b7a6b0b3ad8c9284c2c42",
+      "ci_run_number": 1343,
       "source_ci_verified": true,
       "field_verified": true,
-      "exact_apk_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19"
+      "exact_apk_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7"
     },
     "candidate": {
       "version_code": 20317,
@@ -38,17 +38,17 @@
       "purpose": "strict_reversible_f8040_web_dns_family_filter"
     },
     "field_observed_current": {
-      "observed_at": "2026-09-29",
-      "version_code": 20313,
-      "version_name": "3.3.9-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-field-acceptance-v1",
-      "apk_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+      "observed_at": "2026-10-01",
+      "version_code": 20316,
+      "version_name": "3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6",
+      "apk_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7",
       "package": "ps.hakim.stable",
       "service_running": true,
-      "service_connected": true,
-      "recovery_state": "healthy_observed_with_uncontrolled_gaps",
-      "evidence": "authenticated_health_hash_and_status_probe_version_20313",
+      "service_connected": false,
+      "recovery_state": "secure_relay_observed_network_guardian_active",
+      "evidence": "authenticated_health_hash_and_status_probe_r6_2026_10_01",
       "current_signer_reobserved": true,
-      "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_artifact",
+      "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_r6_artifact",
       "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
       "promoted_as_source_baseline": true
     }
@@ -163,7 +163,7 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+    "signed_candidate_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7",
     "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
@@ -171,8 +171,8 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "HAKIM-20313-D1-SOVEREIGN-GOVERNANCE.apk",
-    "install_relation": "UPGRADE_FROM_FIELD_20316_TO_20317",
+    "signed_candidate_file": "Hakim-20316-F8040-WEB-PROBE-R6.apk",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20316_TO_20317",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -181,7 +181,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20313,
+    "signed_candidate_version": 20316,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,

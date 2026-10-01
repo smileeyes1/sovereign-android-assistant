@@ -85,7 +85,11 @@ req('ROUTER_ORIGIN = "https://192.168.1.1"' in router_auth, "router_auth_origin_
 req('uri.host == ROUTER_HOST' in router_auth and 'uri.port in setOf(-1, 443)' in router_auth, "router_auth_navigation_not_bounded")
 req('addJavascriptInterface' not in router_auth, "router_auth_js_bridge_forbidden")
 req('CookieManager.getInstance().flush()' in router_auth, "router_auth_cookie_flush_missing")
-req('HakimNetworkGuardian.inspectAsync' in router_auth, "router_auth_resume_missing")
+req(
+    'HakimNetworkGuardian.inspectAsync' in router_auth or
+    ('HakimNetworkGuardian.verifyLocalWebViewDns' in router_auth and 'HakimNetworkGuardian.recordLocalWebViewRollback' in router_auth),
+    "router_auth_resume_missing"
+)
 req('handlerSsl?.proceed()' in router_auth and 'isRouterUri(uri)' in router_auth, "router_auth_local_ssl_gate_missing")
 req('maybeOpenLocalRouterAuth()' in command_center and 'ROUTER_AUTH_REQUIRED' in command_center, "router_auth_handoff_missing")
 req('MODERN_VIEW_PATH = "/?_type=menuView&_tag=lanMgrIpv4&Menu3Location=0"' in router_auth, "webview_modern_dns_path_missing")

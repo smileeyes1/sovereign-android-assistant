@@ -14,7 +14,7 @@ import kotlin.concurrent.thread
  * طبقة حماية هاتفية محدودة وقابلة للتحقق.
  *
  * تستخدم ADB المحلي المأذون والمقترن على نفس الهاتف لضبط Private DNS فقط.
- * لا توجد خدمة Accessibility، ولا root، ولا WRITE_SECURE_SETTINGS، ولا shell عام.
+ * لا توجد خدمة وصول حساسة، ولا root، ولا صلاحية إعدادات خاصة، ولا shell عام.
  */
 object HakimNetworkProtectionTask {
     const val VERSION = "HAKIM-NETWORK-PROTECTION-ANDROID-V2-LOCAL-ADB"

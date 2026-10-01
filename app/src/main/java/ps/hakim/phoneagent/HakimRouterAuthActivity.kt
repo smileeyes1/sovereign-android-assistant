@@ -35,7 +35,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
         private const val MODERN_VIEW_URL = ROUTER_ORIGIN + MODERN_VIEW_PATH
         private const val FAMILY_DNS_1 = "185.228.168.168"
         private const val FAMILY_DNS_2 = "185.228.169.168"
-        private const val MAX_PROBE_RETRIES = 12
+        private const val MAX_PROBE_RETRIES = 20
     }
 
     private lateinit var webView: WebView
@@ -176,35 +176,115 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val script = """
             (function(){
               try{
-                if(document.querySelector('input[type="password"]')) return JSON.stringify({state:'AUTH'});
-                const host=(document.querySelector('#IF_URL_HOST')||{}).value||'';
-                const btn=document.querySelector('#Btn_apply_DHCPBasicCfg');
-                const source0=document.querySelector('#DnsServerSource0');
-                const source1=document.querySelector('#DnsServerSource1');
-                const hidden1=document.querySelector('#DNSServer1');
-                const hidden2=document.querySelector('#DNSServer2');
-                const got=document.querySelector('#DataHasBeenGot');
-                const seg=(p)=>[0,1,2,3].map(i=>{
-                  const e=document.querySelector('#'+p+i);
-                  return e?String(e.value||''):'';
-                }).join('.');
-                const dns1=(hidden1&&hidden1.value)||seg('sub_DNSServer1');
-                const dns2=(hidden2&&hidden2.value)||seg('sub_DNSServer2');
-                const source=source0&&source0.checked?'0':(source1&&source1.checked?'1':'');
-                const marker=!!document.querySelector('#DHCPBasicCfg') &&
-                  !!document.querySelector('#template_DHCPBasicCfg') &&
-                  !!btn && !!source0 && !!source1;
-                if(!marker) return JSON.stringify({state:'WAIT'});
-                if(got && got.value==='0') return JSON.stringify({state:'WAIT'});
+                const docs=[];
+                const seen=[];
+                function addDoc(d,label){
+                  if(!d || seen.indexOf(d)>=0) return;
+                  seen.push(d); docs.push({d:d,label:label});
+                  try{
+                    const fs=d.querySelectorAll('iframe,frame');
+                    for(let i=0;i<fs.length && docs.length<8;i++){
+                      try{
+                        const cd=fs[i].contentDocument;
+                        if(cd) addDoc(cd,label+'.f'+i);
+                      }catch(_){}
+                    }
+                  }catch(_){}
+                }
+                addDoc(document,'top');
+
+                function byIdOrName(d,n){
+                  return d.getElementById(n) || d.querySelector('[name="'+n+'"]');
+                }
+                function generic(d,kind){
+                  const els=d.querySelectorAll('input,button,select,a');
+                  for(let i=0;i<els.length && i<800;i++){
+                    const e=els[i];
+                    const key=String((e.id||'')+' '+(e.name||'')).toLowerCase();
+                    if(kind==='apply' && key.indexOf('apply')>=0 && key.indexOf('dhcp')>=0) return e;
+                    if(kind==='source0' && key.indexOf('dnsserversource0')>=0) return e;
+                    if(kind==='source1' && key.indexOf('dnsserversource1')>=0) return e;
+                    if(kind==='source' && key.indexOf('dnsserversource')>=0 && key.indexOf('0')<0 && key.indexOf('1')<0) return e;
+                    if(kind==='dns1' && key==='dnsserver1') return e;
+                    if(kind==='dns2' && key==='dnsserver2') return e;
+                  }
+                  return null;
+                }
+                function seg(d,p){
+                  const vals=[];
+                  for(let i=0;i<4;i++){
+                    const e=byIdOrName(d,p+i);
+                    if(!e) return null;
+                    vals.push(String(e.value||''));
+                  }
+                  return vals.join('.');
+                }
+                function hasSegments(d,p){
+                  for(let i=0;i<4;i++) if(!byIdOrName(d,p+i)) return false;
+                  return true;
+                }
+                function login(d){
+                  return !!d.querySelector('input[type="password"],#LoginId,[name="fLogin"],#Frm_Password,[name*="password" i]');
+                }
+                for(let x=0;x<docs.length;x++){
+                  if(login(docs[x].d)) {
+                    return JSON.stringify({state:'AUTH',variant:docs[x].label,frames:Math.max(0,docs.length-1)});
+                  }
+                }
+
+                let globalApply=false,globalDns=false,globalSource=false,globalDhcp=false;
+                for(let x=0;x<docs.length;x++){
+                  const d=docs[x].d;
+                  const btn=byIdOrName(d,'Btn_apply_DHCPBasicCfg') || generic(d,'apply');
+                  const src0=byIdOrName(d,'DnsServerSource0') || generic(d,'source0');
+                  const src1=byIdOrName(d,'DnsServerSource1') || generic(d,'source1');
+                  const srcDirect=byIdOrName(d,'DnsServerSource') || generic(d,'source');
+                  const hidden1=byIdOrName(d,'DNSServer1') || generic(d,'dns1');
+                  const hidden2=byIdOrName(d,'DNSServer2') || generic(d,'dns2');
+                  const seg1=hasSegments(d,'sub_DNSServer1');
+                  const seg2=hasSegments(d,'sub_DNSServer2');
+                  const dhcpMarker=!!d.querySelector('#DHCPBasicCfg,#template_DHCPBasicCfg,[id*="DHCPBasicCfg"],[name*="DHCPBasicCfg"]') || !!btn;
+
+                  globalApply=globalApply||!!btn;
+                  globalDns=globalDns||((!!hidden1||seg1) && (!!hidden2||seg2));
+                  globalSource=globalSource||((!!src0&&!!src1)||!!srcDirect);
+                  globalDhcp=globalDhcp||dhcpMarker;
+
+                  if(!btn || (!hidden1 && !seg1) || (!hidden2 && !seg2) || ((!src0||!src1) && !srcDirect) || !dhcpMarker) continue;
+
+                  const dns1=(hidden1 && String(hidden1.value||'')) || seg(d,'sub_DNSServer1') || '';
+                  const dns2=(hidden2 && String(hidden2.value||'')) || seg(d,'sub_DNSServer2') || '';
+                  let source='';
+                  if(src0 && src1) source=src0.checked?'0':(src1.checked?'1':'');
+                  else if(srcDirect) source=String(srcDirect.value||'');
+
+                  return JSON.stringify({
+                    state:'READY',
+                    host:String(location.hostname||''),
+                    dns1:String(dns1),
+                    dns2:String(dns2),
+                    source:String(source),
+                    disabled:!!btn.disabled,
+                    variant:docs[x].label,
+                    frames:Math.max(0,docs.length-1),
+                    hasApply:true,
+                    hasDns:true,
+                    hasSource:true,
+                    hasDhcp:true
+                  });
+                }
                 return JSON.stringify({
-                  state:'READY',
-                  host:String(host),
-                  dns1:String(dns1),
-                  dns2:String(dns2),
-                  source:String(source),
-                  disabled:!!btn.disabled
+                  state:'WAIT',
+                  variant:'none',
+                  frames:Math.max(0,docs.length-1),
+                  hasApply:globalApply,
+                  hasDns:globalDns,
+                  hasSource:globalSource,
+                  hasDhcp:globalDhcp
                 });
-              }catch(_){return JSON.stringify({state:'MISS'});}
+              }catch(_){
+                return JSON.stringify({state:'MISS',variant:'error',frames:0,hasApply:false,hasDns:false,hasSource:false,hasDhcp:false});
+              }
             })()
         """.trimIndent()
 
@@ -212,21 +292,29 @@ class HakimRouterAuthActivity : ComponentActivity() {
             actionInFlight = false
             val data = decodeObject(raw)
             if (data == null) {
+                HakimNetworkGuardian.markLocalWebViewProbeState(this, "DECODE_MISS")
                 retryProbe(target)
                 return@evaluateJavascript
             }
+            HakimNetworkGuardian.recordLocalWebViewProbe(
+                this,
+                state = data.optString("state").take(32),
+                variant = data.optString("variant").take(32),
+                frameCount = data.optInt("frames", 0).coerceIn(0, 8),
+                hasApply = data.optBoolean("hasApply", false),
+                hasDns = data.optBoolean("hasDns", false),
+                hasSource = data.optBoolean("hasSource", false),
+                hasDhcp = data.optBoolean("hasDhcp", false)
+            )
             when (data.optString("state")) {
                 "AUTH" -> {
                     mode = "AUTH"
                     navigationIssued = false
                     status.text = "انتهت جلسة الراوتر؛ افتحها محليًا هنا لإكمال الحماية."
                 }
-                "WAIT" -> retryProbe(target)
+                "WAIT", "MISS" -> retryProbe(target)
                 "READY" -> handleReadyDns(target, data)
-                else -> {
-                    status.text = "لم تثبت واجهة DNS بما يكفي؛ لم يُجر أي تعديل."
-                    HakimHealthBeacon.sendAsync(this, "router_webview_dns_not_proven")
-                }
+                else -> retryProbe(target)
             }
         }
     }
@@ -234,7 +322,8 @@ class HakimRouterAuthActivity : ComponentActivity() {
     private fun retryProbe(target: WebView) {
         probeRetries += 1
         if (probeRetries >= MAX_PROBE_RETRIES) {
-            status.text = "واجهة DHCP لم تكتمل بعد؛ لم يُجر أي تعديل."
+            HakimNetworkGuardian.markLocalWebViewProbeState(this, "TIMEOUT")
+            status.text = "واجهة DHCP لم تثبت بعد؛ لم يُجر أي تعديل."
             HakimHealthBeacon.sendAsync(this, "router_webview_dns_probe_timeout")
             return
         }

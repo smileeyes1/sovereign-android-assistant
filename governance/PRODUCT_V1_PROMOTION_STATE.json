@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20316,
+  "candidate_version": 20317,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -19,8 +19,8 @@
   "professional_observability_visual_field_verified": false,
   "chatgpt_control_source_integrated": true,
   "chatgpt_control_field_verified": false,
-  "verified_parent_version": 20313,
-  "verified_parent_same_artifact_sha256": "5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19",
+  "verified_parent_version": 20316,
+  "verified_parent_same_artifact_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7",
   "fault_containment_source_integrated": true,
   "fault_containment_field_verified": false,
   "coherent_relay_status_source_integrated": true,

@@ -1,0 +1,101 @@
+name: نشر تحديث حكيم 20329 تلقائيًا
+
+on:
+  push:
+    branches:
+      - ops/publish-hakim-20329-r19-autoupdate
+    paths:
+      - ".github/workflows/publish-r19-autoupdate.yml"
+      - "ops/r19-signature-patch.b64"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-hakim-20329-r19-autoupdate
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: جلب وصفة إعادة البناء العامة
+        uses: actions/checkout@v4
+
+      - name: تنزيل خرج CI الأصلي المطابق
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api             -H "Accept: application/vnd.github+json"             "/repos/${GITHUB_REPOSITORY}/actions/artifacts/11181173123/zip"             > /tmp/r19-ci.zip
+          mkdir -p /tmp/r19-ci
+          unzip -q /tmp/r19-ci.zip -d /tmp/r19-ci
+          UNSIGNED=/tmp/r19-ci/release/app-release-unsigned.apk
+          test -f "$UNSIGNED"
+          echo "47f547a3d688ca8dbfdfb62791c457a3c0af481c7c2cad2cf327d4f4d72b602d  $UNSIGNED" | sha256sum -c -
+
+      - name: إعادة تكوين APK الموقّع دون مفتاح خاص
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, json, pathlib, zlib
+          unsigned = pathlib.Path("/tmp/r19-ci/release/app-release-unsigned.apk").read_bytes()
+          raw = base64.b64decode(pathlib.Path("ops/r19-signature-patch.b64").read_text().strip())
+          patch = json.loads(zlib.decompress(raw))
+          if hashlib.sha256(unsigned).hexdigest() != patch["u"]:
+              raise SystemExit("unsigned_sha_mismatch")
+          out = bytearray()
+          for cmd in patch["c"]:
+              if cmd[0] == "C":
+                  start, size = int(cmd[1]), int(cmd[2])
+                  out.extend(unsigned[start:start+size])
+              elif cmd[0] == "L":
+                  out.extend(base64.b64decode(cmd[1]))
+              else:
+                  raise SystemExit("unknown_patch_command")
+          signed = bytes(out)
+          digest = hashlib.sha256(signed).hexdigest()
+          if digest != patch["s"] or digest != "5ea24b68cc749e85d285616409807055940638a91e9ce4655e0aa5a0a5ba13e4":
+              raise SystemExit("signed_sha_mismatch")
+          if len(signed) != int(patch["z"]) or len(signed) != 14224998:
+              raise SystemExit("signed_size_mismatch")
+          pathlib.Path("/tmp/HAKIM-20329-D1-VERIFIED.apk").write_bytes(signed)
+          print("RECONSTRUCTED_R19=PASS")
+          PY
+
+      - name: التحقق من هوية التوقيع
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_DIR="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          VERIFY="$("$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs /tmp/HAKIM-20329-D1-VERIFIED.apk)"
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" <<<"$VERIFY"
+          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" <<<"$VERIFY"
+          grep -qi "certificate SHA-256 digest: d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3" <<<"$VERIFY"
+          echo "R19_D1_VERIFY=PASS"
+
+      - name: نشر R19 إلى قناة التحديث الآمن
+        run: |
+          set -euo pipefail
+          APK=/tmp/HAKIM-20329-D1-VERIFIED.apk
+          TOPIC="hakim-stable-updates-4f9c92e6a1b74d8d8b372e9e69fdc2c1"
+          SHA="5ea24b68cc749e85d285616409807055940638a91e9ce4655e0aa5a0a5ba13e4"
+          SIZE="14224998"
+          MESSAGE="{\"version_code\":20329,\"sha256\":\"$SHA\",\"size\":$SIZE}"
+          curl --fail-with-body --silent --show-error --max-time 180             -H "Title: HAKIM_UPDATE"             -H "Filename: HAKIM-20329-D1-VERIFIED.apk"             -H "Message: $MESSAGE"             -T "$APK"             "https://ntfy.sh/$TOPIC" > /tmp/ntfy-event.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/ntfy-event.json"))
+          if d.get("title") != "HAKIM_UPDATE":
+              raise SystemExit("wrong_title")
+          if '"version_code":20329' not in d.get("message",""):
+              raise SystemExit("wrong_message")
+          a=d.get("attachment") or {}
+          if not str(a.get("url","")).startswith("https://"):
+              raise SystemExit("attachment_url_missing")
+          if int(a.get("size",0)) != 14224998:
+              raise SystemExit("attachment_size_mismatch")
+          print("NTFY_R19_PUBLISH=PASS")
+          PY

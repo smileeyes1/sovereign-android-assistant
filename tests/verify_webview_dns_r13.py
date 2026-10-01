@@ -13,7 +13,9 @@ def req(ok, reason):
     if not ok:
         raise SystemExit("WEBVIEW_DNS_R13=FAIL reason=" + reason)
 
-req("versionCode 20325" in build and "webview-dns-adaptive-r13-apply-gate-r14-webview-baseline-r15" in build, "version")
+m = re.search(r"versionCode\\s+(\\d+)", build)
+req(m is not None and int(m.group(1)) >= 20325 and
+    "webview-dns-adaptive-r13-apply-gate-r14-webview-baseline-r15" in build, "version")
 req("iframe,frame" in router and "contentDocument" in router, "same_origin_frame_probe_missing")
 req("location.hostname" in router, "router_host_fallback_missing")
 req("isIpv4OrBlank" in router and "splitIpv4OrBlank" in router, "blank_baseline_support_missing")

@@ -103,6 +103,18 @@ class CommandCenterActivity : ComponentActivity() {
         HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
         HakimConnectionResilience.recover(this, "command_center_resume")
         HakimResilienceAlarmReceiver.schedule(this)
+        maybeOpenLocalRouterAuth()
+    }
+
+    private fun maybeOpenLocalRouterAuth() {
+        val guardian = HakimNetworkGuardian.status(this)
+        if (guardian.optString("state") != "ROUTER_AUTH_REQUIRED") return
+        val p = getSharedPreferences("hakim_router_auth_ui", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val last = p.getLong("last_launch_at", 0L)
+        if (now - last < 60_000L) return
+        p.edit().putLong("last_launch_at", now).apply()
+        startActivity(Intent(this, HakimRouterAuthActivity::class.java))
     }
 
     override fun onPause() {

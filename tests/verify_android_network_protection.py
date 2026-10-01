@@ -6,6 +6,8 @@ activity = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimMobileTaskActivit
 task = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkProtectionTask.kt").read_text(encoding="utf-8")
 guardian = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkGuardian.kt").read_text(encoding="utf-8")
 pairing = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimLocalPairing.kt").read_text(encoding="utf-8")
+router_auth = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimRouterAuthActivity.kt").read_text(encoding="utf-8")
+command_center = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 
 def req(condition: bool, message: str):
     if not condition:
@@ -77,5 +79,14 @@ req('CookieManager.getInstance()' in guardian, "local_router_cookie_store_missin
 req('getCookie("https://$EXPECTED_GATEWAY/")' in guardian, "local_router_cookie_scope_missing")
 req('persistLocalRouterCookie(cookie)' in guardian, "local_router_cookie_persistence_missing")
 req('web_local_session_present_at_attempt' in guardian, "local_router_session_evidence_missing")
+req('android:name=".HakimRouterAuthActivity"' in manifest, "router_auth_activity_missing")
+req('android:name=".HakimRouterAuthActivity"\n            android:exported="false"' in manifest, "router_auth_activity_must_not_be_exported")
+req('ROUTER_ORIGIN = "https://192.168.1.1"' in router_auth, "router_auth_origin_not_bounded")
+req('uri.host == ROUTER_HOST' in router_auth and 'uri.port in setOf(-1, 443)' in router_auth, "router_auth_navigation_not_bounded")
+req('addJavascriptInterface' not in router_auth, "router_auth_js_bridge_forbidden")
+req('CookieManager.getInstance().flush()' in router_auth, "router_auth_cookie_flush_missing")
+req('HakimNetworkGuardian.inspectAsync' in router_auth, "router_auth_resume_missing")
+req('handlerSsl?.proceed()' in router_auth and 'isRouterUri(uri)' in router_auth, "router_auth_local_ssl_gate_missing")
+req('maybeOpenLocalRouterAuth()' in command_center and 'ROUTER_AUTH_REQUIRED' in command_center, "router_auth_handoff_missing")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

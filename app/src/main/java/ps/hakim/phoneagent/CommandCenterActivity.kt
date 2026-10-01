@@ -111,11 +111,16 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun maybeOpenLocalRouterAuth() {
         if (!HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
+        val guardian = HakimNetworkGuardian.status(this)
+        val nativeDnsResume =
+            guardian.optBoolean("web_local_session_present", false) &&
+            guardian.optString("state") == "TR064_LANHOST_NOT_FOUND"
         val p = getSharedPreferences("hakim_router_auth_ui", MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        val last = p.getLong("last_launch_at", 0L)
+        val key = if (nativeDnsResume) "last_dns_resume_at" else "last_launch_at"
+        val last = p.getLong(key, 0L)
         if (now - last < 60_000L) return
-        p.edit().putLong("last_launch_at", now).apply()
+        p.edit().putLong(key, now).apply()
         startActivity(Intent(this, HakimRouterAuthActivity::class.java))
     }
 

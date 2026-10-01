@@ -215,7 +215,8 @@ object HakimTaskManager {
         val rawState = guardian.optString("state")
         val webviewProbe = guardian.optString("webview_probe_state")
         val webviewBlocked = webviewProbe in setOf(
-            "TIMEOUT", "GATE_BLOCKED", "BASELINE_REJECTED", "APPLY_NOT_STARTED", "ROLLBACK_NOT_STARTED"
+            "TIMEOUT", "GATE_BLOCKED", "BASELINE_REJECTED", "APPLY_NOT_STARTED",
+            "APPLY_GATE_STILL_DISABLED", "ROLLBACK_NOT_STARTED"
         )
         val taskState = when {
             fullBypass -> State.COMPLETE

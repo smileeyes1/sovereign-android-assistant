@@ -622,6 +622,7 @@ object HakimUnifiedRelay {
             .put("secure_relay_running", isRunning())
             .put("secure_relay_connected", liveConnected)
             .put("operation", HakimExecutiveLoop.publicStatus(context))
+            .put("task_manager", HakimTaskManager.publicStatus(context))
             .put("cloud_continuity", HakimCloudContinuity.publicStatus(context))
             .put("browser_service_running", HakimService.running)
             .put("legacy_channel_connected", HakimService.connected)

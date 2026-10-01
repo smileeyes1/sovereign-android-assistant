@@ -91,7 +91,11 @@ req(
     "router_auth_resume_missing"
 )
 req('handlerSsl?.proceed()' in router_auth and 'isRouterUri(uri)' in router_auth, "router_auth_local_ssl_gate_missing")
-req('maybeOpenLocalRouterAuth()' in command_center and 'ROUTER_AUTH_REQUIRED' in command_center, "router_auth_handoff_missing")
+req(
+    'maybeOpenLocalRouterAuth()' in command_center and
+    'HakimTaskManager.shouldAutoOpenRouterProtection(this)' in command_center,
+    "router_auth_handoff_missing"
+)
 req('MODERN_VIEW_PATH = "/?_type=menuView&_tag=lanMgrIpv4&Menu3Location=0"' in router_auth, "webview_modern_dns_path_missing")
 req('Btn_apply_DHCPBasicCfg' in router_auth and 'DnsServerSource0' in router_auth, "webview_dns_form_gate_missing")
 req('recordLocalWebViewBaseline' in router_auth and 'markLocalWebViewApplyAttempt' in router_auth, "webview_baseline_or_apply_evidence_missing")

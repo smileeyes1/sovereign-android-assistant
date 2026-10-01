@@ -56,7 +56,30 @@ object HakimExecutiveLoop {
             .putString("events", "[]")
             .apply()
         HakimGoalSupervisor.begin(context, id, criteria, "android-candidate", goal)
+        HakimTaskManager.beginExecutive(context, id, goal, criteria)
         record(context, Phase.UNDERSTANDING, "فهم المقصد وتثبيت معيار الاكتمال")
+        return current(context)!!
+    }
+
+    fun resume(context: Context, task: HakimTaskManager.Task): Session {
+        val goal = task.goal.trim().take(4000)
+        val criteria = task.acceptance.trim()
+            .ifBlank { "إظهار أثر واضح قابل للتحقق للمستخدم" }
+            .take(4000)
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        p.edit()
+            .putString("session_id", task.id)
+            .putString("goal", goal)
+            .putString("acceptance", criteria)
+            .putInt("cycle", (task.attempts + 1).coerceAtLeast(1))
+            .putString("phase", Phase.REPAIRING.name)
+            .putBoolean("active", true)
+            .putLong("started_at", System.currentTimeMillis())
+            .putLong("last_material_gain_at", System.currentTimeMillis())
+            .putString("events", "[]")
+            .apply()
+        HakimTaskManager.beginExecutive(context, task.id, goal, criteria)
+        record(context, Phase.REPAIRING, "استئناف المهمة من المقصد المحفوظ مع إعادة التحقق من الواقع الحالي")
         return current(context)!!
     }
 
@@ -92,6 +115,7 @@ object HakimExecutiveLoop {
             .putString("phase", phase.name)
             .putLong("updated_at", System.currentTimeMillis())
             .apply()
+        HakimTaskManager.syncExecutive(context, current(context), phase, detail)
     }
 
     fun advanceCycle(context: Context, reason: String): Boolean {
@@ -149,6 +173,7 @@ object HakimExecutiveLoop {
             .putString("last_material_gain", evidence.take(1000))
             .putInt("same_cycle_reason_count", 0)
             .apply()
+        HakimTaskManager.noteEvidence(context, current(context)?.id, evidence)
     }
 
     fun complete(

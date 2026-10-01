@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20321 WebView-native DNS candidate
+# 20322 Task Manager R12 candidate
 
 on:
   push:
@@ -47,6 +47,7 @@ jobs:
           python3 tests/verify_20098_executive_loop.py
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_visible_operations.py
+          python3 tests/verify_task_manager.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py
           python3 tests/verify_20100_pinned_composer.py
@@ -150,7 +151,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20321"
+          test "$VERSION_CODE" = "20322"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

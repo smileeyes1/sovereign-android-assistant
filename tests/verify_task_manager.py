@@ -35,6 +35,9 @@ req("hakim_resume_task_id" in command, "resume_handoff_missing")
 req("HakimExecutiveLoop.resume(this, resumeTask)" in command, "resume_execution_missing")
 req("HakimTaskManager.shouldAutoOpenRouterProtection(this)" in command,
     "network_protection_auto_resume_not_wired")
+req("maybeOpenLocalRouterAuth()" in command.split("private val operationRefresh",1)[1].split("private val mediaPickerLauncher",1)[0],
+    "network_auto_resume_foreground")
+req("APPLY_GATE_STILL_DISABLED" in manager, "apply_gate_blocker_not_modeled")
 req("HakimTaskManager.beginExecutive" in loop and "HakimTaskManager.syncExecutive" in loop,
     "executive_loop_not_persisted")
 req("fun resume(context: Context, task: HakimTaskManager.Task)" in loop,

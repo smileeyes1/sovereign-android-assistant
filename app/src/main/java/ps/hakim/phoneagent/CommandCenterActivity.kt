@@ -52,6 +52,8 @@ class CommandCenterActivity : ComponentActivity() {
     private val operationRefresh = object : Runnable {
         override fun run() {
             refreshOperations()
+            HakimTaskManager.syncSystemTasks(this@CommandCenterActivity)
+            maybeOpenLocalRouterAuth()
             browserHandler.postDelayed(this, 15_000L)
         }
     }

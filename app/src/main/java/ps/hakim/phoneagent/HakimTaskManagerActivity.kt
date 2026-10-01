@@ -126,7 +126,12 @@ class HakimTaskManagerActivity : ComponentActivity() {
             row.addView(Button(this).apply {
                 text = "إلغاء"
                 setOnClickListener {
-                    HakimTaskManager.cancel(this@HakimTaskManagerActivity, task.id)
+                    val current = HakimExecutiveLoop.current(this@HakimTaskManagerActivity)
+                    if (current?.id == task.id) {
+                        HakimExecutiveLoop.cancel(this@HakimTaskManagerActivity)
+                    } else {
+                        HakimTaskManager.cancel(this@HakimTaskManagerActivity, task.id)
+                    }
                     render()
                 }
             })

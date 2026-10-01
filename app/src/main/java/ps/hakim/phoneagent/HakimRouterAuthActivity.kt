@@ -510,6 +510,54 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   try{e.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}
                   try{e.dispatchEvent(new Event('change',{bubbles:true}));}catch(_){}
                 }
+                function normalizeSource(raw){
+                  const s=String(raw||'').trim().toLowerCase();
+                  if(s==='0') return '0';
+                  if(s==='1') return '1';
+                  if(['manual','static','custom','user','specified'].indexOf(s)>=0) return '0';
+                  if(['auto','automatic','isp','wan','dhcp','dynamic'].indexOf(s)>=0) return '1';
+                  if(s.indexOf('manual')>=0 || s.indexOf('static')>=0 || s.indexOf('custom')>=0) return '0';
+                  if(s.indexOf('auto')>=0 || s.indexOf('isp')>=0 || s.indexOf('wan')>=0 || s.indexOf('dhcp')>=0) return '1';
+                  return '';
+                }
+                function setSource(d,src0,src1,srcDirect,desired){
+                  if(src0 && src1){
+                    src0.checked=(desired==='0');
+                    src1.checked=(desired==='1');
+                    emit(src0); emit(src1);
+                    return true;
+                  }
+                  if(srcDirect){
+                    try{
+                      if(srcDirect.options && srcDirect.options.length){
+                        for(let i=0;i<srcDirect.options.length;i++){
+                          const o=srcDirect.options[i];
+                          if(normalizeSource(String(o.value||'')+' '+String(o.text||''))===desired){
+                            srcDirect.value=o.value; o.selected=true; emit(srcDirect); return true;
+                          }
+                        }
+                      }
+                    }catch(_){}
+                    if(normalizeSource(srcDirect.value)!=='' || String(srcDirect.value||'')===''){
+                      srcDirect.value=desired; emit(srcDirect); return true;
+                    }
+                  }
+                  try{
+                    const all=d.querySelectorAll('input[type="radio"],input[type="checkbox"]');
+                    for(let i=0;i<all.length && i<800;i++){
+                      const e=all[i];
+                      const key=String((e.id||'')+' '+(e.name||'')).toLowerCase();
+                      if(key.indexOf('dnsserversource')<0) continue;
+                      let n=normalizeSource(e.value);
+                      if(n==='' && key.indexOf('dnsserversource0')>=0) n='0';
+                      if(n==='' && key.indexOf('dnsserversource1')>=0) n='1';
+                      if(n===desired){
+                        e.checked=true; emit(e); return true;
+                      }
+                    }
+                  }catch(_){}
+                  return false;
+                }
                 function setSegments(d,p,v){
                   let found=true;
                   for(let i=0;i<4;i++){
@@ -535,13 +583,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   if(direct2){ direct2.value='${jsSafe(dns2)}'; emit(direct2); dns2ok=true; }
                   if(!dns1ok || !dns2ok) continue;
 
-                  if(src0 && src1){
-                    src0.checked=${source == "0"};
-                    src1.checked=${source == "1"};
-                    emit(src0); emit(src1);
-                  }else if(srcDirect){
-                    srcDirect.value='${jsSafe(source)}'; emit(srcDirect);
-                  }else continue;
+                  if(!setSource(d,src0,src1,srcDirect,'${jsSafe(source)}')) continue;
 
                   if(btn.disabled){
                     return JSON.stringify({

@@ -123,6 +123,19 @@ class HakimFamilyDnsVpnService : VpnService() {
             isDaemon = true
             start()
         }
+
+        // يولّد استعلام DNS نظاميًا بعد إنشاء النفق ليتحقق ميدانيًا من مسار TUN نفسه.
+        Thread({
+            runCatching {
+                Thread.sleep(450L)
+                InetAddress.getByName("cleanbrowsing.org")
+            }.onFailure {
+                HakimDeviceProtection.noteFailure(this, "selfcheck_" + it.javaClass.simpleName)
+            }
+        }, "hakim-family-dns-selfcheck").apply {
+            isDaemon = true
+            start()
+        }
     }
 
     private fun handleIpv4UdpDns(packet: ByteArray, length: Int): ByteArray? {

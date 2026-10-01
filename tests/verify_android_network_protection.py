@@ -85,8 +85,23 @@ req('ROUTER_ORIGIN = "https://192.168.1.1"' in router_auth, "router_auth_origin_
 req('uri.host == ROUTER_HOST' in router_auth and 'uri.port in setOf(-1, 443)' in router_auth, "router_auth_navigation_not_bounded")
 req('addJavascriptInterface' not in router_auth, "router_auth_js_bridge_forbidden")
 req('CookieManager.getInstance().flush()' in router_auth, "router_auth_cookie_flush_missing")
-req('HakimNetworkGuardian.inspectAsync' in router_auth, "router_auth_resume_missing")
+req(
+    'HakimNetworkGuardian.inspectAsync' in router_auth or
+    ('HakimNetworkGuardian.verifyLocalWebViewDns' in router_auth and 'HakimNetworkGuardian.recordLocalWebViewRollback' in router_auth),
+    "router_auth_resume_missing"
+)
 req('handlerSsl?.proceed()' in router_auth and 'isRouterUri(uri)' in router_auth, "router_auth_local_ssl_gate_missing")
 req('maybeOpenLocalRouterAuth()' in command_center and 'ROUTER_AUTH_REQUIRED' in command_center, "router_auth_handoff_missing")
+req('MODERN_VIEW_PATH = "/?_type=menuView&_tag=lanMgrIpv4&Menu3Location=0"' in router_auth, "webview_modern_dns_path_missing")
+req('Btn_apply_DHCPBasicCfg' in router_auth and 'DnsServerSource0' in router_auth, "webview_dns_form_gate_missing")
+req('recordLocalWebViewBaseline' in router_auth and 'markLocalWebViewApplyAttempt' in router_auth, "webview_baseline_or_apply_evidence_missing")
+req('verifyLocalWebViewDns' in router_auth and 'recordLocalWebViewRollback' in router_auth, "webview_readback_or_rollback_missing")
+req('addJavascriptInterface' not in router_auth, "router_auth_js_bridge_forbidden_r11")
+req("input[type=\"password\"]" in router_auth, "local_login_detection_missing")
+req('FAMILY_DNS_1 = "185.228.168.168"' in router_auth and 'FAMILY_DNS_2 = "185.228.169.168"' in router_auth, "webview_family_dns_missing")
+req('fun recordLocalWebViewBaseline' in guardian, "guardian_webview_baseline_contract_missing")
+req('fun verifyLocalWebViewDns' in guardian, "guardian_webview_verify_contract_missing")
+req('fun recordLocalWebViewRollback' in guardian, "guardian_webview_rollback_contract_missing")
+req('"modern_webview"' in guardian, "webview_adapter_observability_missing")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

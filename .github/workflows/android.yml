@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20324 WebView Apply Gate R14 candidate
+# 20325 WebView Baseline R15 candidate
 
 on:
   push:
@@ -152,7 +152,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20324"
+          test "$VERSION_CODE" = "20325"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

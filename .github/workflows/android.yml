@@ -47,6 +47,7 @@ jobs:
           python3 tests/verify_20098_executive_loop.py
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_visible_operations.py
+          python3 tests/verify_task_manager.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py
           python3 tests/verify_20100_pinned_composer.py

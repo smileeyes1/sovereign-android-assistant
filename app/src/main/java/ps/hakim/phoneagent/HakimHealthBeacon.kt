@@ -75,6 +75,7 @@ object HakimHealthBeacon {
             .put("service_connected", HakimService.connected)
             .put("recovery", HakimConnectionResilience.status(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
+            .put("task_manager", HakimTaskManager.publicStatus(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("development_control", HakimDevelopmentControlPlane.status(context))
             .put("field_acceptance", HakimFieldAcceptance.status(context))

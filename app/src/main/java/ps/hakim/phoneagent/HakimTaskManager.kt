@@ -213,10 +213,15 @@ object HakimTaskManager {
         val fullBypass = guardian.optBoolean("full_bypass_prevention", false)
         val localSession = guardian.optBoolean("web_local_session_present", false)
         val rawState = guardian.optString("state")
+        val webviewProbe = guardian.optString("webview_probe_state")
+        val webviewBlocked = webviewProbe in setOf(
+            "TIMEOUT", "GATE_BLOCKED", "BASELINE_REJECTED", "APPLY_NOT_STARTED", "ROLLBACK_NOT_STARTED"
+        )
         val taskState = when {
             fullBypass -> State.COMPLETE
             familyConfigured && resolverVerified -> State.VERIFYING
             rawState == "ROUTER_AUTH_REQUIRED" -> State.BLOCKED
+            webviewBlocked -> State.BLOCKED
             rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> State.WAITING
             rawState.startsWith("FAMILY_DNS_ROLLBACK") || rawState.startsWith("FAMILY_DNS_ROLLED_BACK") -> State.FAILED
             localSession && rawState == "TR064_LANHOST_NOT_FOUND" -> State.RUNNING
@@ -226,6 +231,7 @@ object HakimTaskManager {
             fullBypass -> "ثبتت طبقات الحماية والالتفاف المطلوبة"
             familyConfigured && resolverVerified -> "DNS العائلي مثبت؛ بقي اختبار طبقات الالتفاف"
             rawState == "ROUTER_AUTH_REQUIRED" -> "الراوتر ينتظر مصادقة محلية"
+            webviewBlocked -> "واجهة DHCP/DNS لم تثبت بما يكفي؛ لم يُجر تعديل"
             rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> "بانتظار شبكة المنزل"
             localSession && rawState == "TR064_LANHOST_NOT_FOUND" -> "جلسة الراوتر موجودة؛ استئناف DNS داخل WebView"
             else -> "حارس الشبكة يعمل ولم يثبت الاكتمال بعد"
@@ -234,6 +240,7 @@ object HakimTaskManager {
             fullBypass -> "لا توجد خطوة تالية"
             familyConfigured && resolverVerified -> "اختبار DNS الخارجي وDoT وDoH وVPN وIPv6"
             rawState == "ROUTER_AUTH_REQUIRED" -> "فتح المصادقة المحلية داخل حكيم"
+            webviewBlocked -> "إعادة فحص بنية واجهة DNS بعد تحديث المسار"
             rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> "الاستئناف تلقائيًا عند عودة Wi-Fi المنزل"
             localSession -> "فتح واجهة DHCP/DNS داخل جلسة الراوتر المحلية"
             else -> "متابعة الحارس حتى ظهور دليل جديد"

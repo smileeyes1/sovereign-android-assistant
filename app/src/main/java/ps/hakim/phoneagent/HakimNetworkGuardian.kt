@@ -272,6 +272,13 @@ object HakimNetworkGuardian {
             .put("web_probe_candidate_paths", p.getString("web_probe_candidate_paths", ""))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
             .put("web_local_session_present", localRouterCookie().isNotBlank())
+            .put("webview_probe_state", p.getString("webview_probe_state", "NOT_RUN"))
+            .put("webview_probe_variant", p.getString("webview_probe_variant", ""))
+            .put("webview_probe_frame_count", p.getInt("webview_probe_frame_count", 0))
+            .put("webview_probe_has_apply", p.getBoolean("webview_probe_has_apply", false))
+            .put("webview_probe_has_dns", p.getBoolean("webview_probe_has_dns", false))
+            .put("webview_probe_has_source", p.getBoolean("webview_probe_has_source", false))
+            .put("webview_probe_has_dhcp", p.getBoolean("webview_probe_has_dhcp", false))
             .put("baseline_dns_saved", p.contains("baseline_dns") || p.contains("web_baseline_dns1"))
             .put("web_dns_adapter", p.getString("web_dns_adapter", "none"))
             .put("web_dns_compatible", p.getBoolean("web_dns_compatible", false))
@@ -292,11 +299,47 @@ object HakimNetworkGuardian {
     }
 
     /**
+     * بصمة R13 الهيكلية: لا قيم حقول ولا DOM ولا Cookies.
+     */
+    fun recordLocalWebViewProbe(
+        context: Context,
+        state: String,
+        variant: String,
+        frameCount: Int,
+        hasApply: Boolean,
+        hasDns: Boolean,
+        hasSource: Boolean,
+        hasDhcp: Boolean
+    ) {
+        val safeState = state.uppercase().replace(Regex("[^A-Z0-9_]"), "_").take(32)
+        val safeVariant = variant.replace(Regex("[^A-Za-z0-9._-]"), "_").take(32)
+        prefs(context).edit()
+            .putString("webview_probe_state", safeState.ifBlank { "UNKNOWN" })
+            .putString("webview_probe_variant", safeVariant)
+            .putInt("webview_probe_frame_count", frameCount.coerceIn(0, 8))
+            .putBoolean("webview_probe_has_apply", hasApply)
+            .putBoolean("webview_probe_has_dns", hasDns)
+            .putBoolean("webview_probe_has_source", hasSource)
+            .putBoolean("webview_probe_has_dhcp", hasDhcp)
+            .putLong("webview_probe_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    fun markLocalWebViewProbeState(context: Context, state: String) {
+        val safeState = state.uppercase().replace(Regex("[^A-Z0-9_]"), "_").take(32)
+        prefs(context).edit()
+            .putString("webview_probe_state", safeState.ifBlank { "UNKNOWN" })
+            .putLong("webview_probe_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    /**
      * عقد R11: WebView المحلي المصادق عليه يقرأ/يطبق DNS داخل الراوتر نفسه.
      * لا تنتقل Cookies أو كلمات مرور إلى هذه الواجهة؛ تصلنا فقط قيم DNS غير السرية.
      */
     fun recordLocalWebViewBaseline(context: Context, dns1: String, dns2: String, source: String): Boolean {
-        if (!isIpv4(dns1) || !isIpv4(dns2) || source !in setOf("0", "1")) return false
+        if (!isIpv4OrBlank(dns1) || !isIpv4OrBlank(dns2) || source !in setOf("0", "1")) return false
+        if (source == "0" && dns1.isBlank()) return false
         val p = prefs(context)
         if (!p.contains("web_baseline_dns1")) {
             p.edit()
@@ -383,7 +426,8 @@ object HakimNetworkGuardian {
         val baseline1 = p.getString("web_baseline_dns1", "").orEmpty()
         val baseline2 = p.getString("web_baseline_dns2", "").orEmpty()
         val baselineSource = p.getString("web_baseline_dns_source", "").orEmpty()
-        val restored = baseline1.isNotBlank() &&
+        val baselineSaved = p.contains("web_baseline_dns1")
+        val restored = baselineSaved &&
             dns1 == baseline1 && dns2 == baseline2 && source == baselineSource
         p.edit()
             .putBoolean("web_dns_rollback_verified", restored)
@@ -876,9 +920,15 @@ object HakimNetworkGuardian {
             response.status in 300..399 || looksLikeZteLogin(response.body)
 
     private fun isIpv4(value: String): Boolean {
-        val parts = value.split(".").mapNotNull { it.toIntOrNull() }
-        return parts.size == 4 && parts.all { it in 0..255 }
+        val parts = value.split(".")
+        if (parts.size != 4) return false
+        return parts.all { part ->
+            val n = part.toIntOrNull()
+            n != null && n in 0..255
+        }
     }
+
+    private fun isIpv4OrBlank(value: String): Boolean = value.isBlank() || isIpv4(value)
 
     private fun strictGchDnsCompatible(body: String): Boolean {
         if (body.length < 1000 || looksLikeZteLogin(body)) return false

@@ -41,7 +41,9 @@ req("fun resume(context: Context, task: HakimTaskManager.Task)" in loop,
     "executive_resume_contract_missing")
 req('.put("task_manager", HakimTaskManager.publicStatus(context))' in relay,
     "relay_task_summary_missing")
-req("versionCode 20322" in gradle and "task-manager-r12" in gradle,
+import re
+m = re.search(r"versionCode\s+(\d+)", gradle)
+req(m is not None and int(m.group(1)) >= 20322 and "task-manager-r12" in gradle,
     "version_not_bumped")
 req("استئناف" in activity and "إلغاء" in activity and "مدير مهام حكيم" in activity,
     "task_manager_ui_actions_missing")

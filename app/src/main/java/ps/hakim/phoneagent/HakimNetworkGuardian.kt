@@ -8,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.util.Base64
+import android.webkit.CookieManager
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
@@ -270,6 +271,7 @@ object HakimNetworkGuardian {
             .put("web_probe_auth_action", p.getString("web_probe_auth_action", ""))
             .put("web_probe_candidate_paths", p.getString("web_probe_candidate_paths", ""))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
+            .put("web_local_session_present", localRouterCookie().isNotBlank())
             .put("baseline_dns_saved", p.contains("baseline_dns") || p.contains("web_baseline_dns1"))
             .put("web_dns_adapter", p.getString("web_dns_adapter", "none"))
             .put("web_dns_compatible", p.getBoolean("web_dns_compatible", false))
@@ -344,6 +346,7 @@ object HakimNetworkGuardian {
     private fun tryStrictZteWebDns(context: Context): String {
         val p = prefs(context)
         p.edit()
+            .putBoolean("web_local_session_present_at_attempt", localRouterCookie().isNotBlank())
             .putBoolean("router_auth_required", false)
             .putBoolean("web_dns_compatible", false)
             .putBoolean("web_dns_apply_attempted", false)
@@ -351,7 +354,8 @@ object HakimNetworkGuardian {
             .putBoolean("web_dns_rollback_verified", false)
             .apply()
 
-        val gch = strictWebRequest("GET", ZTE_GCH_DHCP_PATH)
+        val localCookie = localRouterCookie()
+        val gch = strictWebRequest("GET", ZTE_GCH_DHCP_PATH, cookie = localCookie)
         if (gch.status == 401 || gch.status == 403 || looksLikeZteLogin(gch.body)) {
             p.edit()
                 .putString("web_dns_adapter", "gch")
@@ -368,7 +372,7 @@ object HakimNetworkGuardian {
             return applyStrictGchDns(context, gch)
         }
 
-        val lua = strictWebRequest("GET", ZTE_LUA_LAN_PATH)
+        val lua = strictWebRequest("GET", ZTE_LUA_LAN_PATH, cookie = localCookie)
         if (lua.status == 401 || lua.status == 403 || looksLikeZteLogin(lua.body)) {
             p.edit()
                 .putString("web_dns_adapter", "lua")
@@ -445,13 +449,16 @@ object HakimNetworkGuardian {
     }
 
     private fun openModernContext(): Pair<String, ModernContext?> {
-        val root = strictWebRequest("GET", ZTE_ROOT_PATH)
+        val localCookie = localRouterCookie()
+        val root = strictWebRequest("GET", ZTE_ROOT_PATH, cookie = localCookie)
         if (isAuthResponse(root)) return "AUTH" to null
         if (root.status !in 200..399) return "MISS" to null
 
-        var cookie = mergeCookies("", root.cookie)
+        var cookie = mergeCookies(localCookie, root.cookie)
+        persistLocalRouterCookie(cookie)
         val view = strictWebRequest("GET", ZTE_MODERN_VIEW_PATH, cookie = cookie)
         cookie = mergeCookies(cookie, view.cookie)
+        persistLocalRouterCookie(cookie)
         if (isAuthResponse(view)) return "AUTH" to null
         if (view.status !in 200..299) return "MISS" to null
 
@@ -480,6 +487,7 @@ object HakimNetworkGuardian {
 
         val data = strictWebRequest("GET", ZTE_MODERN_DHCP_PATH, cookie = cookie)
         cookie = mergeCookies(cookie, data.cookie)
+        persistLocalRouterCookie(cookie)
         if (isAuthResponse(data)) return "AUTH" to null
         if (data.status !in 200..299) return "MISS" to null
 
@@ -987,6 +995,31 @@ object HakimNetworkGuardian {
         values.entries.joinToString("&") { (k, v) ->
             URLEncoder.encode(k, "UTF-8") + "=" + URLEncoder.encode(v, "UTF-8")
         }
+
+    /**
+     * يعيد فقط جلسة WebView المحلية لهذا الراوتر. لا تُسجّل القيمة ولا تُرسل لأي خادم؛
+     * تستخدم حصراً مع HTTPS إلى 192.168.1.1 حتى يمكن إعادة استعمال تسجيل دخول محلي سابق.
+     */
+    private fun localRouterCookie(): String =
+        runCatching {
+            CookieManager.getInstance()
+                .getCookie("https://$EXPECTED_GATEWAY/")
+                .orEmpty()
+                .take(4096)
+        }.getOrDefault("")
+
+    private fun persistLocalRouterCookie(cookie: String) {
+        if (cookie.isBlank()) return
+        runCatching {
+            val manager = CookieManager.getInstance()
+            cookie.split(";")
+                .map { it.trim() }
+                .filter { it.contains("=") && it.length in 3..1024 }
+                .take(24)
+                .forEach { manager.setCookie("https://$EXPECTED_GATEWAY/", it) }
+            manager.flush()
+        }
+    }
 
     private fun strictWebRequest(
         method: String,

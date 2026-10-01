@@ -73,5 +73,9 @@ req('OBJ_Br0AndDhcpsHosCfg_ID' in guardian and 'OBJ_LANDNS_ID' in guardian, "mod
 req('RSA/ECB/PKCS1Padding' in guardian and 'zteIntegrityCheck' in guardian, "modern_zte_integrity_check_missing")
 req('rollbackModernZteMenuDns' in guardian, "modern_zte_rollback_missing")
 req('web_dns_adapter", "modern_menu"' in guardian, "modern_zte_observability_missing")
+req('CookieManager.getInstance()' in guardian, "local_router_cookie_store_missing")
+req('getCookie("https://$EXPECTED_GATEWAY/")' in guardian, "local_router_cookie_scope_missing")
+req('persistLocalRouterCookie(cookie)' in guardian, "local_router_cookie_persistence_missing")
+req('web_local_session_present_at_attempt' in guardian, "local_router_session_evidence_missing")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

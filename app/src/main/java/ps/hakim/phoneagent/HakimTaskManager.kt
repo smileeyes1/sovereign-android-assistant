@@ -203,6 +203,7 @@ object HakimTaskManager {
     @Synchronized
     fun syncNetworkProtection(context: Context) {
         val guardian = HakimNetworkGuardian.status(context)
+        val phone = HakimPhoneBypassGuard.status(context)
         val now = System.currentTimeMillis()
         val items = load(context)
         val item = items.firstOrNull { it.optString("id") == NETWORK_TASK_ID }
@@ -211,6 +212,8 @@ object HakimTaskManager {
         val familyConfigured = guardian.optBoolean("family_dns_configured", false)
         val resolverVerified = guardian.optBoolean("family_resolver_verified", false)
         val fullBypass = guardian.optBoolean("full_bypass_prevention", false)
+        val phoneBypass = phone.optBoolean("bypass_risk", false)
+        val phoneDnsState = phone.optString("phone_dns_layer_state")
         val localSession = guardian.optBoolean("web_local_session_present", false)
         val rawState = guardian.optString("state")
         val webviewProbe = guardian.optString("webview_probe_state")
@@ -218,7 +221,8 @@ object HakimTaskManager {
             "TIMEOUT", "GATE_BLOCKED", "BASELINE_REJECTED", "APPLY_NOT_STARTED", "ROLLBACK_NOT_STARTED"
         )
         val taskState = when {
-            fullBypass -> State.COMPLETE
+            fullBypass && !phoneBypass -> State.COMPLETE
+            familyConfigured && resolverVerified && phoneBypass -> State.BLOCKED
             familyConfigured && resolverVerified -> State.VERIFYING
             rawState == "ROUTER_AUTH_REQUIRED" -> State.BLOCKED
             webviewBlocked -> State.BLOCKED
@@ -228,7 +232,9 @@ object HakimTaskManager {
             else -> State.RUNNING
         }
         val detail = when {
-            fullBypass -> "ثبتت طبقات الحماية والالتفاف المطلوبة"
+            fullBypass && !phoneBypass -> "ثبتت طبقات الحماية والالتفاف المطلوبة"
+            familyConfigured && resolverVerified && phoneBypass ->
+                "DNS المنزل مثبت لكن على الهاتف مسار يتجاوز تصفية الشبكة: $phoneDnsState"
             familyConfigured && resolverVerified -> "DNS العائلي مثبت؛ بقي اختبار طبقات الالتفاف"
             rawState == "ROUTER_AUTH_REQUIRED" -> "الراوتر ينتظر مصادقة محلية"
             webviewBlocked -> "واجهة DHCP/DNS لم تثبت بما يكفي؛ لم يُجر تعديل"
@@ -237,7 +243,9 @@ object HakimTaskManager {
             else -> "حارس الشبكة يعمل ولم يثبت الاكتمال بعد"
         }
         val next = when {
-            fullBypass -> "لا توجد خطوة تالية"
+            fullBypass && !phoneBypass -> "لا توجد خطوة تالية"
+            familyConfigured && resolverVerified && phoneBypass ->
+                "إغلاق تجاوز الهاتف ثم إعادة اختبار الحماية"
             familyConfigured && resolverVerified -> "اختبار DNS الخارجي وDoT وDoH وVPN وIPv6"
             rawState == "ROUTER_AUTH_REQUIRED" -> "فتح المصادقة المحلية داخل حكيم"
             webviewBlocked -> "إعادة فحص بنية واجهة DNS بعد تحديث المسار"
@@ -257,10 +265,19 @@ object HakimTaskManager {
             .put("created_at", item.optLong("created_at", now).takeIf { it > 0L } ?: now)
             .put("updated_at", now)
             .put("attempts", item.optInt("attempts", 1).coerceAtLeast(1))
-            .put("resumable", !fullBypass)
+            .put("resumable", !(fullBypass && !phoneBypass))
             .put("auto_resume", true)
             .put("last_detail", detail)
-            .put("last_evidence", if (familyConfigured && resolverVerified) "family_dns_configured + family_resolver_verified" else "")
+            .put(
+                "last_evidence",
+                when {
+                    familyConfigured && resolverVerified && !phoneBypass ->
+                        "family_dns_configured + family_resolver_verified + phone_bypass_clear"
+                    familyConfigured && resolverVerified ->
+                        "family_dns_configured + family_resolver_verified"
+                    else -> ""
+                }
+            )
             .put("blocker", if (taskState == State.BLOCKED) detail else "")
             .put("next_action", next)
         save(context, items)

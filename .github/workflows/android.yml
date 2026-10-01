@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20325 WebView Baseline R15 candidate
+# 20326 Phone Bypass Guard R16 candidate
 
 on:
   push:
@@ -48,6 +48,7 @@ jobs:
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_visible_operations.py
           python3 tests/verify_task_manager.py
+          python3 tests/verify_phone_bypass_guard.py
           python3 tests/verify_webview_dns_r13.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py
@@ -152,7 +153,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20325"
+          test "$VERSION_CODE" = "20326"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

@@ -630,6 +630,7 @@ object HakimUnifiedRelay {
             .put("notification_listener", HakimNotificationListener.isConnected())
             .put("auto_update", AutoUpdater.diagnostics(context))
             .put("network_guardian", HakimNetworkGuardian.status(context))
+            .put("phone_bypass_guard", HakimPhoneBypassGuard.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
             .put("fault_containment", HakimFaultContainment.status(context))

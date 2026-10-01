@@ -205,12 +205,24 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         web_probe_login_required:flag(guardian?.web_probe_login_required),
         web_probe_auth_action:safeProbeText(guardian?.web_probe_auth_action,180),
         web_probe_candidate_paths:safeProbePaths(guardian?.web_probe_candidate_paths),
-        web_dns_adapter:fixed(guardian?.web_dns_adapter,["none","gch","lua","lua_readonly","modern_menu"]),
+        web_dns_adapter:fixed(guardian?.web_dns_adapter,["none","gch","lua","lua_readonly","modern_menu","modern_webview"]),
         web_dns_compatible:flag(guardian?.web_dns_compatible),
         web_dns_apply_attempted:flag(guardian?.web_dns_apply_attempted),
         web_dns_readback_verified:flag(guardian?.web_dns_readback_verified),
         web_dns_rollback_verified:flag(guardian?.web_dns_rollback_verified),
         web_local_session_present:flag(guardian?.web_local_session_present),
+        webview_probe_state:fixed(guardian?.webview_probe_state,[
+          "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
+          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","ROLLBACK_NOT_STARTED","UNKNOWN"
+        ]),
+        webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
+        webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&
+          Number.isInteger(guardian.webview_probe_frame_count)&&guardian.webview_probe_frame_count>=0&&
+          guardian.webview_probe_frame_count<=8?guardian.webview_probe_frame_count:null,
+        webview_probe_has_apply:flag(guardian?.webview_probe_has_apply),
+        webview_probe_has_dns:flag(guardian?.webview_probe_has_dns),
+        webview_probe_has_source:flag(guardian?.webview_probe_has_source),
+        webview_probe_has_dhcp:flag(guardian?.webview_probe_has_dhcp),
         router_auth_required:flag(guardian?.router_auth_required),
         baseline_dns_saved:flag(guardian?.baseline_dns_saved),
         family_dns_configured:flag(guardian?.family_dns_configured),
@@ -348,12 +360,24 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         web_probe_login_required:bool(guardian?.web_probe_login_required),
         web_probe_auth_action:safeProbeText(guardian?.web_probe_auth_action,180),
         web_probe_candidate_paths:safeProbePaths(guardian?.web_probe_candidate_paths),
-        web_dns_adapter:fixed(guardian?.web_dns_adapter,["none","gch","lua","lua_readonly","modern_menu"]),
+        web_dns_adapter:fixed(guardian?.web_dns_adapter,["none","gch","lua","lua_readonly","modern_menu","modern_webview"]),
         web_dns_compatible:bool(guardian?.web_dns_compatible),
         web_dns_apply_attempted:bool(guardian?.web_dns_apply_attempted),
         web_dns_readback_verified:bool(guardian?.web_dns_readback_verified),
         web_dns_rollback_verified:bool(guardian?.web_dns_rollback_verified),
         web_local_session_present:bool(guardian?.web_local_session_present),
+        webview_probe_state:fixed(guardian?.webview_probe_state,[
+          "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
+          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","ROLLBACK_NOT_STARTED","UNKNOWN"
+        ]),
+        webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
+        webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&
+          Number.isInteger(guardian.webview_probe_frame_count)&&guardian.webview_probe_frame_count>=0&&
+          guardian.webview_probe_frame_count<=8?guardian.webview_probe_frame_count:null,
+        webview_probe_has_apply:bool(guardian?.webview_probe_has_apply),
+        webview_probe_has_dns:bool(guardian?.webview_probe_has_dns),
+        webview_probe_has_source:bool(guardian?.webview_probe_has_source),
+        webview_probe_has_dhcp:bool(guardian?.webview_probe_has_dhcp),
         router_auth_required:bool(guardian?.router_auth_required),
         baseline_dns_saved:bool(guardian?.baseline_dns_saved),
         family_dns_configured:bool(guardian?.family_dns_configured),

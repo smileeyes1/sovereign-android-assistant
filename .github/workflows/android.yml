@@ -146,6 +146,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: تصدير أداة apksigner العامة
+        run: |
+          BUILD_TOOLS_DIR="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          mkdir -p "$RUNNER_TEMP/hakim-apksigner/lib"
+          cp "$BUILD_TOOLS_DIR/apksigner" "$RUNNER_TEMP/hakim-apksigner/apksigner"
+          cp "$BUILD_TOOLS_DIR/lib/apksigner.jar" "$RUNNER_TEMP/hakim-apksigner/lib/apksigner.jar"
+          chmod +x "$RUNNER_TEMP/hakim-apksigner/apksigner"
+      - name: حفظ أداة apksigner العامة
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-apksigner-public-tool
+          path: ${{ runner.temp }}/hakim-apksigner
+          if-no-files-found: error
       - name: تحديد إصدار المرشح
         id: candidate_version
         run: |

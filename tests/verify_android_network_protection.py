@@ -54,5 +54,10 @@ req('fieldIdentity.model.equals("F8040"' in guardian, "f8040_identity_gate_missi
 req('probeExpectedF8040()' in guardian, "secondary_gateway_upstream_probe_missing")
 req('via_secondary_gateway' in guardian and 'upstream_f8040_proven' in guardian, "secondary_gateway_evidence_missing")
 req('targetGateway = EXPECTED_GATEWAY' in guardian, "upstream_target_gate_missing")
+req('probeF8040WebSurface(context)' in guardian, "f8040_web_probe_missing")
+req('conn.requestMethod = "GET"' in guardian, "f8040_probe_must_be_read_only")
+req('HAKIM-F8040-SafeProbe/1' in guardian, "f8040_probe_marker_missing")
+req('web_probe_candidate_paths' in guardian, "f8040_probe_evidence_missing")
+req('POST' not in guardian.split('private fun probeF8040WebSurface')[1].split('private fun probeExpectedF8040')[0], "f8040_probe_post_forbidden")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

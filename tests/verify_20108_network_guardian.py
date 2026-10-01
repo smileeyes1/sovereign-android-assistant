@@ -30,6 +30,11 @@ required = [
     '"vpn_blocked", false',
     'fingerprint.contains("ZTE"',
     'fingerprint.contains("ZXHN"',
+    'fieldIdentity.vendor.equals("ZTE"',
+    'fieldIdentity.model.equals("F8040"',
+    'fieldIdentity.role == "router_or_gateway"',
+    'fieldIdentity.httpStatus in 200..399',
+    '.putBoolean("fingerprint_f8040"',
 ]
 missing = [x for x in required if x not in src]
 if missing:

@@ -25,9 +25,9 @@ class HakimMobileTaskActivity : ComponentActivity() {
         AlertDialog.Builder(this)
             .setTitle("حماية الشبكة")
             .setMessage(
-                "سيبدأ حكيم بطبقة الحماية الأولى على هذا الهاتف: " +
-                    "ضبط DNS العائلي الخاص والتحقق منه. " +
-                    "لن يستخدم root ولن يغيّر WAN أو الراوتر في هذه الخطوة."
+                "سيبدأ حكيم حماية DNS العائلية على الراوتر المنزلي المثبت، " +
+                    "مع حفظ خط الأساس والتحقق والرجوع عند الفشل. " +
+                    "لن يستخدم ADB أو إمكانية الوصول أو root، ولن يتجاوز مصادقة الراوتر."
             )
             .setNegativeButton("إلغاء") { _, _ -> finish() }
             .setPositiveButton("موافقة وبدء") { _, _ ->

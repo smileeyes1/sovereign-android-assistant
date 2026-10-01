@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - مقيد ببوابة المنزل المثبتة 192.168.1.1.
  * - كشف أولاً، ثم تعديل DNS فقط عبر خدمة LANHostConfigManagement القياسية.
  * - لا يتجاوز المصادقة، ولا يلمس WAN أو إدارة مزود الخدمة، ولا ينفذ shell/root.
- * - يحفظ خط الأساس قبل التعديل، ويفشل مغلقاً عند غياب بصمة ZTE/ZXHN.
+ * - يحفظ خط الأساس قبل التعديل، ويفشل مغلقاً عند غياب بصمة الراوتر المنزلية المثبتة ميدانياً.
  */
 object HakimNetworkGuardian {
     const val JOB_ID = 771209
@@ -119,17 +119,30 @@ object HakimNetworkGuardian {
 
         val descriptions = discoverDescriptions(gateway)
         val fingerprint = descriptions.joinToString("\n").take(MAX_BODY)
-        val zte = fingerprint.contains("ZTE", ignoreCase = true)
-        val zxhn = fingerprint.contains("ZXHN", ignoreCase = true) ||
+        val descriptionZte = fingerprint.contains("ZTE", ignoreCase = true)
+        val descriptionFamily = fingerprint.contains("ZXHN", ignoreCase = true) ||
             fingerprint.contains("F6600P", ignoreCase = true)
+
+        val fieldIdentity = gatewayFieldIdentity(context)
+        val fieldZteF8040 =
+            fieldIdentity.vendor.equals("ZTE", ignoreCase = true) &&
+            fieldIdentity.model.equals("F8040", ignoreCase = true) &&
+            fieldIdentity.role == "router_or_gateway" &&
+            fieldIdentity.httpStatus in 200..399
+
+        val zte = descriptionZte || fieldZteF8040
+        val approvedModel = descriptionFamily || fieldZteF8040
 
         p.edit()
             .putBoolean("fingerprint_zte", zte)
-            .putBoolean("fingerprint_zxhn", zxhn)
+            .putBoolean("fingerprint_zxhn", descriptionFamily)
+            .putBoolean("fingerprint_f8040", fieldZteF8040)
+            .putString("field_router_vendor", fieldIdentity.vendor.take(40))
+            .putString("field_router_model", fieldIdentity.model.take(40))
             .putInt("description_count", descriptions.size)
             .apply()
 
-        if (!zte || !zxhn) {
+        if (!zte || !approvedModel) {
             return finish(context, "ROUTER_FINGERPRINT_NOT_PROVEN", reason, now, gateway)
         }
 
@@ -219,6 +232,7 @@ object HakimNetworkGuardian {
             .put("observed_dns", p.getString("observed_dns", ""))
             .put("fingerprint_zte", p.getBoolean("fingerprint_zte", false))
             .put("fingerprint_zxhn", p.getBoolean("fingerprint_zxhn", false))
+            .put("fingerprint_f8040", p.getBoolean("fingerprint_f8040", false))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
             .put("baseline_dns_saved", p.contains("baseline_dns"))
             .put("family_dns_configured", p.getBoolean("family_dns_configured", false))
@@ -232,6 +246,31 @@ object HakimNetworkGuardian {
             .put("dot_blocked", false)
             .put("doh_controlled", false)
             .put("vpn_blocked", false)
+    }
+
+    private data class GatewayFieldIdentity(
+        val vendor: String,
+        val model: String,
+        val role: String,
+        val httpStatus: Int
+    )
+
+    private fun gatewayFieldIdentity(context: Context): GatewayFieldIdentity {
+        val survey = runCatching { HakimLanSurvey.inspect(context, force = false) }.getOrNull()
+            ?: return GatewayFieldIdentity("", "", "", -1)
+        val hosts = survey.optJSONArray("hosts")
+            ?: return GatewayFieldIdentity("", "", "", -1)
+        for (i in 0 until hosts.length()) {
+            val host = hosts.optJSONObject(i) ?: continue
+            if (!host.optBoolean("gateway", false)) continue
+            return GatewayFieldIdentity(
+                vendor = host.optString("vendor_hint").trim().take(40),
+                model = host.optString("model_hint").trim().take(40),
+                role = host.optString("role_hint").trim().take(40),
+                httpStatus = host.optInt("http_status", -1)
+            )
+        }
+        return GatewayFieldIdentity("", "", "", -1)
     }
 
     private fun finish(context: Context, state: String, reason: String, at: Long, detail: String = ""): JSONObject {

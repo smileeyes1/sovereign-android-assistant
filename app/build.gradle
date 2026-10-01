@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 20316
-        versionName '3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3'
+        versionName '3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4'
     }
 
     compileOptions {

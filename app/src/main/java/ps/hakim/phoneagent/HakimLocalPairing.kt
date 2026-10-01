@@ -95,6 +95,11 @@ object HakimLocalPairing {
         }
     }
 
+    fun dismissPrompt(context: Context) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(NOTIFICATION_ID)
+    }
+
     fun currentSummary(context: Context): String {
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         return when (prefs.getString("local_adb_state", "IDLE")) {

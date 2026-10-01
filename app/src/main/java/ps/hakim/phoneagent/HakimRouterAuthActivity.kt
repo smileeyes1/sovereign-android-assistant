@@ -215,13 +215,83 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   for(let i=0;i<4;i++){
                     const e=byIdOrName(d,p+i);
                     if(!e) return null;
-                    vals.push(String(e.value||''));
+                    vals.push(String(e.value||'').trim());
                   }
                   return vals.join('.');
                 }
                 function hasSegments(d,p){
                   for(let i=0;i<4;i++) if(!byIdOrName(d,p+i)) return false;
                   return true;
+                }
+                function ipv4orblank(v){
+                  const s=String(v||'').trim();
+                  if(s==='') return true;
+                  const p=s.split('.');
+                  if(p.length!==4) return false;
+                  for(let i=0;i<4;i++){
+                    if(!/^\d{1,3}$/.test(p[i])) return false;
+                    const n=Number(p[i]);
+                    if(n<0 || n>255) return false;
+                  }
+                  return true;
+                }
+                function pickDns(d,direct,prefix){
+                  const raw=direct?String(direct.value||'').trim():'';
+                  const split=seg(d,prefix);
+                  if(raw!=='' && ipv4orblank(raw)) return raw;
+                  if(split!==null && ipv4orblank(split)) return split;
+                  if(raw==='' && split===null) return '';
+                  return raw || split || '';
+                }
+                function normalizeSource(raw){
+                  const s=String(raw||'').trim().toLowerCase();
+                  if(s==='0') return '0';
+                  if(s==='1') return '1';
+                  if(['manual','static','custom','user','specified'].indexOf(s)>=0) return '0';
+                  if(['auto','automatic','isp','wan','dhcp','dynamic'].indexOf(s)>=0) return '1';
+                  if(s.indexOf('manual')>=0 || s.indexOf('static')>=0 || s.indexOf('custom')>=0) return '0';
+                  if(s.indexOf('auto')>=0 || s.indexOf('isp')>=0 || s.indexOf('wan')>=0 || s.indexOf('dhcp')>=0) return '1';
+                  return '';
+                }
+                function readSource(d,src0,src1,srcDirect){
+                  function chosen(e){
+                    if(!e) return false;
+                    if(e.checked===true) return true;
+                    const a=String(e.getAttribute&&e.getAttribute('aria-checked')||'').toLowerCase();
+                    const data=String(e.getAttribute&&e.getAttribute('data-checked')||'').toLowerCase();
+                    return a==='true' || data==='true' || data==='1';
+                  }
+                  if(chosen(src0)) return '0';
+                  if(chosen(src1)) return '1';
+                  if(srcDirect){
+                    let n=normalizeSource(srcDirect.value);
+                    if(n!=='') return n;
+                    try{
+                      if(srcDirect.options && srcDirect.selectedIndex>=0){
+                        const o=srcDirect.options[srcDirect.selectedIndex];
+                        n=normalizeSource(String(o.value||'')+' '+String(o.text||''));
+                        if(n!=='') return n;
+                      }
+                    }catch(_){}
+                  }
+                  try{
+                    const all=d.querySelectorAll('input,select,option');
+                    for(let i=0;i<all.length && i<800;i++){
+                      const e=all[i];
+                      const key=String((e.id||'')+' '+(e.name||'')).toLowerCase();
+                      if(key.indexOf('dnsserversource')<0) continue;
+                      if(e.type==='radio' || e.type==='checkbox'){
+                        if(!chosen(e)) continue;
+                      }else if(e.tagName==='OPTION' && !e.selected){
+                        continue;
+                      }
+                      let n=normalizeSource(e.value);
+                      if(n!=='') return n;
+                      if(key.indexOf('dnsserversource0')>=0) return '0';
+                      if(key.indexOf('dnsserversource1')>=0) return '1';
+                    }
+                  }catch(_){}
+                  return '';
                 }
                 function login(d){
                   return !!d.querySelector('input[type="password"],#LoginId,[name="fLogin"],#Frm_Password,[name*="password" i]');
@@ -252,11 +322,9 @@ class HakimRouterAuthActivity : ComponentActivity() {
 
                   if(!btn || (!hidden1 && !seg1) || (!hidden2 && !seg2) || ((!src0||!src1) && !srcDirect) || !dhcpMarker) continue;
 
-                  const dns1=(hidden1 && String(hidden1.value||'')) || seg(d,'sub_DNSServer1') || '';
-                  const dns2=(hidden2 && String(hidden2.value||'')) || seg(d,'sub_DNSServer2') || '';
-                  let source='';
-                  if(src0 && src1) source=src0.checked?'0':(src1.checked?'1':'');
-                  else if(srcDirect) source=String(srcDirect.value||'');
+                  const dns1=pickDns(d,hidden1,'sub_DNSServer1');
+                  const dns2=pickDns(d,hidden2,'sub_DNSServer2');
+                  const source=readSource(d,src0,src1,srcDirect);
 
                   return JSON.stringify({
                     state:'READY',
@@ -337,16 +405,19 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val source = data.optString("source")
         val disabled = data.optBoolean("disabled", true)
 
-        val baselineValuesValid =
-            source in setOf("0", "1") &&
-            isIpv4OrBlank(dns1) &&
-            isIpv4OrBlank(dns2) &&
-            (source == "1" || dns1.isNotBlank())
+        val gateState = when {
+            host != ROUTER_HOST -> "GATE_HOST"
+            source !in setOf("0", "1") -> "GATE_SOURCE"
+            !isIpv4OrBlank(dns1) -> "GATE_DNS1"
+            !isIpv4OrBlank(dns2) -> "GATE_DNS2"
+            source == "0" && dns1.isBlank() -> "GATE_MANUAL_EMPTY"
+            else -> ""
+        }
 
-        if (host != ROUTER_HOST || !baselineValuesValid) {
-            HakimNetworkGuardian.markLocalWebViewProbeState(this, "GATE_BLOCKED")
-            status.text = "لم تثبت صلاحية صفحة DNS للتعديل؛ لم يُجر أي تغيير."
-            HakimHealthBeacon.sendAsync(this, "router_webview_dns_gate_blocked")
+        if (gateState.isNotBlank()) {
+            HakimNetworkGuardian.markLocalWebViewProbeState(this, gateState)
+            status.text = "لم تثبت صلاحية خط أساس DNS للتعديل؛ لم يُجر أي تغيير."
+            HakimHealthBeacon.sendAsync(this, "router_webview_dns_" + gateState.lowercase())
             return
         }
 

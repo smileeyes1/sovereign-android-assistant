@@ -32,6 +32,9 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
             HakimNetworkGuardian.install(this)
         }
+        HakimFaultContainment.guard(this, "app_start", "task_manager_sync") {
+            HakimTaskManager.syncSystemTasks(this)
+        }
         HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
             AutoUpdater.schedule(this)
         }

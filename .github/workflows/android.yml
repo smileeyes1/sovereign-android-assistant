@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20325 WebView Baseline R15 candidate
+# 20326 Network Task Auto-Resume R16 candidate
 
 on:
   push:
@@ -152,7 +152,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20325"
+          test "$VERSION_CODE" = "20326"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

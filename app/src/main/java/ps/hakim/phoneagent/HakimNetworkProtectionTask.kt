@@ -19,7 +19,7 @@ import kotlin.concurrent.thread
  * إلى Settings.Global ولا root ولا ADB ولا توسيع صلاحيات.
  */
 object HakimNetworkProtectionTask {
-    const val VERSION = "HAKIM-NETWORK-PROTECTION-ANDROID-V1"
+    const val VERSION = "HAKIM-NETWORK-PROTECTION-ANDROID-V1.1-TECNO-FALLBACK"
     const val FAMILY_DNS_HOST = "family-filter-dns.cleanbrowsing.org"
 
     private const val PREFS = "hakim_network_protection"
@@ -50,17 +50,10 @@ object HakimNetworkProtectionTask {
             return
         }
 
-        val settingsIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Intent("android.settings.PRIVATE_DNS_SETTINGS")
-        } else {
-            Intent(Settings.ACTION_WIRELESS_SETTINGS)
-        }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-        runCatching { app.startActivity(settingsIntent) }
-            .onFailure {
-                finish(app, "BLOCKED", false, "تعذر فتح إعدادات DNS الخاص.")
-                return
-            }
+        if (!openPrivateDnsSettings(app)) {
+            finish(app, "BLOCKED", false, "تعذر فتح إعدادات الشبكة اللازمة لضبط DNS الخاص.")
+            return
+        }
 
         thread(name = "hakim-network-protection", isDaemon = true) {
             val result = applyWithAccessibility(app)
@@ -103,67 +96,128 @@ object HakimNetworkProtectionTask {
             .put("last_finished_at", p.getLong("last_finished_at", 0L))
     }
 
+    private fun openPrivateDnsSettings(context: Context): Boolean {
+        val intents = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                add(Intent("android.settings.PRIVATE_DNS_SETTINGS"))
+            }
+            add(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            add(Intent(Settings.ACTION_SETTINGS))
+        }
+        for (intent in intents) {
+            val candidate = intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val opened = runCatching {
+                val resolved = candidate.resolveActivity(context.packageManager)
+                if (resolved == null) false else {
+                    context.startActivity(candidate)
+                    true
+                }
+            }.getOrDefault(false)
+            if (opened) return true
+        }
+        return false
+    }
+
     private fun applyWithAccessibility(context: Context): Boolean {
-        repeat(24) {
+        val privateDnsLabels = listOf(
+            "Private DNS",
+            "DNS الخاص",
+            "DNS خاص",
+            "نظام أسماء النطاقات الخاص",
+            "نظام أسماء النطاقات (DNS) الخاص"
+        )
+        val providerLabels = listOf(
+            "Private DNS provider hostname",
+            "Private DNS provider",
+            "اسم مضيف موفّر DNS الخاص",
+            "اسم مضيف مزود DNS الخاص",
+            "موفّر DNS الخاص",
+            "مزود DNS الخاص"
+        )
+        val settingsRouteLabels = listOf(
+            "Hotspot & Connections",
+            "Hotspot and Connections",
+            "نقطة الاتصال والاتصالات",
+            "نقطة الاتصال",
+            "الاتصالات"
+        )
+        val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
+
+        repeat(36) {
             if (isProtected(snapshot(context))) return true
             val service = HakimAccessibilityService.instance
-            if (service != null && service.foregroundPackage() == "com.android.settings") {
-                service.clickAnyText(
-                    listOf(
-                        "Private DNS provider hostname",
-                        "Private DNS provider",
-                        "اسم مضيف موفّر DNS الخاص",
-                        "اسم مضيف مزود DNS الخاص",
-                        "موفّر DNS الخاص",
-                        "مزود DNS الخاص"
-                    )
-                )
-                Thread.sleep(250)
-                service.setFirstEditableText(FAMILY_DNS_HOST)
-                Thread.sleep(250)
-                service.clickAnyText(listOf("Save", "حفظ", "OK", "موافق", "تم"))
+            if (service != null) {
+                val pkg = service.foregroundPackage()
+                if (pkg.contains("settings", ignoreCase = true)) {
+                    val providerOpened = service.clickAnyText(providerLabels)
+                    if (providerOpened) {
+                        Thread.sleep(350)
+                        if (service.setFirstEditableText(FAMILY_DNS_HOST)) {
+                            Thread.sleep(250)
+                            service.clickAnyText(saveLabels)
+                        }
+                    } else if (!service.clickAnyText(privateDnsLabels)) {
+                        service.clickAnyText(settingsRouteLabels)
+                    }
+                }
             }
-            Thread.sleep(600)
+            Thread.sleep(650)
         }
         return isProtected(snapshot(context))
     }
 
     private fun restore(context: Context, before: DnsState): Boolean {
         if (sameState(before, snapshot(context))) return true
-        runCatching {
-            val i = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                Intent("android.settings.PRIVATE_DNS_SETTINGS")
-            } else {
-                Intent(Settings.ACTION_WIRELESS_SETTINGS)
-            }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }.getOrElse { return false }
+        if (!openPrivateDnsSettings(context)) return false
 
-        repeat(20) {
+        val privateDnsLabels = listOf(
+            "Private DNS",
+            "DNS الخاص",
+            "DNS خاص",
+            "نظام أسماء النطاقات الخاص",
+            "نظام أسماء النطاقات (DNS) الخاص"
+        )
+        val settingsRouteLabels = listOf(
+            "Hotspot & Connections",
+            "Hotspot and Connections",
+            "نقطة الاتصال والاتصالات",
+            "نقطة الاتصال",
+            "الاتصالات"
+        )
+        val providerLabels = listOf(
+            "Private DNS provider hostname",
+            "Private DNS provider",
+            "اسم مضيف موفّر DNS الخاص",
+            "اسم مضيف مزود DNS الخاص"
+        )
+        val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
+
+        repeat(28) {
             val service = HakimAccessibilityService.instance
-            if (service != null && service.foregroundPackage() == "com.android.settings") {
+            if (service != null && service.foregroundPackage().contains("settings", ignoreCase = true)) {
+                var acted = false
                 when (before.mode) {
                     "hostname" -> {
-                        service.clickAnyText(
-                            listOf(
-                                "Private DNS provider hostname",
-                                "Private DNS provider",
-                                "اسم مضيف موفّر DNS الخاص",
-                                "اسم مضيف مزود DNS الخاص"
-                            )
-                        )
-                        Thread.sleep(200)
-                        if (before.specifier.isNotBlank()) {
-                            service.setFirstEditableText(before.specifier)
+                        acted = service.clickAnyText(providerLabels)
+                        if (acted) {
+                            Thread.sleep(250)
+                            if (before.specifier.isNotBlank()) {
+                                service.setFirstEditableText(before.specifier)
+                            }
                         }
                     }
-                    "off" -> service.clickAnyText(listOf("Off", "إيقاف", "متوقف"))
-                    else -> service.clickAnyText(listOf("Automatic", "تلقائي", "تلقائية"))
+                    "off" -> acted = service.clickAnyText(listOf("Off", "إيقاف", "متوقف"))
+                    else -> acted = service.clickAnyText(listOf("Automatic", "تلقائي", "تلقائية"))
                 }
-                Thread.sleep(200)
-                service.clickAnyText(listOf("Save", "حفظ", "OK", "موافق", "تم"))
+
+                if (acted) {
+                    Thread.sleep(200)
+                    service.clickAnyText(saveLabels)
+                } else if (!service.clickAnyText(privateDnsLabels)) {
+                    service.clickAnyText(settingsRouteLabels)
+                }
             }
-            Thread.sleep(500)
+            Thread.sleep(550)
             if (sameState(before, snapshot(context))) return true
         }
         return sameState(before, snapshot(context))

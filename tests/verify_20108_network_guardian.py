@@ -40,6 +40,11 @@ required = [
     'fieldIdentity.role == "router_or_gateway"',
     'fieldIdentity.httpStatus in 200..399',
     '.putBoolean("fingerprint_f8040"',
+    'probeF8040WebSurface(context)',
+    'HAKIM-F8040-SafeProbe/1',
+    '.putBoolean("web_probe_ran"',
+    '.putString("web_probe_candidate_paths"',
+    'conn.requestMethod = "GET"',
 ]
 missing = [x for x in required if x not in src]
 if missing:

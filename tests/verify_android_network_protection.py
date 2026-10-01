@@ -14,6 +14,11 @@ req('android:name=".HakimMobileTaskActivity"' in manifest, "mobile_task_activity
 req('android:scheme="hakim"' in manifest, "hakim_scheme_missing")
 req('android:host="task"' in manifest, "bounded_task_host_missing")
 req('android:path="/network-protection"' in manifest, "network_protection_path_missing")
+req('@xml/accessibility_service_config' in manifest, "accessibility_config_missing")
+req('android:name="android.accessibilityservice"' in manifest, "accessibility_metadata_missing")
+req('android.accessibilityservice.AccessibilityService' in manifest, "accessibility_intent_filter_missing")
+req('android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest, "accessibility_bind_permission_missing")
+req('android:name=".HakimAccessibilityService"' in manifest, "accessibility_service_manifest_missing")
 
 req('data?.scheme == "hakim"' in activity, "scheme_not_validated")
 req('data.host == "task"' in activity, "host_not_validated")

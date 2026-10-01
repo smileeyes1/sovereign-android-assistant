@@ -318,8 +318,8 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   }
                   return true;
                 };
-                if(!setSeg('sub_DNSServer1',[${a.join(",")}])) return JSON.stringify({ok:false});
-                if(!setSeg('sub_DNSServer2',[${b.join(",")}])) return JSON.stringify({ok:false});
+                if(!setSeg('sub_DNSServer1',[${a.joinToString(",")}])) return JSON.stringify({ok:false});
+                if(!setSeg('sub_DNSServer2',[${b.joinToString(",")}])) return JSON.stringify({ok:false});
                 src0.checked=${source == "0"};
                 src1.checked=${source == "1"};
                 src0.dispatchEvent(new Event('change',{bubbles:true}));

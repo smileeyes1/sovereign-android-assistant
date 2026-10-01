@@ -178,7 +178,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         ]),
         fingerprint_zte:flag(guardian?.fingerprint_zte),
         fingerprint_zxhn:flag(guardian?.fingerprint_zxhn),
-        via_secondary_gateway:flag(guardian?.via_secondary_gateway),
+        via_secondary:flag(guardian?.via_secondary_gateway),
         upstream_f8040_proven:flag(guardian?.upstream_f8040_proven),
         web_probe_ran:flag(guardian?.web_probe_ran),
         web_probe_root_status:typeof guardian?.web_probe_root_status==="number"&&Number.isInteger(guardian.web_probe_root_status)&&
@@ -297,7 +297,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         ]),
         fingerprint_zte:bool(guardian?.fingerprint_zte),
         fingerprint_zxhn:bool(guardian?.fingerprint_zxhn),
-        via_secondary_gateway:bool(guardian?.via_secondary_gateway),
+        via_secondary:bool(guardian?.via_secondary_gateway),
         upstream_f8040_proven:bool(guardian?.upstream_f8040_proven),
         web_probe_ran:bool(guardian?.web_probe_ran),
         web_probe_root_status:typeof guardian?.web_probe_root_status==="number"&&Number.isInteger(guardian.web_probe_root_status)&&

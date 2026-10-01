@@ -108,7 +108,17 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun maybeOpenLocalRouterAuth() {
         val guardian = HakimNetworkGuardian.status(this)
-        if (guardian.optString("state") != "ROUTER_AUTH_REQUIRED") return
+        val state = guardian.optString("state")
+        val hasLocalSession = guardian.optBoolean("web_local_session_present", false)
+        val familyConfigured = guardian.optBoolean("family_dns_configured", false)
+        val shouldOpen =
+            state == "ROUTER_AUTH_REQUIRED" ||
+            (!familyConfigured && hasLocalSession && state in setOf(
+                "TR064_LANHOST_NOT_FOUND",
+                "FAMILY_DNS_ROLLBACK_REQUIRED",
+                "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+            ))
+        if (!shouldOpen) return
         val p = getSharedPreferences("hakim_router_auth_ui", MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val last = p.getLong("last_launch_at", 0L)

@@ -302,7 +302,8 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   }
                 }
 
-                let globalApply=false,globalDns=false,globalSource=false,globalDhcp=false;
+                let globalApply=false,globalDns1=false,globalDns2=false,globalSource=false,globalDhcp=false;
+                let aggregateDns1='',aggregateDns2='',aggregateSource='',aggregateApplyDisabled=true,aggregateVariant='split';
                 for(let x=0;x<docs.length;x++){
                   const d=docs[x].d;
                   const btn=byIdOrName(d,'Btn_apply_DHCPBasicCfg') || generic(d,'apply');
@@ -315,12 +316,24 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   const seg2=hasSegments(d,'sub_DNSServer2');
                   const dhcpMarker=!!d.querySelector('#DHCPBasicCfg,#template_DHCPBasicCfg,[id*="DHCPBasicCfg"],[name*="DHCPBasicCfg"]') || !!btn;
 
+                  const hasDns1=(!!hidden1||seg1);
+                  const hasDns2=(!!hidden2||seg2);
+                  const hasSource=((!!src0&&!!src1)||!!srcDirect);
                   globalApply=globalApply||!!btn;
-                  globalDns=globalDns||((!!hidden1||seg1) && (!!hidden2||seg2));
-                  globalSource=globalSource||((!!src0&&!!src1)||!!srcDirect);
+                  globalDns1=globalDns1||hasDns1;
+                  globalDns2=globalDns2||hasDns2;
+                  globalSource=globalSource||hasSource;
                   globalDhcp=globalDhcp||dhcpMarker;
 
-                  if(!btn || (!hidden1 && !seg1) || (!hidden2 && !seg2) || ((!src0||!src1) && !srcDirect) || !dhcpMarker) continue;
+                  if(hasDns1 && aggregateDns1==='') aggregateDns1=pickDns(d,hidden1,'sub_DNSServer1');
+                  if(hasDns2 && aggregateDns2==='') aggregateDns2=pickDns(d,hidden2,'sub_DNSServer2');
+                  if(hasSource && aggregateSource==='') aggregateSource=readSource(d,src0,src1,srcDirect);
+                  if(btn){
+                    aggregateApplyDisabled=!!btn.disabled;
+                    aggregateVariant=(x===0?'top':'frame');
+                  }
+
+                  if(!btn || !hasDns1 || !hasDns2 || !hasSource || !dhcpMarker) continue;
 
                   const dns1=pickDns(d,hidden1,'sub_DNSServer1');
                   const dns2=pickDns(d,hidden2,'sub_DNSServer2');
@@ -341,12 +354,28 @@ class HakimRouterAuthActivity : ComponentActivity() {
                     hasDhcp:true
                   });
                 }
+                if(globalApply && globalDns1 && globalDns2 && globalSource && globalDhcp){
+                  return JSON.stringify({
+                    state:'READY',
+                    host:String(location.hostname||''),
+                    dns1:String(aggregateDns1),
+                    dns2:String(aggregateDns2),
+                    source:String(aggregateSource),
+                    disabled:aggregateApplyDisabled,
+                    variant:'split',
+                    frames:Math.max(0,docs.length-1),
+                    hasApply:true,
+                    hasDns:true,
+                    hasSource:true,
+                    hasDhcp:true
+                  });
+                }
                 return JSON.stringify({
                   state:'WAIT',
                   variant:'none',
                   frames:Math.max(0,docs.length-1),
                   hasApply:globalApply,
-                  hasDns:globalDns,
+                  hasDns:(globalDns1&&globalDns2),
                   hasSource:globalSource,
                   hasDhcp:globalDhcp
                 });
@@ -567,6 +596,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   }
                   return found;
                 }
+                let applyBtn=null,applyVariant='none',dns1ok=false,dns2ok=false,sourceOk=false;
                 for(let x=0;x<docs.length;x++){
                   const d=docs[x];
                   const btn=byIdOrName(d,'Btn_apply_DHCPBasicCfg') || generic(d,'apply');
@@ -575,28 +605,34 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   const srcDirect=byIdOrName(d,'DnsServerSource') || generic(d,'source');
                   const direct1=byIdOrName(d,'DNSServer1') || generic(d,'dns1');
                   const direct2=byIdOrName(d,'DNSServer2') || generic(d,'dns2');
-                  if(!btn || ((!src0||!src1) && !srcDirect)) continue;
 
-                  let dns1ok=setSegments(d,'sub_DNSServer1',[${a.joinToString(",")}]);
-                  let dns2ok=setSegments(d,'sub_DNSServer2',[${b.joinToString(",")}]);
-                  if(direct1){ direct1.value='${jsSafe(dns1)}'; emit(direct1); dns1ok=true; }
-                  if(direct2){ direct2.value='${jsSafe(dns2)}'; emit(direct2); dns2ok=true; }
-                  if(!dns1ok || !dns2ok) continue;
+                  if(!applyBtn && btn){ applyBtn=btn; applyVariant=(x===0?'top':'frame'); }
 
-                  if(!setSource(d,src0,src1,srcDirect,'${jsSafe(source)}')) continue;
-
-                  if(btn.disabled){
-                    return JSON.stringify({
-                      ok:false,
-                      variant:x===0?'top':'frame',
-                      reason:'apply_disabled_after_change'
-                    });
+                  if(!dns1ok){
+                    dns1ok=setSegments(d,'sub_DNSServer1',[${a.joinToString(",")}]);
+                    if(direct1){ direct1.value='${jsSafe(dns1)}'; emit(direct1); dns1ok=true; }
                   }
-
-                  btn.click();
-                  return JSON.stringify({ok:true,variant:x===0?'top':'frame',reason:'clicked'});
+                  if(!dns2ok){
+                    dns2ok=setSegments(d,'sub_DNSServer2',[${b.joinToString(",")}]);
+                    if(direct2){ direct2.value='${jsSafe(dns2)}'; emit(direct2); dns2ok=true; }
+                  }
+                  if(!sourceOk && ((src0&&src1)||srcDirect)){
+                    sourceOk=setSource(d,src0,src1,srcDirect,'${jsSafe(source)}');
+                  }
                 }
-                return JSON.stringify({ok:false,variant:'none'});
+
+                if(!applyBtn || !dns1ok || !dns2ok || !sourceOk){
+                  return JSON.stringify({ok:false,variant:'split',reason:'split_components_missing'});
+                }
+                if(applyBtn.disabled){
+                  return JSON.stringify({
+                    ok:false,
+                    variant:applyVariant,
+                    reason:'apply_disabled_after_change'
+                  });
+                }
+                applyBtn.click();
+                return JSON.stringify({ok:true,variant:applyVariant,reason:'clicked'});
               }catch(_){return JSON.stringify({ok:false,variant:'error'});}
             })()
         """.trimIndent()

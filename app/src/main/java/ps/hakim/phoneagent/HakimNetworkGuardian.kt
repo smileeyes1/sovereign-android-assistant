@@ -167,6 +167,7 @@ object HakimNetworkGuardian {
 
         val endpoint = findLanHostConfigEndpoint(descriptions)
         if (endpoint == null) {
+            probeF8040WebSurface(context)
             return finish(context, "TR064_LANHOST_NOT_FOUND", reason, now, targetGateway)
         }
 
@@ -254,6 +255,13 @@ object HakimNetworkGuardian {
             .put("fingerprint_f8040", p.getBoolean("fingerprint_f8040", false))
             .put("via_secondary_gateway", p.getBoolean("via_secondary_gateway", false))
             .put("upstream_f8040_proven", p.getBoolean("upstream_f8040_proven", false))
+            .put("web_probe_ran", p.getBoolean("web_probe_ran", false))
+            .put("web_probe_root_status", p.getInt("web_probe_root_status", -1))
+            .put("web_probe_title", p.getString("web_probe_title", ""))
+            .put("web_probe_server", p.getString("web_probe_server", ""))
+            .put("web_probe_login_required", p.getBoolean("web_probe_login_required", false))
+            .put("web_probe_auth_action", p.getString("web_probe_auth_action", ""))
+            .put("web_probe_candidate_paths", p.getString("web_probe_candidate_paths", ""))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
             .put("baseline_dns_saved", p.contains("baseline_dns"))
             .put("family_dns_configured", p.getBoolean("family_dns_configured", false))
@@ -293,6 +301,134 @@ object HakimNetworkGuardian {
         }
         return GatewayFieldIdentity("", "", "", -1)
     }
+
+    private data class WebSurfaceResponse(
+        val status: Int,
+        val body: String,
+        val server: String
+    )
+
+    /**
+     * مجس قرائي فقط لواجهة F8040.
+     * لا يرسل POST، لا يحتفظ بملفات تعريف الارتباط، ولا يعيد قيم حقول الإدخال أو الرموز.
+     */
+    private fun probeF8040WebSurface(context: Context) {
+        val root = safeF8040Get("/")
+        val title = Regex(
+            "<title[^>]*>(.*?)</title>",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        ).find(root.body)?.groupValues?.get(1)
+            ?.replace(Regex("\\s+"), " ")?.trim()?.take(120).orEmpty()
+
+        val lower = root.body.lowercase()
+        val loginRequired =
+            Regex("<input[^>]+type=[\"']?password", RegexOption.IGNORE_CASE).containsMatchIn(root.body) ||
+            ("login" in lower && ("password" in lower || "username" in lower || "user name" in lower))
+
+        val formActionRaw = Regex(
+            "<form[^>]+action=[\"']([^\"']+)[\"']",
+            RegexOption.IGNORE_CASE
+        ).find(root.body)?.groupValues?.get(1).orEmpty()
+        val authAction = normalizeLocalPath(formActionRaw)
+
+        val candidates = linkedSetOf<String>()
+        fun consider(raw: String) {
+            val path = normalizeLocalPath(raw)
+            if (path.isBlank()) return
+            val key = path.lowercase()
+            if (listOf("dns","dhcp","lan","network","api","login","config","status","internet").any { key.contains(it) }) {
+                candidates.add(path.take(180))
+            }
+        }
+
+        Regex(
+            "(?:href|src|action)=[\"']([^\"']+)[\"']",
+            RegexOption.IGNORE_CASE
+        ).findAll(root.body).take(80).forEach { consider(it.groupValues[1]) }
+
+        val scripts = Regex(
+            "<script[^>]+src=[\"']([^\"']+)[\"']",
+            RegexOption.IGNORE_CASE
+        ).findAll(root.body)
+            .map { normalizeLocalPath(it.groupValues[1]) }
+            .filter { it.endsWith(".js", ignoreCase = true) }
+            .distinct()
+            .take(8)
+            .toList()
+
+        val pathLiteral = Regex("[\"'](/[^'\"\\s<>]{1,180})[\"']")
+        for (script in scripts) {
+            val js = safeF8040Get(script)
+            if (js.status !in 200..299 || js.body.isBlank()) continue
+            pathLiteral.findAll(js.body).take(160).forEach { consider(it.groupValues[1]) }
+        }
+
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("web_probe_ran", true)
+            .putInt("web_probe_root_status", root.status)
+            .putString("web_probe_title", safeProbeText(title, 120))
+            .putString("web_probe_server", safeProbeText(root.server, 120))
+            .putBoolean("web_probe_login_required", loginRequired)
+            .putString("web_probe_auth_action", authAction.take(180))
+            .putString("web_probe_candidate_paths", candidates.take(12).joinToString("|").take(1800))
+            .putLong("web_probe_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    private fun safeF8040Get(path: String): WebSurfaceResponse {
+        val normalized = normalizeLocalPath(path).ifBlank { "/" }
+        return runCatching {
+            val conn = URL("https://$EXPECTED_GATEWAY$normalized").openConnection() as HttpsURLConnection
+            val trustAll = object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+            }
+            val ssl = SSLContext.getInstance("TLS")
+            ssl.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+            conn.sslSocketFactory = ssl.socketFactory
+            conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { host, _ -> host == EXPECTED_GATEWAY }
+            conn.instanceFollowRedirects = false
+            conn.connectTimeout = 1100
+            conn.readTimeout = 1600
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "HAKIM-F8040-SafeProbe/1")
+            val status = conn.responseCode
+            val server = conn.getHeaderField("Server").orEmpty().take(120)
+            val stream = if (status in 200..399) conn.inputStream else conn.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+                buildString {
+                    var total = 0
+                    while (total < 64_000) {
+                        val line = reader.readLine() ?: break
+                        append(line).append('\n')
+                        total += line.length
+                    }
+                }
+            }.orEmpty()
+            conn.disconnect()
+            WebSurfaceResponse(status, body, server)
+        }.getOrElse { WebSurfaceResponse(-1, "", "") }
+    }
+
+    private fun normalizeLocalPath(raw: String): String {
+        val value = raw.trim()
+        if (value.isBlank() || value.startsWith("#") || value.startsWith("javascript:", true) ||
+            value.startsWith("data:", true)) return ""
+        val uri = runCatching {
+            if (value.startsWith("http://", true) || value.startsWith("https://", true)) URI(value)
+            else URI("https://$EXPECTED_GATEWAY/${value.trimStart('/')}")
+        }.getOrNull() ?: return ""
+        if (uri.host != EXPECTED_GATEWAY) return ""
+        if (uri.scheme != "https" && uri.scheme != "http") return ""
+        val path = uri.rawPath.orEmpty().ifBlank { "/" }
+        if (!path.startsWith("/") || path.contains("..")) return ""
+        return path.take(220)
+    }
+
+    private fun safeProbeText(raw: String, max: Int): String =
+        raw.replace(Regex("[\\u0000-\\u001F\\u007F]"), " ")
+            .replace(Regex("\\s+"), " ").trim().take(max)
 
     private fun probeExpectedF8040(): Boolean {
         return runCatching {

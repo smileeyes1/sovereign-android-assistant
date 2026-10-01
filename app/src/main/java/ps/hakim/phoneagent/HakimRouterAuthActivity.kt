@@ -337,7 +337,14 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val source = data.optString("source")
         val disabled = data.optBoolean("disabled", true)
 
-        if (host != ROUTER_HOST || !isIpv4(dns1) || !isIpv4(dns2) || source !in setOf("0", "1") || disabled) {
+        val baselineValuesValid =
+            source in setOf("0", "1") &&
+            isIpv4OrBlank(dns1) &&
+            isIpv4OrBlank(dns2) &&
+            (source == "1" || dns1.isNotBlank())
+
+        if (host != ROUTER_HOST || !baselineValuesValid || disabled) {
+            HakimNetworkGuardian.markLocalWebViewProbeState(this, "GATE_BLOCKED")
             status.text = "لم تثبت صلاحية صفحة DNS للتعديل؛ لم يُجر أي تغيير."
             HakimHealthBeacon.sendAsync(this, "router_webview_dns_gate_blocked")
             return
@@ -349,6 +356,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
                 baselineDns2 = dns2
                 baselineSource = source
                 if (!HakimNetworkGuardian.recordLocalWebViewBaseline(this, dns1, dns2, source)) {
+                    HakimNetworkGuardian.markLocalWebViewProbeState(this, "BASELINE_REJECTED")
                     status.text = "تعذر حفظ خط الأساس؛ لم يُجر أي تغيير."
                     return
                 }
@@ -387,35 +395,88 @@ class HakimRouterAuthActivity : ComponentActivity() {
     }
 
     private fun applyDns(target: WebView, dns1: String, dns2: String, source: String, rollback: Boolean) {
-        if (!isIpv4(dns1) || !isIpv4(dns2) || source !in setOf("0", "1")) return
-        val a = dns1.split(".")
-        val b = dns2.split(".")
+        val valueOk = if (rollback) {
+            isIpv4OrBlank(dns1) && isIpv4OrBlank(dns2)
+        } else {
+            isIpv4(dns1) && isIpv4(dns2)
+        }
+        if (!valueOk || source !in setOf("0", "1")) return
+
+        val a = splitIpv4OrBlank(dns1)
+        val b = splitIpv4OrBlank(dns2)
         val js = """
             (function(){
               try{
-                const btn=document.querySelector('#Btn_apply_DHCPBasicCfg');
-                const src0=document.querySelector('#DnsServerSource0');
-                const src1=document.querySelector('#DnsServerSource1');
-                if(!btn||btn.disabled||!src0||!src1) return JSON.stringify({ok:false});
-                const setSeg=(p,v)=>{
-                  for(let i=0;i<4;i++){
-                    const e=document.querySelector('#'+p+i);
-                    if(!e) return false;
-                    e.value=String(v[i]);
-                    e.dispatchEvent(new Event('input',{bubbles:true}));
-                    e.dispatchEvent(new Event('change',{bubbles:true}));
+                const docs=[]; const seen=[];
+                function addDoc(d){
+                  if(!d || seen.indexOf(d)>=0) return;
+                  seen.push(d); docs.push(d);
+                  try{
+                    const fs=d.querySelectorAll('iframe,frame');
+                    for(let i=0;i<fs.length && docs.length<8;i++){
+                      try{ if(fs[i].contentDocument) addDoc(fs[i].contentDocument); }catch(_){}
+                    }
+                  }catch(_){}
+                }
+                addDoc(document);
+                function byIdOrName(d,n){ return d.getElementById(n) || d.querySelector('[name="'+n+'"]'); }
+                function generic(d,kind){
+                  const els=d.querySelectorAll('input,button,select,a');
+                  for(let i=0;i<els.length && i<800;i++){
+                    const e=els[i];
+                    const key=String((e.id||'')+' '+(e.name||'')).toLowerCase();
+                    if(kind==='apply' && key.indexOf('apply')>=0 && key.indexOf('dhcp')>=0) return e;
+                    if(kind==='source0' && key.indexOf('dnsserversource0')>=0) return e;
+                    if(kind==='source1' && key.indexOf('dnsserversource1')>=0) return e;
+                    if(kind==='source' && key.indexOf('dnsserversource')>=0 && key.indexOf('0')<0 && key.indexOf('1')<0) return e;
+                    if(kind==='dns1' && key==='dnsserver1') return e;
+                    if(kind==='dns2' && key==='dnsserver2') return e;
                   }
-                  return true;
-                };
-                if(!setSeg('sub_DNSServer1',[${a.joinToString(",")}])) return JSON.stringify({ok:false});
-                if(!setSeg('sub_DNSServer2',[${b.joinToString(",")}])) return JSON.stringify({ok:false});
-                src0.checked=${source == "0"};
-                src1.checked=${source == "1"};
-                src0.dispatchEvent(new Event('change',{bubbles:true}));
-                src1.dispatchEvent(new Event('change',{bubbles:true}));
-                btn.click();
-                return JSON.stringify({ok:true});
-              }catch(_){return JSON.stringify({ok:false});}
+                  return null;
+                }
+                function emit(e){
+                  if(!e) return;
+                  try{e.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}
+                  try{e.dispatchEvent(new Event('change',{bubbles:true}));}catch(_){}
+                }
+                function setSegments(d,p,v){
+                  let found=true;
+                  for(let i=0;i<4;i++){
+                    const e=byIdOrName(d,p+i);
+                    if(!e){found=false;break;}
+                    e.value=String(v[i]||''); emit(e);
+                  }
+                  return found;
+                }
+                for(let x=0;x<docs.length;x++){
+                  const d=docs[x];
+                  const btn=byIdOrName(d,'Btn_apply_DHCPBasicCfg') || generic(d,'apply');
+                  const src0=byIdOrName(d,'DnsServerSource0') || generic(d,'source0');
+                  const src1=byIdOrName(d,'DnsServerSource1') || generic(d,'source1');
+                  const srcDirect=byIdOrName(d,'DnsServerSource') || generic(d,'source');
+                  const direct1=byIdOrName(d,'DNSServer1') || generic(d,'dns1');
+                  const direct2=byIdOrName(d,'DNSServer2') || generic(d,'dns2');
+                  if(!btn || btn.disabled || ((!src0||!src1) && !srcDirect)) continue;
+
+                  let dns1ok=setSegments(d,'sub_DNSServer1',[${a.joinToString(",")}]);
+                  let dns2ok=setSegments(d,'sub_DNSServer2',[${b.joinToString(",")}]);
+                  if(direct1){ direct1.value='${jsSafe(dns1)}'; emit(direct1); dns1ok=true; }
+                  if(direct2){ direct2.value='${jsSafe(dns2)}'; emit(direct2); dns2ok=true; }
+                  if(!dns1ok || !dns2ok) continue;
+
+                  if(src0 && src1){
+                    src0.checked=${source == "0"};
+                    src1.checked=${source == "1"};
+                    emit(src0); emit(src1);
+                  }else if(srcDirect){
+                    srcDirect.value='${jsSafe(source)}'; emit(srcDirect);
+                  }else continue;
+
+                  btn.click();
+                  return JSON.stringify({ok:true,variant:x===0?'top':'frame'});
+                }
+                return JSON.stringify({ok:false,variant:'none'});
+              }catch(_){return JSON.stringify({ok:false,variant:'error'});}
             })()
         """.trimIndent()
 
@@ -425,6 +486,10 @@ class HakimRouterAuthActivity : ComponentActivity() {
             val result = decodeObject(raw)
             val ok = result?.optBoolean("ok", false) == true
             if (!ok) {
+                HakimNetworkGuardian.markLocalWebViewProbeState(
+                    this,
+                    if (rollback) "ROLLBACK_NOT_STARTED" else "APPLY_NOT_STARTED"
+                )
                 if (!rollback) {
                     status.text = "لم تبدأ عملية التغيير؛ لم يُمس DNS."
                     HakimHealthBeacon.sendAsync(this, "router_webview_dns_apply_not_started")
@@ -451,7 +516,11 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val dns1 = baseline.optString("dns1", baselineDns1)
         val dns2 = baseline.optString("dns2", baselineDns2)
         val source = baseline.optString("source", baselineSource)
-        if (!baseline.optBoolean("saved", false) || !isIpv4(dns1) || !isIpv4(dns2) || source !in setOf("0", "1")) {
+        if (!baseline.optBoolean("saved", false) ||
+            !isIpv4OrBlank(dns1) ||
+            !isIpv4OrBlank(dns2) ||
+            source !in setOf("0", "1")
+        ) {
             status.text = "خط الأساس غير صالح؛ لم أنفذ تراجعًا أعمى."
             HakimHealthBeacon.sendAsync(this, "router_webview_dns_rollback_baseline_invalid")
             return
@@ -476,9 +545,21 @@ class HakimRouterAuthActivity : ComponentActivity() {
     }
 
     private fun isIpv4(value: String): Boolean {
-        val parts = value.split(".").mapNotNull { it.toIntOrNull() }
-        return parts.size == 4 && parts.all { it in 0..255 }
+        val parts = value.split(".")
+        if (parts.size != 4) return false
+        return parts.all { p ->
+            val n = p.toIntOrNull()
+            n != null && n in 0..255
+        }
     }
+
+    private fun isIpv4OrBlank(value: String): Boolean = value.isBlank() || isIpv4(value)
+
+    private fun splitIpv4OrBlank(value: String): List<String> =
+        if (value.isBlank()) listOf("", "", "", "") else value.split(".")
+
+    private fun jsSafe(value: String): String =
+        value.replace("\\", "\\\\").replace("'", "\\'").take(64)
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)

@@ -217,6 +217,7 @@ object HakimTaskManager {
             fullBypass -> State.COMPLETE
             familyConfigured && resolverVerified -> State.VERIFYING
             rawState == "ROUTER_AUTH_REQUIRED" -> State.BLOCKED
+            rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> State.WAITING
             rawState.startsWith("FAMILY_DNS_ROLLBACK") || rawState.startsWith("FAMILY_DNS_ROLLED_BACK") -> State.FAILED
             localSession && rawState == "TR064_LANHOST_NOT_FOUND" -> State.RUNNING
             else -> State.RUNNING
@@ -225,6 +226,7 @@ object HakimTaskManager {
             fullBypass -> "ثبتت طبقات الحماية والالتفاف المطلوبة"
             familyConfigured && resolverVerified -> "DNS العائلي مثبت؛ بقي اختبار طبقات الالتفاف"
             rawState == "ROUTER_AUTH_REQUIRED" -> "الراوتر ينتظر مصادقة محلية"
+            rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> "بانتظار شبكة المنزل"
             localSession && rawState == "TR064_LANHOST_NOT_FOUND" -> "جلسة الراوتر موجودة؛ استئناف DNS داخل WebView"
             else -> "حارس الشبكة يعمل ولم يثبت الاكتمال بعد"
         }
@@ -232,6 +234,7 @@ object HakimTaskManager {
             fullBypass -> "لا توجد خطوة تالية"
             familyConfigured && resolverVerified -> "اختبار DNS الخارجي وDoT وDoH وVPN وIPv6"
             rawState == "ROUTER_AUTH_REQUIRED" -> "فتح المصادقة المحلية داخل حكيم"
+            rawState in setOf("NOT_WIFI", "NO_ACTIVE_NETWORK", "OUTSIDE_HOME_GATEWAY") -> "الاستئناف تلقائيًا عند عودة Wi-Fi المنزل"
             localSession -> "فتح واجهة DHCP/DNS داخل جلسة الراوتر المحلية"
             else -> "متابعة الحارس حتى ظهور دليل جديد"
         }

@@ -162,25 +162,6 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         doh_controlled:flag(guardian?.doh_controlled),
         vpn_blocked:flag(guardian?.vpn_blocked)
       },
-      network_guardian:{
-        state:fixed(guardian?.state,[
-          "NOT_RUN","NO_ACTIVE_NETWORK","NOT_WIFI","NO_LINK_PROPERTIES","OUTSIDE_HOME_GATEWAY",
-          "ROUTER_FINGERPRINT_NOT_PROVEN","TR064_LANHOST_NOT_FOUND","ROUTER_AUTH_REQUIRED",
-          "FAMILY_DNS_CONFIGURED","FAMILY_DNS_ROLLED_BACK_UNVERIFIED",
-          "FAMILY_DNS_ROLLBACK_UNVERIFIED","FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED","ERROR"
-        ]),
-        fingerprint_zte:bool(guardian?.fingerprint_zte),
-        fingerprint_zxhn:bool(guardian?.fingerprint_zxhn),
-        router_auth_required:bool(guardian?.router_auth_required),
-        baseline_dns_saved:bool(guardian?.baseline_dns_saved),
-        family_dns_configured:bool(guardian?.family_dns_configured),
-        family_resolver_verified:bool(guardian?.family_resolver_verified),
-        full_bypass_prevention:bool(guardian?.full_bypass_prevention),
-        dns_redirect_forced:bool(guardian?.dns_redirect_forced),
-        dot_blocked:bool(guardian?.dot_blocked),
-        doh_controlled:bool(guardian?.doh_controlled),
-        vpn_blocked:bool(guardian?.vpn_blocked)
-      },
       network_protection:{
         state:fixed(networkProtection?.state,[
           "IDLE","OPENING_SETTINGS","CONNECTING_LOCAL_ADB","PAIRING_REQUIRED","APPLYING","ROLLING_BACK",
@@ -263,9 +244,29 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         same_tested_delivered_artifact_required:bool(gate?.same_tested_delivered_artifact_required),
         regression_gate_supported:bool(gate?.regression_gate_supported)
       },
+      network_guardian:{
+        state:fixed(guardian?.state,[
+          "NOT_RUN","NO_ACTIVE_NETWORK","NOT_WIFI","NO_LINK_PROPERTIES","OUTSIDE_HOME_GATEWAY",
+          "ROUTER_FINGERPRINT_NOT_PROVEN","TR064_LANHOST_NOT_FOUND","ROUTER_AUTH_REQUIRED",
+          "FAMILY_DNS_CONFIGURED","FAMILY_DNS_ROLLED_BACK_UNVERIFIED",
+          "FAMILY_DNS_ROLLBACK_UNVERIFIED","FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED","ERROR"
+        ]),
+        fingerprint_zte:bool(guardian?.fingerprint_zte),
+        fingerprint_zxhn:bool(guardian?.fingerprint_zxhn),
+        router_auth_required:bool(guardian?.router_auth_required),
+        baseline_dns_saved:bool(guardian?.baseline_dns_saved),
+        family_dns_configured:bool(guardian?.family_dns_configured),
+        family_resolver_verified:bool(guardian?.family_resolver_verified),
+        full_bypass_prevention:bool(guardian?.full_bypass_prevention),
+        dns_redirect_forced:bool(guardian?.dns_redirect_forced),
+        dot_blocked:bool(guardian?.dot_blocked),
+        doh_controlled:bool(guardian?.doh_controlled),
+        vpn_blocked:bool(guardian?.vpn_blocked)
+      },
       network_protection:{
         state:fixed(networkProtection?.state,[
-          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+          "IDLE","OPENING_SETTINGS","CONNECTING_LOCAL_ADB","PAIRING_REQUIRED","APPLYING","ROLLING_BACK",
+          "VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
         ]),
         running:bool(networkProtection?.running),
         verified:bool(networkProtection?.verified),

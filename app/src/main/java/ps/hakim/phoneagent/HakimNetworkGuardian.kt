@@ -291,6 +291,115 @@ object HakimNetworkGuardian {
             .put("vpn_blocked", false)
     }
 
+    /**
+     * عقد R11: WebView المحلي المصادق عليه يقرأ/يطبق DNS داخل الراوتر نفسه.
+     * لا تنتقل Cookies أو كلمات مرور إلى هذه الواجهة؛ تصلنا فقط قيم DNS غير السرية.
+     */
+    fun recordLocalWebViewBaseline(context: Context, dns1: String, dns2: String, source: String): Boolean {
+        if (!isIpv4(dns1) || !isIpv4(dns2) || source !in setOf("0", "1")) return false
+        val p = prefs(context)
+        if (!p.contains("web_baseline_dns1")) {
+            p.edit()
+                .putString("web_baseline_dns1", dns1)
+                .putString("web_baseline_dns2", dns2)
+                .putString("web_baseline_dns3", "")
+                .putString("web_baseline_dns_source", source)
+                .putLong("web_baseline_dns_at", System.currentTimeMillis())
+                .apply()
+        }
+        p.edit()
+            .putString("web_dns_adapter", "modern_webview")
+            .putBoolean("web_dns_compatible", true)
+            .putBoolean("router_auth_required", false)
+            .apply()
+        return true
+    }
+
+    fun markLocalWebViewApplyAttempt(context: Context) {
+        prefs(context).edit()
+            .putString("web_dns_adapter", "modern_webview")
+            .putBoolean("web_dns_compatible", true)
+            .putBoolean("web_dns_apply_attempted", true)
+            .putBoolean("web_dns_readback_verified", false)
+            .putBoolean("web_dns_rollback_verified", false)
+            .putString("state", "WEBVIEW_DNS_APPLYING")
+            .putString("last_reason", "router_local_webview")
+            .putLong("last_run_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    fun verifyLocalWebViewDns(context: Context, dns1: String, dns2: String, source: String): JSONObject {
+        val configured = dns1 == FAMILY_DNS_1 && dns2 == FAMILY_DNS_2 && source == "0"
+        val p = prefs(context)
+        p.edit()
+            .putString("web_dns_adapter", "modern_webview")
+            .putBoolean("web_dns_compatible", true)
+            .putBoolean("web_dns_readback_verified", configured)
+            .putBoolean("family_dns_configured", configured)
+            .apply()
+
+        if (!configured) {
+            return finish(
+                context,
+                "FAMILY_DNS_ROLLBACK_REQUIRED",
+                "router_local_webview_readback",
+                System.currentTimeMillis()
+            )
+        }
+
+        val resolverGood = dnsQuery(FAMILY_DNS_1, "cleanbrowsing.org")
+        val resolverAdult = dnsQuery(FAMILY_DNS_1, "pornhub.com")
+        val resolverVerified = resolverGood == 0 && resolverAdult in setOf(0, 3)
+        p.edit()
+            .putBoolean("family_resolver_verified", resolverVerified)
+            .putInt("family_resolver_good_rcode", resolverGood)
+            .putInt("family_resolver_blocked_rcode", resolverAdult)
+            .putLong("last_router_dns_verify_at", System.currentTimeMillis())
+            .apply()
+        return finish(
+            context,
+            if (resolverVerified) "FAMILY_DNS_CONFIGURED" else "FAMILY_DNS_ROLLBACK_REQUIRED",
+            "router_local_webview_verify",
+            System.currentTimeMillis()
+        )
+    }
+
+    fun localWebViewBaseline(context: Context): JSONObject {
+        val p = prefs(context)
+        return JSONObject()
+            .put("dns1", p.getString("web_baseline_dns1", ""))
+            .put("dns2", p.getString("web_baseline_dns2", ""))
+            .put("source", p.getString("web_baseline_dns_source", ""))
+            .put("saved", p.contains("web_baseline_dns1"))
+    }
+
+    fun recordLocalWebViewRollback(
+        context: Context,
+        dns1: String,
+        dns2: String,
+        source: String
+    ): JSONObject {
+        val p = prefs(context)
+        val baseline1 = p.getString("web_baseline_dns1", "").orEmpty()
+        val baseline2 = p.getString("web_baseline_dns2", "").orEmpty()
+        val baselineSource = p.getString("web_baseline_dns_source", "").orEmpty()
+        val restored = baseline1.isNotBlank() &&
+            dns1 == baseline1 && dns2 == baseline2 && source == baselineSource
+        p.edit()
+            .putBoolean("web_dns_rollback_verified", restored)
+            .putBoolean("family_dns_configured", false)
+            .putBoolean("family_resolver_verified", false)
+            .putString("rollback_state", if (restored) "verified" else "verify_failed")
+            .putLong("rollback_at", System.currentTimeMillis())
+            .apply()
+        return finish(
+            context,
+            if (restored) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED",
+            "router_local_webview_rollback",
+            System.currentTimeMillis()
+        )
+    }
+
     private data class GatewayFieldIdentity(
         val vendor: String,
         val model: String,

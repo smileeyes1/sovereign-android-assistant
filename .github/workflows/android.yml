@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20329 F8040 source inference R19 candidate
+# 20330 F8040 automatic-source rollback R20 candidate
 
 on:
   push:
@@ -50,7 +50,7 @@ jobs:
           python3 tests/verify_task_manager.py
           python3 tests/verify_device_family_dns_vpn.py
           python3 tests/verify_20328_split_frame_device_first.py
-          python3 tests/verify_20329_f8040_source_inference.py
+          python3 tests/verify_20329_f8040_source_inference.py\n          python3 tests/verify_20330_f8040_auto_source_rollback.py
           python3 tests/verify_webview_dns_r13.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py
@@ -155,7 +155,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20329"
+          test "$VERSION_CODE" = "20330"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

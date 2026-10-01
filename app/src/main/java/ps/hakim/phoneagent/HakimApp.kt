@@ -35,6 +35,9 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "task_manager_sync") {
             HakimTaskManager.syncSystemTasks(this)
         }
+        HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
+            HakimDeviceProtection.ensureRunning(this)
+        }
         HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
             AutoUpdater.schedule(this)
         }

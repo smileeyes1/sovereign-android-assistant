@@ -28,14 +28,14 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20326,
-      "branch": "feature/hakim-20326-network-task-autoresume-r16",
+      "version_code": 20327,
+      "branch": "feature/hakim-20327-device-family-dns-vpn-r17",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "network_p0_foreground_autoresume_and_explicit_apply_gate_repair"
+      "purpose": "router_p0_autoresume_plus_device_split_dns_family_vpn"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -112,7 +112,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20326_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20327_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -153,7 +153,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20326,
+    "candidate_version": 20327,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -172,7 +172,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "Hakim-20317-F8040-STRICT-DNS-R7.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20326",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20327",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -282,6 +282,10 @@
     "webview_dns_baseline_r15_source_integrated": true,
     "webview_dns_baseline_r15_field_verified": false,
     "network_task_autoresume_r16_source_integrated": true,
-    "network_task_autoresume_r16_field_verified": false
+    "network_task_autoresume_r16_field_verified": false,
+    "device_family_dns_vpn_r17_source_integrated": true,
+    "device_family_dns_vpn_r17_field_verified": false,
+    "device_family_dns_vpn_scope": "system_dns_only_wifi_and_mobile",
+    "device_family_dns_vpn_full_bypass_prevention": false
   }
 }

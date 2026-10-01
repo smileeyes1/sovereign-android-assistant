@@ -16,6 +16,7 @@ object HakimTaskManager {
     private const val KEY_RESUME_REQUEST = "resume_request"
     private const val MAX_TASKS = 48
     const val NETWORK_TASK_ID = "system-network-protection"
+    const val DEVICE_DNS_TASK_ID = "system-device-family-dns"
 
     enum class State {
         QUEUED,
@@ -198,6 +199,7 @@ object HakimTaskManager {
     @Synchronized
     fun syncSystemTasks(context: Context) {
         syncNetworkProtection(context)
+        syncDeviceDnsProtection(context)
     }
 
     @Synchronized
@@ -267,6 +269,66 @@ object HakimTaskManager {
         save(context, items)
     }
 
+    @Synchronized
+    fun syncDeviceDnsProtection(context: Context) {
+        val protection = HakimDeviceProtection.status(context)
+        val now = System.currentTimeMillis()
+        val items = load(context)
+        val item = items.firstOrNull { it.optString("id") == DEVICE_DNS_TASK_ID }
+            ?: JSONObject().also { items.add(it) }
+
+        val consent = protection.optBoolean("consent_granted", false)
+        val enabled = protection.optBoolean("enabled", false)
+        val active = protection.optBoolean("active", false)
+        val upstream = protection.optBoolean("upstream_verified_recently", false)
+        val rawState = protection.optString("state", "NOT_CONFIGURED")
+
+        val taskState = when {
+            active && upstream -> State.VERIFYING
+            !consent -> State.BLOCKED
+            enabled -> State.RUNNING
+            else -> State.BLOCKED
+        }
+        val detail = when {
+            active && upstream -> "DNS العائلي للجهاز يعمل على Wi-Fi وبيانات الهاتف؛ بقي اختبار مسارات الالتفاف"
+            !consent -> "أندرويد ينتظر موافقة VPN المحلية لمرة واحدة"
+            enabled -> "جارٍ تشغيل طبقة DNS العائلية على الجهاز"
+            else -> "طبقة DNS الجهاز لم تُفعّل بعد"
+        }
+        val next = when {
+            active && upstream -> "اختبار DoH/VPN وتثبيت حدود الحماية"
+            !consent -> "موافقة أندرويد المحلية على VPN"
+            else -> "إعادة تشغيل خدمة DNS العائلية تلقائيًا"
+        }
+
+        item.put("id", DEVICE_DNS_TASK_ID)
+            .put("kind", "device_dns_protection")
+            .put("title", "حماية DNS الهاتف خارج المنزل")
+            .put("goal", "تمرير DNS النظامي عبر مرشح عائلي على Wi-Fi وبيانات الهاتف")
+            .put("acceptance", "خدمة VPN DNS فعالة ومرشح العائلة يرد بنجاح دون كسر الإنترنت")
+            .put("state", taskState.name)
+            .put("phase", rawState.take(120))
+            .put("priority", "P0")
+            .put("created_at", item.optLong("created_at", now).takeIf { it > 0L } ?: now)
+            .put("updated_at", now)
+            .put("attempts", item.optInt("attempts", 1).coerceAtLeast(1))
+            .put("resumable", true)
+            .put("auto_resume", true)
+            .put("last_detail", detail)
+            .put("last_evidence", if (active && upstream) "device_dns_vpn_active + family_upstream_verified" else "")
+            .put("blocker", if (taskState == State.BLOCKED) detail else "")
+            .put("next_action", next)
+        save(context, items)
+    }
+
+    fun shouldRequestDeviceDnsConsent(context: Context): Boolean {
+        val protection = HakimDeviceProtection.status(context)
+        if (protection.optBoolean("active", false) &&
+            protection.optBoolean("upstream_verified_recently", false)
+        ) return false
+        return !protection.optBoolean("consent_granted", false)
+    }
+
     fun shouldAutoOpenRouterProtection(context: Context): Boolean {
         val guardian = HakimNetworkGuardian.status(context)
         if (guardian.optBoolean("family_dns_configured", false) &&
@@ -316,6 +378,7 @@ object HakimTaskManager {
             .put("top_state", top?.state?.name?.lowercase().orEmpty())
             .put("top_priority", top?.priority.orEmpty())
             .put("network_task_state", get(context, NETWORK_TASK_ID)?.state?.name?.lowercase().orEmpty())
+            .put("device_dns_task_state", get(context, DEVICE_DNS_TASK_ID)?.state?.name?.lowercase().orEmpty())
     }
 
     private fun toTask(o: JSONObject): Task? {

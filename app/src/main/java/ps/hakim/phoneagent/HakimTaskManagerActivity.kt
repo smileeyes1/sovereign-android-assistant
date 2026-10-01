@@ -154,6 +154,17 @@ class HakimTaskManagerActivity : ComponentActivity() {
             startActivity(Intent(this, HakimRouterAuthActivity::class.java))
             return
         }
+        if (task.kind == "device_dns_protection") {
+            HakimTaskManager.syncSystemTasks(this)
+            if (HakimDeviceProtection.consentGranted(this)) {
+                if (!HakimDeviceProtection.enabled(this)) HakimDeviceProtection.markConsentGranted(this)
+                HakimDeviceProtection.ensureRunning(this)
+                render()
+            } else {
+                startActivity(Intent(this, HakimFamilyDnsVpnActivity::class.java))
+            }
+            return
+        }
         val requested = HakimTaskManager.requestResume(this, task.id) ?: return
         startActivity(
             Intent(this, CommandCenterActivity::class.java)

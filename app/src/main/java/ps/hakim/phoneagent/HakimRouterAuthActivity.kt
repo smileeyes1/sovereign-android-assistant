@@ -473,11 +473,16 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val source = data.optString("source")
         val disabled = data.optBoolean("disabled", true)
 
+        val normalizedBaselineDns1 =
+            if (source == "1" && !isIpv4OrBlank(dns1)) "" else dns1
+        val normalizedBaselineDns2 =
+            if (source == "1" && !isIpv4OrBlank(dns2)) "" else dns2
+
         val gateState = when {
             host != ROUTER_HOST -> "GATE_HOST"
             source !in setOf("0", "1") -> "GATE_SOURCE"
-            !isIpv4OrBlank(dns1) -> "GATE_DNS1"
-            !isIpv4OrBlank(dns2) -> "GATE_DNS2"
+            source == "0" && !isIpv4OrBlank(dns1) -> "GATE_DNS1"
+            source == "0" && !isIpv4OrBlank(dns2) -> "GATE_DNS2"
             source == "0" && dns1.isBlank() -> "GATE_MANUAL_EMPTY"
             else -> ""
         }
@@ -491,10 +496,16 @@ class HakimRouterAuthActivity : ComponentActivity() {
 
         when (mode) {
             "PROBE" -> {
-                baselineDns1 = dns1
-                baselineDns2 = dns2
+                baselineDns1 = normalizedBaselineDns1
+                baselineDns2 = normalizedBaselineDns2
                 baselineSource = source
-                if (!HakimNetworkGuardian.recordLocalWebViewBaseline(this, dns1, dns2, source)) {
+                if (!HakimNetworkGuardian.recordLocalWebViewBaseline(
+                        this,
+                        normalizedBaselineDns1,
+                        normalizedBaselineDns2,
+                        source
+                    )
+                ) {
                     HakimNetworkGuardian.markLocalWebViewProbeState(this, "BASELINE_REJECTED")
                     status.text = "تعذر حفظ خط الأساس؛ لم يُجر أي تغيير."
                     return
@@ -534,8 +545,9 @@ class HakimRouterAuthActivity : ComponentActivity() {
     }
 
     private fun applyDns(target: WebView, dns1: String, dns2: String, source: String, rollback: Boolean) {
+        val sourceOnlyAutoRollback = rollback && source == "1"
         val valueOk = if (rollback) {
-            isIpv4OrBlank(dns1) && isIpv4OrBlank(dns2)
+            sourceOnlyAutoRollback || (isIpv4OrBlank(dns1) && isIpv4OrBlank(dns2))
         } else {
             isIpv4(dns1) && isIpv4(dns2)
         }
@@ -642,7 +654,9 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   }
                   return found;
                 }
-                let applyBtn=null,applyVariant='none',dns1ok=false,dns2ok=false,sourceOk=false;
+                const sourceOnlyAutoRollback=${if (sourceOnlyAutoRollback) "true" else "false"};
+                let applyBtn=null,applyVariant='none',
+                    dns1ok=sourceOnlyAutoRollback,dns2ok=sourceOnlyAutoRollback,sourceOk=false;
                 for(let x=0;x<docs.length;x++){
                   const d=docs[x];
                   const btn=byIdOrName(d,'Btn_apply_DHCPBasicCfg') || generic(d,'apply');
@@ -737,8 +751,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
         val dns2 = baseline.optString("dns2", baselineDns2)
         val source = baseline.optString("source", baselineSource)
         if (!baseline.optBoolean("saved", false) ||
-            !isIpv4OrBlank(dns1) ||
-            !isIpv4OrBlank(dns2) ||
+            (source == "0" && (!isIpv4OrBlank(dns1) || !isIpv4OrBlank(dns2))) ||
             source !in setOf("0", "1")
         ) {
             status.text = "خط الأساس غير صالح؛ لم أنفذ تراجعًا أعمى."

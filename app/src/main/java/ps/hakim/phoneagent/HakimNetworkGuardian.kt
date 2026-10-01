@@ -427,8 +427,12 @@ object HakimNetworkGuardian {
         val baseline2 = p.getString("web_baseline_dns2", "").orEmpty()
         val baselineSource = p.getString("web_baseline_dns_source", "").orEmpty()
         val baselineSaved = p.contains("web_baseline_dns1")
-        val restored = baselineSaved &&
-            dns1 == baseline1 && dns2 == baseline2 && source == baselineSource
+        val restored = baselineSaved && source == baselineSource &&
+            if (baselineSource == "1") {
+                true
+            } else {
+                dns1 == baseline1 && dns2 == baseline2
+            }
         p.edit()
             .putBoolean("web_dns_rollback_verified", restored)
             .putBoolean("family_dns_configured", false)

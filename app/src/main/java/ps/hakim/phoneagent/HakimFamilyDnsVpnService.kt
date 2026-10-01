@@ -128,7 +128,8 @@ class HakimFamilyDnsVpnService : VpnService() {
         Thread({
             runCatching {
                 Thread.sleep(450L)
-                InetAddress.getByName("cleanbrowsing.org")
+                // اسم فريد لتجنب نجاح كاذب من DNS cache؛ حتى NXDOMAIN يولّد رد DNS حقيقيًا.
+                InetAddress.getByName("hakim-" + System.currentTimeMillis() + ".cleanbrowsing.org")
             }.onFailure {
                 HakimDeviceProtection.noteFailure(this, "selfcheck_" + it.javaClass.simpleName)
             }

@@ -108,6 +108,15 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const fabric=result?.execution_fabric;
     const containment=result?.fault_containment;
     const diagnostics=result?.network_diagnostics;
+    const lanSurvey=diagnostics&&typeof diagnostics.lan_survey==="object"&&diagnostics.lan_survey!==null
+      ?diagnostics.lan_survey as Record<string,unknown>:undefined;
+    const lanHosts=Array.isArray(lanSurvey?.hosts)?lanSurvey.hosts:[];
+    const gatewayHost=lanHosts.find(value=>
+      typeof value==="object"&&value!==null&&(value as Record<string,unknown>).gateway===true
+    ) as Record<string,unknown>|undefined;
+    const safeIdentity=(raw:unknown)=>
+      typeof raw==="string"&&raw.length>0&&raw.length<=80&&/^[A-Za-z0-9 ._()\/-]+$/.test(raw)?raw:null;
+    const safeRole=(raw:unknown)=>fixed(raw,["router_or_gateway","web_managed_device","repeater_or_ap","network_service"]);
     const guardian=result?.network_guardian;
     const autoUpdate=result?.auto_update;
     const networkProtection=result?.network_protection;
@@ -143,6 +152,15 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       self_check:fixed(result?.self_check,["PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"]),
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
         Object.keys(diagnostics).length>0,
+      router_identity:{
+        detected:!!gatewayHost,
+        vendor:safeIdentity(gatewayHost?.vendor_hint),
+        model:safeIdentity(gatewayHost?.model_hint),
+        role:safeRole(gatewayHost?.role_hint),
+        http_status:typeof gatewayHost?.http_status==="number"&&Number.isInteger(gatewayHost.http_status)&&
+          gatewayHost.http_status>=100&&gatewayHost.http_status<=599?gatewayHost.http_status:null,
+        scheme:fixed(gatewayHost?.http_scheme,["http","https"])
+      },
       network_guardian:{
         state:fixed(guardian?.state,[
           "NOT_RUN","NO_ACTIVE_NETWORK","NOT_WIFI","NO_LINK_PROPERTIES","OUTSIDE_HOME_GATEWAY",

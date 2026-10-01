@@ -11,8 +11,8 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
-        versionCode 20317
-        versionName '3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6-strict-web-dns-r7'
+        versionCode 20318
+        versionName '3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6-strict-web-dns-r7-modern-menu-dns-r8'
     }
 
     compileOptions {

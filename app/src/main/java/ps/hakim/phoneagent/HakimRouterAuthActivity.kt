@@ -343,7 +343,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
             isIpv4OrBlank(dns2) &&
             (source == "1" || dns1.isNotBlank())
 
-        if (host != ROUTER_HOST || !baselineValuesValid || disabled) {
+        if (host != ROUTER_HOST || !baselineValuesValid) {
             HakimNetworkGuardian.markLocalWebViewProbeState(this, "GATE_BLOCKED")
             status.text = "لم تثبت صلاحية صفحة DNS للتعديل؛ لم يُجر أي تغيير."
             HakimHealthBeacon.sendAsync(this, "router_webview_dns_gate_blocked")
@@ -456,7 +456,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   const srcDirect=byIdOrName(d,'DnsServerSource') || generic(d,'source');
                   const direct1=byIdOrName(d,'DNSServer1') || generic(d,'dns1');
                   const direct2=byIdOrName(d,'DNSServer2') || generic(d,'dns2');
-                  if(!btn || btn.disabled || ((!src0||!src1) && !srcDirect)) continue;
+                  if(!btn || ((!src0||!src1) && !srcDirect)) continue;
 
                   let dns1ok=setSegments(d,'sub_DNSServer1',[${a.joinToString(",")}]);
                   let dns2ok=setSegments(d,'sub_DNSServer2',[${b.joinToString(",")}]);
@@ -472,8 +472,16 @@ class HakimRouterAuthActivity : ComponentActivity() {
                     srcDirect.value='${jsSafe(source)}'; emit(srcDirect);
                   }else continue;
 
+                  if(btn.disabled){
+                    return JSON.stringify({
+                      ok:false,
+                      variant:x===0?'top':'frame',
+                      reason:'apply_disabled_after_change'
+                    });
+                  }
+
                   btn.click();
-                  return JSON.stringify({ok:true,variant:x===0?'top':'frame'});
+                  return JSON.stringify({ok:true,variant:x===0?'top':'frame',reason:'clicked'});
                 }
                 return JSON.stringify({ok:false,variant:'none'});
               }catch(_){return JSON.stringify({ok:false,variant:'error'});}
@@ -485,14 +493,31 @@ class HakimRouterAuthActivity : ComponentActivity() {
             actionInFlight = false
             val result = decodeObject(raw)
             val ok = result?.optBoolean("ok", false) == true
+            val reason = result?.optString("reason").orEmpty()
             if (!ok) {
+                val gateStillDisabled = reason == "apply_disabled_after_change"
                 HakimNetworkGuardian.markLocalWebViewProbeState(
                     this,
-                    if (rollback) "ROLLBACK_NOT_STARTED" else "APPLY_NOT_STARTED"
+                    when {
+                        gateStillDisabled -> "APPLY_GATE_STILL_DISABLED"
+                        rollback -> "ROLLBACK_NOT_STARTED"
+                        else -> "APPLY_NOT_STARTED"
+                    }
                 )
                 if (!rollback) {
-                    status.text = "لم تبدأ عملية التغيير؛ لم يُمس DNS."
-                    HakimHealthBeacon.sendAsync(this, "router_webview_dns_apply_not_started")
+                    status.text = if (gateStillDisabled) {
+                        "واجهة الراوتر أبقت زر التطبيق معطّلًا بعد تغيير الحقول؛ لم يُحفظ أي تعديل."
+                    } else {
+                        "لم تبدأ عملية التغيير؛ لم يُمس DNS."
+                    }
+                    HakimHealthBeacon.sendAsync(
+                        this,
+                        if (gateStillDisabled) "router_webview_dns_apply_gate_still_disabled"
+                        else "router_webview_dns_apply_not_started"
+                    )
+                    if (gateStillDisabled) {
+                        handler.postDelayed({ target.loadUrl(MODERN_VIEW_URL) }, 350L)
+                    }
                 } else {
                     status.text = "تعذر بدء التراجع؛ يلزم تحقق لاحق."
                     HakimNetworkGuardian.recordLocalWebViewRollback(this, "", "", "")

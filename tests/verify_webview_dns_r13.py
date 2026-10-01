@@ -13,7 +13,7 @@ def req(ok, reason):
     if not ok:
         raise SystemExit("WEBVIEW_DNS_R13=FAIL reason=" + reason)
 
-req("versionCode 20323" in build and "webview-dns-adaptive-r13" in build, "version")
+req("versionCode 20324" in build and "webview-dns-adaptive-r13-apply-gate-r14" in build, "version")
 req("iframe,frame" in router and "contentDocument" in router, "same_origin_frame_probe_missing")
 req("location.hostname" in router, "router_host_fallback_missing")
 req("isIpv4OrBlank" in router and "splitIpv4OrBlank" in router, "blank_baseline_support_missing")
@@ -44,4 +44,15 @@ status = guardian.split("fun status(context: Context)", 1)[1].split("fun recordL
 for forbidden in ("webview_dom", "webview_cookie", "webview_password", "webview_field_value"):
     req(forbidden not in status, "telemetry_leak:" + forbidden)
 
-print("WEBVIEW_DNS_R13=PASS frames=true adaptive=true blank_baseline=true rollback=true structural_telemetry=true private=true")
+# R14: a naturally disabled Apply button must not be force-enabled or treated as a pre-edit blocker.
+req('if (host != ROUTER_HOST || !baselineValuesValid || disabled)' not in router,
+    "initial_disabled_button_still_blocks")
+req('if(!btn || btn.disabled ||' not in router,
+    "apply_button_checked_before_change_events")
+req("apply_disabled_after_change" in router and "APPLY_GATE_STILL_DISABLED" in router,
+    "post_change_apply_gate_missing")
+for forbidden in ("btn.disabled=false", "removeAttribute('disabled')", 'removeAttribute("disabled")'):
+    req(forbidden not in router, "force_enable_forbidden:" + forbidden)
+req("target.loadUrl(MODERN_VIEW_URL)" in router, "safe_discard_reload_missing")
+
+print("WEBVIEW_DNS_R14=PASS frames=true adaptive=true blank_baseline=true rollback=true apply_gate=ui_native private=true")

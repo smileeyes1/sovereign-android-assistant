@@ -20,35 +20,35 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20316,
-      "commit": "a80da9f45ddf6354c37b7a6b0b3ad8c9284c2c42",
-      "ci_run_number": 1343,
+      "version_code": 20317,
+      "commit": "9dceea5dae37a39a8ef914af19570d317e7ad541",
+      "ci_run_number": 1349,
       "source_ci_verified": true,
       "field_verified": true,
-      "exact_apk_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7"
+      "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20317,
-      "branch": "feature/hakim-20317-f8040-strict-web-dns-r7",
+      "version_code": 20318,
+      "branch": "feature/hakim-20318-f8040-modern-menu-dns-r8",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "strict_reversible_f8040_web_dns_family_filter"
+      "purpose": "strict_reversible_f8040_modern_menu_dns_family_filter"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
-      "version_code": 20316,
-      "version_name": "3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6",
-      "apk_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7",
+      "version_code": 20317,
+      "version_name": "3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6-strict-web-dns-r7",
+      "apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184",
       "package": "ps.hakim.stable",
       "service_running": true,
       "service_connected": false,
       "recovery_state": "secure_relay_observed_network_guardian_active",
-      "evidence": "authenticated_health_hash_and_status_probe_r6_2026_10_01",
+      "evidence": "authenticated_health_hash_and_status_probe_r7_2026_10_01",
       "current_signer_reobserved": true,
-      "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_r6_artifact",
+      "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_r7_artifact",
       "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
       "promoted_as_source_baseline": true
     }
@@ -112,7 +112,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20317_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20318_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -153,7 +153,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20317,
+    "candidate_version": 20318,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -163,7 +163,7 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "760c65d8d30b431375536d9e36cf99b6a41e1c530d877639ddeed01a36bed9a7",
+    "signed_candidate_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184",
     "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
@@ -171,8 +171,8 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "Hakim-20316-F8040-WEB-PROBE-R6.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20316_TO_20317",
+    "signed_candidate_file": "Hakim-20317-F8040-STRICT-DNS-R7.apk",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20318",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -181,7 +181,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20316,
+    "signed_candidate_version": 20317,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,

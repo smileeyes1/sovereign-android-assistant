@@ -7,6 +7,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.util.Base64
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
@@ -19,8 +20,11 @@ import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.security.KeyFactory
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import java.security.spec.X509EncodedKeySpec
+import javax.crypto.Cipher
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
@@ -31,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * حارس شبكة حكيم:
  * - يستهدف الراوتر المنزلي المثبت 192.168.1.1 فقط، حتى عند المرور عبر مقوٍ/راوتر فرعي.
  * - عند بوابة فرعية لا يستمر إلا بعد إثبات مباشر وقرائي لهوية ZTE F8040 على 192.168.1.1.
- * - كشف أولاً، ثم تعديل DNS فقط عبر خدمة LANHostConfigManagement القياسية.
+ * - كشف أولاً، ثم تعديل DNS فقط عبر LANHostConfigManagement أو عقد ZTE LAN/DHCP المثبت ميدانياً.
  * - لا يتجاوز المصادقة، ولا يلمس WAN أو إدارة مزود الخدمة، ولا ينفذ shell/root.
  * - يحفظ خط الأساس قبل التعديل، ويفشل مغلقاً عند غياب بصمة الراوتر المنزلية المثبتة ميدانياً.
  */
@@ -42,6 +46,7 @@ object HakimNetworkGuardian {
     private const val FAMILY_DNS_1 = "185.228.168.168"
     private const val FAMILY_DNS_2 = "185.228.169.168"
     private const val MAX_BODY = 96 * 1024
+    private const val MAX_WEB_BODY = 256 * 1024
     private const val PREFS = "hakim_network_guardian"
     private val running = AtomicBoolean(false)
     @Volatile private var callbackInstalled = false
@@ -317,6 +322,18 @@ object HakimNetworkGuardian {
 
     private const val ZTE_GCH_DHCP_PATH = "/getpage.gch?pid=1002&nextpage=net_dhcp_dynamic_t.gch"
     private const val ZTE_LUA_LAN_PATH = "/getpage.lua?pid=1002&nextpage=Localnet_LanMgrIpv4_t.lp"
+    private const val ZTE_ROOT_PATH = "/"
+    private const val ZTE_MODERN_VIEW_PATH = "/?_type=menuView&_tag=lanMgrIpv4&Menu3Location=0"
+    private const val ZTE_MODERN_DHCP_PATH = "/?_type=menuData&_tag=Localnet_LanMgrIpv4_DHCPBasicCfg_lua.lua"
+    private const val ZTE_INTEGRITY_PUBLIC_KEY_B64 =
+        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAodPTerkUVCYmv28SOfRV" +
+        "7UKHVujx/HjCUTAWy9l0L5H0JV0LfDudTdMNPEKloZsNam3YrtEnq6jqMLJV4ASb" +
+        "1d6axmIgJ636wyTUS99gj4BKs6bQSTUSE8h/QkUYv4gEIt3saMS0pZpd90y6+B/9" +
+        "hZxZE/RKU8e+zgRqp1/762TB7vcjtjOwXRDEL0w71Jk9i8VUQ59MR1Uj5E8X3WIc" +
+        "fYSK5RWBkMhfaTRM6ozS9Bqhi40xlSOb3GBxCmliCifOJNLoO9kFoWgAIw5hkSIb" +
+        "GH+4Csop9Uy8VvmmB+B3ubFLN35qIa5OG5+SDXn4L7FeAA5lRiGxRi8tsWrtew8w" +
+        "nwIDAQAB"
+
 
     private data class StrictWebResponse(
         val status: Int,
@@ -364,15 +381,386 @@ object HakimNetworkGuardian {
                 .all { lua.body.contains(it, ignoreCase = true) }
         if (luaCompatible) {
             // This family is identified read-only. Its mutation contract varies by firmware;
-            // fail closed rather than guessing a POST body.
+            // continue to the separately proven modern menuData contract before giving up.
             p.edit()
                 .putString("web_dns_adapter", "lua_readonly")
                 .putBoolean("web_dns_compatible", false)
                 .apply()
-        } else {
-            p.edit().putString("web_dns_adapter", "none").apply()
         }
+
+        val modern = tryModernZteMenuDns(context)
+        if (modern != "TR064_LANHOST_NOT_FOUND") return modern
+        if (p.getString("web_dns_adapter", "none") == "lua_readonly") {
+            return "TR064_LANHOST_NOT_FOUND"
+        }
+        p.edit().putString("web_dns_adapter", "none").apply()
         return "TR064_LANHOST_NOT_FOUND"
+    }
+
+    private data class ModernContext(
+        val cookie: String,
+        val token: String,
+        val values: LinkedHashMap<String, String>,
+        val integCheck: Boolean
+    )
+
+    private fun tryModernZteMenuDns(context: Context): String {
+        val p = prefs(context)
+        val probe = openModernContext()
+        if (probe.first == "AUTH") {
+            p.edit()
+                .putString("web_dns_adapter", "modern_menu")
+                .putBoolean("router_auth_required", true)
+                .putBoolean("web_dns_compatible", false)
+                .apply()
+            return "ROUTER_AUTH_REQUIRED"
+        }
+        val ctx = probe.second ?: run {
+            p.edit().putString("web_dns_adapter", "none").apply()
+            return "TR064_LANHOST_NOT_FOUND"
+        }
+
+        val required = listOf(
+            "ServerEnable", "IPAddr", "SubnetMask", "MinAddress", "MaxAddress",
+            "DNSServer1", "DNSServer2", "DnsServerSource", "LeaseTime"
+        )
+        if (!required.all { ctx.values.containsKey(it) } ||
+            ctx.values["IPAddr"] != EXPECTED_GATEWAY ||
+            ctx.values["DnsServerSource"] !in setOf("0", "1")
+        ) {
+            p.edit()
+                .putString("web_dns_adapter", "modern_menu")
+                .putBoolean("web_dns_compatible", false)
+                .apply()
+            return "TR064_LANHOST_NOT_FOUND"
+        }
+
+        p.edit()
+            .putString("web_dns_adapter", "modern_menu")
+            .putBoolean("web_dns_compatible", true)
+            .putBoolean("router_auth_required", false)
+            .apply()
+
+        return applyModernZteMenuDns(context, ctx)
+    }
+
+    private fun openModernContext(): Pair<String, ModernContext?> {
+        val root = strictWebRequest("GET", ZTE_ROOT_PATH)
+        if (isAuthResponse(root)) return "AUTH" to null
+        if (root.status !in 200..399) return "MISS" to null
+
+        var cookie = mergeCookies("", root.cookie)
+        val view = strictWebRequest("GET", ZTE_MODERN_VIEW_PATH, cookie = cookie)
+        cookie = mergeCookies(cookie, view.cookie)
+        if (isAuthResponse(view)) return "AUTH" to null
+        if (view.status !in 200..299) return "MISS" to null
+
+        val markers = listOf(
+            "DHCPBasicCfg",
+            "Localnet_LanMgrIpv4_DHCPBasicCfg_lua.lua",
+            "OBJ_Br0AndDhcpsHosCfg_ID",
+            "OBJ_LANDNS_ID",
+            "OBJ_WINSADDR_ID"
+        )
+        if (!markers.all { view.body.contains(it, ignoreCase = true) }) return "MISS" to null
+
+        val token = extractModernSessionToken(view.body)
+        if (token.isBlank()) return "MISS" to null
+
+        val integMatch = Regex("""["']IntegCheck["']\s*:\s*(true|false)""", RegexOption.IGNORE_CASE)
+            .find(view.body)?.groupValues?.get(1)?.lowercase()
+        val integCheck = when (integMatch) {
+            "true" -> {
+                if (!view.body.contains("odPTerkUVCYmv28SOfRV")) return "MISS" to null
+                true
+            }
+            "false" -> false
+            else -> return "MISS" to null
+        }
+
+        val data = strictWebRequest("GET", ZTE_MODERN_DHCP_PATH, cookie = cookie)
+        cookie = mergeCookies(cookie, data.cookie)
+        if (isAuthResponse(data)) return "AUTH" to null
+        if (data.status !in 200..299) return "MISS" to null
+
+        val values = LinkedHashMap<String, String>()
+        for (id in listOf("OBJ_Br0AndDhcpsHosCfg_ID", "OBJ_LANDNS_ID", "OBJ_WINSADDR_ID")) {
+            val obj = extractModernObject(data.body, id) ?: return "MISS" to null
+            for ((k, v) in obj) {
+                if (k !in values || k != "_InstID") values[k] = v
+            }
+        }
+        return "OK" to ModernContext(cookie, token, values, integCheck)
+    }
+
+    private fun applyModernZteMenuDns(context: Context, initial: ModernContext): String {
+        val p = prefs(context)
+        val baseline1 = initial.values["DNSServer1"].orEmpty()
+        val baseline2 = initial.values["DNSServer2"].orEmpty()
+        val baselineSource = initial.values["DnsServerSource"].orEmpty()
+
+        if (!p.contains("web_baseline_dns1")) {
+            p.edit()
+                .putString("web_baseline_dns1", baseline1)
+                .putString("web_baseline_dns2", baseline2)
+                .putString("web_baseline_dns3", "")
+                .putString("web_baseline_dns_source", baselineSource)
+                .putLong("web_baseline_dns_at", System.currentTimeMillis())
+                .apply()
+        }
+
+        val alreadyConfigured =
+            baseline1 == FAMILY_DNS_1 &&
+            baseline2 == FAMILY_DNS_2 &&
+            baselineSource == "0"
+
+        if (!alreadyConfigured) {
+            val baselineForm = buildModernDhcpForm(initial.values, baseline1, baseline2, baselineSource, initial.token)
+                ?: return "TR064_LANHOST_NOT_FOUND"
+            val wantedForm = buildModernDhcpForm(initial.values, FAMILY_DNS_1, FAMILY_DNS_2, "0", initial.token)
+                ?: return "TR064_LANHOST_NOT_FOUND"
+            if (nonDnsFingerprint(baselineForm) != nonDnsFingerprint(wantedForm)) {
+                return "TR064_LANHOST_NOT_FOUND"
+            }
+
+            val body = encodeModernForm(wantedForm)
+            val headers = modernHeaders(body, initial.integCheck) ?: return "TR064_LANHOST_NOT_FOUND"
+            p.edit().putBoolean("web_dns_apply_attempted", true).apply()
+            val posted = strictWebRequest(
+                "POST",
+                ZTE_MODERN_DHCP_PATH,
+                formBody = body,
+                cookie = initial.cookie,
+                extraHeaders = headers
+            )
+            if (isAuthResponse(posted)) {
+                p.edit().putBoolean("router_auth_required", true).apply()
+                return "ROUTER_AUTH_REQUIRED"
+            }
+            if (posted.status !in 200..399) {
+                return "TR064_LANHOST_NOT_FOUND"
+            }
+        }
+
+        val verifyProbe = openModernContext()
+        if (verifyProbe.first == "AUTH") {
+            p.edit().putBoolean("router_auth_required", true).apply()
+            if (!alreadyConfigured) rollbackModernZteMenuDns(context, baseline1, baseline2, baselineSource)
+            return "ROUTER_AUTH_REQUIRED"
+        }
+        val verify = verifyProbe.second
+        if (verify == null) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackModernZteMenuDns(context, baseline1, baseline2, baselineSource)
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+
+        val configured =
+            verify.values["DNSServer1"] == FAMILY_DNS_1 &&
+            verify.values["DNSServer2"] == FAMILY_DNS_2 &&
+            verify.values["DnsServerSource"] == "0"
+        p.edit().putBoolean("web_dns_readback_verified", configured).apply()
+
+        if (!configured) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackModernZteMenuDns(context, baseline1, baseline2, baselineSource)
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+
+        val resolverGood = dnsQuery(FAMILY_DNS_1, "cleanbrowsing.org")
+        val resolverAdult = dnsQuery(FAMILY_DNS_1, "pornhub.com")
+        val resolverVerified = resolverGood == 0 && resolverAdult in setOf(0, 3)
+        p.edit()
+            .putBoolean("family_dns_configured", true)
+            .putBoolean("family_resolver_verified", resolverVerified)
+            .putInt("family_resolver_good_rcode", resolverGood)
+            .putInt("family_resolver_blocked_rcode", resolverAdult)
+            .putLong("last_router_dns_verify_at", System.currentTimeMillis())
+            .apply()
+
+        if (!resolverVerified) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackModernZteMenuDns(context, baseline1, baseline2, baselineSource)
+                p.edit().putBoolean("family_dns_configured", false).apply()
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+
+        return "FAMILY_DNS_CONFIGURED"
+    }
+
+    private fun rollbackModernZteMenuDns(
+        context: Context,
+        dns1: String,
+        dns2: String,
+        source: String
+    ): Boolean {
+        val p = prefs(context)
+        val probe = openModernContext().second ?: return false
+        val form = buildModernDhcpForm(probe.values, dns1, dns2, source, probe.token) ?: return false
+        val body = encodeModernForm(form)
+        val headers = modernHeaders(body, probe.integCheck) ?: return false
+        val posted = strictWebRequest(
+            "POST",
+            ZTE_MODERN_DHCP_PATH,
+            formBody = body,
+            cookie = probe.cookie,
+            extraHeaders = headers
+        )
+        if (posted.status !in 200..399) return false
+
+        val verify = openModernContext().second ?: return false
+        val restored =
+            verify.values["DNSServer1"].orEmpty() == dns1 &&
+            verify.values["DNSServer2"].orEmpty() == dns2 &&
+            verify.values["DnsServerSource"].orEmpty() == source
+        p.edit()
+            .putBoolean("web_dns_rollback_verified", restored)
+            .putString("rollback_state", if (restored) "verified" else "verify_failed")
+            .putLong("rollback_at", System.currentTimeMillis())
+            .apply()
+        return restored
+    }
+
+    private fun buildModernDhcpForm(
+        values: Map<String, String>,
+        dns1: String,
+        dns2: String,
+        dnsSource: String,
+        token: String
+    ): LinkedHashMap<String, String>? {
+        val mask = values["SubnetMask"] ?: values["SubMask"] ?: return null
+        val required = listOf("ServerEnable", "IPAddr", "MinAddress", "MaxAddress", "LeaseTime")
+        if (!required.all { values.containsKey(it) }) return null
+        if (values["IPAddr"] != EXPECTED_GATEWAY || token.isBlank()) return null
+
+        val form = linkedMapOf(
+            "IF_ACTION" to "Apply",
+            "IF_URL_HOST" to EXPECTED_GATEWAY,
+            "_InstID" to "",
+            "IPAddr" to values["IPAddr"].orEmpty(),
+            "SubMask" to mask,
+            "SubnetMask" to mask,
+            "MinAddress" to values["MinAddress"].orEmpty(),
+            "MaxAddress" to values["MaxAddress"].orEmpty(),
+            "IPRouters" to values["IPRouters"].orEmpty(),
+            "DNSServer1" to dns1,
+            "DNSServer2" to dns2,
+            "LeaseTime" to values["LeaseTime"].orEmpty(),
+            "ServerEnable" to values["ServerEnable"].orEmpty(),
+            "DnsServerSource" to dnsSource,
+            "_sessionTOKEN" to token
+        )
+        if (!isIpv4(dns1) || !isIpv4(dns2) || dnsSource !in setOf("0", "1")) return null
+        if (!isIpv4(form["IPAddr"].orEmpty()) ||
+            !isIpv4(form["MinAddress"].orEmpty()) ||
+            !isIpv4(form["MaxAddress"].orEmpty()) ||
+            !isIpv4(mask)
+        ) return null
+        return form
+    }
+
+    private fun encodeModernForm(values: Map<String, String>): String =
+        values.entries.joinToString("&") { (k, v) ->
+            encodeComponent(k) + "=" + encodeComponent(v)
+        }
+
+    private fun encodeComponent(value: String): String =
+        URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+    private fun modernHeaders(body: String, integCheck: Boolean): Map<String, String>? {
+        val out = linkedMapOf(
+            "X-Requested-With" to "XMLHttpRequest",
+            "Referer" to "https://$EXPECTED_GATEWAY/"
+        )
+        if (integCheck) {
+            val check = zteIntegrityCheck(body)
+            if (check.isBlank()) return null
+            out["Check"] = check
+        }
+        return out
+    }
+
+    private fun zteIntegrityCheck(body: String): String = runCatching {
+        val digestHex = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(body.toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val key = KeyFactory.getInstance("RSA").generatePublic(
+            X509EncodedKeySpec(Base64.decode(ZTE_INTEGRITY_PUBLIC_KEY_B64, Base64.DEFAULT))
+        )
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        Base64.encodeToString(
+            cipher.doFinal(digestHex.toByteArray(StandardCharsets.UTF_8)),
+            Base64.NO_WRAP
+        )
+    }.getOrDefault("")
+
+    private fun extractModernSessionToken(body: String): String {
+        val matches = Regex(
+            """_sessionTmpToken\s*=\s*["']([^"']{1,512})["']""",
+            RegexOption.IGNORE_CASE
+        ).findAll(body).toList()
+        return decodeZteEscapes(matches.lastOrNull()?.groupValues?.get(1).orEmpty()).take(256)
+    }
+
+    private fun extractModernObject(body: String, objectId: String): LinkedHashMap<String, String>? {
+        if (!Regex("""^[A-Za-z0-9_]{3,80}$""").matches(objectId)) return null
+        val block = Regex(
+            """<$objectId(?:\s[^>]*)?>(.*?)</$objectId>""",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        ).find(body)?.groupValues?.get(1) ?: return null
+        val instance = Regex(
+            """<Instance(?:\s[^>]*)?>(.*?)</Instance>""",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        ).find(block)?.groupValues?.get(1) ?: return null
+        val out = LinkedHashMap<String, String>()
+        val pairs = Regex(
+            """<ParaName(?:\s[^>]*)?>([^<]{1,120})</ParaName>\s*<ParaValue(?:\s[^>]*)?>([^<]{0,2048})</ParaValue>""",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+        for (m in pairs.findAll(instance).take(128)) {
+            val key = xmlDecode(m.groupValues[1].trim())
+            val value = xmlDecode(m.groupValues[2].trim())
+            if (Regex("""^[A-Za-z0-9_:-]{1,80}$""").matches(key)) out[key] = value.take(1024)
+        }
+        return out.takeIf { it.isNotEmpty() }
+    }
+
+    private fun xmlDecode(value: String): String =
+        value.replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+
+    private fun mergeCookies(a: String, b: String): String {
+        val map = LinkedHashMap<String, String>()
+        for (raw in listOf(a, b).flatMap { it.split(";") }) {
+            val item = raw.trim()
+            val eq = item.indexOf('=')
+            if (eq <= 0) continue
+            val name = item.substring(0, eq).trim()
+            val value = item.substring(eq + 1).trim()
+            if (Regex("""^[A-Za-z0-9_.-]{1,80}$""").matches(name) && value.length <= 2048) {
+                map[name] = value
+            }
+        }
+        return map.entries.joinToString("; ") { it.key + "=" + it.value }.take(4096)
+    }
+
+    private fun isAuthResponse(response: StrictWebResponse): Boolean =
+        response.status == 401 || response.status == 403 ||
+            response.status in 300..399 || looksLikeZteLogin(response.body)
+
+    private fun isIpv4(value: String): Boolean {
+        val parts = value.split(".").mapNotNull { it.toIntOrNull() }
+        return parts.size == 4 && parts.all { it in 0..255 }
     }
 
     private fun strictGchDnsCompatible(body: String): Boolean {
@@ -604,13 +992,25 @@ object HakimNetworkGuardian {
         method: String,
         pathWithQuery: String,
         formBody: String = "",
-        cookie: String = ""
+        cookie: String = "",
+        extraHeaders: Map<String, String> = emptyMap()
     ): StrictWebResponse {
-        val allowed = setOf(ZTE_GCH_DHCP_PATH, ZTE_LUA_LAN_PATH)
+        val allowed = setOf(
+            ZTE_GCH_DHCP_PATH,
+            ZTE_LUA_LAN_PATH,
+            ZTE_ROOT_PATH,
+            ZTE_MODERN_VIEW_PATH,
+            ZTE_MODERN_DHCP_PATH
+        )
         if (pathWithQuery !in allowed) return StrictWebResponse(-1, "")
         if (method !in setOf("GET", "POST")) return StrictWebResponse(-1, "")
-        if (method == "POST" && pathWithQuery != ZTE_GCH_DHCP_PATH) return StrictWebResponse(-1, "")
+        if (method == "POST" && pathWithQuery !in setOf(ZTE_GCH_DHCP_PATH, ZTE_MODERN_DHCP_PATH)) {
+            return StrictWebResponse(-1, "")
+        }
         if (formBody.length > 128 * 1024) return StrictWebResponse(-1, "")
+        if (extraHeaders.keys.any { it !in setOf("X-Requested-With", "Referer", "Check") }) {
+            return StrictWebResponse(-1, "")
+        }
 
         return runCatching {
             val conn = URL("https://$EXPECTED_GATEWAY$pathWithQuery").openConnection() as HttpsURLConnection
@@ -627,8 +1027,9 @@ object HakimNetworkGuardian {
             conn.connectTimeout = 1600
             conn.readTimeout = 2600
             conn.requestMethod = method
-            conn.setRequestProperty("User-Agent", "HAKIM-F8040-StrictDNS/1")
+            conn.setRequestProperty("User-Agent", "HAKIM-F8040-StrictDNS/2")
             if (cookie.isNotBlank()) conn.setRequestProperty("Cookie", cookie.take(4096))
+            extraHeaders.forEach { (k, v) -> conn.setRequestProperty(k, v.take(4096)) }
             if (method == "POST") {
                 val bytes = formBody.toByteArray(StandardCharsets.UTF_8)
                 conn.doOutput = true
@@ -645,10 +1046,15 @@ object HakimNetworkGuardian {
                 .joinToString("; ")
                 .take(4096)
             val stream = if (status in 200..399) conn.inputStream else conn.errorStream
+            val bodyLimit = if (pathWithQuery in setOf(ZTE_MODERN_VIEW_PATH, ZTE_MODERN_DHCP_PATH)) {
+                MAX_WEB_BODY
+            } else {
+                MAX_BODY
+            }
             val body = stream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
                 buildString {
                     var total = 0
-                    while (total < MAX_BODY) {
+                    while (total < bodyLimit) {
                         val line = reader.readLine() ?: break
                         append(line).append('\n')
                         total += line.length

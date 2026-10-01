@@ -45,7 +45,10 @@ test("status probe follows the lease without competing diagnostic probes or raw 
   assert.match(log,/statusProbeRequests\.has\(requestId\)/);
   assert.match(log,/network_diagnostics_available/);
   assert.match(log,/version_name_has_extender_survey/);
-  for(const forbidden of ["rawNodes","network_matches","access_points","local_title","local_host","observed_dns","gateway:","version_name:result"]){
+  for(const forbidden of ["rawNodes","network_matches","access_points","local_title","local_host","observed_dns","version_name:result"]){
     assert.equal(log.includes(forbidden),false,forbidden);
   }
+  // Reject an actual raw `gateway:` property without false-positive matching
+  // privacy-safe names such as `via_secondary_gateway:`.
+  assert.doesNotMatch(log,/(?:^|[,{]\s*)gateway\s*:/m);
 });

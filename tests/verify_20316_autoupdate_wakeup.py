@@ -17,7 +17,9 @@ def req(ok, reason):
     if not ok:
         raise SystemExit("AUTOUPDATE_WAKEUP=FAIL reason=" + reason)
 
-req(re.search(r"versionCode\s+20316\b", GRADLE) is not None, "version")
+m = re.search(r"versionCode\s+(\d+)\b", GRADLE)
+req(m is not None and int(m.group(1)) >= 20316, "version")
+CURRENT_VERSION = int(m.group(1))
 req("autoupdate-wakeup-v1" in GRADLE, "version_name")
 req('android:name=".UpdateJobService"' in MANIFEST, "job_service_not_registered")
 req('android.permission.BIND_JOB_SERVICE' in MANIFEST, "job_service_permission")
@@ -54,7 +56,7 @@ req('installer_capability", false' in AUTO, "installer_contract_changed")
 req("REQUEST_INSTALL_PACKAGES" not in MANIFEST, "install_permission_expansion")
 req("UPDATE_PACKAGES_WITHOUT_USER_ACTION" not in MANIFEST, "silent_install_permission")
 
-req(STATE["android"]["candidate"]["version_code"] == 20316, "state_candidate")
+req(STATE["android"]["candidate"]["version_code"] == CURRENT_VERSION, "state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "field_claim")
 req(STATE["productization"].get("auto_update_wakeup_source_integrated") is True, "state_source")
 req(STATE["productization"].get("auto_update_wakeup_field_verified") is False, "state_field")

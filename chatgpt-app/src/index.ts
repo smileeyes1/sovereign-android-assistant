@@ -92,6 +92,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        phone_bypass_guard?:Record<string,unknown>;
         task_manager?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
@@ -128,6 +129,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     };
     const safeRole=(raw:unknown)=>fixed(raw,["router_or_gateway","web_managed_device","repeater_or_ap","network_service"]);
     const guardian=result?.network_guardian;
+    const phoneBypass=result?.phone_bypass_guard;
     const taskManager=result?.task_manager;
     const autoUpdate=result?.auto_update;
     const networkProtection=result?.network_protection;
@@ -184,6 +186,42 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         top_priority:fixed(taskManager?.top_priority,["P0","P1","P2","P3"]),
         network_task_state:fixed(taskManager?.network_task_state,[
           "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ])
+      },
+      phone_bypass_guard:{
+        transport:fixed(phoneBypass?.transport,["wifi","cellular","ethernet","other"]),
+        private_dns_active:flag(phoneBypass?.private_dns_active),
+        private_dns_classification:fixed(phoneBypass?.private_dns_classification,[
+          "network_default","adguard_default_non_family","adguard_unfiltered",
+          "family_adguard","family_cleanbrowsing","private_dns_active_unknown","custom_private_dns"
+        ]),
+        private_dns_known_family:flag(phoneBypass?.private_dns_known_family),
+        private_dns_known_non_family:flag(phoneBypass?.private_dns_known_non_family),
+        private_dns_override_unverified:flag(phoneBypass?.private_dns_override_unverified),
+        vpn_active:flag(phoneBypass?.vpn_active),
+        proxy_active:flag(phoneBypass?.proxy_active),
+        bypass_risk:flag(phoneBypass?.bypass_risk),
+        phone_dns_layer_state:fixed(phoneBypass?.phone_dns_layer_state,[
+          "family_private_dns","known_non_family_private_dns","custom_private_dns_unverified",
+          "vpn_override","proxy_override","network_dns"
+        ])
+      },
+      phone_bypass_guard:{
+        transport:fixed(phoneBypass?.transport,["wifi","cellular","ethernet","other"]),
+        private_dns_active:bool(phoneBypass?.private_dns_active),
+        private_dns_classification:fixed(phoneBypass?.private_dns_classification,[
+          "network_default","adguard_default_non_family","adguard_unfiltered",
+          "family_adguard","family_cleanbrowsing","private_dns_active_unknown","custom_private_dns"
+        ]),
+        private_dns_known_family:bool(phoneBypass?.private_dns_known_family),
+        private_dns_known_non_family:bool(phoneBypass?.private_dns_known_non_family),
+        private_dns_override_unverified:bool(phoneBypass?.private_dns_override_unverified),
+        vpn_active:bool(phoneBypass?.vpn_active),
+        proxy_active:bool(phoneBypass?.proxy_active),
+        bypass_risk:bool(phoneBypass?.bypass_risk),
+        phone_dns_layer_state:fixed(phoneBypass?.phone_dns_layer_state,[
+          "family_private_dns","known_non_family_private_dns","custom_private_dns_unverified",
+          "vpn_override","proxy_override","network_dns"
         ])
       },
       network_guardian:{
@@ -281,6 +319,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        phone_bypass_guard?:Record<string,unknown>;
         task_manager?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
@@ -295,6 +334,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
     const guardian=result.network_guardian;
+    const phoneBypass=result.phone_bypass_guard;
     const taskManager=result.task_manager;
     const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>

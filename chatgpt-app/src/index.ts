@@ -231,7 +231,8 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         web_local_session_present:flag(guardian?.web_local_session_present),
         webview_probe_state:fixed(guardian?.webview_probe_state,[
           "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
-          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
+          "GATE_BLOCKED","GATE_HOST","GATE_SOURCE","GATE_DNS1","GATE_DNS2","GATE_MANUAL_EMPTY",
+          "BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
         ]),
         webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
         webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&
@@ -404,7 +405,8 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         web_local_session_present:bool(guardian?.web_local_session_present),
         webview_probe_state:fixed(guardian?.webview_probe_state,[
           "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
-          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
+          "GATE_BLOCKED","GATE_HOST","GATE_SOURCE","GATE_DNS1","GATE_DNS2","GATE_MANUAL_EMPTY",
+          "BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
         ]),
         webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
         webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&

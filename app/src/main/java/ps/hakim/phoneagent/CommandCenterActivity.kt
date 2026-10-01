@@ -54,6 +54,7 @@ class CommandCenterActivity : ComponentActivity() {
             refreshOperations()
             HakimTaskManager.syncSystemTasks(this@CommandCenterActivity)
             maybeOpenLocalRouterAuth()
+            maybeEnsureDeviceProtection()
             browserHandler.postDelayed(this, 15_000L)
         }
     }
@@ -109,6 +110,7 @@ class CommandCenterActivity : ComponentActivity() {
         HakimResilienceAlarmReceiver.schedule(this)
         HakimTaskManager.syncSystemTasks(this)
         maybeOpenLocalRouterAuth()
+        maybeEnsureDeviceProtection()
     }
 
     private fun maybeOpenLocalRouterAuth() {
@@ -124,6 +126,32 @@ class CommandCenterActivity : ComponentActivity() {
         if (now - last < 60_000L) return
         p.edit().putLong(key, now).apply()
         startActivity(Intent(this, HakimRouterAuthActivity::class.java))
+    }
+
+    private fun maybeEnsureDeviceProtection() {
+        // أولوية واجهة الراوتر أولًا حتى لا تتراكب نافذتا نظام/ويب.
+        if (HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
+
+        val protection = HakimDeviceProtection.status(this)
+        if (protection.optBoolean("active", false) &&
+            protection.optBoolean("upstream_verified_recently", false)
+        ) return
+
+        if (HakimDeviceProtection.consentGranted(this)) {
+            if (!HakimDeviceProtection.enabled(this)) {
+                HakimDeviceProtection.markConsentGranted(this)
+            }
+            HakimDeviceProtection.ensureRunning(this)
+            return
+        }
+
+        if (!HakimTaskManager.shouldRequestDeviceDnsConsent(this)) return
+        val p = getSharedPreferences("hakim_device_protection_ui", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val last = p.getLong("last_launch_at", 0L)
+        if (now - last < 30L * 60L * 1000L) return
+        p.edit().putLong("last_launch_at", now).apply()
+        startActivity(Intent(this, HakimFamilyDnsVpnActivity::class.java))
     }
 
     override fun onPause() {

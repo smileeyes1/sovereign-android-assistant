@@ -334,8 +334,22 @@ object HakimTaskManager {
         if (guardian.optBoolean("family_dns_configured", false) &&
             guardian.optBoolean("family_resolver_verified", false)
         ) return false
+
         val state = guardian.optString("state")
         val local = guardian.optBoolean("web_local_session_present", false)
+        val stalledSplitCandidate =
+            local &&
+            state == "TR064_LANHOST_NOT_FOUND" &&
+            guardian.optString("web_dns_adapter", "none") == "none" &&
+            guardian.optBoolean("webview_probe_has_apply", false) &&
+            guardian.optBoolean("webview_probe_has_dns", false) &&
+            guardian.optBoolean("webview_probe_has_source", false) &&
+            guardian.optBoolean("webview_probe_has_dhcp", false)
+
+        // إذا ثبت أن واجهة الراوتر موجودة لكن الربط عالق، لا نحجب طبقة حماية الهاتف
+        // خلف انتظار الراوتر. نطلب موافقة VPN أولاً مرة واحدة، ثم نعود للراوتر.
+        if (stalledSplitCandidate && shouldRequestDeviceDnsConsent(context)) return false
+
         return state == "ROUTER_AUTH_REQUIRED" ||
             (local && state == "TR064_LANHOST_NOT_FOUND")
     }

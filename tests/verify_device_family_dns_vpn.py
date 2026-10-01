@@ -74,7 +74,8 @@ for forbidden in (
 
 # Do not overclaim bypass prevention.
 req('.put("full_bypass_prevention", false)' in device, "device_full_bypass_must_be_false")
-req("DoH" not in service and "Tor" not in service, "vpn_service_scope_creep")
+for forbidden in ("okhttp", "HttpURLConnection", "SocketChannel", "tun2socks", "socks5", "tor_client", "doh_endpoint"):
+    req(forbidden.lower() not in service.lower(), "vpn_service_scope_creep:" + forbidden)
 
 # Independent P0 task + autonomous resume.
 req('DEVICE_DNS_TASK_ID = "system-device-family-dns"' in tasks, "device_p0_task_missing")

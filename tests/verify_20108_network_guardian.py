@@ -45,6 +45,21 @@ required = [
     '.putBoolean("web_probe_ran"',
     '.putString("web_probe_candidate_paths"',
     'conn.requestMethod = "GET"',
+    'ZTE_GCH_DHCP_PATH = "/getpage.gch?pid=1002&nextpage=net_dhcp_dynamic_t.gch"',
+    'ZTE_LUA_LAN_PATH = "/getpage.lua?pid=1002&nextpage=Localnet_LanMgrIpv4_t.lp"',
+    'strictGchDnsCompatible',
+    'extractSessionToken',
+    'extractTransferMeanings',
+    'nonDnsFingerprint',
+    'rollbackStrictGchDns',
+    'form["DNSServer1"] = FAMILY_DNS_1',
+    'form["DNSServer2"] = FAMILY_DNS_2',
+    'form["DnsServerSource"] = "0"',
+    'form["IF_ACTION"] = "apply"',
+    'form["_SESSION_TOKEN"] = initialToken',
+    'method == "POST" && pathWithQuery != ZTE_GCH_DHCP_PATH',
+    '.putBoolean("web_dns_readback_verified"',
+    '.putBoolean("web_dns_rollback_verified"',
 ]
 missing = [x for x in required if x not in src]
 if missing:

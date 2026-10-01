@@ -57,7 +57,7 @@ required = [
     'form["DnsServerSource"] = "0"',
     'form["IF_ACTION"] = "apply"',
     'form["_SESSION_TOKEN"] = initialToken',
-    'method == "POST" && pathWithQuery != ZTE_GCH_DHCP_PATH',
+    'pathWithQuery !in setOf(ZTE_GCH_DHCP_PATH, ZTE_MODERN_DHCP_PATH)',
     '.putBoolean("web_dns_readback_verified"',
     '.putBoolean("web_dns_rollback_verified"',
     'ZTE_MODERN_VIEW_PATH = "/?_type=menuView&_tag=lanMgrIpv4&Menu3Location=0"',

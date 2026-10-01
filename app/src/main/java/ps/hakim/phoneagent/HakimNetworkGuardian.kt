@@ -16,12 +16,20 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
+import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * حارس شبكة حكيم:
- * - مقيد ببوابة المنزل المثبتة 192.168.1.1.
+ * - يستهدف الراوتر المنزلي المثبت 192.168.1.1 فقط، حتى عند المرور عبر مقوٍ/راوتر فرعي.
+ * - عند بوابة فرعية لا يستمر إلا بعد إثبات مباشر وقرائي لهوية ZTE F8040 على 192.168.1.1.
  * - كشف أولاً، ثم تعديل DNS فقط عبر خدمة LANHostConfigManagement القياسية.
  * - لا يتجاوز المصادقة، ولا يلمس WAN أو إدارة مزود الخدمة، ولا ينفذ shell/root.
  * - يحفظ خط الأساس قبل التعديل، ويفشل مغلقاً عند غياب بصمة الراوتر المنزلية المثبتة ميدانياً.
@@ -106,29 +114,40 @@ object HakimNetworkGuardian {
             route.isDefaultRoute && route.gateway is Inet4Address
         }?.gateway?.hostAddress
 
-        if (gateway != EXPECTED_GATEWAY) {
+        val directGateway = gateway == EXPECTED_GATEWAY
+        val secondaryPrivateGateway = gateway != null && isPrivateIpv4(gateway)
+        val upstreamF8040 = if (directGateway) false else
+            secondaryPrivateGateway && probeExpectedF8040()
+        if (!directGateway && !upstreamF8040) {
             return finish(context, "OUTSIDE_HOME_GATEWAY", reason, now, gateway ?: "")
         }
+        val targetGateway = EXPECTED_GATEWAY
 
         val p = prefs(context)
         p.edit()
-            .putString("gateway", gateway)
+            .putString("gateway", gateway.orEmpty())
+            .putString("target_gateway", targetGateway)
+            .putBoolean("via_secondary_gateway", !directGateway)
+            .putBoolean("upstream_f8040_proven", upstreamF8040)
             .putString("observed_dns", lp.dnsServers.joinToString(",") { it.hostAddress.orEmpty() })
             .putLong("last_seen_home_at", now)
             .apply()
 
-        val descriptions = discoverDescriptions(gateway)
+        val descriptions = discoverDescriptions(targetGateway)
         val fingerprint = descriptions.joinToString("\n").take(MAX_BODY)
         val descriptionZte = fingerprint.contains("ZTE", ignoreCase = true)
         val descriptionFamily = fingerprint.contains("ZXHN", ignoreCase = true) ||
             fingerprint.contains("F6600P", ignoreCase = true)
 
-        val fieldIdentity = gatewayFieldIdentity(context)
+        val fieldIdentity = if (directGateway) gatewayFieldIdentity(context, force = true)
+            else GatewayFieldIdentity("", "", "", -1)
         val fieldZteF8040 =
-            fieldIdentity.vendor.equals("ZTE", ignoreCase = true) &&
-            fieldIdentity.model.equals("F8040", ignoreCase = true) &&
-            fieldIdentity.role == "router_or_gateway" &&
-            fieldIdentity.httpStatus in 200..399
+            upstreamF8040 || (
+                fieldIdentity.vendor.equals("ZTE", ignoreCase = true) &&
+                fieldIdentity.model.equals("F8040", ignoreCase = true) &&
+                fieldIdentity.role == "router_or_gateway" &&
+                fieldIdentity.httpStatus in 200..399
+            )
 
         val zte = descriptionZte || fieldZteF8040
         val approvedModel = descriptionFamily || fieldZteF8040
@@ -143,12 +162,12 @@ object HakimNetworkGuardian {
             .apply()
 
         if (!zte || !approvedModel) {
-            return finish(context, "ROUTER_FINGERPRINT_NOT_PROVEN", reason, now, gateway)
+            return finish(context, "ROUTER_FINGERPRINT_NOT_PROVEN", reason, now, targetGateway)
         }
 
         val endpoint = findLanHostConfigEndpoint(descriptions)
         if (endpoint == null) {
-            return finish(context, "TR064_LANHOST_NOT_FOUND", reason, now, gateway)
+            return finish(context, "TR064_LANHOST_NOT_FOUND", reason, now, targetGateway)
         }
 
         p.edit()
@@ -157,13 +176,13 @@ object HakimNetworkGuardian {
             .putInt("lanhost_control_port", endpoint.port)
             .apply()
 
-        val before = soap(endpoint, gateway, "GetDNSServers", "")
+        val before = soap(endpoint, targetGateway, "GetDNSServers", "")
         if (before.status == 401 || before.status == 403) {
             p.edit().putBoolean("router_auth_required", true).apply()
-            return finish(context, "ROUTER_AUTH_REQUIRED", reason, now, gateway)
+            return finish(context, "ROUTER_AUTH_REQUIRED", reason, now, targetGateway)
         }
         if (before.status !in 200..299) {
-            return finish(context, "TR064_READ_FAILED_${before.status}", reason, now, gateway)
+            return finish(context, "TR064_READ_FAILED_${before.status}", reason, now, targetGateway)
         }
 
         val currentDns = xmlTag(before.body, "NewDNSServers").trim()
@@ -175,20 +194,20 @@ object HakimNetworkGuardian {
         val changedByGuardian = !containsBothFamilyDns(currentDns)
         if (changedByGuardian) {
             val setBody = "<NewDNSServers>$wanted</NewDNSServers>"
-            val set = soap(endpoint, gateway, "SetDNSServer", setBody)
+            val set = soap(endpoint, targetGateway, "SetDNSServer", setBody)
             if (set.status == 401 || set.status == 403) {
                 p.edit().putBoolean("router_auth_required", true).apply()
-                return finish(context, "ROUTER_AUTH_REQUIRED", reason, now, gateway)
+                return finish(context, "ROUTER_AUTH_REQUIRED", reason, now, targetGateway)
             }
             if (set.status !in 200..299) {
-                return finish(context, "TR064_SET_DNS_FAILED_${set.status}", reason, now, gateway)
+                return finish(context, "TR064_SET_DNS_FAILED_${set.status}", reason, now, targetGateway)
             }
         }
 
-        val after = soap(endpoint, gateway, "GetDNSServers", "")
+        val after = soap(endpoint, targetGateway, "GetDNSServers", "")
         if (after.status !in 200..299) {
-            if (changedByGuardian) rollbackDns(context, endpoint, gateway, currentDns)
-            return finish(context, "TR064_VERIFY_READ_FAILED_${after.status}", reason, now, gateway)
+            if (changedByGuardian) rollbackDns(context, endpoint, targetGateway, currentDns)
+            return finish(context, "TR064_VERIFY_READ_FAILED_${after.status}", reason, now, targetGateway)
         }
         val verifiedDns = xmlTag(after.body, "NewDNSServers").trim()
         val configured = containsBothFamilyDns(verifiedDns)
@@ -209,19 +228,19 @@ object HakimNetworkGuardian {
 
         if (!configured || !familyResolverVerified) {
             if (changedByGuardian) {
-                val rolledBack = rollbackDns(context, endpoint, gateway, currentDns)
+                val rolledBack = rollbackDns(context, endpoint, targetGateway, currentDns)
                 return finish(
                     context,
                     if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED",
                     reason,
                     now,
-                    gateway
+                    targetGateway
                 )
             }
-            return finish(context, "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED", reason, now, gateway)
+            return finish(context, "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED", reason, now, targetGateway)
         }
 
-        return finish(context, "FAMILY_DNS_CONFIGURED", reason, now, gateway)
+        return finish(context, "FAMILY_DNS_CONFIGURED", reason, now, targetGateway)
     }
 
     fun status(context: Context): JSONObject {
@@ -233,6 +252,8 @@ object HakimNetworkGuardian {
             .put("fingerprint_zte", p.getBoolean("fingerprint_zte", false))
             .put("fingerprint_zxhn", p.getBoolean("fingerprint_zxhn", false))
             .put("fingerprint_f8040", p.getBoolean("fingerprint_f8040", false))
+            .put("via_secondary_gateway", p.getBoolean("via_secondary_gateway", false))
+            .put("upstream_f8040_proven", p.getBoolean("upstream_f8040_proven", false))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
             .put("baseline_dns_saved", p.contains("baseline_dns"))
             .put("family_dns_configured", p.getBoolean("family_dns_configured", false))
@@ -255,8 +276,8 @@ object HakimNetworkGuardian {
         val httpStatus: Int
     )
 
-    private fun gatewayFieldIdentity(context: Context): GatewayFieldIdentity {
-        val survey = runCatching { HakimLanSurvey.inspect(context, force = false) }.getOrNull()
+    private fun gatewayFieldIdentity(context: Context, force: Boolean = false): GatewayFieldIdentity {
+        val survey = runCatching { HakimLanSurvey.inspect(context, force = force) }.getOrNull()
             ?: return GatewayFieldIdentity("", "", "", -1)
         val hosts = survey.optJSONArray("hosts")
             ?: return GatewayFieldIdentity("", "", "", -1)
@@ -271,6 +292,49 @@ object HakimNetworkGuardian {
             )
         }
         return GatewayFieldIdentity("", "", "", -1)
+    }
+
+    private fun probeExpectedF8040(): Boolean {
+        return runCatching {
+            val conn = URL("https://$EXPECTED_GATEWAY/").openConnection() as HttpsURLConnection
+            val trustAll = object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+            }
+            val ssl = SSLContext.getInstance("TLS")
+            ssl.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+            conn.sslSocketFactory = ssl.socketFactory
+            conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { host, _ -> host == EXPECTED_GATEWAY }
+            conn.instanceFollowRedirects = false
+            conn.connectTimeout = 900
+            conn.readTimeout = 1200
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "HAKIM-Network-Guardian/2")
+            val status = conn.responseCode
+            val stream = if (status in 200..399) conn.inputStream else conn.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+                buildString {
+                    var total = 0
+                    while (total < 24_000) {
+                        val line = reader.readLine() ?: break
+                        append(line).append('\n')
+                        total += line.length
+                    }
+                }
+            }.orEmpty()
+            conn.disconnect()
+            val text = body.lowercase()
+            status in 200..399 && "zte" in text && "f8040" in text
+        }.getOrDefault(false)
+    }
+
+    private fun isPrivateIpv4(ip: String): Boolean {
+        val p = ip.split(".").mapNotNull { it.toIntOrNull() }
+        if (p.size != 4 || p.any { it !in 0..255 }) return false
+        return p[0] == 10 ||
+            (p[0] == 172 && p[1] in 16..31) ||
+            (p[0] == 192 && p[1] == 168)
     }
 
     private fun finish(context: Context, state: String, reason: String, at: Long, detail: String = ""): JSONObject {

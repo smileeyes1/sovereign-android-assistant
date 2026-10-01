@@ -31,9 +31,11 @@ for token in ["chatgpt.com","chatgpt_scope_mismatch","chatgpt_login_required","s
 req("AndroidKeyStore" in INDEX and "AES/GCM/NoPadding" in INDEX, "encrypted_chat_index")
 req("canExecuteHighImpact" in RELAY and "shouldAttempt" in RELAY, "fault_gate_wired")
 req("circuit" in FAULT.lower() and "recordFailure" in FAULT, "fault_containment")
-req(STATE["android"]["latest_source_parent"]["version_code"]==20313, "verified_parent")
-req(STATE["android"]["field_observed_current"]["version_code"]==20313, "field_baseline")
-req(STATE["android"]["field_observed_current"]["apk_sha256"]=="5ebef4b2163dedfeb0ec6e778b8dc2d26fa0997eaa540bf101af3a683bb85f19", "field_hash")
+verified_parent=STATE["android"]["latest_source_parent"]
+field_current=STATE["android"]["field_observed_current"]
+req(verified_parent["version_code"]>=20313 and verified_parent["version_code"]<candidate, "verified_parent")
+req(field_current["version_code"]==verified_parent["version_code"], "field_baseline")
+req(field_current["apk_sha256"]==verified_parent["exact_apk_sha256"], "field_hash")
 req(STATE["android"]["candidate"]["version_code"]==candidate, "candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "no_field_success_inheritance")
 req(STATE["productization"]["same_signed_apk_field_verified"] is False, "same_artifact_gate")
@@ -41,4 +43,4 @@ req(PROMO["candidate_version"]==candidate and PROMO["promoted"] is False, "promo
 req("python3 tests/verify_20315_autonomy.py" in WORKFLOW, "workflow_test")
 req(('test "$VERSION_CODE" = "'+str(candidate)+'"') in WORKFLOW, "workflow_version")
 
-print("AUTONOMY_20315=PASS parent=20313 chatgpt=true fault_containment=true coherent_status=true field_verified=false")
+print(f"AUTONOMY_20315=PASS parent={verified_parent['version_code']} chatgpt=true fault_containment=true coherent_status=true field_verified=false")

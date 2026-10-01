@@ -66,6 +66,7 @@ object HakimLocalPairing {
                     .remove("local_adb_error")
                     .apply()
                 update(app, "تم الاقتران والاتصال المحلي بنجاح داخل حكيم", allowInput = false, ongoing = false)
+                HakimNetworkProtectionTask.resumeAfterPairing(app)
             } else {
                 prefs.edit()
                     .putString("local_adb_state", if (result.paired) "PAIRED_NOT_CONNECTED" else "PAIR_FAILED")

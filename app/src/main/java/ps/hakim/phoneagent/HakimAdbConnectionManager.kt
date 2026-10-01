@@ -6,6 +6,9 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import io.github.muntashirakon.adb.android.AdbMdns
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -100,6 +103,113 @@ class HakimAdbConnectionManager private constructor(context: Context) : AbsAdbCo
     fun reconnect(context: Context): Boolean = runCatching {
         autoConnect(context.applicationContext, 20_000L) || isConnected
     }.getOrDefault(false)
+
+    data class PrivateDnsResult(
+        val success: Boolean,
+        val mode: String = "",
+        val specifier: String = "",
+        val error: String? = null,
+    )
+
+    /**
+     * قدرة ADB محلية محدودة لإعداد Private DNS فقط.
+     * لا تستقبل أوامر shell حرة ولا توسع السطح التنفيذي العام.
+     */
+    fun readPrivateDns(): PrivateDnsResult = runCatching {
+        val mode = runFixedShell("settings get global private_dns_mode").normalizedSetting()
+        val specifier = runFixedShell("settings get global private_dns_specifier").normalizedSetting()
+        PrivateDnsResult(true, mode, specifier, null)
+    }.getOrElse {
+        PrivateDnsResult(false, error = it.javaClass.simpleName)
+    }
+
+    fun applyFamilyPrivateDns(host: String): PrivateDnsResult {
+        if (!host.matches(Regex("^[a-z0-9.-]{1,253}$")) || !host.contains('.')) {
+            return PrivateDnsResult(false, error = "INVALID_DNS_HOST")
+        }
+        return runCatching {
+            runFixedShell("settings put global private_dns_specifier $host")
+            runFixedShell("settings put global private_dns_mode hostname")
+            val after = readPrivateDns()
+            if (after.success && after.mode == "hostname" && after.specifier == host) {
+                after
+            } else {
+                PrivateDnsResult(false, after.mode, after.specifier, "VERIFY_FAILED")
+            }
+        }.getOrElse {
+            PrivateDnsResult(false, error = it.javaClass.simpleName)
+        }
+    }
+
+    fun restorePrivateDns(mode: String, specifier: String): Boolean {
+        val normalizedMode = mode.trim().lowercase()
+        if (normalizedMode.isNotBlank() && normalizedMode !in setOf("off", "opportunistic", "hostname")) {
+            return false
+        }
+        if (specifier.isNotBlank() &&
+            (!specifier.matches(Regex("^[a-z0-9.-]{1,253}$")) || !specifier.contains('.'))
+        ) {
+            return false
+        }
+
+        return runCatching {
+            if (specifier.isBlank()) {
+                runFixedShell("settings delete global private_dns_specifier")
+            } else {
+                runFixedShell("settings put global private_dns_specifier $specifier")
+            }
+
+            if (normalizedMode.isBlank()) {
+                runFixedShell("settings delete global private_dns_mode")
+            } else {
+                runFixedShell("settings put global private_dns_mode $normalizedMode")
+            }
+
+            val restored = readPrivateDns()
+            if (!restored.success) false
+            else {
+                val modeOk = if (normalizedMode.isBlank()) restored.mode.isBlank() else restored.mode == normalizedMode
+                val specOk = if (specifier.isBlank()) restored.specifier.isBlank() else restored.specifier == specifier
+                modeOk && specOk
+            }
+        }.getOrDefault(false)
+    }
+
+    private fun runFixedShell(command: String): String {
+        val allowed = command.startsWith("settings get global private_dns_") ||
+            command.startsWith("settings put global private_dns_mode ") ||
+            command.startsWith("settings put global private_dns_specifier ") ||
+            command == "settings delete global private_dns_mode" ||
+            command == "settings delete global private_dns_specifier"
+        if (!allowed || command.length > 96) throw SecurityException("ADB_COMMAND_NOT_ALLOWED")
+        if (!isConnected) throw IllegalStateException("ADB_NOT_CONNECTED")
+
+        val stream = openStream("shell:$command")
+        return try {
+            val input = stream.openInputStream()
+            val out = ByteArrayOutputStream()
+            val buffer = ByteArray(1024)
+            while (true) {
+                val n = try {
+                    input.read(buffer)
+                } catch (_: IOException) {
+                    break
+                }
+                if (n <= 0) break
+                out.write(buffer, 0, n)
+                if (out.size() > 4096) throw IOException("ADB_OUTPUT_TOO_LARGE")
+            }
+            out.toString(StandardCharsets.UTF_8.name()).trim()
+        } finally {
+            runCatching { stream.close() }
+        }
+    }
+
+    private fun String.normalizedSetting(): String {
+        val value = trim().lowercase()
+        return if (value == "null" || value == "undefined") "" else value
+    }
+
 
     companion object {
         private const val KEY_ALIAS = "hakim_native_local_adb_v1"

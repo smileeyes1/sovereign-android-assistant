@@ -3,7 +3,6 @@ package ps.hakim.phoneagent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -14,12 +13,11 @@ import kotlin.concurrent.thread
 /**
  * طبقة حماية هاتفية محدودة وقابلة للتحقق.
  *
- * الهدف الوحيد هنا هو ضبط Private DNS إلى مرشح عائلي معروف عبر واجهة النظام
- * عندما تكون خدمة إمكانية الوصول الخاصة بحكيم متاحة. لا توجد كتابة مباشرة
- * إلى Settings.Global ولا root ولا ADB ولا توسيع صلاحيات.
+ * تستخدم ADB المحلي المأذون والمقترن على نفس الهاتف لضبط Private DNS فقط.
+ * لا توجد خدمة وصول حساسة، ولا root، ولا صلاحية إعدادات خاصة، ولا shell عام.
  */
 object HakimNetworkProtectionTask {
-    const val VERSION = "HAKIM-NETWORK-PROTECTION-ANDROID-V1.1-TECNO-FALLBACK"
+    const val VERSION = "HAKIM-NETWORK-PROTECTION-ANDROID-V2-LOCAL-ADB"
     const val FAMILY_DNS_HOST = "family-filter-dns.cleanbrowsing.org"
 
     private const val PREFS = "hakim_network_protection"
@@ -39,10 +37,11 @@ object HakimNetworkProtectionTask {
         val before = snapshot(app)
         prefs.edit()
             .putBoolean("running", true)
-            .putString("state", "OPENING_SETTINGS")
+            .putBoolean("pending_after_pairing", false)
+            .putString("state", "CONNECTING_LOCAL_ADB")
             .putLong("last_attempt_at", System.currentTimeMillis())
-            .putString("before_mode", before.mode.take(32))
-            .putBoolean("before_had_specifier", before.specifier.isNotBlank())
+            .putString("before_mode", before.mode)
+            .putString("before_specifier", before.specifier)
             .apply()
 
         if (isProtected(before)) {
@@ -50,25 +49,34 @@ object HakimNetworkProtectionTask {
             return
         }
 
-        if (!openPrivateDnsSettings(app)) {
-            finish(app, "BLOCKED", false, "تعذر فتح إعدادات الشبكة اللازمة لضبط DNS الخاص.")
-            return
-        }
+        thread(name = "hakim-network-protection-adb", isDaemon = true) {
+            val manager = HakimAdbConnectionManager.get(app)
+            val hakimPrefs = app.getSharedPreferences("hakim", Context.MODE_PRIVATE)
+            val paired = hakimPrefs.getBoolean("local_adb_paired", false)
+            val connected = manager.isConnected || (paired && manager.reconnect(app))
 
-        thread(name = "hakim-network-protection", isDaemon = true) {
-            val result = applyWithAccessibility(app)
-            if (result) {
+            if (!connected) {
+                requirePairing(app)
+                return@thread
+            }
+
+            prefs.edit().putString("state", "APPLYING").apply()
+            val applied = manager.applyFamilyPrivateDns(FAMILY_DNS_HOST)
+            val verified = applied.success &&
+                applied.mode == "hostname" &&
+                applied.specifier == FAMILY_DNS_HOST
+
+            if (verified) {
+                repeat(8) {
+                    if (isProtected(snapshot(app))) return@repeat
+                    Thread.sleep(250)
+                }
                 finish(app, "VERIFIED", true, "تم تفعيل حماية DNS العائلية على الهاتف والتحقق منها.")
                 return@thread
             }
 
-            val after = snapshot(app)
-            if (sameState(before, after)) {
-                finish(app, "BLOCKED", false, "لم يتغير الإعداد؛ يلزم أن تكون خدمة إمكانية الوصول في حكيم متاحة.")
-                return@thread
-            }
-
-            val rolledBack = restore(app, before)
+            prefs.edit().putString("state", "ROLLING_BACK").apply()
+            val rolledBack = manager.restorePrivateDns(before.mode, before.specifier)
             finish(
                 app,
                 if (rolledBack) "ROLLED_BACK" else "ROLLBACK_FAILED",
@@ -82,145 +90,47 @@ object HakimNetworkProtectionTask {
         }
     }
 
+    fun resumeAfterPairing(context: Context) {
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("pending_after_pairing", false)) return
+        prefs.edit()
+            .putBoolean("pending_after_pairing", false)
+            .putBoolean("running", false)
+            .apply()
+        start(app)
+    }
+
     fun status(context: Context): JSONObject {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = snapshot(context)
         return JSONObject()
             .put("network_protection", true)
             .put("version", VERSION)
+            .put("method", "local_adb")
             .put("state", p.getString("state", "IDLE"))
             .put("running", p.getBoolean("running", false))
             .put("verified", isProtected(now))
-            .put("family_dns_active", now.mode == "hostname" && now.specifier == FAMILY_DNS_HOST)
+            .put("family_dns_active", isProtected(now))
+            .put("pairing_required", p.getBoolean("pending_after_pairing", false))
             .put("last_attempt_at", p.getLong("last_attempt_at", 0L))
             .put("last_finished_at", p.getLong("last_finished_at", 0L))
     }
 
-    private fun openPrivateDnsSettings(context: Context): Boolean {
-        val intents = buildList {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                add(Intent("android.settings.PRIVATE_DNS_SETTINGS"))
-            }
-            add(Intent(Settings.ACTION_WIRELESS_SETTINGS))
-            add(Intent(Settings.ACTION_SETTINGS))
+    private fun requirePairing(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("running", false)
+            .putBoolean("pending_after_pairing", true)
+            .putString("state", "PAIRING_REQUIRED")
+            .apply()
+
+        notify(
+            context,
+            "يلزم إقران ADB المحلي مرة واحدة. افتح «إقران الجهاز باستخدام رمز الاقتران» وأدخل الرمز في إشعار حكيم."
+        )
+        Handler(Looper.getMainLooper()).post {
+            HakimLocalPairing.openWirelessDebuggingSettings(context)
         }
-        for (intent in intents) {
-            val candidate = intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            val opened = runCatching {
-                val resolved = candidate.resolveActivity(context.packageManager)
-                if (resolved == null) false else {
-                    context.startActivity(candidate)
-                    true
-                }
-            }.getOrDefault(false)
-            if (opened) return true
-        }
-        return false
-    }
-
-    private fun applyWithAccessibility(context: Context): Boolean {
-        val privateDnsLabels = listOf(
-            "Private DNS",
-            "DNS الخاص",
-            "DNS خاص",
-            "نظام أسماء النطاقات الخاص",
-            "نظام أسماء النطاقات (DNS) الخاص"
-        )
-        val providerLabels = listOf(
-            "Private DNS provider hostname",
-            "Private DNS provider",
-            "اسم مضيف موفّر DNS الخاص",
-            "اسم مضيف مزود DNS الخاص",
-            "موفّر DNS الخاص",
-            "مزود DNS الخاص"
-        )
-        val settingsRouteLabels = listOf(
-            "Hotspot & Connections",
-            "Hotspot and Connections",
-            "نقطة الاتصال والاتصالات",
-            "نقطة الاتصال",
-            "الاتصالات"
-        )
-        val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
-
-        repeat(36) {
-            if (isProtected(snapshot(context))) return true
-            val service = HakimAccessibilityService.instance
-            if (service != null) {
-                val pkg = service.foregroundPackage()
-                if (pkg.contains("settings", ignoreCase = true)) {
-                    val providerOpened = service.clickAnyText(providerLabels)
-                    if (providerOpened) {
-                        Thread.sleep(350)
-                        if (service.setFirstEditableText(FAMILY_DNS_HOST)) {
-                            Thread.sleep(250)
-                            service.clickAnyText(saveLabels)
-                        }
-                    } else if (!service.clickAnyText(privateDnsLabels)) {
-                        service.clickAnyText(settingsRouteLabels)
-                    }
-                }
-            }
-            Thread.sleep(650)
-        }
-        return isProtected(snapshot(context))
-    }
-
-    private fun restore(context: Context, before: DnsState): Boolean {
-        if (sameState(before, snapshot(context))) return true
-        if (!openPrivateDnsSettings(context)) return false
-
-        val privateDnsLabels = listOf(
-            "Private DNS",
-            "DNS الخاص",
-            "DNS خاص",
-            "نظام أسماء النطاقات الخاص",
-            "نظام أسماء النطاقات (DNS) الخاص"
-        )
-        val settingsRouteLabels = listOf(
-            "Hotspot & Connections",
-            "Hotspot and Connections",
-            "نقطة الاتصال والاتصالات",
-            "نقطة الاتصال",
-            "الاتصالات"
-        )
-        val providerLabels = listOf(
-            "Private DNS provider hostname",
-            "Private DNS provider",
-            "اسم مضيف موفّر DNS الخاص",
-            "اسم مضيف مزود DNS الخاص"
-        )
-        val saveLabels = listOf("Save", "حفظ", "OK", "موافق", "تم")
-
-        repeat(28) {
-            val service = HakimAccessibilityService.instance
-            if (service != null && service.foregroundPackage().contains("settings", ignoreCase = true)) {
-                var acted = false
-                when (before.mode) {
-                    "hostname" -> {
-                        acted = service.clickAnyText(providerLabels)
-                        if (acted) {
-                            Thread.sleep(250)
-                            if (before.specifier.isNotBlank()) {
-                                service.setFirstEditableText(before.specifier)
-                            }
-                        }
-                    }
-                    "off" -> acted = service.clickAnyText(listOf("Off", "إيقاف", "متوقف"))
-                    else -> acted = service.clickAnyText(listOf("Automatic", "تلقائي", "تلقائية"))
-                }
-
-                if (acted) {
-                    Thread.sleep(200)
-                    service.clickAnyText(saveLabels)
-                } else if (!service.clickAnyText(privateDnsLabels)) {
-                    service.clickAnyText(settingsRouteLabels)
-                }
-            }
-            Thread.sleep(550)
-            if (sameState(before, snapshot(context))) return true
-        }
-        return sameState(before, snapshot(context))
     }
 
     private fun snapshot(context: Context): DnsState {
@@ -237,17 +147,24 @@ object HakimNetworkProtectionTask {
     private fun isProtected(state: DnsState): Boolean =
         state.mode == "hostname" && state.specifier == FAMILY_DNS_HOST
 
-    private fun sameState(a: DnsState, b: DnsState): Boolean =
-        a.mode == b.mode && a.specifier == b.specifier
-
     private fun finish(context: Context, state: String, verified: Boolean, message: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean("running", false)
+            .putBoolean("pending_after_pairing", false)
             .putString("state", state)
             .putBoolean("verified", verified)
             .putLong("last_finished_at", System.currentTimeMillis())
             .apply()
 
+        notify(context, message)
+
+        Handler(Looper.getMainLooper()).post {
+            HakimConnectionResilience.recover(context, "network_protection_finished")
+            HakimUnifiedRelay.ensureAlive(context, "network_protection_finished")
+        }
+    }
+
+    private fun notify(context: Context, message: String) {
         ensureChannel(context)
         val manager = context.getSystemService(NotificationManager::class.java)
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -261,15 +178,11 @@ object HakimNetworkProtectionTask {
             builder
                 .setContentTitle("حكيم — حماية الشبكة")
                 .setContentText(message)
-                .setSmallIcon(if (verified) android.R.drawable.checkbox_on_background else android.R.drawable.ic_dialog_alert)
+                .setStyle(android.app.Notification.BigTextStyle().bigText(message))
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
                 .setAutoCancel(true)
                 .build()
         )
-
-        Handler(Looper.getMainLooper()).post {
-            HakimConnectionResilience.recover(context, "network_protection_finished")
-            HakimUnifiedRelay.ensureAlive(context, "network_protection_finished")
-        }
     }
 
     private fun ensureChannel(context: Context) {

@@ -60,7 +60,10 @@ object HakimTaskManager {
         val items = load(context)
         for (item in items) {
             val state = stateOf(item.optString("state"))
-            if (item.optString("id") != id && state in activeStates()) {
+            if (item.optString("id") != id &&
+                item.optString("kind", "user_goal") == "user_goal" &&
+                state in activeStates()
+            ) {
                 item.put("state", State.PAUSED.name)
                 item.put("updated_at", now)
                 item.put("blocker", "حُفظت المهمة عند بدء مهمة أخرى")
@@ -152,7 +155,10 @@ object HakimTaskManager {
         if (!task.resumable || task.state in terminalStates()) return null
         val now = System.currentTimeMillis()
         for (other in items) {
-            if (other.optString("id") != id && stateOf(other.optString("state")) in activeStates()) {
+            if (other.optString("id") != id &&
+                other.optString("kind", "user_goal") == "user_goal" &&
+                stateOf(other.optString("state")) in activeStates()
+            ) {
                 other.put("state", State.PAUSED.name)
                     .put("updated_at", now)
                     .put("next_action", "استئناف التنفيذ من المقصد المحفوظ")

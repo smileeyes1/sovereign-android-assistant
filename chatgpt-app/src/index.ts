@@ -116,6 +116,14 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     ) as Record<string,unknown>|undefined;
     const safeIdentity=(raw:unknown)=>
       typeof raw==="string"&&raw.length>0&&raw.length<=80&&/^[A-Za-z0-9 ._()\/-]+$/.test(raw)?raw:null;
+    const safeProbeText=(raw:unknown,max=180)=>
+      typeof raw==="string"&&raw.length<=max&&/^[A-Za-z0-9 ._()\/:|+-]*$/.test(raw)?raw:null;
+    const safeProbePaths=(raw:unknown)=>{
+      if(typeof raw!=="string"||raw.length>1800) return null;
+      const parts=raw.split("|").filter(Boolean);
+      if(parts.length>12||parts.some(p=>p.length>220||!/^\/[A-Za-z0-9._\/-]*$/.test(p))) return null;
+      return parts.join("|");
+    };
     const safeRole=(raw:unknown)=>fixed(raw,["router_or_gateway","web_managed_device","repeater_or_ap","network_service"]);
     const guardian=result?.network_guardian;
     const autoUpdate=result?.auto_update;
@@ -170,6 +178,16 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         ]),
         fingerprint_zte:flag(guardian?.fingerprint_zte),
         fingerprint_zxhn:flag(guardian?.fingerprint_zxhn),
+        via_secondary_gateway:flag(guardian?.via_secondary_gateway),
+        upstream_f8040_proven:flag(guardian?.upstream_f8040_proven),
+        web_probe_ran:flag(guardian?.web_probe_ran),
+        web_probe_root_status:typeof guardian?.web_probe_root_status==="number"&&Number.isInteger(guardian.web_probe_root_status)&&
+          guardian.web_probe_root_status>=-1&&guardian.web_probe_root_status<=599?guardian.web_probe_root_status:null,
+        web_probe_title:safeProbeText(guardian?.web_probe_title,120),
+        web_probe_server:safeProbeText(guardian?.web_probe_server,120),
+        web_probe_login_required:flag(guardian?.web_probe_login_required),
+        web_probe_auth_action:safeProbeText(guardian?.web_probe_auth_action,180),
+        web_probe_candidate_paths:safeProbePaths(guardian?.web_probe_candidate_paths),
         router_auth_required:flag(guardian?.router_auth_required),
         baseline_dns_saved:flag(guardian?.baseline_dns_saved),
         family_dns_configured:flag(guardian?.family_dns_configured),
@@ -245,6 +263,14 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;
     const bool=(raw:unknown)=>typeof raw==="boolean"?raw:null;
+    const safeProbeText=(raw:unknown,max=180)=>
+      typeof raw==="string"&&raw.length<=max&&/^[A-Za-z0-9 ._()\/:|+-]*$/.test(raw)?raw:null;
+    const safeProbePaths=(raw:unknown)=>{
+      if(typeof raw!=="string"||raw.length>1800) return null;
+      const parts=raw.split("|").filter(Boolean);
+      if(parts.length>12||parts.some(p=>p.length>220||!/^\/[A-Za-z0-9._\/-]*$/.test(p))) return null;
+      return parts.join("|");
+    };
     const safe={
       event:"hakim_health_evidence",
       version_code:typeof result.version_code==="number"?result.version_code:null,
@@ -271,6 +297,16 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         ]),
         fingerprint_zte:bool(guardian?.fingerprint_zte),
         fingerprint_zxhn:bool(guardian?.fingerprint_zxhn),
+        via_secondary_gateway:bool(guardian?.via_secondary_gateway),
+        upstream_f8040_proven:bool(guardian?.upstream_f8040_proven),
+        web_probe_ran:bool(guardian?.web_probe_ran),
+        web_probe_root_status:typeof guardian?.web_probe_root_status==="number"&&Number.isInteger(guardian.web_probe_root_status)&&
+          guardian.web_probe_root_status>=-1&&guardian.web_probe_root_status<=599?guardian.web_probe_root_status:null,
+        web_probe_title:safeProbeText(guardian?.web_probe_title,120),
+        web_probe_server:safeProbeText(guardian?.web_probe_server,120),
+        web_probe_login_required:bool(guardian?.web_probe_login_required),
+        web_probe_auth_action:safeProbeText(guardian?.web_probe_auth_action,180),
+        web_probe_candidate_paths:safeProbePaths(guardian?.web_probe_candidate_paths),
         router_auth_required:bool(guardian?.router_auth_required),
         baseline_dns_saved:bool(guardian?.baseline_dns_saved),
         family_dns_configured:bool(guardian?.family_dns_configured),

@@ -92,6 +92,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        task_manager?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
@@ -127,6 +128,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     };
     const safeRole=(raw:unknown)=>fixed(raw,["router_or_gateway","web_managed_device","repeater_or_ap","network_service"]);
     const guardian=result?.network_guardian;
+    const taskManager=result?.task_manager;
     const autoUpdate=result?.auto_update;
     const networkProtection=result?.network_protection;
     const safe={
@@ -169,6 +171,20 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         http_status:typeof gatewayHost?.http_status==="number"&&Number.isInteger(gatewayHost.http_status)&&
           gatewayHost.http_status>=100&&gatewayHost.http_status<=599?gatewayHost.http_status:null,
         scheme:fixed(gatewayHost?.http_scheme,["http","https"])
+      },
+      task_manager:{
+        total:boundedCount(taskManager?.total),
+        active:boundedCount(taskManager?.active),
+        waiting:boundedCount(taskManager?.waiting),
+        completed:boundedCount(taskManager?.completed),
+        failed:boundedCount(taskManager?.failed),
+        top_state:fixed(taskManager?.top_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ]),
+        top_priority:fixed(taskManager?.top_priority,["P0","P1","P2","P3"]),
+        network_task_state:fixed(taskManager?.network_task_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ])
       },
       network_guardian:{
         state:fixed(guardian?.state,[
@@ -253,6 +269,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        task_manager?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
     };
@@ -266,10 +283,13 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
     const guardian=result.network_guardian;
+    const taskManager=result.task_manager;
     const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;
     const bool=(raw:unknown)=>typeof raw==="boolean"?raw:null;
+    const boundedCount=(raw:unknown)=>
+      typeof raw==="number"&&Number.isInteger(raw)&&raw>=0&&raw<=1024?raw:null;
     const safeProbeText=(raw:unknown,max=180)=>
       typeof raw==="string"&&raw.length<=max&&/^[A-Za-z0-9 ._()\/:|+-]*$/.test(raw)?raw:null;
     const safeProbePaths=(raw:unknown)=>{
@@ -294,6 +314,20 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         material_gap_blocks_close:bool(gate?.material_gap_blocks_close),
         same_tested_delivered_artifact_required:bool(gate?.same_tested_delivered_artifact_required),
         regression_gate_supported:bool(gate?.regression_gate_supported)
+      },
+      task_manager:{
+        total:boundedCount(taskManager?.total),
+        active:boundedCount(taskManager?.active),
+        waiting:boundedCount(taskManager?.waiting),
+        completed:boundedCount(taskManager?.completed),
+        failed:boundedCount(taskManager?.failed),
+        top_state:fixed(taskManager?.top_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ]),
+        top_priority:fixed(taskManager?.top_priority,["P0","P1","P2","P3"]),
+        network_task_state:fixed(taskManager?.network_task_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ])
       },
       network_guardian:{
         state:fixed(guardian?.state,[

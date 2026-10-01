@@ -43,6 +43,7 @@ class CommandCenterActivity : ComponentActivity() {
     private lateinit var executeRow: LinearLayout
     private lateinit var toolsRow: LinearLayout
     private var operationsExpanded = false
+    private var pendingResumeTaskId: String? = null
     @Volatile private var currentDirectEngine: HakimInferenceEngine? = null
     private var streamingBase = ""
     private val streamingBuffer = StringBuilder()
@@ -85,6 +86,7 @@ class CommandCenterActivity : ComponentActivity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
+        HakimTaskManager.syncSystemTasks(this)
         HakimExecutionFabric.recover(this, "command_center_open")
         HakimConnectionResilience.recover(this, "command_center_open")
         buildUi()
@@ -103,12 +105,12 @@ class CommandCenterActivity : ComponentActivity() {
         HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
         HakimConnectionResilience.recover(this, "command_center_resume")
         HakimResilienceAlarmReceiver.schedule(this)
+        HakimTaskManager.syncSystemTasks(this)
         maybeOpenLocalRouterAuth()
     }
 
     private fun maybeOpenLocalRouterAuth() {
-        val guardian = HakimNetworkGuardian.status(this)
-        if (guardian.optString("state") != "ROUTER_AUTH_REQUIRED") return
+        if (!HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
         val p = getSharedPreferences("hakim_router_auth_ui", MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val last = p.getLong("last_launch_at", 0L)
@@ -291,6 +293,12 @@ class CommandCenterActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
+            actionButton("المهام") {
+                startActivity(Intent(this, HakimTaskManagerActivity::class.java))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        toolsRow.addView(
             actionButton("الإعدادات") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
@@ -454,7 +462,15 @@ class CommandCenterActivity : ComponentActivity() {
             appendConversation("أنت", if (text.isBlank()) "مرفقات فقط" else text)
         }
         val directed = HakimIntentDirector.build(this, text, attachments.size)
-        HakimExecutiveLoop.start(this, text, directed.acceptance)
+        val resumeId = pendingResumeTaskId
+        val resumeTask = resumeId?.let { HakimTaskManager.get(this, it) }
+        if (resumeTask != null && resumeTask.kind == "user_goal") {
+            pendingResumeTaskId = null
+            HakimExecutiveLoop.resume(this, resumeTask)
+        } else {
+            pendingResumeTaskId = null
+            HakimExecutiveLoop.start(this, text, directed.acceptance)
+        }
         HakimExecutiveLoop.record(this, HakimExecutiveLoop.Phase.PLANNING, "صياغة أمر تنفيذي أعلى للمحرك وفق المقصد ومعيار الاكتمال")
         val toolPlan = HakimSilentToolOrchestrator.plan(this, text, attachments.isNotEmpty())
         HakimExecutiveLoop.record(
@@ -1648,6 +1664,19 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun handleIntent(i: Intent?) {
         if (i == null) return
+
+        val resumeId = i.getStringExtra("hakim_resume_task_id").orEmpty()
+        if (resumeId.isNotBlank()) {
+            val task = HakimTaskManager.get(this, resumeId)
+            if (task != null && task.kind == "user_goal" && task.goal.isNotBlank() && task.resumable) {
+                pendingResumeTaskId = task.id
+                command.setText(task.goal)
+                status.text = "يستأنف المهمة المحفوظة…"
+                command.post { executeBestRoute(task.goal, appendUserMessage = false) }
+            }
+            i.removeExtra("hakim_resume_task_id")
+            return
+        }
 
         if (i.getBooleanExtra("resume_after_free_oauth", false)) {
             val pending = OpenRouterOAuthManager.takePendingPrompt(this).orEmpty()

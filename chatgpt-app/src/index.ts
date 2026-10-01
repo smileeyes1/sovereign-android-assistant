@@ -1,3 +1,4 @@
+// Router telemetry: bounded adapter enum + boolean-only local-session presence.
 import express from "express";
 import cors from "cors";
 import os from "node:os";

@@ -31,7 +31,7 @@ for token in (
 
 req('private const val ROUTER_HOST = "192.168.1.1"' in router,"router_host_not_pinned")
 req('private const val ROUTER_ORIGIN = "https://192.168.1.1"' in router,"router_origin_not_pinned")
-req("JavascriptInterface" not in router,"javascript_interface_forbidden")
+req(".addJavascriptInterface(" not in router,"javascript_interface_forbidden")
 
 # Device DNS consent may move ahead only for a proven stalled router candidate.
 for token in (

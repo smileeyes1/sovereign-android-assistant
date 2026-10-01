@@ -92,6 +92,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        device_protection?:Record<string,unknown>;
         task_manager?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
@@ -128,6 +129,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     };
     const safeRole=(raw:unknown)=>fixed(raw,["router_or_gateway","web_managed_device","repeater_or_ap","network_service"]);
     const guardian=result?.network_guardian;
+    const deviceProtection=result?.device_protection;
     const taskManager=result?.task_manager;
     const autoUpdate=result?.auto_update;
     const networkProtection=result?.network_protection;
@@ -184,7 +186,23 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         top_priority:fixed(taskManager?.top_priority,["P0","P1","P2","P3"]),
         network_task_state:fixed(taskManager?.network_task_state,[
           "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ]),
+        device_dns_task_state:fixed(taskManager?.device_dns_task_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
         ])
+      },
+      device_protection:{
+        enabled:flag(deviceProtection?.enabled),
+        consent_granted:flag(deviceProtection?.consent_granted),
+        active:flag(deviceProtection?.active),
+        state:fixed(deviceProtection?.state,[
+          "NOT_CONFIGURED","CONSENT_REQUIRED","STARTING","ACTIVE_STARTING","ACTIVE",
+          "START_FAILED","ESTABLISH_FAILED","CONSENT_REVOKED","STOPPED"
+        ]),
+        upstream_verified_recently:flag(deviceProtection?.upstream_verified_recently),
+        dns_proxy_success_count:boundedCount(deviceProtection?.dns_proxy_success_count),
+        dns_proxy_failure_count:boundedCount(deviceProtection?.dns_proxy_failure_count),
+        full_bypass_prevention:flag(deviceProtection?.full_bypass_prevention)
       },
       network_guardian:{
         state:fixed(guardian?.state,[
@@ -213,7 +231,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         web_local_session_present:flag(guardian?.web_local_session_present),
         webview_probe_state:fixed(guardian?.webview_probe_state,[
           "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
-          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","ROLLBACK_NOT_STARTED","UNKNOWN"
+          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
         ]),
         webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
         webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&
@@ -281,6 +299,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
         network_guardian?:Record<string,unknown>;
+        device_protection?:Record<string,unknown>;
         task_manager?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
@@ -295,6 +314,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
     const guardian=result.network_guardian;
+    const deviceProtection=result.device_protection;
     const taskManager=result.task_manager;
     const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>
@@ -339,7 +359,23 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         top_priority:fixed(taskManager?.top_priority,["P0","P1","P2","P3"]),
         network_task_state:fixed(taskManager?.network_task_state,[
           "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
+        ]),
+        device_dns_task_state:fixed(taskManager?.device_dns_task_state,[
+          "queued","running","verifying","waiting","blocked","paused","complete","failed","cancelled"
         ])
+      },
+      device_protection:{
+        enabled:bool(deviceProtection?.enabled),
+        consent_granted:bool(deviceProtection?.consent_granted),
+        active:bool(deviceProtection?.active),
+        state:fixed(deviceProtection?.state,[
+          "NOT_CONFIGURED","CONSENT_REQUIRED","STARTING","ACTIVE_STARTING","ACTIVE",
+          "START_FAILED","ESTABLISH_FAILED","CONSENT_REVOKED","STOPPED"
+        ]),
+        upstream_verified_recently:bool(deviceProtection?.upstream_verified_recently),
+        dns_proxy_success_count:boundedCount(deviceProtection?.dns_proxy_success_count),
+        dns_proxy_failure_count:boundedCount(deviceProtection?.dns_proxy_failure_count),
+        full_bypass_prevention:bool(deviceProtection?.full_bypass_prevention)
       },
       network_guardian:{
         state:fixed(guardian?.state,[
@@ -368,7 +404,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         web_local_session_present:bool(guardian?.web_local_session_present),
         webview_probe_state:fixed(guardian?.webview_probe_state,[
           "NOT_RUN","AUTH","NAVIGATING","READY","WAIT","MISS","DECODE_MISS","TIMEOUT",
-          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","ROLLBACK_NOT_STARTED","UNKNOWN"
+          "GATE_BLOCKED","BASELINE_REJECTED","APPLY_NOT_STARTED","APPLY_GATE_STILL_DISABLED","ROLLBACK_NOT_STARTED","UNKNOWN"
         ]),
         webview_probe_variant:safeProbeText(guardian?.webview_probe_variant,32),
         webview_probe_frame_count:typeof guardian?.webview_probe_frame_count==="number"&&

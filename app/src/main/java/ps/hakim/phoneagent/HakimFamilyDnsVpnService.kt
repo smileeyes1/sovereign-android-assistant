@@ -32,6 +32,8 @@ class HakimFamilyDnsVpnService : VpnService() {
         private const val VPN_DNS = "10.236.0.2"
         private const val FAMILY_DNS_1 = "185.228.168.168"
         private const val FAMILY_DNS_2 = "185.228.169.168"
+        private const val FAMILY_DNS_1_V6 = "2a0d:2a00:1::"
+        private const val FAMILY_DNS_2_V6 = "2a0d:2a00:2::"
         private const val DNS_PORT = 53
         private const val NOTIFICATION_ID = 17326
         private const val CHANNEL_ID = "hakim_family_dns_vpn"
@@ -147,7 +149,7 @@ class HakimFamilyDnsVpnService : VpnService() {
     }
 
     private fun resolveFamilyDns(query: ByteArray): ByteArray? {
-        for (server in arrayOf(FAMILY_DNS_1, FAMILY_DNS_2)) {
+        for (server in arrayOf(FAMILY_DNS_1, FAMILY_DNS_2, FAMILY_DNS_1_V6, FAMILY_DNS_2_V6)) {
             val response = runCatching {
                 DatagramSocket().use { socket ->
                     if (!protect(socket)) throw IllegalStateException("protect_failed")

@@ -127,6 +127,19 @@
             android:windowSoftInputMode="adjustResize" />
 
         <service
+            android:name=".HakimAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false"
+            android:label="حكيم">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
             android:name=".HakimService"
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />

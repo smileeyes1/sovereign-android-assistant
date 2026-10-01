@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20321 WebView-native DNS candidate
+# 20322 WebView auto-resume candidate
 
 on:
   push:
@@ -150,7 +150,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20321"
+          test "$VERSION_CODE" = "20322"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

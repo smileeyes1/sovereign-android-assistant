@@ -50,7 +50,8 @@ jobs:
           python3 tests/verify_task_manager.py
           python3 tests/verify_device_family_dns_vpn.py
           python3 tests/verify_20328_split_frame_device_first.py
-          python3 tests/verify_20329_f8040_source_inference.py\n          python3 tests/verify_20330_f8040_auto_source_rollback.py
+          python3 tests/verify_20329_f8040_source_inference.py
+          python3 tests/verify_20330_f8040_auto_source_rollback.py
           python3 tests/verify_webview_dns_r13.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py

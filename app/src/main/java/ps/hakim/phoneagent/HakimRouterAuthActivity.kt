@@ -253,45 +253,84 @@ class HakimRouterAuthActivity : ComponentActivity() {
                   if(s.indexOf('auto')>=0 || s.indexOf('isp')>=0 || s.indexOf('wan')>=0 || s.indexOf('dhcp')>=0) return '1';
                   return '';
                 }
-                function readSource(d,src0,src1,srcDirect){
-                  function chosen(e){
+                function readSource(d,src0,src1,srcDirect,dns1,dns2){
+                  function selectedByUi(e){
                     if(!e) return false;
-                    if(e.checked===true) return true;
-                    const a=String(e.getAttribute&&e.getAttribute('aria-checked')||'').toLowerCase();
-                    const data=String(e.getAttribute&&e.getAttribute('data-checked')||'').toLowerCase();
-                    return a==='true' || data==='true' || data==='1';
+                    if(e.checked===true || e.selected===true) return true;
+                    const attrs=['aria-checked','aria-selected','data-checked','data-selected','data-state'];
+                    for(let i=0;i<attrs.length;i++){
+                      const v=String(e.getAttribute&&e.getAttribute(attrs[i])||'').trim().toLowerCase();
+                      if(v==='true' || v==='1' || v==='checked' || v==='selected' || v==='active' || v==='on') return true;
+                    }
+                    const cls=(String(e.className||'')+' '+String((e.parentElement&&e.parentElement.className)||'')).toLowerCase();
+                    if(/(^|\s)(checked|selected|active|current|on)(\s|$)/.test(cls)) return true;
+                    return false;
                   }
-                  if(chosen(src0)) return '0';
-                  if(chosen(src1)) return '1';
+                  function dnsControlState(){
+                    const controls=[];
+                    function add(e){
+                      if(!e || controls.indexOf(e)>=0) return;
+                      const type=String(e.type||'').toLowerCase();
+                      if(type==='hidden') return;
+                      controls.push(e);
+                    }
+                    add(dns1); add(dns2);
+                    for(let n=1;n<=2;n++){
+                      for(let i=0;i<4;i++) add(byIdOrName(d,'sub_DNSServer'+n+i));
+                    }
+                    if(controls.length===0) return '';
+                    let editable=0,locked=0;
+                    for(let i=0;i<controls.length;i++){
+                      const e=controls[i];
+                      const isLocked=!!e.disabled || !!e.readOnly ||
+                        String(e.getAttribute&&e.getAttribute('aria-disabled')||'').toLowerCase()==='true';
+                      if(isLocked) locked++; else editable++;
+                    }
+                    if(editable===controls.length) return '0';
+                    if(locked===controls.length) return '1';
+                    return '';
+                  }
+                  if(selectedByUi(src0)) return '0';
+                  if(selectedByUi(src1)) return '1';
                   if(srcDirect){
-                    let n=normalizeSource(srcDirect.value);
-                    if(n!=='') return n;
+                    const candidates=[
+                      srcDirect.value,
+                      srcDirect.getAttribute&&srcDirect.getAttribute('data-value'),
+                      srcDirect.getAttribute&&srcDirect.getAttribute('data-state'),
+                      srcDirect.getAttribute&&srcDirect.getAttribute('title'),
+                      srcDirect.getAttribute&&srcDirect.getAttribute('aria-label')
+                    ];
+                    for(let i=0;i<candidates.length;i++){
+                      const n=normalizeSource(candidates[i]);
+                      if(n!=='') return n;
+                    }
                     try{
                       if(srcDirect.options && srcDirect.selectedIndex>=0){
                         const o=srcDirect.options[srcDirect.selectedIndex];
-                        n=normalizeSource(String(o.value||'')+' '+String(o.text||''));
+                        const n=normalizeSource(String(o.value||'')+' '+String(o.text||''));
                         if(n!=='') return n;
                       }
                     }catch(_){}
                   }
                   try{
-                    const all=d.querySelectorAll('input,select,option');
-                    for(let i=0;i<all.length && i<800;i++){
+                    const all=d.querySelectorAll('input,select,option,[role="radio"],[role="option"]');
+                    for(let i=0;i<all.length && i<1000;i++){
                       const e=all[i];
-                      const key=String((e.id||'')+' '+(e.name||'')).toLowerCase();
+                      const key=String((e.id||'')+' '+(e.name||'')+' '+(e.getAttribute&&e.getAttribute('data-name')||'')).toLowerCase();
                       if(key.indexOf('dnsserversource')<0) continue;
-                      if(e.type==='radio' || e.type==='checkbox'){
-                        if(!chosen(e)) continue;
-                      }else if(e.tagName==='OPTION' && !e.selected){
-                        continue;
-                      }
-                      let n=normalizeSource(e.value);
+                      const type=String(e.type||'').toLowerCase();
+                      if((type==='radio'||type==='checkbox'||String(e.getAttribute&&e.getAttribute('role')||'').toLowerCase()==='radio') &&
+                         !selectedByUi(e)) continue;
+                      if(e.tagName==='OPTION' && !e.selected) continue;
+                      let n=normalizeSource(String(e.value||'')+' '+String(e.textContent||''));
                       if(n!=='') return n;
                       if(key.indexOf('dnsserversource0')>=0) return '0';
                       if(key.indexOf('dnsserversource1')>=0) return '1';
                     }
                   }catch(_){}
-                  return '';
+                  // بعض إصدارات F8040 لا تكشف قيمة المصدر، لكنها تعكسه في قابلية تحرير حقول DNS:
+                  // حقول DNS قابلة للتحرير بالكامل = يدوي، مقفلة بالكامل = تلقائي/ISP.
+                  return dnsControlState();
                 }
                 function login(d){
                   return !!d.querySelector('input[type="password"],#LoginId,[name="fLogin"],#Frm_Password,[name*="password" i]');
@@ -327,7 +366,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
 
                   if(hasDns1 && aggregateDns1==='') aggregateDns1=pickDns(d,hidden1,'sub_DNSServer1');
                   if(hasDns2 && aggregateDns2==='') aggregateDns2=pickDns(d,hidden2,'sub_DNSServer2');
-                  if(hasSource && aggregateSource==='') aggregateSource=readSource(d,src0,src1,srcDirect);
+                  if(hasSource && aggregateSource==='') aggregateSource=readSource(d,src0,src1,srcDirect,hidden1,hidden2);
                   if(btn){
                     aggregateApplyDisabled=!!btn.disabled;
                     aggregateVariant=(x===0?'top':'frame');
@@ -337,7 +376,7 @@ class HakimRouterAuthActivity : ComponentActivity() {
 
                   const dns1=pickDns(d,hidden1,'sub_DNSServer1');
                   const dns2=pickDns(d,hidden2,'sub_DNSServer2');
-                  const source=readSource(d,src0,src1,srcDirect);
+                  const source=readSource(d,src0,src1,srcDirect,hidden1,hidden2);
 
                   return JSON.stringify({
                     state:'READY',
@@ -551,9 +590,16 @@ class HakimRouterAuthActivity : ComponentActivity() {
                 }
                 function setSource(d,src0,src1,srcDirect,desired){
                   if(src0 && src1){
-                    src0.checked=(desired==='0');
-                    src1.checked=(desired==='1');
-                    emit(src0); emit(src1);
+                    const wanted=(desired==='0')?src0:src1;
+                    const other=(desired==='0')?src1:src0;
+                    try{
+                      other.checked=false;
+                      wanted.checked=true;
+                      emit(other); emit(wanted);
+                      const selected=!!wanted.checked ||
+                        String(wanted.getAttribute&&wanted.getAttribute('aria-checked')||'').toLowerCase()==='true';
+                      if(!selected && typeof wanted.click==='function') wanted.click();
+                    }catch(_){}
                     return true;
                   }
                   if(srcDirect){

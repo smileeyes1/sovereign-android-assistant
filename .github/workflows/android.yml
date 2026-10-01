@@ -48,6 +48,7 @@ jobs:
           python3 tests/verify_20099_chatlike_composer.py
           python3 tests/verify_visible_operations.py
           python3 tests/verify_task_manager.py
+          python3 tests/verify_device_family_dns_vpn.py
           python3 tests/verify_webview_dns_r13.py
           python3 tests/verify_approved_browser_back.py
           python3 tests/verify_browser_read_safety.py

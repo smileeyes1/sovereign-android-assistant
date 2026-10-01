@@ -17,6 +17,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
 import java.net.URL
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -168,7 +169,8 @@ object HakimNetworkGuardian {
         val endpoint = findLanHostConfigEndpoint(descriptions)
         if (endpoint == null) {
             probeF8040WebSurface(context)
-            return finish(context, "TR064_LANHOST_NOT_FOUND", reason, now, targetGateway)
+            val webState = tryStrictZteWebDns(context)
+            return finish(context, webState, reason, now, targetGateway)
         }
 
         p.edit()
@@ -220,7 +222,7 @@ object HakimNetworkGuardian {
 
         val resolverGood = dnsQuery(FAMILY_DNS_1, "cleanbrowsing.org")
         val resolverBlocked = dnsQuery(FAMILY_DNS_1, "pornhub.com")
-        val familyResolverVerified = resolverGood == 0 && resolverBlocked == 3
+        val familyResolverVerified = resolverGood == 0 && resolverBlocked in setOf(0, 3)
         p.edit()
             .putBoolean("family_resolver_verified", familyResolverVerified)
             .putInt("family_resolver_good_rcode", resolverGood)
@@ -263,7 +265,12 @@ object HakimNetworkGuardian {
             .put("web_probe_auth_action", p.getString("web_probe_auth_action", ""))
             .put("web_probe_candidate_paths", p.getString("web_probe_candidate_paths", ""))
             .put("router_auth_required", p.getBoolean("router_auth_required", false))
-            .put("baseline_dns_saved", p.contains("baseline_dns"))
+            .put("baseline_dns_saved", p.contains("baseline_dns") || p.contains("web_baseline_dns1"))
+            .put("web_dns_adapter", p.getString("web_dns_adapter", "none"))
+            .put("web_dns_compatible", p.getBoolean("web_dns_compatible", false))
+            .put("web_dns_apply_attempted", p.getBoolean("web_dns_apply_attempted", false))
+            .put("web_dns_readback_verified", p.getBoolean("web_dns_readback_verified", false))
+            .put("web_dns_rollback_verified", p.getBoolean("web_dns_rollback_verified", false))
             .put("family_dns_configured", p.getBoolean("family_dns_configured", false))
             .put("family_resolver_verified", p.getBoolean("family_resolver_verified", false))
             .put("rollback_state", p.getString("rollback_state", "not_needed"))
@@ -307,6 +314,351 @@ object HakimNetworkGuardian {
         val body: String,
         val server: String
     )
+
+    private const val ZTE_GCH_DHCP_PATH = "/getpage.gch?pid=1002&nextpage=net_dhcp_dynamic_t.gch"
+    private const val ZTE_LUA_LAN_PATH = "/getpage.lua?pid=1002&nextpage=Localnet_LanMgrIpv4_t.lp"
+
+    private data class StrictWebResponse(
+        val status: Int,
+        val body: String,
+        val cookie: String = ""
+    )
+
+    private fun tryStrictZteWebDns(context: Context): String {
+        val p = prefs(context)
+        p.edit()
+            .putBoolean("router_auth_required", false)
+            .putBoolean("web_dns_compatible", false)
+            .putBoolean("web_dns_apply_attempted", false)
+            .putBoolean("web_dns_readback_verified", false)
+            .putBoolean("web_dns_rollback_verified", false)
+            .apply()
+
+        val gch = strictWebRequest("GET", ZTE_GCH_DHCP_PATH)
+        if (gch.status == 401 || gch.status == 403 || looksLikeZteLogin(gch.body)) {
+            p.edit()
+                .putString("web_dns_adapter", "gch")
+                .putBoolean("router_auth_required", true)
+                .apply()
+            return "ROUTER_AUTH_REQUIRED"
+        }
+
+        if (gch.status in 200..299 && strictGchDnsCompatible(gch.body)) {
+            p.edit()
+                .putString("web_dns_adapter", "gch")
+                .putBoolean("web_dns_compatible", true)
+                .apply()
+            return applyStrictGchDns(context, gch)
+        }
+
+        val lua = strictWebRequest("GET", ZTE_LUA_LAN_PATH)
+        if (lua.status == 401 || lua.status == 403 || looksLikeZteLogin(lua.body)) {
+            p.edit()
+                .putString("web_dns_adapter", "lua")
+                .putBoolean("router_auth_required", true)
+                .apply()
+            return "ROUTER_AUTH_REQUIRED"
+        }
+        val luaCompatible = lua.status in 200..299 &&
+            listOf("DHCPBasicCfg_container", "DnsServerSource", "Btn_apply_DHCPBasicCfg")
+                .all { lua.body.contains(it, ignoreCase = true) }
+        if (luaCompatible) {
+            // This family is identified read-only. Its mutation contract varies by firmware;
+            // fail closed rather than guessing a POST body.
+            p.edit()
+                .putString("web_dns_adapter", "lua_readonly")
+                .putBoolean("web_dns_compatible", false)
+                .apply()
+        } else {
+            p.edit().putString("web_dns_adapter", "none").apply()
+        }
+        return "TR064_LANHOST_NOT_FOUND"
+    }
+
+    private fun strictGchDnsCompatible(body: String): Boolean {
+        if (body.length < 1000 || looksLikeZteLogin(body)) return false
+        val required = listOf(
+            "Frm_DnsServerSource",
+            "Frm_DNSServer1",
+            "Frm_DNSServer2",
+            "Btn_Submit",
+            "DNSServer1",
+            "DNSServer2",
+            "DnsServerSource",
+            "IF_ACTION",
+            "function pageSubmit",
+            "Transfer_meaning"
+        )
+        if (!required.all { body.contains(it, ignoreCase = true) }) return false
+        val values = extractTransferMeanings(body)
+        if (values["ViewName"] != "IGD.LD1.HostCfg") return false
+        if (values["Configurable"] != "1") return false
+        if (values["BasicIPAddr"] != EXPECTED_GATEWAY) return false
+        if (values["DnsServerSource"] !in setOf("0", "1")) return false
+        return values.containsKey("DNSServer1") && values.containsKey("DNSServer2")
+    }
+
+    private fun applyStrictGchDns(context: Context, initial: StrictWebResponse): String {
+        val p = prefs(context)
+        val initialValues = extractTransferMeanings(initial.body)
+        val initialToken = extractSessionToken(initial.body)
+        if (initialToken.isBlank()) {
+            // A compatible page without a local mutation token is not safe to modify.
+            return "TR064_LANHOST_NOT_FOUND"
+        }
+
+        val baseline1 = initialValues["DNSServer1"].orEmpty()
+        val baseline2 = initialValues["DNSServer2"].orEmpty()
+        val baseline3 = initialValues["DNSServer3"].orEmpty()
+        val baselineSource = initialValues["DnsServerSource"].orEmpty()
+
+        if (!p.contains("web_baseline_dns1")) {
+            p.edit()
+                .putString("web_baseline_dns1", baseline1)
+                .putString("web_baseline_dns2", baseline2)
+                .putString("web_baseline_dns3", baseline3)
+                .putString("web_baseline_dns_source", baselineSource)
+                .putLong("web_baseline_dns_at", System.currentTimeMillis())
+                .apply()
+        }
+
+        val alreadyConfigured =
+            baseline1 == FAMILY_DNS_1 &&
+            baseline2 == FAMILY_DNS_2 &&
+            baselineSource == "0"
+
+        if (!alreadyConfigured) {
+            val form = LinkedHashMap(initialValues)
+            val beforeNonDns = nonDnsFingerprint(form)
+            form["DNSServer1"] = FAMILY_DNS_1
+            form["DNSServer2"] = FAMILY_DNS_2
+            if (form.containsKey("DNSServer3")) form["DNSServer3"] = "0.0.0.0"
+            form["DnsServerSource"] = "0"
+            form["IF_ACTION"] = "apply"
+            if (beforeNonDns != nonDnsFingerprint(form)) {
+                return "TR064_LANHOST_NOT_FOUND"
+            }
+            form["_SESSION_TOKEN"] = initialToken
+            form.putIfAbsent("IF_UPLOADING", "N/A")
+            form.putIfAbsent("temClickURL", "")
+
+            p.edit().putBoolean("web_dns_apply_attempted", true).apply()
+            val posted = strictWebRequest(
+                "POST",
+                ZTE_GCH_DHCP_PATH,
+                encodeForm(form),
+                initial.cookie
+            )
+            if (posted.status == 401 || posted.status == 403 || looksLikeZteLogin(posted.body)) {
+                p.edit().putBoolean("router_auth_required", true).apply()
+                return "ROUTER_AUTH_REQUIRED"
+            }
+            if (posted.status !in 200..399) {
+                return "TR064_LANHOST_NOT_FOUND"
+            }
+        }
+
+        val verify = strictWebRequest("GET", ZTE_GCH_DHCP_PATH)
+        if (verify.status !in 200..299 || looksLikeZteLogin(verify.body)) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackStrictGchDns(context, baseline1, baseline2, baseline3, baselineSource)
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+
+        val after = extractTransferMeanings(verify.body)
+        val configured =
+            after["DNSServer1"] == FAMILY_DNS_1 &&
+            after["DNSServer2"] == FAMILY_DNS_2 &&
+            after["DnsServerSource"] == "0"
+        p.edit().putBoolean("web_dns_readback_verified", configured).apply()
+
+        if (!configured) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackStrictGchDns(context, baseline1, baseline2, baseline3, baselineSource)
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+
+        val resolverGood = dnsQuery(FAMILY_DNS_1, "cleanbrowsing.org")
+        val resolverAdult = dnsQuery(FAMILY_DNS_1, "pornhub.com")
+        val resolverVerified = resolverGood == 0 && resolverAdult in setOf(0, 3)
+        p.edit()
+            .putBoolean("family_dns_configured", true)
+            .putBoolean("family_resolver_verified", resolverVerified)
+            .putInt("family_resolver_good_rcode", resolverGood)
+            .putInt("family_resolver_blocked_rcode", resolverAdult)
+            .putLong("last_router_dns_verify_at", System.currentTimeMillis())
+            .apply()
+
+        if (!resolverVerified) {
+            if (!alreadyConfigured) {
+                val rolledBack = rollbackStrictGchDns(context, baseline1, baseline2, baseline3, baselineSource)
+                p.edit().putBoolean("family_dns_configured", false).apply()
+                return if (rolledBack) "FAMILY_DNS_ROLLED_BACK_UNVERIFIED" else "FAMILY_DNS_ROLLBACK_UNVERIFIED"
+            }
+            return "FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED"
+        }
+        return "FAMILY_DNS_CONFIGURED"
+    }
+
+    private fun rollbackStrictGchDns(
+        context: Context,
+        dns1: String,
+        dns2: String,
+        dns3: String,
+        source: String
+    ): Boolean {
+        val current = strictWebRequest("GET", ZTE_GCH_DHCP_PATH)
+        if (current.status !in 200..299 || looksLikeZteLogin(current.body)) return false
+        val values = extractTransferMeanings(current.body)
+        val token = extractSessionToken(current.body)
+        if (!strictGchDnsCompatible(current.body) || token.isBlank()) return false
+
+        val form = LinkedHashMap(values)
+        val beforeNonDns = nonDnsFingerprint(form)
+        form["DNSServer1"] = dns1
+        form["DNSServer2"] = dns2
+        if (form.containsKey("DNSServer3")) form["DNSServer3"] = dns3
+        form["DnsServerSource"] = source
+        form["IF_ACTION"] = "apply"
+        if (beforeNonDns != nonDnsFingerprint(form)) return false
+        form["_SESSION_TOKEN"] = token
+        form.putIfAbsent("IF_UPLOADING", "N/A")
+        form.putIfAbsent("temClickURL", "")
+
+        val posted = strictWebRequest("POST", ZTE_GCH_DHCP_PATH, encodeForm(form), current.cookie)
+        if (posted.status !in 200..399) return false
+
+        val verify = strictWebRequest("GET", ZTE_GCH_DHCP_PATH)
+        val after = extractTransferMeanings(verify.body)
+        val restored =
+            verify.status in 200..299 &&
+            after["DNSServer1"].orEmpty() == dns1 &&
+            after["DNSServer2"].orEmpty() == dns2 &&
+            after["DNSServer3"].orEmpty() == dns3 &&
+            after["DnsServerSource"].orEmpty() == source
+        prefs(context).edit()
+            .putBoolean("web_dns_rollback_verified", restored)
+            .putString("rollback_state", if (restored) "verified" else "verify_failed")
+            .putLong("rollback_at", System.currentTimeMillis())
+            .apply()
+        return restored
+    }
+
+    private fun nonDnsFingerprint(values: Map<String, String>): String {
+        val ignored = setOf(
+            "DNSServer1", "DNSServer2", "DNSServer3", "DnsServerSource",
+            "IF_ACTION", "_SESSION_TOKEN"
+        )
+        return values.entries
+            .filter { it.key !in ignored }
+            .sortedBy { it.key }
+            .joinToString("\n") { it.key + "=" + it.value }
+            .let { raw ->
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(raw.toByteArray(StandardCharsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
+            }
+    }
+
+    private fun extractTransferMeanings(body: String): LinkedHashMap<String, String> {
+        val out = LinkedHashMap<String, String>()
+        val re = Regex(
+            """Transfer_meaning\(\s*['"]([A-Za-z0-9_:-]{1,80})['"]\s*,\s*['"]([^'"]{0,1024})['"]\s*\)""",
+            RegexOption.IGNORE_CASE
+        )
+        for (m in re.findAll(body).take(512)) {
+            out[m.groupValues[1]] = decodeZteEscapes(m.groupValues[2])
+        }
+        return out
+    }
+
+    private fun extractSessionToken(body: String): String =
+        Regex("""var\s+session_token\s*=\s*["']([A-Za-z0-9._:-]{4,256})["']""", RegexOption.IGNORE_CASE)
+            .find(body)?.groupValues?.get(1).orEmpty()
+
+    private fun decodeZteEscapes(raw: String): String =
+        Regex("""\\x([0-9A-Fa-f]{2})""").replace(raw) {
+            it.groupValues[1].toInt(16).toChar().toString()
+        }
+
+    private fun looksLikeZteLogin(body: String): Boolean {
+        val lower = body.lowercase()
+        return body.contains("id=\"LoginId\"", true) ||
+            body.contains("id='LoginId'", true) ||
+            body.contains("name=\"fLogin\"", true) ||
+            body.contains("name='fLogin'", true) ||
+            (lower.contains("frm_username") && lower.contains("frm_password")) ||
+            (lower.contains("login") && lower.contains("password") && !lower.contains("dhcp"))
+    }
+
+    private fun encodeForm(values: Map<String, String>): String =
+        values.entries.joinToString("&") { (k, v) ->
+            URLEncoder.encode(k, "UTF-8") + "=" + URLEncoder.encode(v, "UTF-8")
+        }
+
+    private fun strictWebRequest(
+        method: String,
+        pathWithQuery: String,
+        formBody: String = "",
+        cookie: String = ""
+    ): StrictWebResponse {
+        val allowed = setOf(ZTE_GCH_DHCP_PATH, ZTE_LUA_LAN_PATH)
+        if (pathWithQuery !in allowed) return StrictWebResponse(-1, "")
+        if (method !in setOf("GET", "POST")) return StrictWebResponse(-1, "")
+        if (method == "POST" && pathWithQuery != ZTE_GCH_DHCP_PATH) return StrictWebResponse(-1, "")
+        if (formBody.length > 128 * 1024) return StrictWebResponse(-1, "")
+
+        return runCatching {
+            val conn = URL("https://$EXPECTED_GATEWAY$pathWithQuery").openConnection() as HttpsURLConnection
+            val trustAll = object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {}
+            }
+            val ssl = SSLContext.getInstance("TLS")
+            ssl.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+            conn.sslSocketFactory = ssl.socketFactory
+            conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { host, _ -> host == EXPECTED_GATEWAY }
+            conn.instanceFollowRedirects = false
+            conn.connectTimeout = 1600
+            conn.readTimeout = 2600
+            conn.requestMethod = method
+            conn.setRequestProperty("User-Agent", "HAKIM-F8040-StrictDNS/1")
+            if (cookie.isNotBlank()) conn.setRequestProperty("Cookie", cookie.take(4096))
+            if (method == "POST") {
+                val bytes = formBody.toByteArray(StandardCharsets.UTF_8)
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                conn.setFixedLengthStreamingMode(bytes.size)
+                conn.outputStream.use { it.write(bytes) }
+            }
+            val status = conn.responseCode
+            val setCookies = conn.headerFields.entries
+                .filter { it.key?.equals("Set-Cookie", true) == true }
+                .flatMap { it.value.orEmpty() }
+                .map { it.substringBefore(";").trim() }
+                .filter { it.isNotBlank() }
+                .joinToString("; ")
+                .take(4096)
+            val stream = if (status in 200..399) conn.inputStream else conn.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+                buildString {
+                    var total = 0
+                    while (total < MAX_BODY) {
+                        val line = reader.readLine() ?: break
+                        append(line).append('\n')
+                        total += line.length
+                    }
+                }
+            }.orEmpty()
+            conn.disconnect()
+            StrictWebResponse(status, body, setCookies)
+        }.getOrElse { StrictWebResponse(-1, "") }
+    }
 
     /**
      * مجس قرائي فقط لواجهة F8040.

@@ -51,5 +51,8 @@ req('FAMILY_DNS_2 = "185.228.169.168"' in guardian, "family_dns_2_missing")
 req('"baseline_dns"' in guardian, "baseline_missing")
 req('rollbackDns(' in guardian, "rollback_missing")
 req('fieldIdentity.model.equals("F8040"' in guardian, "f8040_identity_gate_missing")
+req('probeExpectedF8040()' in guardian, "secondary_gateway_upstream_probe_missing")
+req('via_secondary_gateway' in guardian and 'upstream_f8040_proven' in guardian, "secondary_gateway_evidence_missing")
+req('targetGateway = EXPECTED_GATEWAY' in guardian, "upstream_target_gate_missing")
 
 print("ANDROID_NETWORK_PROTECTION_GATE=PASS")

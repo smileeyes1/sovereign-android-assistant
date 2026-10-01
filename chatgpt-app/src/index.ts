@@ -90,6 +90,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
         fault_containment?:Record<string,unknown>;
         self_check?:unknown;
         network_diagnostics?:Record<string,unknown>;
+        network_guardian?:Record<string,unknown>;
         auto_update?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
@@ -107,6 +108,7 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
     const fabric=result?.execution_fabric;
     const containment=result?.fault_containment;
     const diagnostics=result?.network_diagnostics;
+    const guardian=result?.network_guardian;
     const autoUpdate=result?.auto_update;
     const networkProtection=result?.network_protection;
     const safe={
@@ -141,9 +143,48 @@ function logSanitizedStatusProbe(_resultTopic:string,key:string,carrier:string){
       self_check:fixed(result?.self_check,["PASS","PASS_WITH_WARNINGS","FAIL_CLOSED","NOT_TESTED"]),
       network_diagnostics_available:!!diagnostics&&typeof diagnostics==="object"&&
         Object.keys(diagnostics).length>0,
+      network_guardian:{
+        state:fixed(guardian?.state,[
+          "NOT_RUN","NO_ACTIVE_NETWORK","NOT_WIFI","NO_LINK_PROPERTIES","OUTSIDE_HOME_GATEWAY",
+          "ROUTER_FINGERPRINT_NOT_PROVEN","TR064_LANHOST_NOT_FOUND","ROUTER_AUTH_REQUIRED",
+          "FAMILY_DNS_CONFIGURED","FAMILY_DNS_ROLLED_BACK_UNVERIFIED",
+          "FAMILY_DNS_ROLLBACK_UNVERIFIED","FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED","ERROR"
+        ]),
+        fingerprint_zte:flag(guardian?.fingerprint_zte),
+        fingerprint_zxhn:flag(guardian?.fingerprint_zxhn),
+        router_auth_required:flag(guardian?.router_auth_required),
+        baseline_dns_saved:flag(guardian?.baseline_dns_saved),
+        family_dns_configured:flag(guardian?.family_dns_configured),
+        family_resolver_verified:flag(guardian?.family_resolver_verified),
+        full_bypass_prevention:flag(guardian?.full_bypass_prevention),
+        dns_redirect_forced:flag(guardian?.dns_redirect_forced),
+        dot_blocked:flag(guardian?.dot_blocked),
+        doh_controlled:flag(guardian?.doh_controlled),
+        vpn_blocked:flag(guardian?.vpn_blocked)
+      },
+      network_guardian:{
+        state:fixed(guardian?.state,[
+          "NOT_RUN","NO_ACTIVE_NETWORK","NOT_WIFI","NO_LINK_PROPERTIES","OUTSIDE_HOME_GATEWAY",
+          "ROUTER_FINGERPRINT_NOT_PROVEN","TR064_LANHOST_NOT_FOUND","ROUTER_AUTH_REQUIRED",
+          "FAMILY_DNS_CONFIGURED","FAMILY_DNS_ROLLED_BACK_UNVERIFIED",
+          "FAMILY_DNS_ROLLBACK_UNVERIFIED","FAMILY_DNS_EXISTING_CONFIG_UNVERIFIED","ERROR"
+        ]),
+        fingerprint_zte:bool(guardian?.fingerprint_zte),
+        fingerprint_zxhn:bool(guardian?.fingerprint_zxhn),
+        router_auth_required:bool(guardian?.router_auth_required),
+        baseline_dns_saved:bool(guardian?.baseline_dns_saved),
+        family_dns_configured:bool(guardian?.family_dns_configured),
+        family_resolver_verified:bool(guardian?.family_resolver_verified),
+        full_bypass_prevention:bool(guardian?.full_bypass_prevention),
+        dns_redirect_forced:bool(guardian?.dns_redirect_forced),
+        dot_blocked:bool(guardian?.dot_blocked),
+        doh_controlled:bool(guardian?.doh_controlled),
+        vpn_blocked:bool(guardian?.vpn_blocked)
+      },
       network_protection:{
         state:fixed(networkProtection?.state,[
-          "IDLE","OPENING_SETTINGS","VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
+          "IDLE","OPENING_SETTINGS","CONNECTING_LOCAL_ADB","PAIRING_REQUIRED","APPLYING","ROLLING_BACK",
+          "VERIFIED","BLOCKED","ROLLED_BACK","ROLLBACK_FAILED"
         ]),
         running:flag(networkProtection?.running),
         verified:flag(networkProtection?.verified),
@@ -187,6 +228,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
         constitution?:unknown;
         sovereign_acceptance_gate?:Record<string,unknown>;
         governance_catalog?:Record<string,unknown>;
+        network_guardian?:Record<string,unknown>;
         network_protection?:Record<string,unknown>;
       };
     };
@@ -199,6 +241,7 @@ function logSanitizedHealthBeacon(key:string,carrier:string){
       /^[A-Z0-9._-]{8,120}$/.test(result.constitution)?result.constitution:null;
     const gate=result.sovereign_acceptance_gate;
     const catalog=result.governance_catalog;
+    const guardian=result.network_guardian;
     const networkProtection=result.network_protection;
     const fixed=(raw:unknown,allowed:readonly string[])=>
       typeof raw==="string"&&allowed.includes(raw)?raw:null;

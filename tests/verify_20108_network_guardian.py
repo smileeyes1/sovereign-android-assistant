@@ -76,6 +76,10 @@ required = [
     '"DNSServer2" to dns2',
     '"DnsServerSource" to dnsSource',
     'pathWithQuery !in setOf(ZTE_GCH_DHCP_PATH, ZTE_MODERN_DHCP_PATH)',
+    'CookieManager.getInstance()',
+    'getCookie("https://$EXPECTED_GATEWAY/")',
+    'persistLocalRouterCookie(cookie)',
+    '.putBoolean("web_local_session_present_at_attempt"',
 ]
 missing = [x for x in required if x not in src]
 if missing:

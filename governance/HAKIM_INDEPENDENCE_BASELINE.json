@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",
+  "objective": "MAXIMUM_PRACTICAL_SOVEREIGNTY",
+  "objective_ar": "أقصى استقلال عملي موثوق مع استمرارية واستدامة، دون نقطة فشل برمجية مفردة في المسارات الحرجة",
+  "complete": false,
+  "field_verified": false,
+  "source_parent": {
+    "branch": "release/hakim-20316-autoupdate-rootfix-candidate",
+    "commit": "f8996c8796590bf36e47cf9ba4c8f342ad7e5942",
+    "candidate_version_code": 20331
+  },
+  "claim_rule": {
+    "complete_only_if_all_critical_dimensions_verified": true,
+    "source_success_is_not_field_success": true,
+    "newer_does_not_inherit_success": true,
+    "same_tested_delivered_artifact_required": true
+  },
+  "single_point_of_failure_policy": {
+    "forbidden_for_critical_software_paths": true,
+    "minimum_independent_paths_when_practical": 2,
+    "failure_of_one_provider_must_not_close_goal": true,
+    "failure_of_one_transport_must_not_close_goal": true,
+    "failure_of_one_cloud_host_must_have_recovery_path": true
+  },
+  "dimensions": {
+    "user_authority_and_permission_boundaries": {
+      "critical": true,
+      "state": "SOURCE_VERIFIED",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json",
+        "app/src/main/java/ps/hakim/phoneagent/HakimCapabilityKernel.kt"
+      ],
+      "gap": "field behavior remains separately verifiable"
+    },
+    "model_provider_portability": {
+      "critical": true,
+      "state": "SOURCE_VERIFIED",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimModelToolRouter.kt",
+        "app/src/main/java/ps/hakim/phoneagent/HakimEngineRegistry.kt",
+        "tests/verify_multimodel_router_policy.py"
+      ],
+      "gap": "direct returnable engines still depend on configured external providers"
+    },
+    "local_general_intelligence": {
+      "critical": true,
+      "state": "NOT_IMPLEMENTED",
+      "target_state": "VERIFIED",
+      "evidence": [],
+      "gap": "no verified local general-purpose model capable of replacing cloud reasoning while offline"
+    },
+    "execution_path_redundancy": {
+      "critical": true,
+      "state": "SOURCE_VERIFIED",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt"
+      ],
+      "gap": "all independent paths require controlled field continuity verification"
+    },
+    "control_plane_host_portability": {
+      "critical": true,
+      "state": "PARTIAL",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "governance/HAKIM_ACTIVE_STATE.json"
+      ],
+      "gap": "production bridge has a verified Railway baseline but no verified secondary host takeover"
+    },
+    "portable_nonsecret_state": {
+      "critical": true,
+      "state": "NOT_IMPLEMENTED",
+      "target_state": "VERIFIED",
+      "evidence": [],
+      "gap": "no versioned portable export/import contract for non-secret user and operational state"
+    },
+    "backup_and_restore": {
+      "critical": true,
+      "state": "NOT_IMPLEMENTED",
+      "target_state": "VERIFIED",
+      "evidence": [],
+      "gap": "no independently verified backup plus restore drill for the same state"
+    },
+    "cross_device_migration": {
+      "critical": true,
+      "state": "NOT_IMPLEMENTED",
+      "target_state": "VERIFIED",
+      "evidence": [],
+      "gap": "no verified restore onto a second device while re-establishing device-bound secrets safely"
+    },
+    "secret_custody": {
+      "critical": true,
+      "state": "SOURCE_VERIFIED",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimSecretStore.kt",
+        "governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json"
+      ],
+      "gap": "device-bound secrets must be re-provisioned during device migration; they must never be exported in plaintext"
+    },
+    "signing_continuity": {
+      "critical": true,
+      "state": "PARTIAL",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "scripts/verify-field-signer.sh",
+        "tests/verify_signing_continuity_policy.py"
+      ],
+      "gap": "D1 signing material is intentionally outside CI; disaster-recovery custody remains to be independently proven"
+    },
+    "offline_resilience": {
+      "critical": true,
+      "state": "PARTIAL",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "tests/verify_20094_local_first.py",
+        "app/src/main/java/ps/hakim/phoneagent/HakimLocalArtifactFactory.kt"
+      ],
+      "gap": "local artifacts and bounded replies exist, but general intelligence is not yet locally replaceable"
+    },
+    "update_and_recovery": {
+      "critical": true,
+      "state": "SOURCE_VERIFIED",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimSelfImprovementLoop.kt",
+        "tests/verify_20316_autoupdate_wakeup.py",
+        "tests/verify_fault_containment_policy.py"
+      ],
+      "gap": "current candidate requires same-signed-artifact field verification before promotion"
+    },
+    "continuity_across_sessions_and_agents": {
+      "critical": true,
+      "state": "PARTIAL",
+      "target_state": "VERIFIED",
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimCloudContinuity.kt",
+        "governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json"
+      ],
+      "gap": "cloud checkpoint is useful but still depends on the control-plane service; independent portable state is required"
+    }
+  },
+  "required_next_sequence": [
+    "PORTABLE_STATE_SCHEMA_AND_EXPORT_IMPORT",
+    "BACKUP_RESTORE_DRILL",
+    "SECONDARY_CONTROL_PLANE_HOST_AND_TAKEOVER_TEST",
+    "LOCAL_GENERAL_MODEL_FEASIBILITY_AND_FIELD_TEST",
+    "CROSS_DEVICE_RESTORE_WITH_SECRET_REPROVISIONING",
+    "FULL_SINGLE_POINT_FAILURE_DRILL",
+    "SAME_ARTIFACT_FIELD_ACCEPTANCE",
+    "PROMOTE_ONLY_AFTER_ALL_CRITICAL_GATES"
+  ],
+  "forbidden_claims_until_verified": [
+    "complete_independence",
+    "zero_single_point_of_failure",
+    "full_offline_general_intelligence",
+    "verified_cross_device_restore",
+    "verified_cloud_host_failover"
+  ]
+}

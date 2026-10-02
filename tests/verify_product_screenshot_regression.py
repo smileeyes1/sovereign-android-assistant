@@ -59,5 +59,8 @@ raw_html_field_failure = r'class=\\"answer-cell\\"'
 req('class=\\\\\\"' in OUT,"raw_html_sentinel_missing")
 field_failure = "لا أملك القدرة على توليد ملفات PDF مباشرة"
 req("لا أملك القدرة على توليد ملفات" in OUT,"field_refusal_sentinel_missing")
+req("stripInternalDiagnosticBlocks" in OUT,"internal_block_stripper_missing")
+for leaked in ["الدليل والقيود","القيود التقنية","التحقق الداخلي","technical limitations"]:
+    req(leaked in OUT,"internal_block_marker_missing:"+leaked)
 
 print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden html=hidden artifact_stream=silent pdf=file context=restored")

@@ -3,7 +3,7 @@ name: بناء تطبيق حكيم الهاتف
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*' ]
     paths:
       - 'app/**'
       - 'tests/**'

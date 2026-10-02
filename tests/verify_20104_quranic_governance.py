@@ -59,5 +59,5 @@ for needed in [
 ]:
     req(needed in DOC + REL, "integrity:" + needed)
 
-req("SOVEREIGN-QURAN-V4" in CONSTITUTION, "sovereign_constitution_v4_missing")
-print("QURANIC_GOVERNANCE_GATE=PASS candidate>=20104 quran_sunnah=true occult=false technical_means=evidence constitution=v4")
+req("SOVEREIGN-QURAN-V5" in CONSTITUTION, "sovereign_constitution_v5_missing")
+print("QURANIC_GOVERNANCE_GATE=PASS candidate>=20104 quran_sunnah=true occult=false technical_means=evidence constitution=v5")

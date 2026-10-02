@@ -26,6 +26,7 @@ home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt")
 chatgpt_index = text("app/src/main/java/ps/hakim/phoneagent/HakimChatGptIndex.kt")
+constitution = text("app/src/main/java/ps/hakim/phoneagent/HakimConstitution.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
 version_match = re.search(r"versionCode\s+(\d+)", build)

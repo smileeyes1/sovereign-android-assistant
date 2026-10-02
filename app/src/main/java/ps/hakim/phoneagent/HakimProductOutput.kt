@@ -52,16 +52,39 @@ object HakimProductOutput {
             "internal reasoning",
             "technical limitations"
         )
-        s = s.lines()
-            .filterNot { line ->
-                val l = line.trim().lowercase()
-                internalHeadings.any { h -> l == h.lowercase() || l.startsWith(h.lowercase() + ":") }
-            }
-            .joinToString("\n")
+        s = stripInternalDiagnosticBlocks(s, internalHeadings)
             .replace(Regex("\\n{3,}"), "\n\n")
             .trim()
 
         return s
+    }
+
+    private fun stripInternalDiagnosticBlocks(text: String, headings: List<String>): String {
+        val out = mutableListOf<String>()
+        var skipping = false
+        for (line in text.lines()) {
+            val trimmed = line.trim()
+            val lower = trimmed.lowercase()
+            val startsInternal = headings.any { h ->
+                lower == h.lowercase() ||
+                    lower.startsWith(h.lowercase() + ":") ||
+                    lower.startsWith(h.lowercase() + " ")
+            } || lower.matches(Regex("^(الدليل والقيود|القيود|التحقق|القياس|internal reasoning|technical limitations)\\b.*"))
+
+            if (startsInternal) {
+                skipping = true
+                continue
+            }
+            if (skipping) {
+                if (trimmed == "---" || trimmed == "—" || trimmed == "___") skipping = false
+                continue
+            }
+            val looksLikeInternalBullet = lower.matches(
+                Regex("^([•\\-*]\\s*)?(القياس|القيود|التحقق|المحرك|المزود|binary|joining|addition|subtraction)\\s*[:：].*")
+            )
+            if (!looksLikeInternalBullet) out += line
+        }
+        return out.joinToString("\n")
     }
 
     fun containsRawMarkup(text: String): Boolean {

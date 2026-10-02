@@ -47,7 +47,12 @@ object HakimSelfCheck {
         }
 
         val governance = HakimConstitution.status(context)
-        check("الدستور السيادي v4 مثبت", governance.optString("version").startsWith("SOVEREIGN-QURAN-V4"))
+        check("الدستور السيادي v5 مثبت", governance.optString("version").startsWith("SOVEREIGN-QURAN-V5"))
+        check("فض التعارض بأضيق تغيير", governance.optBoolean("conflict_resolution_narrow_change"))
+        check("ميزانية عدم اليقين مفعلة", governance.optBoolean("uncertainty_budget_enforced"))
+        check("عقد المطلوب/الدليل/الاختبار مفعّل", governance.optBoolean("required_expected_evidence_test_state"))
+        check("الوقاية أولًا مفعلة", governance.optBoolean("prevent_first"))
+        check("التصعيد لأصغر تدخل فقط", governance.optBoolean("minimal_escalation_only"))
         check("حاكمية القرآن والسنة القيمية مفعلة", governance.optBoolean("quran_sunnah_values_governance"))
         check("سيادة مقصد المستخدم مفعلة", governance.optBoolean("user_goal_sovereignty"))
         check("حدود السلطة مفعلة", governance.optBoolean("authority_boundary_enforced"))

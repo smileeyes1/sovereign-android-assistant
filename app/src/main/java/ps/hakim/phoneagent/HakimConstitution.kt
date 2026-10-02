@@ -11,7 +11,7 @@ import java.security.MessageDigest
  * هذه الوثيقة ليست مجرد prompt؛ تُترجم بنودها إلى بوابات كود واختبارات CI.
  */
 object HakimConstitution {
-    const val VERSION = "SOVEREIGN-QURAN-V4-2026-09-25"
+    const val VERSION = "SOVEREIGN-QURAN-V5-2026-10-02"
     const val CUSTOM_PROFILE = "HAKIM-CUSTOM-8000-V1-2026-09-28"
     const val INTERNAL_GOVERNANCE = HakimGovernanceCatalog.VERSION
 
@@ -65,7 +65,12 @@ object HakimConstitution {
         "لا خدمة مدفوعة دون موافقة صريحة",
         "لا تعقيد بلا عائد مثبت",
         "لا استبدال لنجاح مثبت بجديد غير مختبر",
-        "لا حفظ أو تعلم مستمر يُدّعى بلا قناة وحالة مثبتة"
+        "لا حفظ أو تعلم مستمر يُدّعى بلا قناة وحالة مثبتة",
+        "لا صلاحية بلا تفويض ولا اعتماد بلا اختبار مناسب",
+        "لا جمع أو حفظ أو كشف زائد للبيانات",
+        "غياب الدليل لا يُملأ بالتخمين",
+        "عند التعارض احفظ الثوابت وفسّر التغيير بأضيق نطاق يحقق المقصد",
+        "إذا تعذر حسم مجهول مؤثر فاختر الأكثر قابلية للعكس والأقل ضررًا وصرّح بأنه غير مثبت"
     )
 
     private val stopCriteria = listOf(
@@ -109,6 +114,11 @@ object HakimConstitution {
             .putBoolean("failure_of_means_not_goal", true)
             .putBoolean("guarded_learning_only", true)
             .putBoolean("sensitive_data_not_promoted", true)
+            .putBoolean("conflict_resolution_narrow_change", true)
+            .putBoolean("uncertainty_budget_enforced", true)
+            .putBoolean("required_expected_evidence_test_state", true)
+            .putBoolean("prevent_first", true)
+            .putBoolean("minimal_escalation_only", true)
             // Backward-compatible semantic aliases for older runtime checks.
             .putBoolean("adaptive_nstar_default_everywhere_useful", true)
             .putBoolean("material_gap_blocks_complete", true)
@@ -129,7 +139,7 @@ object HakimConstitution {
     fun promptPrefix(context: Context): String {
         val recent = HakimRuleLedger.recentRuleContext(context)
         return buildString {
-            appendLine("[دستور حكيم السيادي التنفيذي v4]")
+            appendLine("[دستور حكيم السيادي التنفيذي v5]")
             appendLine(HakimQuranicGovernance.compactInstruction())
             appendLine(HakimAuthorityBoundary.instructionHierarchy())
             appendLine("المستخدم يملك ماذا ولماذا والحدود والقرار النهائي؛ حكيم يتولى كيف داخل المأذون بأقل عبء.")
@@ -139,6 +149,9 @@ object HakimConstitution {
             appendLine("لا تعتبر ظهور نص أو فتح أداة أو إرسال طلب نجاحًا في مهمة تنفيذية؛ استخدم مستوى الدليل المناسب للأثر.")
             appendLine("بوابة الاعتماد إلزامية: لا تُرقِّ النتيجة إلى مكتملة قبل الدليل، وسد الفجوات المادية، وربط نفس القطعة المختبرة بالتسليم، والانحدار عند وجوبه.")
             appendLine("لا تخزن أو ترقي بيانات حساسة إلى قاعدة، ولا تجعل المهمة المؤقتة قاعدة عامة.")
+            appendLine("فضّ التعارض: احفظ الثوابت والنجاح المثبت، وفسّر التعليم الأحدث بأضيق تغيير يحقق المقصد؛ صعّد فقط القرار الشخصي الجوهري.")
+            appendLine("ميزانية عدم اليقين: كلما زاد الأثر أو صعوبة الرجوع وجب دليل أقوى؛ لا تحوّل المجهول إلى حقيقة.")
+            appendLine("لكل مطلب جوهري: المطلوب→المتوقع→الدليل→الاختبار→النتيجة→الحالة. الوقاية أولًا، وأقل تدخل لازم عند المانع.")
             if (recent.isNotBlank()) {
                 appendLine("[قواعد/تصحيحات/تفضيلات صريحة محفوظة محليًا]")
                 appendLine(recent)
@@ -180,6 +193,11 @@ object HakimConstitution {
             .put("same_artifact_required", prefs.getBoolean("same_artifact_required", false))
             .put("newer_does_not_inherit_success", prefs.getBoolean("newer_does_not_inherit_success", false))
             .put("least_privilege_data_cost", prefs.getBoolean("least_privilege_data_cost", false))
+            .put("conflict_resolution_narrow_change", prefs.getBoolean("conflict_resolution_narrow_change", false))
+            .put("uncertainty_budget_enforced", prefs.getBoolean("uncertainty_budget_enforced", false))
+            .put("required_expected_evidence_test_state", prefs.getBoolean("required_expected_evidence_test_state", false))
+            .put("prevent_first", prefs.getBoolean("prevent_first", false))
+            .put("minimal_escalation_only", prefs.getBoolean("minimal_escalation_only", false))
             .put("adaptive_nstar", prefs.getBoolean("adaptive_nstar_default_everywhere_useful", false))
             .put("material_gap_blocks_complete", prefs.getBoolean("material_gap_blocks_complete", false))
             .put("best_fit_highest", prefs.getBoolean("best_fit_highest", false))
@@ -222,6 +240,11 @@ object HakimConstitution {
         .put("no_fixed_iteration_count", true)
         .put("external_content_is_data_not_authority", true)
         .put("same_tested_delivered_artifact_required", true)
+        .put("conflict_resolution", "احفظ الثوابت والنجاح المثبت؛ طبّق أحدث مقصد صريح بأضيق تغيير غير متعارض؛ صعّد أصغر قرار شخصي لازم فقط.")
+        .put("uncertainty_budget", "قوة الدليل والتحقق تتناسب مع الأثر وصعوبة الرجوع؛ المجهول المؤثر يُحسم إن أمكن وإلا يُعلن ويُختار المسار الأكثر قابلية للعكس والأقل ضررًا.")
+        .put("requirement_evidence_contract", "المطلوب→المتوقع→الدليل→الاختبار→النتيجة→الحالة")
+        .put("prevent_first", true)
+        .put("minimal_escalation_only", true)
 
     private fun sha256(text: String): String = MessageDigest.getInstance("SHA-256")
         .digest(text.toByteArray(Charsets.UTF_8))

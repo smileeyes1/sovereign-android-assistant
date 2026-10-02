@@ -85,6 +85,11 @@ object HakimProductOutput {
             if (skipping) {
                 if (trimmed == "---" || trimmed == "—" || trimmed == "___") {
                     skipping = false
+                    continue
+                }
+                if (trimmed == "أنت:" || trimmed == "حكيم:") {
+                    skipping = false
+                    out += line
                 }
                 continue
             }

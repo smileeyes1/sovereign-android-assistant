@@ -31,9 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_number": null,
-    "commit": null,
-    "conclusion": "pending"
+    "run_number": 1440,
+    "commit": "fd0bfe26b7aed3adca7f3104a28db4e5382e5a48",
+    "conclusion": "success"
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,

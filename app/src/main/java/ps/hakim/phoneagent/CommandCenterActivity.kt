@@ -211,10 +211,17 @@ class CommandCenterActivity : ComponentActivity() {
         root.addView(status)
 
         operations = TextView(this).apply {
-            text = ""
-            visibility = View.GONE
-            contentDescription = "تفاصيل تشغيل داخلية"
+            textSize = 14f
+            gravity = Gravity.RIGHT
+            setPadding(12, 8, 12, 8)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                operationsExpanded = !operationsExpanded
+                refreshOperations()
+            }
         }
+        HakimUiKit.status(operations)
         root.addView(operations)
 
         conversationScroll = ScrollView(this).apply {

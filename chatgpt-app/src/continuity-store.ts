@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { DeviceCredential,HakimOp } from "./protocol.js";
+import { hakimStateBackend as stateBackend } from "./state-backend.js";
 
 export type ContinuityStatus="requested"|"pending"|"ok"|"error"|"failed"|"rejected"|"expired"|"duplicate"|"complete";
 export type WorkStatus="active"|"waiting"|"blocked"|"complete"|"cancelled";
@@ -84,7 +84,7 @@ export class ContinuityStore{
   }
 
   async init(){
-    await fs.mkdir(this.root,{recursive:true});
+    await stateBackend.initDir(this.root);
   }
 
   private deviceKey(c:DeviceCredential){
@@ -152,7 +152,7 @@ export class ContinuityStore{
 
   private async readFile(file:string):Promise<DeviceJournal>{
     try{
-      const raw=JSON.parse(await fs.readFile(file,"utf8")) as Record<string,unknown>;
+      const raw=JSON.parse(await stateBackend.readText(file)) as Record<string,unknown>;
       return this.normalize(raw);
     }catch{
       return this.empty();
@@ -164,11 +164,8 @@ export class ContinuityStore{
   }
 
   private async write(c:DeviceCredential,journal:DeviceJournal){
-    await fs.mkdir(this.root,{recursive:true});
-    const file=this.file(c);
-    const tmp=file+"."+crypto.randomBytes(6).toString("hex")+".tmp";
-    await fs.writeFile(tmp,JSON.stringify(journal),{encoding:"utf8",mode:0o600});
-    await fs.rename(tmp,file);
+    await stateBackend.initDir(this.root);
+    await stateBackend.writeTextAtomic(this.file(c),JSON.stringify(journal));
   }
 
   private async mutate(c:DeviceCredential,fn:(journal:DeviceJournal)=>void):Promise<DeviceJournal>{

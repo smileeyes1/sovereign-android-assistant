@@ -28,7 +28,7 @@
     "candidate": {
       "version_code": 20203,
       "branch": "feature/hakim-product-v1-final-candidate",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false
@@ -99,8 +99,8 @@
     "recurring_external_guard": "ENABLED",
     "candidate_field_promotion": "BLOCKED_UNTIL_D1_AND_SAME_ARTIFACT_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1014,
-      "commit": "31a6366ad092ea4ff108bb5782f8d671ef3568ee",
+      "run_number": 1440,
+      "commit": "fd0bfe26b7aed3adca7f3104a28db4e5382e5a48",
       "conclusion": "success"
     }
   },

@@ -63,12 +63,14 @@
     },
     "control_plane_host_portability": {
       "critical": true,
-      "state": "PARTIAL",
+      "state": "SOURCE_VERIFIED",
       "target_state": "VERIFIED",
       "evidence": [
-        "governance/HAKIM_ACTIVE_STATE.json"
+        "app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt",
+        "app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt",
+        "tests/verify_secondary_control_plane.py"
       ],
-      "gap": "production bridge has a verified Railway baseline but no verified secondary host takeover"
+      "gap": "Android can preserve and fail over between a primary and verified secondary HTTPS bridge, but no independent secondary host has been deployed and takeover has not been field-tested"
     },
     "portable_nonsecret_state": {
       "critical": true,
@@ -151,9 +153,9 @@
     }
   },
   "required_next_sequence": [
+    "SECONDARY_CONTROL_PLANE_DEPLOY_AND_TAKEOVER_TEST",
     "PORTABLE_STATE_FIELD_EXPORT_IMPORT",
     "BACKUP_RESTORE_DRILL",
-    "SECONDARY_CONTROL_PLANE_HOST_AND_TAKEOVER_TEST",
     "LOCAL_GENERAL_MODEL_FEASIBILITY_AND_FIELD_TEST",
     "CROSS_DEVICE_RESTORE_WITH_SECRET_REPROVISIONING",
     "FULL_SINGLE_POINT_FAILURE_DRILL",

@@ -16,6 +16,11 @@ import android.widget.TextView
  * في الواجهة العادية؛ تبقى داخل طبقات التنفيذ والتشخيص.
  */
 class UnifiedHomeActivity : Activity() {
+    companion object {
+        private const val REQ_PORTABLE_EXPORT = 7401
+        private const val REQ_PORTABLE_IMPORT = 7402
+    }
+
     private lateinit var intelligenceStatus: TextView
     private lateinit var organizationStatus: TextView
     private lateinit var updateStatus: TextView
@@ -97,6 +102,14 @@ class UnifiedHomeActivity : Activity() {
             showPrivacy()
         })
 
+        root.addView(button("حفظ نسخة استقلال") {
+            startPortableExport()
+        })
+
+        root.addView(button("استعادة نسخة استقلال") {
+            startPortableImport()
+        })
+
         root.addView(button("مسح سجل المحادثة المحلي") {
             confirmClearLocalData()
         })
@@ -138,6 +151,56 @@ class UnifiedHomeActivity : Activity() {
         } else {
             "الوضع الشخصي — الصلاحيات والبيانات بأقل نطاق افتراضيًا."
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+
+        when (requestCode) {
+            REQ_PORTABLE_EXPORT -> {
+                runCatching { HakimPortableState.exportToUri(this, uri) }
+                    .onSuccess { report ->
+                        organizationStatus.text =
+                            "حُفظت نسخة الحالة غير السرية · بصمة " + report.fingerprint.take(12) + "…"
+                    }
+                    .onFailure {
+                        organizationStatus.text = "تعذر حفظ نسخة الاستقلال بأمان."
+                    }
+            }
+            REQ_PORTABLE_IMPORT -> {
+                runCatching { HakimPortableState.importFromUri(this, uri) }
+                    .onSuccess { report ->
+                        refresh()
+                        organizationStatus.text =
+                            "استُعيدت " + report.applied + " قيمة غير سرية؛ الأسرار والاقتران لم تُنقل."
+                    }
+                    .onFailure {
+                        organizationStatus.text = "رُفضت النسخة أو تعذر التحقق منها؛ لم تُطبّق حالة غير موثوقة."
+                    }
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startPortableExport() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "hakim-sovereign-state-v1.json")
+        }
+        startActivityForResult(intent, REQ_PORTABLE_EXPORT)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startPortableImport() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(intent, REQ_PORTABLE_IMPORT)
     }
 
     private fun testConnection() {
@@ -195,7 +258,8 @@ class UnifiedHomeActivity : Activity() {
             .setTitle("الخصوصية والأمان")
             .setMessage(
                 "يعالج حكيم ما يستطيع محليًا أولًا. لا تُرسل المرفقات أو النصوص إلى خدمة خارجية إلا عندما تحتاج المهمة ذلك، " +
-                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
+                    "وتُحفظ أسرار الاتصال في مخزن أندرويد الآمن. نسخة الاستقلال لا تنقل مفاتيح الاتصال أو الاقتران أو المحادثات أو محتوى المهام. " +
+                    "قد تفرض مؤسستك قيودًا إضافية على الويب أو المرفقات أو الذكاء الخارجي."
             )
             .setPositiveButton("حسنًا", null)
             .show()

@@ -211,17 +211,10 @@ class CommandCenterActivity : ComponentActivity() {
         root.addView(status)
 
         operations = TextView(this).apply {
-            textSize = 14f
-            gravity = Gravity.RIGHT
-            setPadding(12, 8, 12, 8)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                operationsExpanded = !operationsExpanded
-                refreshOperations()
-            }
+            text = ""
+            visibility = View.GONE
+            contentDescription = "تفاصيل تشغيل داخلية مخفية عن واجهة المنتج"
         }
-        HakimUiKit.status(operations)
         root.addView(operations)
 
         conversationScroll = ScrollView(this).apply {
@@ -328,25 +321,8 @@ class CommandCenterActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("المهام") {
-                startActivity(Intent(this, HakimTaskManagerActivity::class.java))
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
             actionButton("الإعدادات") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
-            actionButton("مشاركة") {
-                val text = command.text.toString().trim()
-                if (text.isBlank() && attachments.isEmpty()) {
-                    toast("لا يوجد محتوى لمشاركته")
-                } else {
-                    shareToAny(text, userInitiated = true)
-                }
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
@@ -1784,18 +1760,10 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun refreshOperations() {
         if (!::operations.isInitialized) return
-        operations.visibility = View.VISIBLE
-        if (operationsExpanded) {
-            operations.maxLines = 7
-            operations.ellipsize = null
-            operations.text = HakimExecutiveLoop.operationText(this)
-        } else {
-            operations.maxLines = 1
-            operations.ellipsize = TextUtils.TruncateAt.END
-            operations.text = HakimExecutiveLoop.latestOperationText(this)
-        }
-        operations.contentDescription = operations.text.toString() +
-            if (operationsExpanded) "؛ اضغط لإخفاء المراحل" else "؛ اضغط لإظهار المراحل"
+        // المنتج النهائي يحتفظ بالتشخيص داخليًا ولا يعرضه في المحادثة الرئيسية.
+        operations.visibility = View.GONE
+        operations.text = HakimExecutiveLoop.latestOperationText(this)
+        operations.contentDescription = "تفاصيل تشغيل داخلية"
     }
 
     private fun loadConversation() {

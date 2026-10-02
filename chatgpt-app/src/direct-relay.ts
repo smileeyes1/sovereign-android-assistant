@@ -121,7 +121,7 @@ export class DirectRelayStore{
     if(!TOPIC.test(topic)||!KEY.test(relayKey)) throw new Error("relay_auth_failed");
     let current:BindingRecord;
     try{
-      current=JSON.parse(await fs.readFile(this.bindingPath(topic),"utf8")) as BindingRecord;
+      current=JSON.parse(await stateBackend.readText(this.bindingPath(topic))) as BindingRecord;
     }catch(e){
       if((e as NodeJS.ErrnoException).code!=="ENOENT") throw new Error("relay_auth_failed");
       current=await this.claimMissingBinding(topic,relayKey,kind);

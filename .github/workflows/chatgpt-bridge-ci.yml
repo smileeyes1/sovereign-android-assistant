@@ -39,6 +39,9 @@ jobs:
       - name: Verify host-independent state backend gate
         working-directory: .
         run: python3 tests/verify_cloud_state_backend.py
+      - name: Verify shared-state failover contract
+        working-directory: .
+        run: python3 tests/verify_shared_state_contract.py
       - name: Build Railway Docker image
         working-directory: .
         run: docker build -t hakim-chatgpt-bridge:test -f Dockerfile .

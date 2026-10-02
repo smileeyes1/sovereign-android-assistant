@@ -47,7 +47,7 @@ object HakimSelfCheck {
         }
 
         val governance = HakimConstitution.status(context)
-        check("الدستور السيادي v4 مثبت", governance.optString("version").startsWith("SOVEREIGN-QURAN-V4"))
+        check("الدستور السيادي v5 مثبت", governance.optString("version").startsWith("SOVEREIGN-QURAN-V5"))
         check("حاكمية القرآن والسنة القيمية مفعلة", governance.optBoolean("quran_sunnah_values_governance"))
         check("سيادة مقصد المستخدم مفعلة", governance.optBoolean("user_goal_sovereignty"))
         check("حدود السلطة مفعلة", governance.optBoolean("authority_boundary_enforced"))
@@ -60,7 +60,7 @@ object HakimSelfCheck {
         check("الفجوة المادية تمنع الاكتمال", governance.optBoolean("material_gap_blocks_complete"))
         check("أفضل/أنسب/أعلى مفعلة", governance.optBoolean("best_fit_highest"))
         check("التقاط القواعد الصريحة فقط", governance.optBoolean("automatic_rule_capture"))
-        check("الأحدث الصريح يعلو", governance.optBoolean("latest_explicit_rule_wins"))
+        check("الأحدث الصريح لا ينسخ الثوابت", !governance.optBoolean("latest_explicit_rule_wins") && governance.optBoolean("latest_explicit_rule_preserves_invariants"))
         check("المهمة المؤقتة لا تصبح قاعدة عامة", governance.optBoolean("temporary_task_not_global"))
         check("البيانات الحساسة لا تُرقى لقاعدة", governance.optBoolean("sensitive_data_not_promoted"))
         check("التعلم الذاتي محكوم", governance.optBoolean("self_learning_guarded"))

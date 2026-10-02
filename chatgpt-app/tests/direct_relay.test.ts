@@ -81,9 +81,11 @@ test("abandoned pairing binding expires without becoming a reusable legacy topic
 test("paired binding stays usable after its initial pairing window",async()=>{
   await withStore(async store=>{
     const c=createDeviceCredential();
-    await store.registerCredential(c,50);
+    // Keep the pending window comfortably above loaded CI scheduling jitter.
+    // The assertion still proves that markCredentialPaired removes the expiry.
+    await store.registerCredential(c,500);
     await store.markCredentialPaired(c);
-    await new Promise(resolve=>setTimeout(resolve,60));
+    await new Promise(resolve=>setTimeout(resolve,550));
     await store.authorizeCommandTopic(c.topic,c.relayKey);
     const carrier=encryptResult(c.relayKey,{request_id:"chatgpt-12345678",status:"paired"});
     await store.pushResult(c.resultTopic,c.relayKey,carrier);

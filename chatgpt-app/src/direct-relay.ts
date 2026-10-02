@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { DeviceCredential } from "./protocol.js";
+import { hakimStateBackend as stateBackend } from "./state-backend.js";
 
 type BindingKind="command"|"result";
 type BindingRecord={kind:BindingKind;key_hash:string;created_at_ms:number;expires_at_ms?:number};
@@ -37,9 +37,9 @@ export class DirectRelayStore{
 
   async init(){
     await Promise.all([
-      fs.mkdir(path.join(this.root,"bindings"),{recursive:true}),
-      fs.mkdir(path.join(this.root,"commands"),{recursive:true}),
-      fs.mkdir(path.join(this.root,"results"),{recursive:true})
+      stateBackend.initDir(path.join(this.root,"bindings")),
+      stateBackend.initDir(path.join(this.root,"commands")),
+      stateBackend.initDir(path.join(this.root,"results"))
     ]);
   }
 
@@ -53,10 +53,7 @@ export class DirectRelayStore{
     return path.join(this.root,"results",sha(topic));
   }
   private async atomicJson(file:string,value:unknown){
-    await fs.mkdir(path.dirname(file),{recursive:true});
-    const tmp=file+"."+crypto.randomBytes(6).toString("hex")+".tmp";
-    await fs.writeFile(tmp,JSON.stringify(value),{encoding:"utf8",mode:0o600});
-    await fs.rename(tmp,file);
+    await stateBackend.writeTextAtomic(file,JSON.stringify(value));
   }
 
   async registerCredential(c:DeviceCredential,pendingTtlMs?:number){
@@ -73,7 +70,7 @@ export class DirectRelayStore{
     for(const [topic,record] of bindings){
       const file=this.bindingPath(topic);
       try{
-        const current=JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
+        const current=JSON.parse(await stateBackend.readText(file)) as BindingRecord;
         if(current.kind!==record.kind||!safeEqualHex(current.key_hash,record.key_hash)) throw new Error("relay_binding_conflict");
         if(current.expires_at_ms!==undefined&&current.expires_at_ms<=now) throw new Error("relay_auth_failed");
       }catch(e){
@@ -87,7 +84,7 @@ export class DirectRelayStore{
     await this.registerCredential(c);
     for(const [topic,kind] of [[c.topic,"command"],[c.resultTopic,"result"]] as const){
       const file=this.bindingPath(topic);
-      const current=JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
+      const current=JSON.parse(await stateBackend.readText(file)) as BindingRecord;
       if(current.kind!==kind||!safeEqualHex(current.key_hash,sha(c.relayKey))||
           (current.expires_at_ms!==undefined&&current.expires_at_ms<=Date.now()))
         throw new Error("relay_auth_failed");
@@ -109,14 +106,14 @@ export class DirectRelayStore{
       throw new Error("relay_auth_failed");
     }
     const file=this.bindingPath(topic);
-    await fs.mkdir(path.dirname(file),{recursive:true});
+    await stateBackend.initDir(path.dirname(file));
     const record:BindingRecord={kind,key_hash:sha(relayKey),created_at_ms:Date.now()};
     try{
-      await fs.writeFile(file,JSON.stringify(record),{encoding:"utf8",mode:0o600,flag:"wx"});
+      await stateBackend.writeTextExclusive(file,JSON.stringify(record));
       return record;
     }catch(e){
       if((e as NodeJS.ErrnoException).code!=="EEXIST") throw e;
-      return JSON.parse(await fs.readFile(file,"utf8")) as BindingRecord;
+      return JSON.parse(await stateBackend.readText(file)) as BindingRecord;
     }
   }
 
@@ -167,15 +164,15 @@ export class DirectRelayStore{
   private async leaseOnce(topic:string):Promise<CommandRecord|null>{
     const dir=this.commandDir(topic);
     let names:string[]=[];
-    try{names=(await fs.readdir(dir)).filter(x=>x.endsWith(".json")).sort();}
+    try{names=(await stateBackend.list(dir)).filter(x=>x.endsWith(".json")).sort();}
     catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT") return null; throw e;}
     const now=Date.now();
     for(const name of names.slice(0,128)){
       const file=path.join(dir,name);
       try{
-        const record=JSON.parse(await fs.readFile(file,"utf8")) as CommandRecord;
+        const record=JSON.parse(await stateBackend.readText(file)) as CommandRecord;
         if(record.expires_at_ms<=now){
-          await fs.unlink(file).catch(()=>{});
+          await stateBackend.remove(file).catch(()=>{});
           continue;
         }
         if(record.leased_until_ms>now) continue;
@@ -183,7 +180,7 @@ export class DirectRelayStore{
         await this.atomicJson(file,record);
         return record;
       }catch{
-        await fs.unlink(file).catch(()=>{});
+        await stateBackend.remove(file).catch(()=>{});
       }
     }
     return null;
@@ -192,7 +189,7 @@ export class DirectRelayStore{
   async ackCommand(topic:string,relayKey:string,requestId:string){
     await this.authorize(topic,relayKey,"command");
     if(!REQUEST_ID.test(requestId)) throw new Error("invalid_request_id");
-    await fs.unlink(path.join(this.commandDir(topic),requestId+".json")).catch(e=>{
+    await stateBackend.remove(path.join(this.commandDir(topic),requestId+".json")).catch(e=>{
       if((e as NodeJS.ErrnoException).code!=="ENOENT") throw e;
     });
   }
@@ -210,21 +207,21 @@ export class DirectRelayStore{
     await this.authorize(c.resultTopic,c.relayKey,"result");
     const dir=this.resultDir(c.resultTopic);
     let names:string[]=[];
-    try{names=(await fs.readdir(dir)).filter(x=>x.endsWith(".json")).sort();}
+    try{names=(await stateBackend.list(dir)).filter(x=>x.endsWith(".json")).sort();}
     catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT") return []; throw e;}
     const cutoff=Date.now()-60*60_000;
     const out:ResultRecord[]=[];
     for(const name of names.slice(0,128)){
       const file=path.join(dir,name);
       try{
-        const record=JSON.parse(await fs.readFile(file,"utf8")) as ResultRecord;
+        const record=JSON.parse(await stateBackend.readText(file)) as ResultRecord;
         if(record.created_at_ms<cutoff){
-          await fs.unlink(file).catch(()=>{});
+          await stateBackend.remove(file).catch(()=>{});
           continue;
         }
         out.push(record);
       }catch{
-        await fs.unlink(file).catch(()=>{});
+        await stateBackend.remove(file).catch(()=>{});
       }
     }
     return out;
@@ -233,7 +230,7 @@ export class DirectRelayStore{
   async deleteResult(c:DeviceCredential,id:string){
     if(!/^[A-Za-z0-9-]{8,80}$/.test(id)) return;
     await this.authorize(c.resultTopic,c.relayKey,"result");
-    await fs.unlink(path.join(this.resultDir(c.resultTopic),id+".json")).catch(()=>{});
+    await stateBackend.remove(path.join(this.resultDir(c.resultTopic),id+".json")).catch(()=>{});
   }
 
   async cleanup(){
@@ -242,20 +239,20 @@ export class DirectRelayStore{
     for(const group of ["commands","results"] as const){
       const root=path.join(this.root,group);
       let dirs:string[]=[];
-      try{dirs=await fs.readdir(root);}catch{return;}
+      try{dirs=await stateBackend.list(root);}catch{return;}
       for(const dir of dirs.slice(0,512)){
         const full=path.join(root,dir);
         let files:string[]=[];
-        try{files=await fs.readdir(full);}catch{continue;}
+        try{files=await stateBackend.list(full);}catch{continue;}
         for(const name of files.slice(0,512)){
           const file=path.join(full,name);
           try{
-            const raw=JSON.parse(await fs.readFile(file,"utf8")) as CommandRecord|ResultRecord;
+            const raw=JSON.parse(await stateBackend.readText(file)) as CommandRecord|ResultRecord;
             const expiry=group==="commands"
               ? (raw as CommandRecord).expires_at_ms+60_000
               : (raw as ResultRecord).created_at_ms+60*60_000;
-            if(expiry<now) await fs.unlink(file).catch(()=>{});
-          }catch{await fs.unlink(file).catch(()=>{});}
+            if(expiry<now) await stateBackend.remove(file).catch(()=>{});
+          }catch{await stateBackend.remove(file).catch(()=>{});}
         }
       }
     }

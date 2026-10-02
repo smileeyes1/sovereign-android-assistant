@@ -28,14 +28,14 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20331,
-      "branch": "fix/hakim-dns-tunnel-recovery-r21",
+      "version_code": 20332,
+      "branch": "release/hakim-20332-product-field-hardening-r22",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "vpn_dns_fail_open_preserve_connectivity"
+      "purpose": "product_output_hardening_forward_only_over_20331"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -112,7 +112,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20331_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20332_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -153,7 +153,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20331,
+    "candidate_version": 20332,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -163,16 +163,14 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184",
-    "signed_candidate_d1_verified": true,
+    "signed_candidate_d1_verified": false,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "signed_candidate_file": "Hakim-20317-F8040-STRICT-DNS-R7.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20331",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20332",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -295,7 +293,8 @@
     "f8040_auto_source_rollback_r20_source_integrated": true,
     "f8040_auto_source_rollback_r20_field_verified": false,
     "vpn_dns_fail_open_r21_source_integrated": true,
-    "vpn_dns_fail_open_r21_field_verified": false
+    "vpn_dns_fail_open_r21_field_verified": false,
+    "internal_diagnostic_blocks_hidden": true
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

@@ -84,6 +84,7 @@ jobs:
           python3 tests/verify_20302_hardening_train.py
           python3 tests/verify_20303_core_product.py
           python3 tests/verify_20304_sovereign_constitution.py
+          python3 tests/verify_sovereign_governance_v5.py
           python3 tests/verify_20305_control_channel_recovery.py
           python3 tests/verify_20306_direct_channel.py
           python3 tests/verify_20306_arabic_policy.py

@@ -64,7 +64,9 @@ secure_call = send.find('HakimUnifiedRelay.sendHealthBeacon(context, health)')
 secure_success = send.find('if (secureOk) {', secure_call)
 legacy_start = send.find('val payload = health.toString()')
 require(0 <= secure_call < secure_success < legacy_start, "P0: النقل القديم ليس fallback لنبضة الصحة")
-result_send = relay.split('private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {', 1)[1]
+send_result_start = relay.find("private fun sendResult(")
+require(send_result_start >= 0, "P0: إرسال نتائج القناة مفقود")
+result_send = relay[send_result_start:]
 require(0 <= result_send.find('/device/v1/results') < result_send.find('https://ntfy.sh/'), "P0: الجسر المباشر ليس أولوية نتائج القناة")
 require('.put("apk_sha256", installedApkSha256)' in health, "P0: نبضة الصحة فقدت هوية التطبيق المثبت")
 require('AES/GCM/NoPadding' in relay and 'HmacSHA256' in relay, "P0: HC1 لا يحقق تشفير GCM وتوثيق HMAC")

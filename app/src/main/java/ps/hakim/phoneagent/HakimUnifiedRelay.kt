@@ -35,6 +35,7 @@ object HakimUnifiedRelay {
     /** Legacy plaintext preference key retained only for one-time migration. */
     const val KEY_RELAY_KEY = "relay_hmac_key"
     const val KEY_BRIDGE_BASE = "relay_bridge_base"
+    const val KEY_BRIDGE_FALLBACK_BASE = "relay_bridge_fallback_base"
     private const val SECRET_RELAY_KEY = "hakim-secure-relay-key-v1"
     private const val DEFAULT_BRIDGE_BASE = "https://hakim-chatgpt-bridge-production.up.railway.app"
 
@@ -86,15 +87,21 @@ object HakimUnifiedRelay {
         topic: String?,
         resultTopic: String?,
         relayKey: String?,
-        bridgeBase: String? = null
+        bridgeBase: String? = null,
+        fallbackBridgeBase: String? = null
     ): Boolean {
         if (!validConfigurationInput(topic, resultTopic, relayKey)) return false
         val requestedBridge = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return false
+        val requestedFallback = if (fallbackBridgeBase.isNullOrBlank()) null else normalizeBridgeBase(fallbackBridgeBase) ?: return false
+        if (requestedFallback != null && requestedFallback == requestedBridge) return false
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return p.getString(KEY_TOPIC, null) == topic &&
+        val baseMatches = p.getString(KEY_TOPIC, null) == topic &&
             p.getString(KEY_RESULT_TOPIC, null) == resultTopic &&
             relayKey(context) == relayKey &&
             bridgeBase(context) == requestedBridge
+        if (!baseMatches) return false
+        if (requestedFallback == null) return true
+        return fallbackBridgeBase(context) == requestedFallback
     }
 
     fun configure(
@@ -102,19 +109,24 @@ object HakimUnifiedRelay {
         topic: String?,
         resultTopic: String?,
         relayKey: String?,
-        bridgeBase: String? = null
+        bridgeBase: String? = null,
+        fallbackBridgeBase: String? = null
     ): Boolean {
         if (!validConfigurationInput(topic, resultTopic, relayKey)) return false
         val normalizedBridge = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return false
+        val normalizedFallback = if (fallbackBridgeBase.isNullOrBlank()) null else normalizeBridgeBase(fallbackBridgeBase) ?: return false
+        if (normalizedFallback != null && normalizedFallback == normalizedBridge) return false
         return runCatching {
             HakimSecretStore.put(context, SECRET_RELAY_KEY, relayKey!!)
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            val edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(KEY_TOPIC, topic)
                 .putString(KEY_RESULT_TOPIC, resultTopic)
                 .putString(KEY_BRIDGE_BASE, normalizedBridge)
                 .remove(KEY_RELAY_KEY)
                 .putBoolean("secure_relay_configured", true)
-                .commit()
+            // An old pairing link that knows only the primary must not erase a verified fallback.
+            if (normalizedFallback != null) edit.putString(KEY_BRIDGE_FALLBACK_BASE, normalizedFallback)
+            edit.commit()
         }.getOrDefault(false)
     }
 
@@ -132,6 +144,20 @@ object HakimUnifiedRelay {
             .getString(KEY_BRIDGE_BASE, DEFAULT_BRIDGE_BASE)
             ?.let { normalizeBridgeBase(it) }
             ?: DEFAULT_BRIDGE_BASE
+
+    private fun fallbackBridgeBase(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_BRIDGE_FALLBACK_BASE, null)
+            ?.let { normalizeBridgeBase(it) }
+            ?.takeIf { it != bridgeBase(context) }
+
+    private fun bridgeBases(context: Context): List<String> =
+        listOfNotNull(bridgeBase(context), fallbackBridgeBase(context)).distinct()
+
+    private fun orderedBridgeBases(context: Context, preferred: String? = null): List<String> {
+        val normalizedPreferred = preferred?.let { normalizeBridgeBase(it) }
+        return (listOfNotNull(normalizedPreferred) + bridgeBases(context)).distinct()
+    }
 
     fun isConfigured(context: Context): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -217,7 +243,7 @@ object HakimUnifiedRelay {
 
             if (HakimFaultContainment.shouldAttempt(context, "secure_relay", "direct_poll")) {
                 try {
-                    directPollOnce(context, topic, resultTopic, relayKey)
+                    val activeBridge = directPollAcrossBridges(context, topic, resultTopic, relayKey)
                     HakimFaultContainment.recordSuccess(context, "secure_relay", "direct_poll")
                     lastLoopProgressAt = System.currentTimeMillis()
                     if (generation != loopGeneration || !running.get()) break
@@ -227,6 +253,10 @@ object HakimUnifiedRelay {
                     val connectedAt = System.currentTimeMillis()
                     prefs.edit()
                         .putString("secure_relay_state", "direct_connected")
+                        .putString(
+                            "secure_relay_active_slot",
+                            if (activeBridge == bridgeBase(context)) "primary" else "secondary"
+                        )
                         .putString("connection_recovery_state", "healthy")
                         .putLong("secure_relay_seen_at", connectedAt)
                         .putLong("last_recovery_ok_at", connectedAt)
@@ -236,7 +266,7 @@ object HakimUnifiedRelay {
                         .apply()
                     HakimCloudContinuity.refreshIfDue(
                         context,
-                        bridgeBase(context),
+                        activeBridge,
                         topic,
                         relayKey
                     )
@@ -293,13 +323,41 @@ object HakimUnifiedRelay {
         }
     }
 
-    private fun directPollOnce(context: Context, topic: String, resultTopic: String, relayKey: String) {
+    private fun directPollAcrossBridges(
+        context: Context,
+        topic: String,
+        resultTopic: String,
+        relayKey: String
+    ): String {
+        val bases = bridgeBases(context)
+        var firstSuccess: String? = null
+        var firstFailure: Exception? = null
+        val waitMs = if (bases.size > 1) 4_000 else 25_000
+        for (base in bases) {
+            try {
+                directPollOnce(context, base, topic, resultTopic, relayKey, waitMs)
+                if (firstSuccess == null) firstSuccess = base
+            } catch (e: Exception) {
+                if (firstFailure == null) firstFailure = e
+            }
+        }
+        return firstSuccess ?: throw (firstFailure ?: IllegalStateException("direct_no_bridge"))
+    }
+
+    private fun directPollOnce(
+        context: Context,
+        base: String,
+        topic: String,
+        resultTopic: String,
+        relayKey: String,
+        waitMs: Int
+    ) {
         val encodedTopic = URLEncoder.encode(topic, "UTF-8")
-        val url = bridgeBase(context) + "/device/v1/commands?topic=" + encodedTopic + "&wait_ms=25000"
+        val url = base + "/device/v1/commands?topic=" + encodedTopic + "&wait_ms=" + waitMs
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 35_000
+            conn.connectTimeout = if (waitMs <= 4_000) 8_000 else 15_000
+            conn.readTimeout = if (waitMs <= 4_000) 12_000 else 35_000
             conn.requestMethod = "GET"
             conn.setRequestProperty("Accept", "application/json")
             conn.setRequestProperty("Authorization", "Bearer " + relayKey)
@@ -311,17 +369,17 @@ object HakimUnifiedRelay {
             val requestId = payload.optString("request_id")
             val carrier = payload.optString("carrier")
             if (requestId.isBlank() || carrier.isBlank()) throw IllegalStateException("direct_invalid_command")
-            val handled = handleCarrier(context, carrier, resultTopic, relayKey)
-            if (handled == requestId) ackDirect(context, topic, relayKey, requestId)
+            val handled = handleCarrier(context, carrier, resultTopic, relayKey, base)
+            if (handled == requestId) ackDirect(base, topic, relayKey, requestId)
         } finally {
             conn.disconnect()
         }
     }
 
-    private fun ackDirect(context: Context, topic: String, relayKey: String, requestId: String) {
+    private fun ackDirect(base: String, topic: String, relayKey: String, requestId: String) {
         val encodedTopic = URLEncoder.encode(topic, "UTF-8")
         val encodedId = URLEncoder.encode(requestId, "UTF-8")
-        val url = bridgeBase(context) + "/device/v1/commands/" + encodedId + "/ack?topic=" + encodedTopic
+        val url = base + "/device/v1/commands/" + encodedId + "/ack?topic=" + encodedTopic
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.connectTimeout = 10_000
@@ -359,10 +417,16 @@ object HakimUnifiedRelay {
     private fun handleNtfyLine(context: Context, line: String, resultTopic: String, relayKey: String) {
         val event = runCatching { JSONObject(line) }.getOrNull() ?: return
         if (event.optString("event") != "message") return
-        handleCarrier(context, event.optString("message").trim(), resultTopic, relayKey)
+        handleCarrier(context, event.optString("message").trim(), resultTopic, relayKey, null)
     }
 
-    private fun handleCarrier(context: Context, carrier: String, resultTopic: String, relayKey: String): String? {
+    private fun handleCarrier(
+        context: Context,
+        carrier: String,
+        resultTopic: String,
+        relayKey: String,
+        preferredBridgeBase: String? = null
+    ): String? {
         if (carrier.length !in 32..131072) return null
         val raw = decryptCarrier(carrier, relayKey) ?: return null
         val envelope = runCatching { JSONObject(raw) }.getOrNull() ?: return null
@@ -376,19 +440,19 @@ object HakimUnifiedRelay {
         if (payloadB64.length > 32768 || !SIGNATURE.matches(signature)) return null
         if (!validSignature(relayKey, requestId, op, expiresAt, payloadB64, signature)) return null
         if (expiresAt <= System.currentTimeMillis()) {
-            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("error", "request_expired"), preferredBridgeBase)
             return requestId
         }
         if (!claimRemoteRequest(context, requestId)) {
-            sendResult(context, resultTopic, requestId, "duplicate", JSONObject().put("error", "duplicate_request"))
+            sendResult(context, resultTopic, requestId, "duplicate", JSONObject().put("error", "duplicate_request"), preferredBridgeBase)
             return requestId
         }
 
         if (READ_ONLY_OPS.contains(op)) {
             val result = executeEnvelope(context, envelope)
-            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result, preferredBridgeBase)
         } else {
-            savePending(context, envelope, resultTopic)
+            savePending(context, envelope, resultTopic, preferredBridgeBase)
             showApproval(context, requestId, op)
         }
         return requestId
@@ -441,20 +505,33 @@ object HakimUnifiedRelay {
         return prefs.edit().putStringSet("ids", ids).commit()
     }
 
-    private fun savePending(context: Context, envelope: JSONObject, resultTopic: String) {
+    private fun savePending(
+        context: Context,
+        envelope: JSONObject,
+        resultTopic: String,
+        preferredBridgeBase: String?
+    ) {
         val id = envelope.optString("request_id")
-        context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE).edit()
+        val edit = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE).edit()
             .putString("$id.envelope", envelope.toString())
             .putString("$id.result_topic", resultTopic)
-            .apply()
+        val normalizedBridge = preferredBridgeBase?.let { normalizeBridgeBase(it) }
+        if (normalizedBridge != null) edit.putString("$id.bridge_base", normalizedBridge)
+        else edit.remove("$id.bridge_base")
+        edit.apply()
     }
 
-    private fun takePending(context: Context, requestId: String): Pair<JSONObject, String>? {
+    private fun takePending(context: Context, requestId: String): Triple<JSONObject, String, String?>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
         val raw = prefs.getString("$requestId.envelope", null) ?: return null
         val topic = prefs.getString("$requestId.result_topic", null) ?: return null
-        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").apply()
-        return runCatching { JSONObject(raw) to topic }.getOrNull()
+        val preferredBridge = prefs.getString("$requestId.bridge_base", null)?.let { normalizeBridgeBase(it) }
+        prefs.edit()
+            .remove("$requestId.envelope")
+            .remove("$requestId.result_topic")
+            .remove("$requestId.bridge_base")
+            .apply()
+        return runCatching { Triple(JSONObject(raw), topic, preferredBridge) }.getOrNull()
     }
 
     private fun showApproval(context: Context, requestId: String, op: String) {
@@ -495,13 +572,13 @@ object HakimUnifiedRelay {
 
     fun handleApproval(context: Context, requestId: String, approved: Boolean) {
         val pending = takePending(context, requestId) ?: return
-        val (envelope, resultTopic) = pending
+        val (envelope, resultTopic, preferredBridgeBase) = pending
         if (!approved) {
-            sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
+            sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"), preferredBridgeBase)
             return
         }
         if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
-            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"), preferredBridgeBase)
             return
         }
         if (!HakimFaultContainment.canExecuteHighImpact(context)) {
@@ -510,7 +587,8 @@ object HakimUnifiedRelay {
                 resultTopic,
                 requestId,
                 "blocked",
-                JSONObject().put("ok", false).put("error", "fault_containment_blocked")
+                JSONObject().put("ok", false).put("error", "fault_containment_blocked"),
+                preferredBridgeBase
             )
             return
         }
@@ -521,13 +599,21 @@ object HakimUnifiedRelay {
                 resultTopic,
                 requestId,
                 "blocked",
-                JSONObject().put("ok", false).put("error", "operation_circuit_open")
+                JSONObject().put("ok", false).put("error", "operation_circuit_open"),
+                preferredBridgeBase
             )
             return
         }
         executor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
-            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            sendResult(
+                context,
+                resultTopic,
+                requestId,
+                if (result.optBoolean("ok", false)) "ok" else "error",
+                result,
+                preferredBridgeBase
+            )
         }
     }
 
@@ -690,7 +776,14 @@ object HakimUnifiedRelay {
         return RESULT_PREFIX + Base64.encodeToString(packed, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
     }
 
-    private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {
+    private fun sendResult(
+        context: Context,
+        resultTopic: String,
+        requestId: String,
+        status: String,
+        result: JSONObject,
+        preferredBridgeBase: String? = null
+    ): Boolean {
         val relayKey = relayKey(context) ?: return false
         val payload = JSONObject()
             .put("request_id", requestId)
@@ -699,32 +792,37 @@ object HakimUnifiedRelay {
             .put("result", result)
         val carrier = encryptResult(relayKey, payload)
 
-        val directOk = runCatching {
-            val encodedTopic = URLEncoder.encode(resultTopic, "UTF-8")
-            val url = bridgeBase(context) + "/device/v1/results?topic=" + encodedTopic
-            val conn = URL(url).openConnection() as HttpURLConnection
-            try {
-                conn.connectTimeout = 10_000
-                conn.readTimeout = 20_000
-                conn.requestMethod = "POST"
-                conn.doOutput = true
-                conn.setRequestProperty("Authorization", "Bearer " + relayKey)
-                conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
-                conn.outputStream.use { it.write(carrier.toByteArray(Charsets.UTF_8)) }
-                val ok = conn.responseCode in 200..299
-                runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
-                ok
-            } finally {
-                conn.disconnect()
-            }
-        }.getOrDefault(false)
+        val encodedTopic = URLEncoder.encode(resultTopic, "UTF-8")
+        for (base in orderedBridgeBases(context, preferredBridgeBase)) {
+            val directOk = runCatching {
+                val url = base + "/device/v1/results?topic=" + encodedTopic
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.connectTimeout = 10_000
+                    conn.readTimeout = 20_000
+                    conn.requestMethod = "POST"
+                    conn.doOutput = true
+                    conn.setRequestProperty("Authorization", "Bearer " + relayKey)
+                    conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
+                    conn.outputStream.use { it.write(carrier.toByteArray(Charsets.UTF_8)) }
+                    val ok = conn.responseCode in 200..299
+                    runCatching { (if (ok) conn.inputStream else conn.errorStream)?.close() }
+                    ok
+                } finally {
+                    conn.disconnect()
+                }
+            }.getOrDefault(false)
 
-        if (directOk) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putLong("secure_relay_last_result_at", System.currentTimeMillis())
-                .putString("secure_relay_last_result_state", "direct_sent")
-                .apply()
-            return true
+            if (directOk) {
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putLong("secure_relay_last_result_at", System.currentTimeMillis())
+                    .putString(
+                        "secure_relay_last_result_state",
+                        if (base == bridgeBase(context)) "direct_primary_sent" else "direct_secondary_sent"
+                    )
+                    .apply()
+                return true
+            }
         }
 
         val legacyOk = runCatching {

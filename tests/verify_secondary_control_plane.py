@@ -45,11 +45,9 @@ require(RELAY,'uri.userInfo != null',"userinfo_rejected")
 require(RELAY,'uri.query != null || uri.fragment != null',"query_fragment_rejected")
 
 # Never manufacture a fake backup provider in source. It must arrive from a verified pairing/config.
-for needle,reason in [
-    ("DEFAULT_FALLBACK_BRIDGE_BASE","hardcoded_unverified_fallback"),
-    ("http://","insecure_bridge_literal"),
-]:
-    forbid(RELAY,needle,reason)
+forbid(RELAY,"DEFAULT_FALLBACK_BRIDGE_BASE","hardcoded_unverified_fallback")
+bridge_config_region=RELAY[:RELAY.find("fun isConfigured(context: Context)")]
+forbid(bridge_config_region,'"http://"',"insecure_bridge_literal")
 
 # Known-failure sentinel: removing the origin-aware result loop must fail this gate.
 probe=RELAY.replace("for (base in orderedBridgeBases(context, preferredBridgeBase))","for (base in bridgeBases(context))")

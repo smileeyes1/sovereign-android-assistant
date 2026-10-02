@@ -29,7 +29,7 @@
     },
     "candidate": {
       "version_code": 20332,
-      "branch": "feature/hakim-20332-product-forward-port-v1",
+      "branch": "release/hakim-20332-product-field-hardening-r22",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,

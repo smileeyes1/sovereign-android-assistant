@@ -72,17 +72,24 @@
     },
     "portable_nonsecret_state": {
       "critical": true,
-      "state": "NOT_IMPLEMENTED",
+      "state": "SOURCE_VERIFIED",
       "target_state": "VERIFIED",
-      "evidence": [],
-      "gap": "no versioned portable export/import contract for non-secret user and operational state"
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimPortableState.kt",
+        "app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt",
+        "tests/verify_portable_state.py"
+      ],
+      "gap": "source and CI gate exist; real export/import on the phone and restore on a second device remain field-unverified"
     },
     "backup_and_restore": {
       "critical": true,
-      "state": "NOT_IMPLEMENTED",
+      "state": "PARTIAL",
       "target_state": "VERIFIED",
-      "evidence": [],
-      "gap": "no independently verified backup plus restore drill for the same state"
+      "evidence": [
+        "app/src/main/java/ps/hakim/phoneagent/HakimPortableState.kt",
+        "tests/verify_portable_state.py"
+      ],
+      "gap": "a user-chosen portable bundle exists in source; independent-location backup plus restore drill is not field-proven"
     },
     "cross_device_migration": {
       "critical": true,
@@ -144,7 +151,7 @@
     }
   },
   "required_next_sequence": [
-    "PORTABLE_STATE_SCHEMA_AND_EXPORT_IMPORT",
+    "PORTABLE_STATE_FIELD_EXPORT_IMPORT",
     "BACKUP_RESTORE_DRILL",
     "SECONDARY_CONTROL_PLANE_HOST_AND_TAKEOVER_TEST",
     "LOCAL_GENERAL_MODEL_FEASIBILITY_AND_FIELD_TEST",

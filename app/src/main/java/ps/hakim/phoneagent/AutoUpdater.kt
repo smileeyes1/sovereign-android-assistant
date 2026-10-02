@@ -89,7 +89,7 @@ object AutoUpdater {
 
         val currentVersion = currentVersionCode(context)
         val request = Request.Builder()
-            .url("https://ntfy.sh/$UPDATE_TOPIC/json?poll=1&since=6h")
+            // افحص كامل السجل المتاح للموضوع بدل نافذة زمنية قصيرة؛\n            // التحقق النهائي يبقى بالحزمة والإصدار وSHA-256 وشهادة D1 المثبتة.\n            .url("https://ntfy.sh/$UPDATE_TOPIC/json?poll=1&since=all")
             .header("User-Agent", "HAKIM-SafeUpdate/3")
             .build()
 

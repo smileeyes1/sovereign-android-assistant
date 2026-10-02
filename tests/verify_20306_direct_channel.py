@@ -35,8 +35,10 @@ for token in [
     req(token in RELAY,"relay:"+token)
 
 req('getQueryParameter("bridge_base")' in PAIR,"pair_bridge_origin_missing")
-req("configurationMatches(this, topic, resultTopic, relayKey, bridgeBase)" in PAIR,"pair_idempotency_not_bridge_aware")
-req("configure(this, topic, resultTopic, relayKey, bridgeBase)" in PAIR,"pair_config_not_bridge_aware")
+req("HakimUnifiedRelay.configurationMatches(" in PAIR and "bridgeBase," in PAIR and "fallbackBridgeBase" in PAIR,
+    "pair_idempotency_not_bridge_aware")
+req("HakimUnifiedRelay.configure(" in PAIR and "fallbackBridgeBase" in PAIR,
+    "pair_config_not_bridge_aware")
 req('setPositiveButton("اعتماد")' in PAIR and 'setNegativeButton("رفض")' in PAIR,"local_pairing_approval_weakened")
 req("python3 tests/verify_20306_direct_channel.py" in WORKFLOW,"workflow_gate_missing")
 

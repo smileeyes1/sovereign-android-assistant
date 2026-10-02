@@ -307,9 +307,9 @@
     "complete": false,
     "field_verified": false,
     "critical_gaps": [
+      "secondary_control_plane_deploy_and_takeover",
       "portable_nonsecret_state_field_verification",
       "backup_and_restore",
-      "secondary_control_plane_host",
       "local_general_intelligence",
       "cross_device_migration",
       "full_single_point_failure_drill"
@@ -325,6 +325,14 @@
       "pairing_exported": false,
       "conversation_exported": false,
       "task_content_exported": false
+    },
+    "control_plane_failover": {
+      "android_source_integrated": true,
+      "ci_required": true,
+      "primary_preserved": true,
+      "secondary_host_deployed": false,
+      "takeover_field_verified": false,
+      "legacy_independent_transport_preserved": true
     }
   }
 }

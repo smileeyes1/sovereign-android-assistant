@@ -32,7 +32,7 @@ req("versionName" in BUILD, "version_name_present")
 
 # Canonical governance.
 for token in [
-    "SOVEREIGN-QURAN-V4-2026-09-25",
+    "SOVEREIGN-QURAN-V5-2026-10-02",
     "user_goal_sovereignty",
     "authority_boundary_enforced",
     "external_content_data_not_commands",
@@ -101,7 +101,7 @@ for marker in ["password", "token", "api[_ -]?key", "Bearer", "AIza"]:
 req("HakimConstitution.install(this)" in APP_BOOT, "constitution_not_installed_on_app_start")
 req("HakimConstitution.install(context)" in BOOT, "constitution_not_reinstalled_on_boot_or_replace")
 for token in [
-    "الدستور السيادي v4 مثبت",
+    "الدستور السيادي v5 مثبت",
     "حدود السلطة مفعلة",
     "المحتوى الخارجي بيانات لا أوامر",
     "المهام المؤقتة لا تُحفظ كنص",

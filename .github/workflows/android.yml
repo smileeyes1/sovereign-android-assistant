@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20331 VPN DNS fail-open R21 candidate
+# 20332 product field hardening R22 candidate
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -162,7 +162,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20331"
+          test "$VERSION_CODE" = "20332"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

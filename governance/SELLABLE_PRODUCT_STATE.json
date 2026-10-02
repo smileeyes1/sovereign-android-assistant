@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_version": 20315,
-  "candidate_name": "3.4.0-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-v1",
+  "candidate_version": 20332,
+  "candidate_name": "3.4.2-product-field-hardening-r22",
   "primary_ui_productized": true,
   "browser_hidden_from_primary_ui": true,
   "diagnostics_hidden_from_primary_ui": true,
@@ -31,10 +31,9 @@
   "artifact_refusal_not_success": true,
   "contextual_addition_within_10_restored": true,
   "source_ci": {
-    "run_id": 0,
-    "commit": "PENDING_CURRENT_HEAD_CI",
-    "conclusion": "pending",
-    "artifact_id": 0
+    "run_number": null,
+    "commit": null,
+    "conclusion": "pending"
   },
   "raw_html_hidden": true,
   "artifact_stream_hidden": true,

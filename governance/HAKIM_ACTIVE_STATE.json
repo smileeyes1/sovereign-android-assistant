@@ -307,13 +307,24 @@
     "complete": false,
     "field_verified": false,
     "critical_gaps": [
-      "portable_nonsecret_state",
+      "portable_nonsecret_state_field_verification",
       "backup_and_restore",
       "secondary_control_plane_host",
       "local_general_intelligence",
       "cross_device_migration",
       "full_single_point_failure_drill"
     ],
-    "claim_policy": "NO_COMPLETE_CLAIM_UNTIL_ALL_CRITICAL_DIMENSIONS_VERIFIED"
+    "claim_policy": "NO_COMPLETE_CLAIM_UNTIL_ALL_CRITICAL_DIMENSIONS_VERIFIED",
+    "portable_state": {
+      "version": "HAKIM-PORTABLE-NONSECRET-STATE-2026-10-02-v1",
+      "source_integrated": true,
+      "ci_required": true,
+      "field_export_import_verified": false,
+      "second_device_restore_verified": false,
+      "secrets_exported": false,
+      "pairing_exported": false,
+      "conversation_exported": false,
+      "task_content_exported": false
+    }
   }
 }

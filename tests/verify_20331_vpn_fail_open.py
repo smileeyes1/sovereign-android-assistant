@@ -11,7 +11,7 @@ def req(ok, reason):
     if not ok:
         raise SystemExit("VPN_FAIL_OPEN_R21=FAIL reason=" + reason)
 
-m = re.search(r"versionCode\\s+(\\d+)", build)
+m = re.search(r"versionCode\s+(\d+)", build)
 req(m is not None and int(m.group(1)) >= 20331, "version")
 req("vpn-dns-fail-open-r21" in build, "lineage")
 req("return START_NOT_STICKY" in service, "sticky_restart_forbidden")

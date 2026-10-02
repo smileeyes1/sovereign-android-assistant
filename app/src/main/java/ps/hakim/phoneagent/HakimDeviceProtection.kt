@@ -14,12 +14,16 @@ import org.json.JSONObject
  */
 object HakimDeviceProtection {
     private const val PREFS = "hakim_device_protection"
+    private const val FAIL_OPEN_COOLDOWN_MS = 15L * 60L * 1000L
 
     fun markConsentGranted(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean("enabled", true)
             .putString("state", "STARTING")
             .putLong("consent_granted_at", System.currentTimeMillis())
+            .remove("fail_open_until")
+            .remove("last_error")
+            .remove("fail_open_until")
             .apply()
     }
 
@@ -46,9 +50,35 @@ object HakimDeviceProtection {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean("enabled", false)
 
+    fun failOpenActive(context: Context): Boolean {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return p.getLong("fail_open_until", 0L) > System.currentTimeMillis()
+    }
+
+    fun failOpen(context: Context, reason: String, cooldownMs: Long = FAIL_OPEN_COOLDOWN_MS) {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        p.edit()
+            .putBoolean("active", false)
+            .putString("state", "FAIL_OPEN")
+            .putString("last_error", reason.take(120))
+            .putLong("fail_open_until", now + cooldownMs.coerceAtLeast(60_000L))
+            .putLong("dns_proxy_failure_count", p.getLong("dns_proxy_failure_count", 0L) + 1L)
+            .putLong("updated_at", now)
+            .apply()
+    }
+
     fun ensureRunning(context: Context): Boolean {
         val app = context.applicationContext
         if (!enabled(app)) return false
+        if (failOpenActive(app)) {
+            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("active", false)
+                .putString("state", "FAIL_OPEN_COOLDOWN")
+                .putLong("updated_at", System.currentTimeMillis())
+                .apply()
+            return false
+        }
         if (!consentGranted(app)) {
             markConsentRequired(app)
             return false
@@ -106,6 +136,7 @@ object HakimDeviceProtection {
         val now = System.currentTimeMillis()
         val successAt = p.getLong("upstream_success_at", 0L)
         val upstreamRecent = successAt > 0L && now - successAt < 15L * 60L * 1000L
+        val failOpenUntil = p.getLong("fail_open_until", 0L)
         return JSONObject()
             .put("enabled", p.getBoolean("enabled", false))
             .put("consent_granted", consentGranted(context))
@@ -115,6 +146,8 @@ object HakimDeviceProtection {
             .put("last_upstream_success_at", successAt)
             .put("dns_proxy_success_count", p.getLong("dns_proxy_success_count", 0L))
             .put("dns_proxy_failure_count", p.getLong("dns_proxy_failure_count", 0L))
+            .put("fail_open_active", failOpenUntil > now)
+            .put("fail_open_until", failOpenUntil)
             .put("full_bypass_prevention", false)
     }
 }

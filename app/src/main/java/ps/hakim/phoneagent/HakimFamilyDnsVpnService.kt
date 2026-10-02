@@ -59,7 +59,7 @@ class HakimFamilyDnsVpnService : VpnService() {
         if (running.compareAndSet(false, true)) {
             startTunnel()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onRevoke() {
@@ -86,7 +86,7 @@ class HakimFamilyDnsVpnService : VpnService() {
 
         if (established == null) {
             running.set(false)
-            HakimDeviceProtection.markActive(this, false, "ESTABLISH_FAILED")
+            HakimDeviceProtection.failOpen(this, "establish_failed")
             stopSelf()
             return
         }
@@ -117,7 +117,11 @@ class HakimFamilyDnsVpnService : VpnService() {
                 .also { runCatching { established.close() } }
                 .also { tun = null }
                 .also { running.set(false) }
-                .also { HakimDeviceProtection.markActive(this, false, "STOPPED") }
+                .also {
+                    if (!HakimDeviceProtection.failOpenActive(this)) {
+                        HakimDeviceProtection.markActive(this, false, "STOPPED")
+                    }
+                }
             }
         }, "hakim-family-dns-vpn").apply {
             isDaemon = true
@@ -131,7 +135,7 @@ class HakimFamilyDnsVpnService : VpnService() {
                 // اسم فريد لتجنب نجاح كاذب من DNS cache؛ حتى NXDOMAIN يولّد رد DNS حقيقيًا.
                 InetAddress.getByName("hakim-" + System.currentTimeMillis() + ".cleanbrowsing.org")
             }.onFailure {
-                HakimDeviceProtection.noteFailure(this, "selfcheck_" + it.javaClass.simpleName)
+                failOpenAndStop("selfcheck_" + it.javaClass.simpleName)
             }
         }, "hakim-family-dns-selfcheck").apply {
             isDaemon = true
@@ -181,7 +185,7 @@ class HakimFamilyDnsVpnService : VpnService() {
                 return response
             }
         }
-        HakimDeviceProtection.noteFailure(this, "upstream_timeout")
+        failOpenAndStop("upstream_timeout")
         return null
     }
 
@@ -251,13 +255,25 @@ class HakimFamilyDnsVpnService : VpnService() {
         data[offset + 1] = (value and 0xff).toByte()
     }
 
+    private fun failOpenAndStop(reason: String) {
+        if (!running.getAndSet(false)) return
+        HakimDeviceProtection.failOpen(this, reason)
+        runCatching { tun?.close() }
+        tun = null
+        worker?.interrupt()
+        worker = null
+        stopSelf()
+    }
+
     private fun stopTunnel(state: String) {
         running.set(false)
         runCatching { tun?.close() }
         tun = null
         worker?.interrupt()
         worker = null
-        HakimDeviceProtection.markActive(this, false, state)
+        if (!HakimDeviceProtection.failOpenActive(this)) {
+            HakimDeviceProtection.markActive(this, false, state)
+        }
     }
 
     override fun onDestroy() {

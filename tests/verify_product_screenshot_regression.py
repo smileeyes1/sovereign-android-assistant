@@ -71,3 +71,21 @@ for phrase in ["save as pdf","ctrl + p","انسخ الكود","collection within
     req(phrase in OUT.lower(),"field_bad_dump_sentinel:"+phrase)
 
 print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden html=hidden artifact_stream=silent pdf=file context=restored")
+
+
+# 20331 product-final regression from the real field screenshot:
+# internal diagnostic blocks must be removed as blocks, without deleting later user turns.
+req("stripInternalDiagnosticBlocks" in OUT,"internal_block_stripper_missing")
+req("s = stripInternalDiagnosticBlocks(s, internalHeadings)" in OUT,"internal_block_stripper_not_applied")
+for leaked in ["الدليل والقيود","القيود التقنية","التحقق الداخلي","ملاحظة أخيرة","internal reasoning","technical limitations"]:
+    req(leaked in OUT,"internal_block_marker_missing:"+leaked)
+req('trimmed == "أنت:" || trimmed == "حكيم:"' in OUT,"conversation_boundary_not_preserved")
+
+# Primary product surface is calm: status is visible, engineering operations are not.
+req('visibility = View.GONE' in CENTER and 'تفاصيل تشغيل داخلية مخفية عن واجهة المنتج' in CENTER,"internal_operations_visible")
+req('operations.visibility = View.GONE' in CENTER,"refresh_reveals_operations")
+req('actionButton("المهام")' not in CENTER,"tasks_button_on_primary_surface")
+req('actionButton("مشاركة")' not in CENTER,"share_button_on_primary_surface")
+
+# Persisted old screenshots with Markdown/internal headings must be migrated through clean().
+req('"###", "**"' in OUT,"markdown_not_detected_for_migration")

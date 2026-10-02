@@ -37,6 +37,7 @@ jobs:
         run: |
           python3 tests/verify_unified_hakim.py
           python3 tests/verify_multimodel_router_policy.py
+          python3 tests/verify_independence_baseline.py
           python3 tests/verify_hakim_primary_ui.py
           python3 tests/verify_20092_playprotect_safe.py
           python3 tests/verify_20093_no_install_prompt.py

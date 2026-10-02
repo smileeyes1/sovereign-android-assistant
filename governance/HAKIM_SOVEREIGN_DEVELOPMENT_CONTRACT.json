@@ -9,6 +9,7 @@
     "required_reads_before_work": [
       "governance/HAKIM_ACTIVE_STATE.json",
       "governance/HAKIM_SOVEREIGN_DEVELOPMENT_CONTRACT.json",
+      "governance/HAKIM_INDEPENDENCE_BASELINE.json",
       "current release branch",
       "open pull requests",
       "latest CI results"
@@ -125,5 +126,14 @@
     ]
   },
   "completion_rule": "لا يُعلن الاكتمال إلا بدليل يناسب طبقة الادعاء؛ نجاح المصدر لا يعني نجاح البناء، ونجاح البناء لا يعني نجاح الهاتف.",
-  "continuity_rule": "تستمر الدورة ما دام هناك مكسب مادي موجب قابل للقياس؛ عند غياب مكسب حقيقي تحفظ الحالة وتتوقف بأمان حتى ظهور دليل أو فرصة جديدة."
+  "continuity_rule": "تستمر الدورة ما دام هناك مكسب مادي موجب قابل للقياس؛ عند غياب مكسب حقيقي تحفظ الحالة وتتوقف بأمان حتى ظهور دليل أو فرصة جديدة.",
+  "independence_policy": {
+    "baseline": "governance/HAKIM_INDEPENDENCE_BASELINE.json",
+    "single_critical_software_point_of_failure_forbidden": true,
+    "complete_claim_requires_all_critical_dimensions_verified": true,
+    "portable_state_and_restore_required": true,
+    "verified_secondary_control_plane_required": true,
+    "verified_cross_device_recovery_required": true,
+    "local_general_intelligence_required_for_full_offline_claim": true
+  }
 }

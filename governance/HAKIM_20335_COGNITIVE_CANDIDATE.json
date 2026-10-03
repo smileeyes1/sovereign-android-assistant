@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "candidate_version_code": 20335,
+  "package": "ps.hakim.stable",
+  "base_release": "release/hakim-20334-autonomy-field-acceptance-r25",
+  "base_head": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
+  "base_signed_candidate": {
+    "version_code": 20334,
+    "d1_verified": true,
+    "signed_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b",
+    "field_install_verified": false
+  },
+  "change": {
+    "name": "professional_cognitive_routing_r26",
+    "provider_static_quality_ranking_removed": true,
+    "adaptive_task_depth": true,
+    "evidence_driven_engine_ranking": true,
+    "sample_confidence_separated_from_reliability": true,
+    "consecutive_failure_penalty": true,
+    "runtime_status_exposed": true,
+    "self_check_integrated": true
+  },
+  "protected_invariants": [
+    "free_policy_remains_hard_gate",
+    "engine_health_remains_hard_gate",
+    "attachments_must_be_supported",
+    "no_new_permission",
+    "no_new_secret",
+    "no_paid_provider_assumed",
+    "no_change_to_package_or_signer",
+    "20334_signed_artifact_not_replaced_or_relabelled"
+  ],
+  "state": "SOURCE_CHANGE_PENDING_CI",
+  "field_verified": false,
+  "promoted": false
+}

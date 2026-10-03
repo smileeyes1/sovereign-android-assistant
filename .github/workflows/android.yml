@@ -98,6 +98,7 @@ jobs:
           python3 tests/verify_20313_chatgpt_control.py
           python3 tests/verify_20315_autonomy.py
           python3 tests/verify_20334_field_acceptance_autostart.py
+          python3 tests/verify_professional_cognitive_routing_20335.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -164,7 +165,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20334"
+          test "$VERSION_CODE" = "20335"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

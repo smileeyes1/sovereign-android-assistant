@@ -6,6 +6,8 @@ ENGINE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimInferenceEngine.kt"
 GEMINI = (ROOT / "app/src/main/java/ps/hakim/phoneagent/GeminiDirectEngine.kt").read_text(encoding="utf-8")
 OPENROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/OpenRouterFreeEngine.kt").read_text(encoding="utf-8")
 MATRIX = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimWisdomMatrix.kt").read_text(encoding="utf-8")
+COGNITIVE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimCognitivePolicy.kt").read_text(encoding="utf-8")
+TELEMETRY = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimEngineTelemetry.kt").read_text(encoding="utf-8")
 FREE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimFreePolicy.kt").read_text(encoding="utf-8")
 CENTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 ROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimModelToolRouter.kt").read_text(encoding="utf-8")
@@ -28,8 +30,18 @@ for needed in ["openrouter/free", "https://openrouter.ai/api/v1/chat/completions
 for needed in ["https://generativelanguage.googleapis.com/v1beta/interactions", '"stream", true', "previous_interaction_id"]:
     req(needed in GEMINI, "gemini:" + needed)
 
-for needed in ["zeroCostCertainty", "reliability", "privacy", "learnedSpeed", "sortedByDescending"]:
-    req(needed in MATRIX, "matrix:" + needed)
+req("HakimCognitivePolicy.rank" in MATRIX, "matrix:policy_delegation")
+for needed in [
+    "HakimFreePolicy.allows",
+    "HakimResiliencePolicy.isAvailable",
+    "attachmentsSupported",
+    "privacySensitive",
+    "latencyScore",
+    "evidence_driven_routing",
+]:
+    req(needed in COGNITIVE, "cognitive:" + needed)
+for needed in ["reliability", "confidence", "latencyMs", "consecutiveFailures"]:
+    req(needed in TELEMETRY, "telemetry:" + needed)
 
 req("getBoolean(KEY_FREE_ONLY, true)" in FREE, "free_only_not_default")
 req("OpenRouterFreeEngine.ID -> true" in FREE, "zero_price_engine_not_allowed")

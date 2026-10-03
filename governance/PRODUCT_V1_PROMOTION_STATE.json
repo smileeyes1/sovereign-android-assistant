@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20334,
+  "candidate_version": 20335,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -26,5 +26,8 @@
   "coherent_relay_status_source_integrated": true,
   "coherent_relay_status_field_verified": false,
   "auto_update_wakeup_source_integrated": true,
-  "auto_update_wakeup_field_verified": false
+  "auto_update_wakeup_field_verified": false,
+  "professional_cognitive_routing_source_integrated": true,
+  "professional_cognitive_routing_source_ci_verified": false,
+  "professional_cognitive_routing_field_verified": false
 }

@@ -99,6 +99,9 @@ object HakimSelfCheck {
         check("نواة القدرات فعالة", capability.optBoolean("capability_kernel"))
         check("القدرات المجهولة مرفوضة", capability.optBoolean("unknown_capability_denied"))
         check("النواة تفشل مغلقة", capability.optBoolean("fail_closed"))
+        check("القدرة لا تساوي التوفر", capability.optBoolean("capability_is_not_availability"))
+        check("التوفر لا يساوي التفويض", capability.optBoolean("availability_is_not_authorization"))
+        check("مصفوفة القدرات الحية موجودة", (capability.optJSONArray("runtime_matrix")?.length() ?: 0) > 0)
 
         val continuity = HakimValueContinuityEngine.status(context)
         check("التحكم بالقيمة مغلق الحلقة", continuity.optBoolean("closed_loop_value_control"))
@@ -133,6 +136,12 @@ object HakimSelfCheck {
         val executor = HakimGoalExecutor.heartbeat(context)
         check("منفذ المقصد موجود", executor.optBoolean("executor"))
         check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
+
+        val cognitive = HakimCognitivePolicy.status(context)
+        check("سياسة الإدراك الاحترافية مفعّلة", cognitive.optBoolean("professional_cognitive_policy"))
+        check("التوجيه المعرفي قائم على الدليل", cognitive.optBoolean("evidence_driven_routing"))
+        check("عمق التفكير متكيف مع المهمة", cognitive.optBoolean("adaptive_depth"))
+        check("لا ترتيب ثابت لجودة المزودين", !cognitive.optBoolean("provider_quality_static_ranking"))
 
         val materialFactory = HakimMaterialFactory.status(context)
         check("مصنع حكيم للمادة فعّال", materialFactory.optBoolean("material_factory"))
@@ -235,6 +244,7 @@ object HakimSelfCheck {
             .put("autonomous_continuation", autonomous)
             .put("autonomous_goal_runner", runner)
             .put("goal_executor", executor)
+            .put("cognitive_policy", cognitive)
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)
             .put("execution_fabric", executionFabric)

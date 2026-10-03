@@ -117,6 +117,13 @@ object HakimSelfCheck {
         check("الانتظار قابل للاستئناف", supervisor.optBoolean("wait_must_be_resumable"))
         check("البوابة الوهمية ممنوعة", supervisor.optBoolean("hypothetical_gate_forbidden"))
 
+        val autonomous = HakimAutonomousContinuation.status(context)
+        check("الاستمرار الذاتي الحدثي مفعّل", autonomous.optBoolean("autonomous_continuation"))
+        check("الاستئناف الحدثي مفعّل", autonomous.optBoolean("event_driven_resume"))
+        check("النسخ الاحتياطي الدوري للاستئناف مفعّل", autonomous.optBoolean("periodic_resume_backup"))
+        check("الاستمرار الذاتي لا يستخدم دورانًا مشغولًا", autonomous.optBoolean("no_busy_loop"))
+        check("بوابة الأثر العالي محفوظة أثناء الاستئناف", autonomous.optBoolean("high_impact_still_gated"))
+
         val executor = HakimGoalExecutor.heartbeat(context)
         check("منفذ المقصد موجود", executor.optBoolean("executor"))
         check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
@@ -219,6 +226,7 @@ object HakimSelfCheck {
             .put("capability_kernel", capability)
             .put("value_continuity", continuity)
             .put("goal_supervisor", supervisor)
+            .put("autonomous_continuation", autonomous)
             .put("goal_executor", executor)
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)

@@ -1,6 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 : "${PREFIX:=/data/data/com.termux/files/usr}"
 export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 set -u
 
 STATE_DIR="$HOME/.omega/adb"
@@ -51,7 +54,7 @@ connected_ep() {
 
 save_ep() {
   local ep="${1:-}"
-  [ -n "$ep" ] || ep="$(connected_ep)"
+  [ -n "$ep" ] || ep="$(connected_ep || true)"
   [ -n "$ep" ] || return 1
   printf '%s\n' "$ep" > "$STATE_FILE"
   chmod 600 "$STATE_FILE"
@@ -67,7 +70,7 @@ try_ep() {
   fi
   timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
   sleep 0.35
-  now="$(connected_ep)"
+  now="$(connected_ep || true)"
   if [ -n "$now" ]; then save_ep "$now"; return 0; fi
   return 1
 }
@@ -87,7 +90,7 @@ bounded_self_recover() {
 connect_best() {
   start_adb
   local ep host
-  ep="$(connected_ep)"
+  ep="$(connected_ep || true)"
   if [ -n "$ep" ]; then save_ep "$ep"; return 0; fi
 
   if [ -f "$STATE_FILE" ]; then
@@ -143,12 +146,22 @@ selftest() {
 install_wrapper() {
   cat > "$BIN" <<'WRAP'
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 exec "$HOME/.omega/adb/hakim-adb-core.sh" "$@"
 WRAP
   chmod 700 "$BIN"
 
   cat > "$BOOT_DIR/hakim-adb-reconnect" <<'BOOT'
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 sleep 8
 "$PREFIX/bin/hakim-adb" connect >/dev/null 2>&1 || true
 BOOT

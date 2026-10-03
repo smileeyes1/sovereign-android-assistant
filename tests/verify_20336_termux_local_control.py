@@ -13,6 +13,7 @@ command_center=(root/"app/src/main/java/ps/hakim/phoneagent/CommandCenterActivit
 bootstrap=(root/"scripts/hakim-termux-local-control-bootstrap.sh").read_text(encoding="utf-8")
 rescue=(root/"scripts/hakim-zero-burden-rescue.sh").read_text(encoding="utf-8")
 adb_bootstrap=(root/"scripts/termux-hakim-adb-bootstrap.sh").read_text(encoding="utf-8")
+resilience=(root/"scripts/hakim-termux-resilience.sh").read_text(encoding="utf-8")
 active=json.loads((root/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
 promotion=json.loads((root/"governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
 
@@ -103,6 +104,11 @@ for token in [
     require(token in selfcheck,"selfcheck:"+token)
 
 for token in [
+    ': "${PREFIX:=/data/data/com.termux/files/usr}"',
+    ': "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"',
+    'export TMPDIR',
+    'mkdir -p "$TMPDIR" 2>/dev/null || true',
+    'ep="$(connected_ep || true)"',
     'allow-external-apps=true',
     'HAKIM_TERMUX_BOOTSTRAP=PASS',
     'permission_gate=ANDROID_USER_PROMPT_IN_HAKIM',
@@ -121,6 +127,12 @@ for token in [
     'LOCAL_FIRST_AFTER_BOOTSTRAP=true',
 ]:
     require(token in bootstrap,"bootstrap:"+token)
+
+for token in [
+    ': "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"',
+    'export TMPDIR',
+]:
+    require(token in rescue,"rescue_env:"+token)
 
 for forbidden in [
     '@wonderwhy-er/desktop-commander',
@@ -156,6 +168,9 @@ for forbidden in [
 for token in [
     ': "${PREFIX:=/data/data/com.termux/files/usr}"',
     'export PREFIX',
+    ': "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"',
+    'export TMPDIR',
+    'mkdir -p "$TMPDIR" 2>/dev/null || true',
     'self_ip()',
     'host="${ep%%:*}"',
     '[ "$host" = "127.0.0.1" ]',
@@ -170,6 +185,13 @@ for forbidden in [
     'ThreadPoolExecutor(max_workers=320)',
 ]:
     require(forbidden not in adb_bootstrap,"adb_wide_scan:"+forbidden)
+
+for token in [
+    ': "${PREFIX:=/data/data/com.termux/files/usr}"',
+    ': "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"',
+    'export TMPDIR',
+]:
+    require(token in resilience,"resilience_env:"+token)
 
 require(active["android"]["candidate"]["version_code"]==20336,"active_candidate")
 require(active["productization"]["candidate_version"]==20336,"product_candidate")

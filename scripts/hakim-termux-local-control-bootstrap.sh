@@ -123,7 +123,16 @@ CTRL
 #!/data/data/com.termux/files/usr/bin/bash
 sleep 8
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
-command -v hakim-adb >/dev/null 2>&1 && hakim-adb connect >/dev/null 2>&1 || true
+adb start-server >/dev/null 2>&1 || true
+if ! adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{ok=1} END{exit !ok}'; then
+  [ -x "$HOME/.hakim/adb-self.sh" ] && timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
+fi
+if ! adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{ok=1} END{exit !ok}'; then
+  if [ -s "$HOME/.omega/adb/last-endpoint" ]; then
+    ep="$(head -1 "$HOME/.omega/adb/last-endpoint" | tr -d '\r\n')"
+    [ -n "$ep" ] && timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
+  fi
+fi
 BOOT
   chmod 700 "$BOOT_HOOK"
 }

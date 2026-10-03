@@ -27,14 +27,17 @@
     "service_running": true,
     "self_check": "PASS",
     "execution_fabric_online": true,
-    "legacy_connected": true,
-    "secure_relay_primary_connected": false,
+    "legacy_connected": false,
+    "secure_relay_primary_connected": true,
     "full_product_acceptance_matrix": false,
-    "product_promoted": false
+    "product_promoted": false,
+    "secure_relay_state": "direct_connected",
+    "direct_https_commands_roundtrip_verified": true
   },
   "evidence_sources": [
     "authenticated Railway HAKIM_HEALTH_EVIDENCE reports version_code 20334 and exact installed APK SHA-256",
-    "authenticated Railway HAKIM_STATUS_PROBE reports self_check PASS and execution_fabric ONLINE",
+    "authenticated Railway HAKIM_STATUS_PROBE at 2026-10-03T13:33:41Z reports self_check PASS, execution_fabric ONLINE, secure_relay_state direct_connected and secure_relay_connected true",
+    "authenticated direct HTTPS device channel shows GET /device/v1/commands 200, POST /device/v1/results 202 and command ACK 204",
     "authorized Termux/Remote Desktop sha256sum and apksigner verify on the same APK"
   ],
   "boundary": "Installation and same-artifact identity are verified. Remaining feature-specific field gates stay independent and unpromoted."

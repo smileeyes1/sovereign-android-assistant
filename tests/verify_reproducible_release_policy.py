@@ -14,3 +14,5 @@ if missing:
     raise SystemExit("REPRODUCIBLE_RELEASE_GATE=FAIL missing=" + ",".join(missing))
 
 print("REPRODUCIBLE_RELEASE_GATE=PASS vcs_info_embedded=false")
+
+# second-build probe: test-only commit must not change release APK bytes

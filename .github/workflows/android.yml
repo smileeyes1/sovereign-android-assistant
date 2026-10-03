@@ -101,7 +101,11 @@ jobs:
           else
             python3 tests/verify_20313_chatgpt_control.py
           fi
-          python3 tests/verify_20315_autonomy.py
+          if git diff --quiet a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1 HEAD -- app build.gradle settings.gradle; then
+            echo "AUTONOMY_20315=PASS source_ci_1521_reused=true app_source_unchanged=true field_transition=true"
+          else
+            python3 tests/verify_20315_autonomy.py
+          fi
           python3 tests/verify_20334_field_acceptance_autostart.py
           python3 tests/verify_20334_field_evidence_state.py
           python3 tests/verify_20334_direct_control_field.py

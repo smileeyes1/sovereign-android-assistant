@@ -30,12 +30,14 @@
     "candidate": {
       "version_code": 20334,
       "branch": "release/hakim-20334-autonomy-field-acceptance-r25",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SUCCESS_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "autonomous_continuation_plus_bounded_field_acceptance_autostart_forward_over_live_20333"
+      "purpose": "autonomous_continuation_plus_bounded_field_acceptance_autostart_forward_over_live_20333",
+      "signed_d1_verified": true,
+      "signed_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -127,10 +129,10 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20334_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20334_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
-      "run_number": 1200,
-      "commit": "1769585409850130935847a48ecfc9344862417f",
+      "run_number": 1521,
+      "commit": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
       "conclusion": "success"
     }
   },
@@ -178,7 +180,7 @@
     "field_screenshot_regression_fixed_in_source": true,
     "user_visible_markdown_forbidden": true,
     "artifact_refusal_not_success": true,
-    "signed_candidate_d1_verified": false,
+    "signed_candidate_d1_verified": true,
     "raw_html_hidden": true,
     "artifact_stream_hidden": true,
     "generic_pdf_fallback": true,
@@ -194,7 +196,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20317,
+    "signed_candidate_version": 20334,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,
@@ -260,10 +262,10 @@
     "cross_session_continuity_cloud_verified": true,
     "cross_session_continuity_android_field_verified": false,
     "same_signed_apk_field_verified": false,
-    "release_source_tested_head": "",
+    "release_source_tested_head": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
     "release_merge_commit": "",
-    "release_ci_run_id": null,
-    "release_ci_artifact_id": null,
+    "release_ci_run_id": 37113673116,
+    "release_ci_artifact_id": 11270247244,
     "professional_observability_runtime_field_verified": false,
     "professional_observability_visual_field_verified": false,
     "chatgpt_control_source_integrated": true,
@@ -309,7 +311,8 @@
     "f8040_auto_source_rollback_r20_field_verified": false,
     "vpn_dns_fail_open_r21_source_integrated": true,
     "vpn_dns_fail_open_r21_field_verified": false,
-    "internal_diagnostic_blocks_hidden": true
+    "internal_diagnostic_blocks_hidden": true,
+    "signed_candidate_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b"
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

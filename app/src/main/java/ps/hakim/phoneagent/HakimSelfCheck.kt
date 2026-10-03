@@ -184,6 +184,8 @@ object HakimSelfCheck {
         check("الأثر العالي يبقى خلف بوابة مستقلة", termux.optBoolean("high_impact_requires_separate_gate"))
         check("لا ادعاء بلا حدود حرفيًا", !termux.optBoolean("unlimited_claim"))
         check("تطبيق Termux موجود", termux.optBoolean("termux_installed"), "warn")
+        check("بوابة إذن RUN_COMMAND للمستخدم محفوظة", termux.optBoolean("permission_user_gate"))
+        check("طلب الإذن من داخل حكيم مدعوم", termux.optBoolean("permission_request_supported"))
         check("صلاحية RUN_COMMAND مفعلة", termux.optBoolean("run_command_permission"), "warn")
         check("قناة Termux المحلية حيّة", termux.optBoolean("online"), "warn")
 

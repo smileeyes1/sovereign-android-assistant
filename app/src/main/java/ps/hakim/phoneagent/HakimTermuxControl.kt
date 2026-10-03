@@ -1,6 +1,5 @@
 package ps.hakim.phoneagent
 
-import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -69,8 +68,8 @@ object HakimTermuxControl {
         isInstalled(context) && hasRunCommandPermission(context)
 
     @Synchronized
-    fun requestRunCommandPermission(activity: Activity, reason: String = "ui"): JSONObject {
-        val app = activity.applicationContext
+    fun prepareRunCommandPermission(context: Context, reason: String = "ui"): JSONObject {
+        val app = context.applicationContext
         if (!isInstalled(app)) {
             return JSONObject().put("ok", false).put("error", "termux_not_installed")
         }
@@ -88,26 +87,14 @@ object HakimTermuxControl {
                 .put("permission_prompt_throttled", true)
         }
 
-        return try {
-            prefs.edit()
-                .putString("state", "PERMISSION_REQUESTED")
-                .putString("last_reason", reason.take(80))
-                .putLong("last_permission_request_at", now)
-                .apply()
-            activity.requestPermissions(arrayOf(PERMISSION_RUN_COMMAND), REQUEST_CODE_RUN_COMMAND)
-            status(app)
-                .put("ok", true)
-                .put("permission_requested", true)
-        } catch (e: Exception) {
-            prefs.edit()
-                .putString("state", "PERMISSION_REQUEST_FAILED")
-                .putString("last_error", e.javaClass.simpleName)
-                .apply()
-            status(app)
-                .put("ok", false)
-                .put("error", "termux_permission_request_failed")
-                .put("detail", e.javaClass.simpleName)
-        }
+        prefs.edit()
+            .putString("state", "PERMISSION_REQUESTED")
+            .putString("last_reason", reason.take(80))
+            .putLong("last_permission_request_at", now)
+            .apply()
+        return status(app)
+            .put("ok", true)
+            .put("permission_requested", true)
     }
 
     fun recordPermissionResult(context: Context, granted: Boolean): JSONObject {

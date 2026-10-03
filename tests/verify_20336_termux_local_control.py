@@ -122,6 +122,8 @@ for forbidden in [
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
 
 for token in [
+    ': "${PREFIX:=/data/data/com.termux/files/usr}"',
+    'export PREFIX',
     'self_ip()',
     'host="${ep%%:*}"',
     '[ "$host" = "127.0.0.1" ]',

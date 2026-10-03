@@ -15,9 +15,7 @@ class BootReceiver : BroadcastReceiver() {
         if (action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             HakimSelfImprovementLoop.onPackageReplaced(context)
         }
-        HakimValueContinuityEngine.resumePending(context)
-        HakimGoalSupervisor.resume(context)
-        HakimGoalExecutor.tick(context)
+        HakimAutonomousContinuation.pulse(context, "boot_or_replace")
         HakimSelfCheck.schedule(context)
         HakimFaultContainment.guard(context, "boot", "auto_update_schedule") {
             AutoUpdater.schedule(context)

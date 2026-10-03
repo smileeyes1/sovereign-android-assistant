@@ -99,6 +99,9 @@ object HakimSelfCheck {
         check("نواة القدرات فعالة", capability.optBoolean("capability_kernel"))
         check("القدرات المجهولة مرفوضة", capability.optBoolean("unknown_capability_denied"))
         check("النواة تفشل مغلقة", capability.optBoolean("fail_closed"))
+        check("القدرة لا تساوي التوفر", capability.optBoolean("capability_is_not_availability"))
+        check("التوفر لا يساوي التفويض", capability.optBoolean("availability_is_not_authorization"))
+        check("مصفوفة القدرات الحية موجودة", capability.optJSONArray("runtime_matrix")?.length() ?: 0 > 0)
 
         val continuity = HakimValueContinuityEngine.status(context)
         check("التحكم بالقيمة مغلق الحلقة", continuity.optBoolean("closed_loop_value_control"))

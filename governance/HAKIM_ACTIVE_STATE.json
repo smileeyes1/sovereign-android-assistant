@@ -28,14 +28,14 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20335,
-      "branch": "feature/hakim-20335-cognitive-routing-r26",
+      "version_code": 20336,
+      "branch": "feature/hakim-20336-termux-local-control-r27",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "professional_cognitive_routing_r26_over_signed_20334_without_inheriting_field_success",
+      "purpose": "professional_cognitive_routing_plus_governed_local_termux_control_r27_without_inheriting_field_success",
       "signed_d1_verified": false
     },
     "field_observed_current": {
@@ -71,7 +71,7 @@
   },
   "local_execution": {
     "phone_channel": "ONLINE_DIRECT_HTTPS_VERIFIED",
-    "termux_channel": "NOT_PROVEN_CURRENTLY",
+    "termux_channel": "SOURCE_INTEGRATED_FIELD_PENDING",
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
     "execution_fabric_field_online": true,
@@ -95,7 +95,11 @@
         "controlled_doze_kill_reboot_suite_verified": false
       },
       "note": "Hakim 20313 is field-observed on the exact D1-signed APK SHA-256 and reconnects over the direct HTTPS Secure Relay. Controlled Doze/kill/reboot continuity and ChatGPT-control field acceptance remain separate gates."
-    }
+    },
+    "termux_external_remote_quota_required": false,
+    "termux_paid_provider_required": false,
+    "termux_arbitrary_shell_exposed": false,
+    "termux_fixed_profiles_only": true
   },
   "material_factory": {
     "version": "MATERIAL-FACTORY-2026-09-23-v2",
@@ -128,7 +132,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20335_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20336_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -169,7 +173,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20335,
+    "candidate_version": 20336,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -186,7 +190,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20335",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20336",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -312,11 +316,22 @@
     "vpn_dns_fail_open_r21_field_verified": false,
     "internal_diagnostic_blocks_hidden": true,
     "professional_cognitive_routing_source_integrated": true,
-    "professional_cognitive_routing_source_ci_verified": false,
+    "professional_cognitive_routing_source_ci_verified": true,
     "professional_cognitive_routing_field_verified": false,
     "adaptive_cognitive_depth": true,
     "evidence_driven_engine_routing": true,
-    "live_capability_authority_matrix": true
+    "live_capability_authority_matrix": true,
+    "termux_local_control_source_integrated": true,
+    "termux_local_control_source_ci_verified": false,
+    "termux_local_control_field_verified": false,
+    "termux_external_remote_quota_required": false,
+    "termux_paid_provider_required": false,
+    "termux_arbitrary_shell_exposed": false,
+    "termux_fixed_profiles_only": true,
+    "termux_run_command_permission_field_verified": false,
+    "termux_allow_external_apps_field_verified": false,
+    "termux_boot_reconnect_field_verified": false,
+    "termux_local_control_primary_when_live": true
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

@@ -121,9 +121,6 @@ require(promotion["candidate_version"]==20336,"promotion_candidate")
 require(promotion["termux_local_control_source_integrated"] is True,"promotion_source")
 require(promotion["termux_local_control_field_verified"] is False,"promotion_field_pending")
 
-print("TERMUX_LOCAL_CONTROL_20336=PASS")
-
-
 relay=(root/"app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 for token in [
     '"termux_status"',
@@ -135,3 +132,5 @@ for token in [
     'HakimTermuxControl.recover(context, "secure_relay_recover")',
 ]:
     require(token in relay,"relay:"+token)
+
+print("TERMUX_LOCAL_CONTROL_20336=PASS")

@@ -11,6 +11,7 @@ fabric=(root/"app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt").re
 selfcheck=(root/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
 command_center=(root/"app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 bootstrap=(root/"scripts/hakim-termux-local-control-bootstrap.sh").read_text(encoding="utf-8")
+adb_bootstrap=(root/"scripts/termux-hakim-adb-bootstrap.sh").read_text(encoding="utf-8")
 active=json.loads((root/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
 promotion=json.loads((root/"governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
 
@@ -119,6 +120,19 @@ for forbidden in [
     'ports=range(30000,50001)',
 ]:
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
+
+for token in [
+    'bounded_self_recover()',
+    'timeout 8 "$HOME/.hakim/adb-self.sh"',
+    'done < <(mdns_eps)',
+]:
+    require(token in adb_bootstrap,"adb_bootstrap:"+token)
+for forbidden in [
+    'scan_host()',
+    'ports=range(30000,50001)',
+    'ThreadPoolExecutor(max_workers=320)',
+]:
+    require(forbidden not in adb_bootstrap,"adb_wide_scan:"+forbidden)
 
 require(active["android"]["candidate"]["version_code"]==20336,"active_candidate")
 require(active["productization"]["candidate_version"]==20336,"product_candidate")

@@ -52,8 +52,8 @@ for token in [
     '.put("permission_user_gate", true)',
     '.put("permission_request_supported", true)',
     'REQUEST_CODE_RUN_COMMAND = 20336',
-    'requestRunCommandPermission(activity: Activity',
-    'activity.requestPermissions(arrayOf(PERMISSION_RUN_COMMAND), REQUEST_CODE_RUN_COMMAND)',
+    'prepareRunCommandPermission(context: Context',
+    'permission_requested',
     'recordPermissionResult(context: Context, granted: Boolean)',
     'class HakimTermuxResultReceiver',
     'getBundleExtra("result")',
@@ -146,8 +146,9 @@ require(promotion["termux_local_control_field_verified"] is False,"promotion_fie
 
 for token in [
     'maybeEnsureTermuxControlPermission()',
-    'HakimTermuxControl.requestRunCommandPermission(this, "command_center_resume")',
-    'override fun onRequestPermissionsResult(',
+    'HakimTermuxControl.prepareRunCommandPermission(this, "command_center_resume")',
+    'ActivityResultContracts.RequestPermission()',
+    'termuxPermissionLauncher.launch("com.termux.permission.RUN_COMMAND")',
     'HakimTermuxControl.recordPermissionResult(this, granted)',
 ]:
     require(token in command_center,"command_center:"+token)

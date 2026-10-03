@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20333 install-forward R23 candidate
+# 20334 autonomous continuation + field acceptance R25 candidate
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -97,7 +97,7 @@ jobs:
           python3 tests/verify_20312_professional_observability.py
           python3 tests/verify_20313_chatgpt_control.py
           python3 tests/verify_20315_autonomy.py
-          python3 tests/verify_20333_field_acceptance_autostart.py
+          python3 tests/verify_20334_field_acceptance_autostart.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -164,7 +164,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20333"
+          test "$VERSION_CODE" = "20334"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

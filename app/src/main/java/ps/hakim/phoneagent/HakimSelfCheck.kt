@@ -134,6 +134,12 @@ object HakimSelfCheck {
         check("منفذ المقصد موجود", executor.optBoolean("executor"))
         check("نبض المنفذ قابل للرصد", executor.has("heartbeat_at"))
 
+        val cognitive = HakimCognitivePolicy.status(context)
+        check("سياسة الإدراك الاحترافية مفعّلة", cognitive.optBoolean("professional_cognitive_policy"))
+        check("التوجيه المعرفي قائم على الدليل", cognitive.optBoolean("evidence_driven_routing"))
+        check("عمق التفكير متكيف مع المهمة", cognitive.optBoolean("adaptive_depth"))
+        check("لا ترتيب ثابت لجودة المزودين", !cognitive.optBoolean("provider_quality_static_ranking"))
+
         val materialFactory = HakimMaterialFactory.status(context)
         check("مصنع حكيم للمادة فعّال", materialFactory.optBoolean("material_factory"))
         check("التصميم الرقمي لا يُعد منتجًا ماديًا", materialFactory.optBoolean("digital_design_is_not_physical_product"))
@@ -235,6 +241,7 @@ object HakimSelfCheck {
             .put("autonomous_continuation", autonomous)
             .put("autonomous_goal_runner", runner)
             .put("goal_executor", executor)
+            .put("cognitive_policy", cognitive)
             .put("material_factory", materialFactory)
             .put("human_biology", humanBiology)
             .put("execution_fabric", executionFabric)

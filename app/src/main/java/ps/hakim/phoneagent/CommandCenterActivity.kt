@@ -45,6 +45,7 @@ class CommandCenterActivity : ComponentActivity() {
     private var operationsExpanded = false
     private var pendingResumeTaskId: String? = null
     private var lastAutonomousResumeAt = 0L
+    private var termuxPermissionPromptAttempted = false
     @Volatile private var currentDirectEngine: HakimInferenceEngine? = null
     private var streamingBase = ""
     private val streamingBuffer = StringBuilder()
@@ -60,6 +61,13 @@ class CommandCenterActivity : ComponentActivity() {
             maybeEnsureDeviceProtection()
             browserHandler.postDelayed(this, 15_000L)
         }
+    }
+
+    private val termuxPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        HakimTermuxControl.recordPermissionResult(this, granted)
+        refreshOperations()
     }
 
     private val mediaPickerLauncher = registerForActivityResult(
@@ -116,8 +124,21 @@ class CommandCenterActivity : ComponentActivity() {
         HakimAutonomousContinuation.pulse(this, "command_center_resume")
         HakimAutonomousGoalRunner.finalizeIfVisible(this)
         browserHandler.postDelayed({ maybeResumeAutonomousTask() }, 500L)
+        maybeEnsureTermuxControlPermission()
         maybeOpenLocalRouterAuth()
         maybeEnsureDeviceProtection()
+    }
+
+    private fun maybeEnsureTermuxControlPermission() {
+        if (termuxPermissionPromptAttempted) return
+        val termux = HakimTermuxControl.status(this)
+        if (!termux.optBoolean("termux_installed", false) ||
+            termux.optBoolean("run_command_permission", false)
+        ) return
+        val request = HakimTermuxControl.prepareRunCommandPermission(this, "command_center_resume")
+        if (!request.optBoolean("permission_requested", false)) return
+        termuxPermissionPromptAttempted = true
+        termuxPermissionLauncher.launch("com.termux.permission.RUN_COMMAND")
     }
 
     private fun maybeResumeAutonomousTask() {

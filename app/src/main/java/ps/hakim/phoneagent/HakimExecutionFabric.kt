@@ -13,7 +13,7 @@ import org.json.JSONObject
  * فشل مسار واحد لا يغلق المقصد ما دام مسار آخر حيًا أو يمكن إنعاشه.
  */
 object HakimExecutionFabric {
-    const val VERSION = "EXECUTION-FABRIC-2026-09-24-v1"
+    const val VERSION = "EXECUTION-FABRIC-2026-10-03-v2"
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
@@ -35,7 +35,11 @@ object HakimExecutionFabric {
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
         val secureConfigured = HakimUnifiedRelay.isConfigured(app)
         val adbPaired = prefs.getBoolean("local_adb_paired", false)
+        val termuxReady = HakimTermuxControl.ready(app)
 
+        if (termuxReady) {
+            HakimTermuxControl.recover(app, "fabric_" + reason.take(48))
+        }
         if (secureConfigured) {
             HakimUnifiedRelay.start(app)
         }
@@ -58,7 +62,7 @@ object HakimExecutionFabric {
             }
         }
 
-        val configuredCount = listOf(legacyConfigured, secureConfigured, adbPaired).count { it }
+        val configuredCount = listOf(termuxReady, legacyConfigured, secureConfigured, adbPaired).count { it }
         prefs.edit()
             .putString("execution_fabric_version", VERSION)
             .putString("execution_fabric_state", if (configuredCount == 0) "UNCONFIGURED" else "RECOVERING")
@@ -79,17 +83,22 @@ object HakimExecutionFabric {
             prefs.getString("result_topic", "").orEmpty().isNotBlank()
         val secureConfigured = HakimUnifiedRelay.isConfigured(app)
         val adbPaired = prefs.getBoolean("local_adb_paired", false)
+        val termux = HakimTermuxControl.status(app)
+        val termuxReady = termux.optBoolean("ready")
+        val termuxOnline = termux.optBoolean("online")
 
         val legacyOnline = legacyConfigured && HakimService.connected
         val secureOnline = secureConfigured && HakimUnifiedRelay.isConnected()
         val adbOnline = adbPaired && prefs.getBoolean("local_adb_connected", false)
 
         val onlinePaths = JSONArray()
+        if (termuxOnline) onlinePaths.put("termux_local")
         if (secureOnline) onlinePaths.put("secure_relay")
         if (legacyOnline) onlinePaths.put("legacy_websocket")
         if (adbOnline) onlinePaths.put("local_adb")
 
         val configuredPaths = JSONArray()
+        if (termuxReady) configuredPaths.put("termux_local")
         if (secureConfigured) configuredPaths.put("secure_relay")
         if (legacyConfigured) configuredPaths.put("legacy_websocket")
         if (adbPaired) configuredPaths.put("local_adb")
@@ -122,6 +131,10 @@ object HakimExecutionFabric {
             .put("legacy_connected", legacyOnline)
             .put("local_adb_paired", adbPaired)
             .put("local_adb_connected", adbOnline)
+            .put("termux_control", termux)
+            .put("termux_local_ready", termuxReady)
+            .put("termux_local_online", termuxOnline)
+            .put("local_free_execution_preferred", true)
             .put("last_recover_at", prefs.getLong("execution_fabric_recover_at", 0L))
             .put("last_reason", prefs.getString("execution_fabric_reason", ""))
             .put("service_start", prefs.getString("execution_fabric_service_start", ""))

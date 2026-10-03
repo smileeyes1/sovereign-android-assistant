@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20334 autonomous continuation + field acceptance R25 candidate
+# 20336 professional cognitive routing + governed local Termux control R27 candidate
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -99,6 +99,7 @@ jobs:
           python3 tests/verify_20315_autonomy.py
           python3 tests/verify_20334_field_acceptance_autostart.py
           python3 tests/verify_professional_cognitive_routing_20335.py
+          python3 tests/verify_20336_termux_local_control.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -152,6 +153,7 @@ jobs:
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh
           bash -n scripts/hakim-termux-resilience.sh
+          bash -n scripts/hakim-termux-local-control-bootstrap.sh
       - name: إعداد جافا
         uses: actions/setup-java@v4
         with:
@@ -165,7 +167,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20335"
+          test "$VERSION_CODE" = "20336"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

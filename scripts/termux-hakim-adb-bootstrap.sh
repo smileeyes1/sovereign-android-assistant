@@ -1,4 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 set -u
 
 STATE_DIR="$HOME/.omega/adb"
@@ -15,8 +17,36 @@ ensure_deps() {
 
 start_adb() { adb start-server >/dev/null 2>&1; }
 
+self_ip() {
+  python3 - <<'PY' 2>/dev/null
+import socket
+for target in [("192.168.1.1",80),("8.8.8.8",53)]:
+    s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    try:
+        s.connect(target)
+        ip=s.getsockname()[0]
+        if ip and ip!="0.0.0.0":
+            print(ip)
+            break
+    except Exception:
+        pass
+    finally:
+        s.close()
+PY
+}
+
 connected_ep() {
-  adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1; exit}'
+  local sip ep state rest host
+  sip="$(self_ip)"
+  while read -r ep state rest; do
+    [ "$state" = "device" ] || continue
+    host="${ep%%:*}"
+    if [ "$host" = "127.0.0.1" ] || { [ -n "$sip" ] && [ "$host" = "$sip" ]; }; then
+      printf '%s\n' "$ep"
+      return 0
+    fi
+  done < <(adb devices 2>/dev/null | tail -n +2)
+  return 1
 }
 
 save_ep() {
@@ -28,11 +58,15 @@ save_ep() {
 }
 
 try_ep() {
-  local ep="${1:-}"
+  local ep="${1:-}" sip host now
   [ -n "$ep" ] || return 1
-  adb connect "$ep" >/dev/null 2>&1 || true
+  sip="$(self_ip)"
+  host="${ep%%:*}"
+  if [ "$host" != "127.0.0.1" ] && { [ -z "$sip" ] || [ "$host" != "$sip" ]; }; then
+    return 1
+  fi
+  timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
   sleep 0.35
-  local now
   now="$(connected_ep)"
   if [ -n "$now" ]; then save_ep "$now"; return 0; fi
   return 1
@@ -42,56 +76,12 @@ mdns_eps() {
   adb mdns services 2>/dev/null | awk '/_adb-tls-connect\._tcp/ {print $NF}' | sort -u
 }
 
-candidate_ips() {
-  {
-    ip -4 addr show wlan0 2>/dev/null | awk '/inet /{sub(/\/.*/,"",$2);print $2}'
-    ifconfig wlan0 2>/dev/null | awk '/inet /{for(i=1;i<=NF;i++) if($i=="inet") print $(i+1)}'
-    getprop dhcp.wlan0.ipaddress 2>/dev/null
-    getprop dhcp.wifi.ipaddress 2>/dev/null
-  } | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/' | sort -u
-}
-
-listener_eps() {
-  if command -v ss >/dev/null 2>&1; then
-    ss -lnt 2>/dev/null | awk '
-      NR>1 {
-        a=$4; sub(/^.*:/,"",a);
-        if (a ~ /^[0-9]+$/ && a>=30000 && a<=50000) print "127.0.0.1:" a
-      }' | sort -u
+bounded_self_recover() {
+  if [ -x "$HOME/.hakim/adb-self.sh" ]; then
+    timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
+    [ -n "$(connected_ep)" ] && return 0
   fi
-}
-
-scan_host() {
-  local host="$1"
-  python - "$host" <<'PY'
-import socket,sys,concurrent.futures
-host=sys.argv[1]
-ports=range(30000,50001)
-def chk(p):
-    try:
-        s=socket.socket(); s.settimeout(0.018)
-        ok=(s.connect_ex((host,p))==0); s.close()
-        return p if ok else None
-    except Exception:
-        return None
-with concurrent.futures.ThreadPoolExecutor(max_workers=320) as ex:
-    for p in ex.map(chk,ports,chunksize=64):
-        if p: print(f"{host}:{p}")
-PY
-}
-
-seed_hosts() {
-  local x host
-  for x in "$@"; do
-    host="${x%%:*}"
-    printf '%s\n' "$host"
-  done
-  if [ -f "$STATE_FILE" ]; then
-    x="$(head -1 "$STATE_FILE" | tr -d '\r\n')"
-    [ -n "$x" ] && printf '%s\n' "${x%%:*}"
-  fi
-  candidate_ips
-  printf '%s\n' 127.0.0.1
+  return 1
 }
 
 connect_best() {
@@ -110,23 +100,12 @@ connect_best() {
     [[ "$ep" == *:* ]] && try_ep "$ep" && return 0
   done
 
+  bounded_self_recover && { save_ep "$(connected_ep)"; return 0; }
+
   while IFS= read -r ep; do
     [ -n "$ep" ] || continue
     try_ep "$ep" && return 0
   done < <(mdns_eps)
-
-  while IFS= read -r ep; do
-    [ -n "$ep" ] || continue
-    try_ep "$ep" && return 0
-  done < <(listener_eps)
-
-  while IFS= read -r host; do
-    [ -n "$host" ] || continue
-    while IFS= read -r ep; do
-      [ -n "$ep" ] || continue
-      try_ep "$ep" && return 0
-    done < <(scan_host "$host" 2>/dev/null)
-  done < <(seed_hosts "$@" | sort -u)
 
   return 1
 }

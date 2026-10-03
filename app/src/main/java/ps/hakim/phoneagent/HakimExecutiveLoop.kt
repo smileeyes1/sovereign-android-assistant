@@ -123,10 +123,16 @@ object HakimExecutiveLoop {
         val now = System.currentTimeMillis()
         val startedAt = p.getLong("started_at", now)
         if (now - startedAt > MAX_EXECUTION_WINDOW_MS) {
+            HakimGoalSupervisor.recover(
+                context,
+                HakimGoalSupervisor.Recovery.REROUTE,
+                "execution_window_exhausted",
+                "next_autonomous_wakeup"
+            )
             record(
                 context,
                 Phase.GATED,
-                "انتهت ميزانية التنفيذ الزمنية الحالية؛ تُحفظ الحالة ويحتاج الاستئناف إلى مسار/نافذة تنفيذ جديدة، لا إلى تكرار أعمى."
+                "انتهت نافذة التنفيذ الحالية؛ حُفظ الهدف وأُعيد توجيهه تلقائيًا لنافذة التنفيذ التالية بدل إغلاقه."
             )
             return false
         }

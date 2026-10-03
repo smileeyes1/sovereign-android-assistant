@@ -81,11 +81,13 @@ object HakimConnectionResilience {
                 override fun onAvailable(network: Network) {
                     prefs(context).edit().putLong("last_network_available_at", System.currentTimeMillis()).apply()
                     recover(context, "network_available")
+                    HakimAutonomousContinuation.pulse(context, "network_available")
                 }
 
                 override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                     if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
                         recover(context, "network_capabilities")
+                        HakimAutonomousContinuation.pulse(context, "network_capabilities")
                     }
                 }
 

@@ -26,6 +26,7 @@ class HakimResilienceAlarmReceiver : BroadcastReceiver() {
         // ابدأ القناة المباشرة أولًا؛ لا تعتمد على نجاح بدء ForegroundService.
         HakimUnifiedRelay.ensureAlive(app, "alarm_receiver_$reason")
         HakimConnectionResilience.recover(app, "alarm_receiver_$reason")
+        HakimAutonomousContinuation.pulse(app, "alarm_receiver_$reason")
         schedule(app)
     }
 

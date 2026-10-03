@@ -52,6 +52,9 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
             HakimSelfImprovementLoop.install(this)
         }
+        HakimFaultContainment.guard(this, "app_start", "autonomous_continuation") {
+            HakimAutonomousContinuation.pulse(this, "app_start")
+        }
         startHakimIfPaired(prefs)
     }
 

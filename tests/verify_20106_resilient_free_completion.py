@@ -7,6 +7,7 @@ POLICY = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimResiliencePolicy.kt
 OPENROUTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/OpenRouterFreeEngine.kt").read_text(encoding="utf-8")
 GEMINI = (ROOT / "app/src/main/java/ps/hakim/phoneagent/GeminiDirectEngine.kt").read_text(encoding="utf-8")
 MATRIX = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimWisdomMatrix.kt").read_text(encoding="utf-8")
+COGNITIVE = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimCognitivePolicy.kt").read_text(encoding="utf-8")
 CENTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 
 def req(cond: bool, reason: str):
@@ -36,7 +37,11 @@ for engine_name, src in [("openrouter", OPENROUTER), ("gemini", GEMINI)]:
     req("NO_VISIBLE_PROGRESS_MS" in src, engine_name + ":no_progress_watchdog")
     req("سيحوّل حكيم تلقائيًا إلى محرك مجاني آخر" in src, engine_name + ":fallback_message")
 
-req("HakimResiliencePolicy.isAvailable(context, it.id)" in MATRIX, "cooldown_not_in_matrix")
+req(
+    "HakimCognitivePolicy.rank" in MATRIX
+    and "HakimResiliencePolicy.isAvailable(context, it.id)" in COGNITIVE,
+    "cooldown_not_in_cognitive_route"
+)
 req("HakimResiliencePolicy.recordSuccess(this, engine.id)" in CENTER, "success_health_not_recorded")
 req("HakimResiliencePolicy.recordFailure(this, engine.id" in CENTER, "failure_health_not_recorded")
 req(

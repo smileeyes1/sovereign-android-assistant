@@ -721,6 +721,7 @@ object HakimUnifiedRelay {
             .put("device_protection", HakimDeviceProtection.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("capability_kernel", HakimCapabilityKernel.status(context))
             .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("cognitive_policy", HakimCognitivePolicy.status(context))

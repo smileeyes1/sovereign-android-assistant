@@ -160,6 +160,29 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: تجهيز أدوات تحقق Android الرسمية مؤقتًا
+        run: |
+          set -euo pipefail
+          VERSION="$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          SRC="$ANDROID_HOME/build-tools/$VERSION"
+          test -x "$SRC/apksigner"
+          test -x "$SRC/zipalign"
+          test -x "$SRC/aapt"
+          test -f "$SRC/lib/apksigner.jar"
+          mkdir -p /tmp/android-signing-tools/lib
+          cp "$SRC/apksigner" /tmp/android-signing-tools/
+          cp "$SRC/zipalign" /tmp/android-signing-tools/
+          cp "$SRC/aapt" /tmp/android-signing-tools/
+          cp "$SRC/lib/apksigner.jar" /tmp/android-signing-tools/lib/
+          printf '%s\n' "$VERSION" > /tmp/android-signing-tools/BUILD_TOOLS_VERSION
+          sha256sum /tmp/android-signing-tools/apksigner /tmp/android-signing-tools/zipalign /tmp/android-signing-tools/aapt /tmp/android-signing-tools/lib/apksigner.jar > /tmp/android-signing-tools/SHA256SUMS
+      - name: حفظ أدوات تحقق Android الرسمية مؤقتًا
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signing-verify-tools-20334
+          path: /tmp/android-signing-tools
+          retention-days: 1
+          if-no-files-found: error
       - name: تحديد إصدار المرشح
         id: candidate_version
         run: |

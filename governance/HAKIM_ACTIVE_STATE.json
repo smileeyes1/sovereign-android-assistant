@@ -20,12 +20,12 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20317,
-      "commit": "9dceea5dae37a39a8ef914af19570d317e7ad541",
-      "ci_run_number": 1349,
+      "version_code": 20334,
+      "commit": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
+      "ci_run_number": 1521,
       "source_ci_verified": true,
       "field_verified": true,
-      "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
+      "exact_apk_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b"
     },
     "candidate": {
       "version_code": 20334,
@@ -59,7 +59,7 @@
       "source_ci_run_id": 37113673116,
       "source_ci_artifact_id": 11270247244,
       "source_unsigned_sha256": "8d22639739247c0f5c3feff7aa4e1ab32e6ef3ee9a828e3c5b69fb0eabf298a6",
-      "promoted_as_source_baseline": false,
+      "promoted_as_source_baseline": true,
       "full_field_acceptance_matrix": false
     },
     "latest_runtime_observation_unpromoted": {
@@ -79,8 +79,8 @@
     }
   },
   "local_execution": {
-    "phone_channel": "ONLINE_FIELD_RUNTIME_VERIFIED_20334",
-    "termux_channel": "ONLINE_REMOTE_DESKTOP_VERIFIED_2026_10_03",
+    "phone_channel": "ONLINE_DIRECT_HTTPS_VERIFIED",
+    "termux_channel": "NOT_PROVEN_CURRENTLY",
     "do_not_claim_device_control_without_live_evidence": true,
     "execution_fabric_source_integrated": true,
     "execution_fabric_field_online": true,

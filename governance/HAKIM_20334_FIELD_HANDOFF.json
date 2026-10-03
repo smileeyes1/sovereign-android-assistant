@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "candidate_version_code": 20334,
   "package": "ps.hakim.stable",
   "source_branch": "release/hakim-20334-autonomy-field-acceptance-r25",
@@ -29,24 +29,63 @@
     "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
     "private_material_in_ci": false,
     "private_material_must_not_be_committed": true,
-    "exact_signing_script": "scripts/hakim-sign-exact-20334-ci1521.sh",
-    "signed_sha256": null,
-    "verified": false
+    "repository_handoff_script": "scripts/hakim-sign-exact-20334-ci1521.sh",
+    "actual_signing_environment": "private_workspace",
+    "signature_scheme": "APK Signature Scheme v2",
+    "signature_algorithm_id": "0x0104",
+    "signature_algorithm": "RSA PKCS#1 v1.5 with SHA-512",
+    "signed_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b",
+    "signed_size_bytes": 14234978,
+    "verified": true
+  },
+  "signing_reproduction_control": {
+    "control_version_code": 20306,
+    "control_unsigned_sha256": "8e1f91ba1df0f89aa70c677f08d1ec49d72d8a88bbd80932befb6e311e1c7395",
+    "expected_signed_sha256": "0590df14e754005638702e5dc6001b6ef337fe17c6b536e58470a25d3f6d89a1",
+    "reproduced_signed_sha256": "0590df14e754005638702e5dc6001b6ef337fe17c6b536e58470a25d3f6d89a1",
+    "byte_for_byte_match": true
+  },
+  "independent_verification": {
+    "rsa_signature_verified": true,
+    "content_digest_verified": true,
+    "public_key_matches_certificate": true,
+    "negative_signature_mutation_rejected": true,
+    "payload_prefix_matches_ci_unsigned": true,
+    "central_directory_matches_ci_unsigned": true,
+    "eocd_matches_except_central_directory_offset": true,
+    "zip_entry_names_match": true,
+    "zip_metadata_match": true,
+    "all_uncompressed_entry_contents_match": true,
+    "android_manifest_byte_identical": true,
+    "native_libraries_count": 8,
+    "native_libraries_16kb_aligned": true,
+    "resources_arsc_stored_and_4byte_aligned": true,
+    "verification_record_sha256": "c6c49ef353b6b1212106d5814cf6e51a4a3f151f3e72e9e88bf54ec6948ce0b8"
+  },
+  "private_library_delivery": {
+    "apk_path": "/مصنع/Hakim-20334-D1.apk",
+    "verification_path": "/مصنع/Hakim-20334-D1.verification.json",
+    "saved": true
   },
   "field_install": {
     "verified_baseline_floor": 20317,
+    "observed_unpromoted_runtime_version": 20333,
     "install_script": "scripts/hakim-install-exact-20334-via-adb.sh",
     "same_signed_artifact_verified": false,
-    "field_installed": false
+    "field_installed": false,
+    "no_uninstall": true,
+    "no_clear_data": true,
+    "forward_only": true
   },
-  "state": "SOURCE_CI_VERIFIED_AWAITING_D1_SIGNING",
-  "next_gate": "SIGN_EXACT_FROZEN_UNSIGNED_APK_WITH_AUTHORIZED_D1_CHANNEL_THEN_VERIFY_AND_FIELD_INSTALL_SAME_SIGNED_ARTIFACT",
+  "state": "D1_SIGNED_AND_INDEPENDENTLY_VERIFIED_AWAITING_FIELD_INSTALL",
+  "next_gate": "DELIVER_EXACT_SIGNED_APK_TO_AUTHORIZED_PHONE_THEN_IN_PLACE_INSTALL_AND_VERIFY_EXACT_INSTALLED_SHA_AND_LIVE_ACCEPTANCE",
   "forbidden_shortcuts": [
     "sign_a_rebuilt_apk_instead_of_the_frozen_ci_artifact",
     "use_debug_apk_as_field_update",
     "use_non_d1_signer",
     "uninstall_existing_app",
     "clear_app_data",
+    "downgrade_installed_app",
     "claim_field_approval_without_same_artifact_evidence"
   ]
 }

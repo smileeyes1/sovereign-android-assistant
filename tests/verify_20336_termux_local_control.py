@@ -9,6 +9,7 @@ manifest=(root/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 termux=(root/"app/src/main/java/ps/hakim/phoneagent/HakimTermuxControl.kt").read_text(encoding="utf-8")
 fabric=(root/"app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt").read_text(encoding="utf-8")
 selfcheck=(root/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
+command_center=(root/"app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 bootstrap=(root/"scripts/hakim-termux-local-control-bootstrap.sh").read_text(encoding="utf-8")
 active=json.loads((root/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
 promotion=json.loads((root/"governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
@@ -47,6 +48,12 @@ for token in [
     '.put("high_impact_requires_separate_gate", true)',
     '.put("unlimited_claim", false)',
     '.put("resource_limits_apply", true)',
+    '.put("permission_user_gate", true)',
+    '.put("permission_request_supported", true)',
+    'REQUEST_CODE_RUN_COMMAND = 20336',
+    'requestRunCommandPermission(activity: Activity',
+    'activity.requestPermissions(arrayOf(PERMISSION_RUN_COMMAND), REQUEST_CODE_RUN_COMMAND)',
+    'recordPermissionResult(context: Context, granted: Boolean)',
     'class HakimTermuxResultReceiver',
     'getBundleExtra("result")',
     'PendingIntent.getBroadcast(app, id, callback, flags)',
@@ -77,6 +84,8 @@ for token in [
 
 for token in [
     'val termux = HakimTermuxControl.status(context)',
+    '"بوابة إذن RUN_COMMAND للمستخدم محفوظة"',
+    '"طلب الإذن من داخل حكيم مدعوم"',
     '"Termux لا يكشف shell حرًا"',
     '"Termux لا يحتاج حصة تحكم بعيدة"',
     '"Termux لا يحتاج مزودًا مدفوعًا"',
@@ -120,6 +129,14 @@ require(active["productization"]["termux_arbitrary_shell_exposed"] is False,"she
 require(promotion["candidate_version"]==20336,"promotion_candidate")
 require(promotion["termux_local_control_source_integrated"] is True,"promotion_source")
 require(promotion["termux_local_control_field_verified"] is False,"promotion_field_pending")
+
+for token in [
+    'maybeEnsureTermuxControlPermission()',
+    'HakimTermuxControl.requestRunCommandPermission(this, "command_center_resume")',
+    'override fun onRequestPermissionsResult(',
+    'HakimTermuxControl.recordPermissionResult(this, granted)',
+]:
+    require(token in command_center,"command_center:"+token)
 
 relay=(root/"app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 for token in [

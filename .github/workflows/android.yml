@@ -98,6 +98,7 @@ jobs:
           python3 tests/verify_20313_chatgpt_control.py
           python3 tests/verify_20315_autonomy.py
           python3 tests/verify_20334_field_acceptance_autostart.py
+          python3 tests/verify_20334_field_evidence_state.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py

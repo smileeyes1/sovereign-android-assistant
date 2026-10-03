@@ -87,7 +87,7 @@ object HakimTaskManager {
             .put("updated_at", now)
             .put("attempts", current.optInt("attempts", 0).coerceAtLeast(0) + 1)
             .put("resumable", true)
-            .put("auto_resume", false)
+            .put("auto_resume", true)
             .put("last_detail", "فهم المقصد وتثبيت معيار الاكتمال")
             .put("last_evidence", current.optString("last_evidence"))
             .put("blocker", "")
@@ -116,7 +116,7 @@ object HakimTaskManager {
                     .put("created_at", System.currentTimeMillis())
                     .put("attempts", s.cycle.coerceAtLeast(1))
                     .put("resumable", true)
-                    .put("auto_resume", false)
+                    .put("auto_resume", true)
             }
 
         val state = when (phase) {
@@ -182,6 +182,21 @@ object HakimTaskManager {
         p.edit().remove(KEY_RESUME_REQUEST).apply()
         return get(context, id)
     }
+
+    fun pendingResumeRequest(context: Context): Task? {
+        val id = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_RESUME_REQUEST, "").orEmpty()
+        if (id.isBlank()) return null
+        return get(context, id)
+    }
+
+    fun nextAutoResume(context: Context): Task? =
+        all(context).firstOrNull { task ->
+            task.kind == "user_goal" &&
+                task.autoResume &&
+                task.resumable &&
+                task.state in setOf(State.RUNNING, State.VERIFYING, State.QUEUED, State.PAUSED)
+        }
 
     @Synchronized
     fun cancel(context: Context, id: String): Boolean {

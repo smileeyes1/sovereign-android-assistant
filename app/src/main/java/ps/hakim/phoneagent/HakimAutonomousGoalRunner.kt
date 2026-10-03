@@ -20,6 +20,7 @@ object HakimAutonomousGoalRunner {
         val app = context.applicationContext
         if (running) return false
         if (task.kind != "user_goal" || !task.autoResume || !task.resumable || task.goal.isBlank()) return false
+        if (prefs(app).getString("pending_visible_task_id", "").orEmpty().isNotBlank()) return false
         if (HakimAttachmentSessionStore.restore(app).isNotEmpty()) return false
 
         val intent = HakimIntentEngine.resolve(app, task.goal)

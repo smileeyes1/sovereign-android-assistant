@@ -43,6 +43,9 @@ object HakimTermuxControl {
         "adb_status",
         "adb_connect",
         "adb_selftest",
+        "hakim_status",
+        "hakim_restart",
+        "local_rescue",
         "resilience_status",
     )
 
@@ -261,8 +264,11 @@ object HakimTermuxControl {
             .put("fixed_profiles_only", true)
             .put("arbitrary_shell_exposed", false)
             .put("external_remote_quota_required", false)
+            .put("no_external_usage_quota", true)
             .put("paid_provider_required", false)
             .put("local_transport", true)
+            .put("local_first_control", true)
+            .put("works_without_cloud_after_bootstrap", true)
             .put("high_impact_requires_separate_gate", true)
             .put("unlimited_claim", false)
             .put("resource_limits_apply", true)

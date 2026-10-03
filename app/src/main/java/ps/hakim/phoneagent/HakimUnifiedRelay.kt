@@ -52,8 +52,9 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back", "chatgpt_action")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate", "termux_status")
+    private val SAFE_AUTOMATIC_OPS = setOf("termux_probe", "termux_recover")
+    private val ALLOWED_OPS = READ_ONLY_OPS + SAFE_AUTOMATIC_OPS + setOf("action", "launch", "browser_back", "chatgpt_action")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
     @Volatile private var loopGeneration = 0L
@@ -450,7 +451,7 @@ object HakimUnifiedRelay {
             return requestId
         }
 
-        if (READ_ONLY_OPS.contains(op)) {
+        if (READ_ONLY_OPS.contains(op) || SAFE_AUTOMATIC_OPS.contains(op)) {
             val result = executeEnvelope(context, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result, preferredBridgeBase)
         } else {
@@ -642,6 +643,9 @@ object HakimUnifiedRelay {
             "chatgpt_read" -> HakimService.chatGptRead(payload)
             "chatgpt_navigate" -> HakimService.chatGptNavigate(payload)
             "chatgpt_action" -> HakimService.chatGptAction(payload)
+            "termux_status" -> HakimTermuxControl.status(context).put("ok", true)
+            "termux_probe" -> HakimTermuxControl.probe(context, "secure_relay_probe")
+            "termux_recover" -> HakimTermuxControl.recover(context, "secure_relay_recover")
             "ui" -> {
                 val service = HakimAccessibilityService.instance
                 if (service == null) JSONObject().put("ok", false).put("error", "accessibility_unavailable")
@@ -725,6 +729,7 @@ object HakimUnifiedRelay {
             .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("cognitive_policy", HakimCognitivePolicy.status(context))
+            .put("termux_control", HakimTermuxControl.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
     }

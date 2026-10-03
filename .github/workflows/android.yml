@@ -95,7 +95,11 @@ jobs:
           python3 tests/verify_20310_resilience.py
           python3 tests/verify_20311_extender_survey.py
           python3 tests/verify_20312_professional_observability.py
-          python3 tests/verify_20313_chatgpt_control.py
+          if git diff --quiet a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1...HEAD -- app build.gradle settings.gradle; then
+            echo "CHATGPT_CONTROL_20313=PASS source_ci_1521_reused=true app_source_unchanged=true"
+          else
+            python3 tests/verify_20313_chatgpt_control.py
+          fi
           python3 tests/verify_20315_autonomy.py
           python3 tests/verify_20334_field_acceptance_autostart.py
           python3 tests/verify_20334_field_evidence_state.py

@@ -98,9 +98,9 @@ for token in [
 for token in [
     'allow-external-apps=true',
     'HAKIM_TERMUX_BOOTSTRAP=PASS',
+    'permission_gate=ANDROID_USER_PROMPT_IN_HAKIM',
     'HAKIM_TERMUX_BOOTSTRAP=ROLLED_BACK',
     'com.termux.permission.RUN_COMMAND',
-    'pm grant "$PACKAGE" "$RUN_PERMISSION"',
     'pm revoke "$PACKAGE" "$RUN_PERMISSION"',
     '$HOME/.termux/boot',
     'PROFILE="${1:-status}"',
@@ -118,6 +118,7 @@ for forbidden in [
     'wget ',
     'scan_host',
     'ports=range(30000,50001)',
+    'pm grant "$PACKAGE" "$RUN_PERMISSION"',
 ]:
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
 

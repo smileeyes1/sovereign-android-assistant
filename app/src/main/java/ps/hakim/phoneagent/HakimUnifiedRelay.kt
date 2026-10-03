@@ -723,6 +723,7 @@ object HakimUnifiedRelay {
             .put("execution_fabric", HakimExecutionFabric.status(context))
             .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
+            .put("cognitive_policy", HakimCognitivePolicy.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))
     }

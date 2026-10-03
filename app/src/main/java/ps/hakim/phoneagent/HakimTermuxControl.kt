@@ -1,5 +1,6 @@
 package ps.hakim.phoneagent
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -31,9 +32,11 @@ object HakimTermuxControl {
 
     private const val CONTROL_PATH = "/data/data/com.termux/files/home/.hakim/bin/hakim-control"
     private const val WORKDIR = "/data/data/com.termux/files/home"
+    const val REQUEST_CODE_RUN_COMMAND = 20336
     private const val PREFS = "hakim_termux_control"
     private const val MIN_REPEAT_MS = 5_000L
     private const val ONLINE_WINDOW_MS = 10L * 60L * 1000L
+    private const val PERMISSION_PROMPT_COOLDOWN_MS = 6L * 60L * 60L * 1000L
 
     private val executionId = AtomicInteger(10_000)
     private val SAFE_PROFILES = setOf(
@@ -64,6 +67,59 @@ object HakimTermuxControl {
 
     fun ready(context: Context): Boolean =
         isInstalled(context) && hasRunCommandPermission(context)
+
+    @Synchronized
+    fun requestRunCommandPermission(activity: Activity, reason: String = "ui"): JSONObject {
+        val app = activity.applicationContext
+        if (!isInstalled(app)) {
+            return JSONObject().put("ok", false).put("error", "termux_not_installed")
+        }
+        if (hasRunCommandPermission(app)) {
+            return status(app).put("ok", true).put("already_granted", true)
+        }
+
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val lastAt = prefs.getLong("last_permission_request_at", 0L)
+        if (lastAt > 0L && now - lastAt < PERMISSION_PROMPT_COOLDOWN_MS) {
+            return status(app)
+                .put("ok", false)
+                .put("permission_requested", false)
+                .put("permission_prompt_throttled", true)
+        }
+
+        return try {
+            prefs.edit()
+                .putString("state", "PERMISSION_REQUESTED")
+                .putString("last_reason", reason.take(80))
+                .putLong("last_permission_request_at", now)
+                .apply()
+            activity.requestPermissions(arrayOf(PERMISSION_RUN_COMMAND), REQUEST_CODE_RUN_COMMAND)
+            status(app)
+                .put("ok", true)
+                .put("permission_requested", true)
+        } catch (e: Exception) {
+            prefs.edit()
+                .putString("state", "PERMISSION_REQUEST_FAILED")
+                .putString("last_error", e.javaClass.simpleName)
+                .apply()
+            status(app)
+                .put("ok", false)
+                .put("error", "termux_permission_request_failed")
+                .put("detail", e.javaClass.simpleName)
+        }
+    }
+
+    fun recordPermissionResult(context: Context, granted: Boolean): JSONObject {
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("state", if (granted) "PERMISSION_GRANTED" else "PERMISSION_DENIED")
+            .putBoolean("permission_granted_by_user", granted)
+            .putLong("permission_result_at", System.currentTimeMillis())
+            .apply()
+        return if (granted) probe(app, "permission_granted") else status(app)
+    }
 
     @Synchronized
     fun dispatch(context: Context, profile: String, reason: String = "manual"): JSONObject {
@@ -206,6 +262,8 @@ object HakimTermuxControl {
             .put("version", VERSION)
             .put("termux_installed", isInstalled(app))
             .put("run_command_permission", hasRunCommandPermission(app))
+            .put("permission_user_gate", true)
+            .put("permission_request_supported", true)
             .put("ready", ready(app))
             .put("online", online)
             .put("state", if (online) "ONLINE" else p.getString("state", "UNCONFIGURED"))

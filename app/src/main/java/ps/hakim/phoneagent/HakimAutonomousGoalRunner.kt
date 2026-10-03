@@ -23,6 +23,10 @@ object HakimAutonomousGoalRunner {
         if (prefs(app).getString("pending_visible_task_id", "").orEmpty().isNotBlank()) return false
         if (HakimAttachmentSessionStore.restore(app).isNotEmpty()) return false
 
+        val pendingResume = HakimTaskManager.pendingResumeRequest(app)
+        if (pendingResume != null && pendingResume.id != task.id) return false
+        if (pendingResume?.id == task.id) HakimTaskManager.consumeResumeRequest(app)
+
         val intent = HakimIntentEngine.resolve(app, task.goal)
         if (intent.highImpact || intent.needsUserGate) return false
 

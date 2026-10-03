@@ -89,7 +89,11 @@ DEVICE="${DEVICES[0]}"
 BEFORE="$(adb -s "$DEVICE" shell dumpsys package "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r')"
 grep -q "versionCode=" <<<"$BEFORE" || fail "installed_package_not_found"
 BEFORE_CODE="$(sed -n 's/.*versionCode=\([0-9][0-9]*\).*/\1/p' <<<"$BEFORE" | head -n1)"
+BEFORE_UID="$(sed -n 's/^[[:space:]]*userId=\([0-9][0-9]*\).*/\1/p' <<<"$BEFORE" | head -n1)"
+BEFORE_FIRST_INSTALL="$(sed -n 's/^[[:space:]]*firstInstallTime=//p' <<<"$BEFORE" | head -n1)"
 [[ -n "$BEFORE_CODE" ]] || fail "installed_version_unreadable"
+[[ -n "$BEFORE_UID" ]] || fail "installed_uid_unreadable"
+[[ -n "$BEFORE_FIRST_INSTALL" ]] || fail "first_install_time_unreadable"
 (( BEFORE_CODE >= EXPECTED_MIN_CURRENT_VERSION_CODE )) || fail "installed_version_below_verified_floor"
 (( BEFORE_CODE < EXPECTED_VERSION_CODE )) || fail "not_a_forward_update"
 
@@ -113,6 +117,10 @@ grep -q "Success" <<<"$INSTALL_OUT" || fail "adb_install_not_confirmed"
 
 AFTER="$(adb -s "$DEVICE" shell dumpsys package "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r')"
 grep -q "versionCode=$EXPECTED_VERSION_CODE" <<<"$AFTER" || fail "installed_version_mismatch"
+AFTER_UID="$(sed -n 's/^[[:space:]]*userId=\([0-9][0-9]*\).*/\1/p' <<<"$AFTER" | head -n1)"
+AFTER_FIRST_INSTALL="$(sed -n 's/^[[:space:]]*firstInstallTime=//p' <<<"$AFTER" | head -n1)"
+[[ "$AFTER_UID" == "$BEFORE_UID" ]] || fail "package_uid_changed"
+[[ "$AFTER_FIRST_INSTALL" == "$BEFORE_FIRST_INSTALL" ]] || fail "first_install_time_changed"
 
 REMOTE_PATH="$(adb -s "$DEVICE" shell pm path "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r' | sed -n 's/^package://p' | grep '/base.apk$' | head -n1)"
 [[ -n "$REMOTE_PATH" ]] || fail "installed_base_path_missing"
@@ -125,5 +133,5 @@ adb -s "$DEVICE" shell monkey -p "$EXPECTED_PACKAGE" -c android.intent.category.
 sleep 2
 adb -s "$DEVICE" shell pidof "$EXPECTED_PACKAGE" >/dev/null 2>&1 || fail "process_not_running_after_launch"
 
-printf 'HAKIM_FIELD_INSTALL=PASS device=%s before=%s after=%s current_sha256=%s signed_sha256=%s current_signer_d1=true installed_signer_d1=true same_artifact=true data_clear=false uninstall=false\n' \
+printf 'HAKIM_FIELD_INSTALL=PASS device=%s before=%s after=%s current_sha256=%s signed_sha256=%s current_signer_d1=true installed_signer_d1=true same_artifact=true uid_preserved=true first_install_time_preserved=true data_clear=false uninstall=false\n' \
   "$DEVICE" "$BEFORE_CODE" "$EXPECTED_VERSION_CODE" "$CURRENT_SHA" "$SIGNED_SHA"

@@ -137,27 +137,6 @@ BOOT
   chmod 700 "$BOOT_HOOK"
 }
 
-grant_to_hakim(){
-  ensure_adb || return 1
-  adb start-server >/dev/null 2>&1 || true
-  if [ -z "$(connected_ep)" ] && [ -x "$HOME/.hakim/adb-self.sh" ]; then
-    timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
-  fi
-  if [ -z "$(connected_ep)" ] && [ -s "$HOME/.omega/adb/last-endpoint" ]; then
-    local saved
-    saved="$(head -1 "$HOME/.omega/adb/last-endpoint" | tr -d '\r\n')"
-    [ -n "$saved" ] && timeout 6 adb connect "$saved" >/dev/null 2>&1 || true
-  fi
-  local ep
-  ep="$(connected_ep)"
-  [ -n "$ep" ] || return 2
-  adb -s "$ep" shell dumpsys package "$PACKAGE" 2>/dev/null | grep -q "$RUN_PERMISSION" || return 3
-  adb -s "$ep" shell pm grant "$PACKAGE" "$RUN_PERMISSION" >/dev/null 2>&1 || return 4
-  adb -s "$ep" shell dumpsys package "$PACKAGE" 2>/dev/null |
-    grep -A80 'runtime permissions:' |
-    grep -q "$RUN_PERMISSION: granted=true"
-}
-
 status(){
   local ext="false" wrapper="false" boot="false" grant="unknown" adb_state="offline"
   grep -qE '^[[:space:]]*allow-external-apps[[:space:]]*=[[:space:]]*true[[:space:]]*$' "$PROPS" 2>/dev/null && ext="true"
@@ -188,10 +167,8 @@ install(){
   install_control
   ensure_adb || true
   command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
-  local grant_state="PENDING"
-  if grant_to_hakim; then grant_state="PASS"; fi
   status
-  echo "HAKIM_TERMUX_BOOTSTRAP=PASS grant=$grant_state"
+  echo "HAKIM_TERMUX_BOOTSTRAP=PASS permission_gate=ANDROID_USER_PROMPT_IN_HAKIM"
 }
 
 rollback(){

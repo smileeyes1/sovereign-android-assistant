@@ -17,6 +17,7 @@ object HakimIntentDirector {
         val goal = raw.trim().take(4000)
         val acceptance = acceptanceFor(goal, attachmentCount)
         val cycle = HakimExecutiveLoop.current(context)?.cycle ?: 1
+        val cognitive = HakimCognitivePolicy.analyze(goal, attachmentCount)
         val recentContext = context.getSharedPreferences("hakim_conversation", Context.MODE_PRIVATE)
             .getString("recent", "")
             .orEmpty()
@@ -26,6 +27,7 @@ object HakimIntentDirector {
             append(HakimConstitution.promptPrefix(context))
             appendLine(HakimConstitution.taskContext(context, goal, acceptance, attachmentCount))
             appendLine("أنت محرك متخصص يعمل تحت إشراف حكيم، ولست المدير النهائي للمهمة.")
+            appendLine(HakimCognitivePolicy.directive(cognitive))
             appendLine("افهم مقصد المستخدم قبل الإجابة، ثم صغ داخليًا لنفسك أفضل وأدق وأكفأ أمر عمل يحقق المقصد.")
             appendLine("نفّذ ذلك الأمر داخليًا، وافحص الناتج مقابل معيار الاكتمال، وحسّنه ما دام هناك عيب مادي قابل للإصلاح دون تكرار غير منتج.")
             appendLine("لا تعرض سلسلة التفكير أو المسودة الداخلية أو الأمر الذاتي الذي صغته لنفسك.")

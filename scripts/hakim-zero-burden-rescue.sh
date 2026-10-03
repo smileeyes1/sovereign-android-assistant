@@ -3,6 +3,9 @@ set -euo pipefail
 
 : "${PREFIX:=/data/data/com.termux/files/usr}"
 export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 
 HOME_HAKIM="$HOME/.hakim"
 OMEGA="$HOME/.omega"

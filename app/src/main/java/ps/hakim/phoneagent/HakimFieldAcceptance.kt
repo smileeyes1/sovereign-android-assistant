@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * It never reads user conversation text, user files, browser pages, or credentials.
  */
 object HakimFieldAcceptance {
-    const val VERSION = "FIELD-ACCEPTANCE-20313-v1"
+    const val VERSION = "FIELD-ACCEPTANCE-20333-v2"
     private const val PREFS = "hakim_field_acceptance"
     private const val REPORT = "report"
     private const val LAST_VERSION = "last_version"

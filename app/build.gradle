@@ -23,6 +23,14 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    buildTypes {
+        release {
+            // يمنع تضمين commit Git داخل APK حتى لا تتغير بايتات المنتج
+            // عندما يكون كود التطبيق نفسه ثابتًا ويختلف فقط commit التشغيلي.
+            vcsInfo.include false
+        }
+    }
 }
 
 dependencies {

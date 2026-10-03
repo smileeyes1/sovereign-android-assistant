@@ -148,8 +148,8 @@
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize" />
 
-        <service
-            android:name=".HakimTermuxResultService"
+        <receiver
+            android:name=".HakimTermuxResultReceiver"
             android:exported="false" />
 
         <service

@@ -30,7 +30,7 @@ req(state["local_execution"]["production_bridge_contract"] == "hakim-direct-http
 req(state["local_execution"]["termux_channel"] == "NOT_PROVEN_CURRENTLY", "termux_claim")
 field_version = int(state["android"]["field_observed_current"]["version_code"])
 req(field_version >= 20106, "field_observed_version_floor")
-req(field_version == parent_version, "verified_field_parent_version")
+req(field_version == (candidate if candidate_field else parent_version), "verified_field_version")
 req(state["android"]["field_observed_current"]["exact_public_source_mapping"] == "PROVEN_BY_EXACT_SIGNED_APK_SHA256", "field_source_mapping")
 req(state["android"]["field_observed_current"]["current_signer_reobserved"] is True, "field_signer_chain")
 if candidate_field:

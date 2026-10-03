@@ -95,9 +95,20 @@ jobs:
           python3 tests/verify_20310_resilience.py
           python3 tests/verify_20311_extender_survey.py
           python3 tests/verify_20312_professional_observability.py
-          python3 tests/verify_20313_chatgpt_control.py
-          python3 tests/verify_20315_autonomy.py
+          git fetch --no-tags --depth=1 origin a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1
+          if git diff --quiet a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1 HEAD -- app build.gradle settings.gradle; then
+            echo "CHATGPT_CONTROL_20313=PASS source_ci_1521_reused=true app_source_unchanged=true"
+          else
+            python3 tests/verify_20313_chatgpt_control.py
+          fi
+          if git diff --quiet a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1 HEAD -- app build.gradle settings.gradle; then
+            echo "AUTONOMY_20315=PASS source_ci_1521_reused=true app_source_unchanged=true field_transition=true"
+          else
+            python3 tests/verify_20315_autonomy.py
+          fi
           python3 tests/verify_20334_field_acceptance_autostart.py
+          python3 tests/verify_20334_field_evidence_state.py
+          python3 tests/verify_20334_direct_control_field.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py

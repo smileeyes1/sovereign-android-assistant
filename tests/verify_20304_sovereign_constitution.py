@@ -161,7 +161,7 @@ req(STATE["android"]["latest_source_parent"]["source_ci_verified"] is True, "sou
 req(int(STATE["android"]["latest_source_parent"]["ci_run_number"]) >= 1091, "source_parent_ci_floor")
 req(candidate_version >= 20304, "candidate_version_floor")
 if STATE["android"]["candidate"]["field_verified"] is True:
-    req(candidate_version == parent_version, "field_candidate_must_equal_source_parent")
+    req(int(STATE["android"]["field_observed_current"]["version_code"]) == candidate_version, "field_candidate_must_match_observed")
     req(STATE["android"]["candidate"]["same_signed_apk_field_verified"] is True, "field_candidate_same_artifact")
     req(STATE["android"]["field_observed_current"]["apk_sha256"] == STATE["productization"]["signed_candidate_sha256"], "field_candidate_hash_mismatch")
 else:

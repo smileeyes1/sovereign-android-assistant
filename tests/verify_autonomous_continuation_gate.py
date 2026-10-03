@@ -97,6 +97,8 @@ for token in [
     "if (intent.highImpact || intent.needsUserGate) return false",
     "HakimAttachmentSessionStore.restore(app).isNotEmpty()",
     'pending_visible_task_id", "").orEmpty().isNotBlank()',
+    "HakimTaskManager.pendingResumeRequest(app)",
+    "HakimTaskManager.consumeResumeRequest(app)",
     "EvidenceStage.DISPATCHED",
     "effectVerified = false",
     "fun finalizeIfVisible",

@@ -122,6 +122,9 @@ for forbidden in [
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
 
 for token in [
+    'self_ip()',
+    'host="${ep%%:*}"',
+    '[ "$host" = "127.0.0.1" ]',
     'bounded_self_recover()',
     'timeout 8 "$HOME/.hakim/adb-self.sh"',
     'done < <(mdns_eps)',

@@ -271,6 +271,7 @@ object HakimUnifiedRelay {
                         relayKey
                     )
                     HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
+                    HakimAutonomousContinuation.pulse(context, "secure_relay_connected")
                     continue
                 } catch (e: Exception) {
                     HakimFaultContainment.recordFailure(context, "secure_relay", "direct_poll", e)
@@ -309,6 +310,7 @@ object HakimUnifiedRelay {
                         .putLong("last_connected_at", connectedAt)
                         .apply()
                     HakimHealthBeacon.sendAsync(context, "secure_relay_connected")
+                    HakimAutonomousContinuation.pulse(context, "secure_relay_legacy_connected")
                     continue
                 } catch (e: Exception) {
                     HakimFaultContainment.recordFailure(context, "secure_relay", "legacy_poll", e)

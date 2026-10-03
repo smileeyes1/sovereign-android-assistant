@@ -44,6 +44,7 @@ class CommandCenterActivity : ComponentActivity() {
     private lateinit var toolsRow: LinearLayout
     private var operationsExpanded = false
     private var pendingResumeTaskId: String? = null
+    private var lastAutonomousResumeAt = 0L
     @Volatile private var currentDirectEngine: HakimInferenceEngine? = null
     private var streamingBase = ""
     private val streamingBuffer = StringBuilder()
@@ -53,6 +54,7 @@ class CommandCenterActivity : ComponentActivity() {
         override fun run() {
             refreshOperations()
             HakimTaskManager.syncSystemTasks(this@CommandCenterActivity)
+            maybeResumeAutonomousTask()
             maybeOpenLocalRouterAuth()
             maybeEnsureDeviceProtection()
             browserHandler.postDelayed(this, 15_000L)
@@ -109,8 +111,32 @@ class CommandCenterActivity : ComponentActivity() {
         HakimConnectionResilience.recover(this, "command_center_resume")
         HakimResilienceAlarmReceiver.schedule(this)
         HakimTaskManager.syncSystemTasks(this)
+        HakimAutonomousContinuation.pulse(this, "command_center_resume")
+        browserHandler.postDelayed({ maybeResumeAutonomousTask() }, 500L)
         maybeOpenLocalRouterAuth()
         maybeEnsureDeviceProtection()
+    }
+
+    private fun maybeResumeAutonomousTask() {
+        if (!::command.isInitialized || currentDirectEngine != null) return
+        val pending = HakimTaskManager.pendingResumeRequest(this) ?: return
+        if (pending.kind != "user_goal" || !pending.autoResume || !pending.resumable || pending.goal.isBlank()) {
+            HakimTaskManager.consumeResumeRequest(this)
+            return
+        }
+        val loopState = HakimExecutiveLoop.publicStatus(this).optString("state")
+        if (loopState == "active") return
+        val now = System.currentTimeMillis()
+        if (now - lastAutonomousResumeAt < 5_000L) return
+
+        val task = HakimTaskManager.consumeResumeRequest(this) ?: return
+        if (task.id != pending.id || !task.resumable || task.goal.isBlank()) return
+
+        lastAutonomousResumeAt = now
+        pendingResumeTaskId = task.id
+        command.setText(task.goal)
+        status.text = "يستأنف المهمة تلقائيًا…"
+        command.post { executeBestRoute(task.goal, appendUserMessage = false) }
     }
 
     private fun maybeOpenLocalRouterAuth() {

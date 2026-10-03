@@ -1,4 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 set -u
 BASE="$HOME/.hakim/termux-resilience"
 STATE="$BASE/state.env"

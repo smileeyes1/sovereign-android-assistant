@@ -55,7 +55,7 @@ runtime_required = [
     "HakimValueContinuityEngine.resumePending(app)",
     "HakimGoalSupervisor.resume(app)",
     "HakimGoalExecutor.tick(app)",
-    "HakimTaskManager.nextAutoResume(app)",
+    "HakimTaskManager.nextAutoResume(app",
     "HakimTaskManager.requestResume(app, task.id)",
     "loopState != \"active\" || restartPulse",
     "high_impact_still_gated",

@@ -5,6 +5,7 @@ root=Path(__file__).resolve().parents[1]
 service=(root/"app/src/main/java/ps/hakim/phoneagent/HakimService.kt").read_text(encoding="utf-8")
 field=(root/"app/src/main/java/ps/hakim/phoneagent/HakimFieldAcceptance.kt").read_text(encoding="utf-8")
 health=(root/"app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt").read_text(encoding="utf-8")
+connection=(root/"app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt").read_text(encoding="utf-8")
 
 required_service=[
     'HakimFaultContainment.guard(applicationContext, "service_start", "field_acceptance_install")',
@@ -30,6 +31,17 @@ if missing:
 
 if '.put("field_acceptance", HakimFieldAcceptance.status(context))' not in health:
     raise SystemExit("FIELD_ACCEPTANCE_AUTOSTART_20333=FAIL health_beacon_missing")
+
+for token in [
+    "RETRY_NONPASS_AFTER_MS",
+    'previousStatus == "PASS"',
+    "reruns_nonpass_after_cooldown",
+]:
+    if token not in field:
+        raise SystemExit("FIELD_ACCEPTANCE_AUTOSTART_20333=FAIL retry="+token)
+
+if 'if (HakimService.running) HakimFieldAcceptance.install(context)' not in connection:
+    raise SystemExit("FIELD_ACCEPTANCE_AUTOSTART_20333=FAIL network_retry_missing")
 
 # The acceptance probe must remain bounded and synthetic: no user conversation/file/browser reads.
 for forbidden in [

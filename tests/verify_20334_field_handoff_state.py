@@ -66,4 +66,18 @@ assert f["no_uninstall"] is True and f["no_clear_data"] is True and f["forward_o
 
 assert d["state"] == "D1_SIGNED_AND_INDEPENDENTLY_VERIFIED_AWAITING_FIELD_INSTALL"
 assert "claim_field_approval_without_same_artifact_evidence" in d["forbidden_shortcuts"]
+state=json.loads(Path("governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
+assert state["android"]["candidate"]["version_code"] == 20334
+assert state["android"]["candidate"]["source_ci_state"] == "SUCCESS_CURRENT_HEAD_CI"
+assert state["android"]["candidate"]["signed_d1_verified"] is True
+assert state["android"]["candidate"]["signed_sha256"] == s["signed_sha256"]
+assert state["android"]["candidate"]["field_verified"] is False
+assert state["android"]["candidate"]["same_signed_apk_field_verified"] is False
+assert state["android"]["candidate"]["promoted"] is False
+assert state["productization"]["signed_candidate_version"] == 20334
+assert state["productization"]["signed_candidate_sha256"] == s["signed_sha256"]
+assert state["productization"]["signed_candidate_d1_verified"] is True
+assert state["productization"]["same_signed_apk_field_verified"] is False
+assert state["productization"]["sellable"] is False
+
 print("FIELD_HANDOFF_STATE_20334=PASS")

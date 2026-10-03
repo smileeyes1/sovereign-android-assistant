@@ -15,8 +15,36 @@ ensure_deps() {
 
 start_adb() { adb start-server >/dev/null 2>&1; }
 
+self_ip() {
+  python3 - <<'PY' 2>/dev/null
+import socket
+for target in [("192.168.1.1",80),("8.8.8.8",53)]:
+    s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    try:
+        s.connect(target)
+        ip=s.getsockname()[0]
+        if ip and ip!="0.0.0.0":
+            print(ip)
+            break
+    except Exception:
+        pass
+    finally:
+        s.close()
+PY
+}
+
 connected_ep() {
-  adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1; exit}'
+  local sip ep state rest host
+  sip="$(self_ip)"
+  while read -r ep state rest; do
+    [ "$state" = "device" ] || continue
+    host="${ep%%:*}"
+    if [ "$host" = "127.0.0.1" ] || { [ -n "$sip" ] && [ "$host" = "$sip" ]; }; then
+      printf '%s\n' "$ep"
+      return 0
+    fi
+  done < <(adb devices 2>/dev/null | tail -n +2)
+  return 1
 }
 
 save_ep() {
@@ -28,11 +56,15 @@ save_ep() {
 }
 
 try_ep() {
-  local ep="${1:-}"
+  local ep="${1:-}" sip host now
   [ -n "$ep" ] || return 1
-  adb connect "$ep" >/dev/null 2>&1 || true
+  sip="$(self_ip)"
+  host="${ep%%:*}"
+  if [ "$host" != "127.0.0.1" ] && { [ -z "$sip" ] || [ "$host" != "$sip" ]; }; then
+    return 1
+  fi
+  timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
   sleep 0.35
-  local now
   now="$(connected_ep)"
   if [ -n "$now" ]; then save_ep "$now"; return 0; fi
   return 1

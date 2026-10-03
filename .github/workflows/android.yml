@@ -128,6 +128,10 @@ jobs:
       - name: بوابة استمرارية هوية التوقيع
         run: |
           python3 tests/verify_signing_continuity_policy.py
+          python3 tests/verify_d1_exact_signing_handoff_20333.py
+          python3 tests/verify_field_install_handoff_20333.py
+          python3 tests/verify_20333_field_handoff_state.py
+          python3 tests/verify_exact_promotion_20333.py
           python3 tests/verify_termux_resilience_policy.py
           python3 tests/verify_capability_kernel_policy.py
           python3 tests/verify_value_continuity_policy.py
@@ -147,6 +151,9 @@ jobs:
           python3 tests/verify_field_d1_trust_anchor.py
           python3 tests/verify_version_monotonicity.py
           bash -n scripts/verify-field-signer.sh
+          bash -n scripts/hakim-sign-exact-20333-ci1509.sh
+          bash -n scripts/hakim-install-exact-20333-via-adb.sh
+          bash -n scripts/hakim-promote-exact-20333.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh
           bash -n scripts/hakim-termux-resilience.sh

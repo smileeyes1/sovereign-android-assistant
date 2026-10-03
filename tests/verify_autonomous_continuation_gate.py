@@ -96,6 +96,7 @@ for token in [
     "HakimModelToolRouter.Channel.DIRECT_MODEL",
     "if (intent.highImpact || intent.needsUserGate) return false",
     "HakimAttachmentSessionStore.restore(app).isNotEmpty()",
+    'pending_visible_task_id", "").orEmpty().isNotBlank()',
     "EvidenceStage.DISPATCHED",
     "effectVerified = false",
     "fun finalizeIfVisible",

@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
@@ -24,6 +25,7 @@
         <package android:name="com.google.android.apps.bard" />
         <package android:name="com.anthropic.claude" />
         <package android:name="com.deepseek.chat" />
+        <package android:name="com.termux" />
     </queries>
 
     <application
@@ -145,6 +147,10 @@
             android:exported="false"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize" />
+
+        <service
+            android:name=".HakimTermuxResultService"
+            android:exported="false" />
 
         <service
             android:name=".HakimService"

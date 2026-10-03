@@ -26,6 +26,9 @@ object HakimAutonomousContinuation {
         }
 
         val continuity = HakimValueContinuityEngine.resumePending(app)
+        val resumeEvent = resumeEventFor(reason)
+        val waitReleased = resumeEvent.isNotBlank() &&
+            HakimGoalSupervisor.resumeIfCondition(app, resumeEvent)
         val supervisor = HakimGoalSupervisor.resume(app)
         val executor = HakimGoalExecutor.tick(app)
         val action = executor.optString("action")
@@ -42,7 +45,7 @@ object HakimAutonomousContinuation {
 
         var queued = false
         var headlessScheduled = false
-        val task = HakimTaskManager.nextAutoResume(app)
+        val task = HakimTaskManager.nextAutoResume(app, includeWaiting = waitReleased)
         val pending = HakimTaskManager.pendingResumeRequest(app)
         val loopState = HakimExecutiveLoop.publicStatus(app).optString("state")
         val restartPulse = reason == "app_start" || reason == "boot_or_replace"
@@ -88,11 +91,21 @@ object HakimAutonomousContinuation {
             .put("goal_active", supervisor.optBoolean("active"))
             .put("action", action)
             .put("resume_queued", queued)
+            .put("resume_event", resumeEvent)
+            .put("wait_released", waitReleased)
             .put("headless_scheduled", headlessScheduled)
             .put("loop_state", loopState)
             .put("continuity", continuity)
             .put("supervisor", supervisor)
             .put("executor", executor)
+    }
+
+    private fun resumeEventFor(reason: String): String = when {
+        reason == "command_center_resume" -> "user_return"
+        reason == "network_available" || reason == "network_capabilities" -> "network_available"
+        reason == "secure_relay_connected" || reason == "secure_relay_legacy_connected" -> "relay_connected"
+        reason == "boot_or_replace" -> "boot_or_replace"
+        else -> ""
     }
 
     fun status(context: Context): JSONObject {

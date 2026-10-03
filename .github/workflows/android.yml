@@ -176,6 +176,29 @@ jobs:
             exit 1
           fi
           echo 'REPRODUCIBLE_RELEASE_GATE=PASS vcs_info_embedded=false'
+      - name: حفظ دليل بناء الإصدار خارج APK
+        run: |
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          SHA256="$(sha256sum "$APK" | awk '{print $1}')"
+          VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
+          python3 - "$GITHUB_SHA" "$GITHUB_RUN_ID" "$VERSION_CODE" "$SHA256" <<'PY'
+          import json,sys
+          source_head,run_id,version_code,apk_sha=sys.argv[1:5]
+          out={
+              "schema_version":1,
+              "source_head":source_head,
+              "workflow_run_id":int(run_id),
+              "version_code":int(version_code),
+              "unsigned_apk_sha256":apk_sha,
+              "vcs_info_embedded":False,
+              "provenance_external_to_apk":True,
+          }
+          path="app/build/outputs/apk/release/hakim-build-evidence.json"
+          with open(path,"w",encoding="utf-8") as f:
+              json.dump(out,f,ensure_ascii=False,indent=2)
+              f.write("\n")
+          print("BUILD_EVIDENCE=PASS sha256="+apk_sha)
+          PY
       - name: بوابة توافق صفحات الذاكرة 16KB
         run: |
           ZIPALIGN_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/zipalign"
@@ -222,6 +245,7 @@ jobs:
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
             --out app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk \
             app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/apk/release/hakim-build-evidence.json
           APKSIGNER="$APKSIGNER_BIN" \
             bash scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           python3 tools/verify_hakim_d1_v2_structure.py \

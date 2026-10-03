@@ -43,11 +43,14 @@ object HakimAutonomousContinuation {
         var queued = false
         val task = HakimTaskManager.nextAutoResume(app)
         val pending = HakimTaskManager.pendingResumeRequest(app)
+        val loopState = HakimExecutiveLoop.publicStatus(app).optString("state")
+        val restartPulse = reason == "app_start" || reason == "boot_or_replace"
         val lastQueuedId = p.getString("last_queued_task_id", "").orEmpty()
         val lastQueuedAt = p.getLong("last_queued_at", 0L)
         val canQueue = task != null &&
             pending?.id != task.id &&
             action !in setOf("WAIT", "GATED", "COMPLETE") &&
+            (loopState != "active" || restartPulse) &&
             (task.id != lastQueuedId || now - lastQueuedAt >= REQUEUE_COOLDOWN_MS)
 
         if (canQueue && task != null) {
@@ -74,6 +77,7 @@ object HakimAutonomousContinuation {
             .put("goal_active", supervisor.optBoolean("active"))
             .put("action", action)
             .put("resume_queued", queued)
+            .put("loop_state", loopState)
             .put("continuity", continuity)
             .put("supervisor", supervisor)
             .put("executor", executor)

@@ -53,15 +53,35 @@ connected_ep(){
   adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1; exit}'
 }
 adb_connect(){
-  if command -v hakim-adb >/dev/null 2>&1; then
-    hakim-adb connect
-  else
-    adb start-server >/dev/null 2>&1 || true
-    local ep
-    ep="$(connected_ep)"
-    [ -n "$ep" ] || { echo "HAKIM_TERMUX_ADB=OFFLINE"; return 2; }
+  adb start-server >/dev/null 2>&1 || true
+  local ep
+  ep="$(connected_ep)"
+  if [ -n "$ep" ]; then
     echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
+    return 0
   fi
+
+  if [ -x "$HOME/.hakim/adb-self.sh" ]; then
+    timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
+    ep="$(connected_ep)"
+    if [ -n "$ep" ]; then
+      echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
+      return 0
+    fi
+  fi
+
+  if [ -s "$HOME/.omega/adb/last-endpoint" ]; then
+    ep="$(head -1 "$HOME/.omega/adb/last-endpoint" | tr -d '\r\n')"
+    [ -n "$ep" ] && timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
+    ep="$(connected_ep)"
+    if [ -n "$ep" ]; then
+      echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
+      return 0
+    fi
+  fi
+
+  echo "HAKIM_TERMUX_ADB=OFFLINE"
+  return 2
 }
 
 case "$PROFILE" in
@@ -110,7 +130,15 @@ BOOT
 
 grant_to_hakim(){
   ensure_adb || return 1
-  if command -v hakim-adb >/dev/null 2>&1; then hakim-adb connect >/dev/null 2>&1 || true; fi
+  adb start-server >/dev/null 2>&1 || true
+  if [ -z "$(connected_ep)" ] && [ -x "$HOME/.hakim/adb-self.sh" ]; then
+    timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
+  fi
+  if [ -z "$(connected_ep)" ] && [ -s "$HOME/.omega/adb/last-endpoint" ]; then
+    local saved
+    saved="$(head -1 "$HOME/.omega/adb/last-endpoint" | tr -d '\r\n')"
+    [ -n "$saved" ] && timeout 6 adb connect "$saved" >/dev/null 2>&1 || true
+  fi
   local ep
   ep="$(connected_ep)"
   [ -n "$ep" ] || return 2

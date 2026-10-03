@@ -110,6 +110,9 @@ class HakimService : Service() {
         } else {
             updateNotification("قناة حكيم المشفّرة تعمل — وضع خفيف بلا متصفح")
         }
+        HakimFaultContainment.guard(applicationContext, "service_start", "field_acceptance_install") {
+            HakimFieldAcceptance.install(applicationContext)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

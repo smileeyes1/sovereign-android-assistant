@@ -248,7 +248,7 @@
     "sovereign_constitution_source_ci_verified": true,
     "control_channel_primary": "direct_https_secure_relay",
     "control_channel_urgent_recovery": true,
-    "control_channel_field_verified": false,
+    "control_channel_field_verified": true,
     "remote_desktop_commander_required": false,
     "arabic_default_policy_source_integrated": true,
     "arabic_default_policy_field_verified": false,

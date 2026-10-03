@@ -94,7 +94,7 @@ object HakimTermuxControl {
         }
 
         val id = executionId.incrementAndGet()
-        val callback = Intent(app, HakimTermuxResultService::class.java)
+        val callback = Intent(app, HakimTermuxResultReceiver::class.java)
             .putExtra("execution_id", id)
             .putExtra("profile", profile)
             .putExtra("reason", reason.take(80))

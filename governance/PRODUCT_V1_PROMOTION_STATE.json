@@ -36,9 +36,10 @@
   "source_ci_run_id": 37113673116,
   "source_ci_artifact_id": 11270247244,
   "source_unsigned_sha256": "8d22639739247c0f5c3feff7aa4e1ab32e6ef3ee9a828e3c5b69fb0eabf298a6",
-  "field_observed_at": "2026-10-03T13:01:29.395558078Z",
+  "field_observed_at": "2026-10-03T13:33:41.605174124Z",
   "self_check_field_verified": true,
   "execution_fabric_field_online": true,
-  "legacy_fallback_field_connected": true,
-  "secure_relay_primary_field_connected": false
+  "legacy_fallback_field_connected": false,
+  "secure_relay_primary_field_connected": true,
+  "direct_https_commands_roundtrip_verified": true
 }

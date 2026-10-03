@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-10-01",
+  "snapshot_date": "2026-10-03",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -28,14 +28,14 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20333,
-      "branch": "release/hakim-20333-install-forward-r23",
+      "version_code": 20334,
+      "branch": "release/hakim-20334-autonomy-field-acceptance-r25",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "forward_only_install_over_existing_higher_field_versions"
+      "purpose": "autonomous_continuation_plus_bounded_field_acceptance_autostart_forward_over_live_20333"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -51,6 +51,21 @@
       "signer_evidence": "exact_installed_apk_sha256_matches_D1_verified_r7_artifact",
       "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
       "promoted_as_source_baseline": true
+    },
+    "latest_runtime_observation_unpromoted": {
+      "observed_at": "2026-10-03",
+      "version_code": 20333,
+      "apk_sha256": "f5fed1acaa2c8e17a76a223f2a4502070bdaef074e69224b00d22217f971f922",
+      "service_running": true,
+      "service_connected_observed": false,
+      "execution_fabric_online": true,
+      "legacy_connected": true,
+      "secure_relay_state": "direct_recovering",
+      "self_check": "PASS",
+      "signer_reobserved": false,
+      "exact_public_source_mapping": "NOT_PROVEN",
+      "evidence": "railway_authenticated_health_and_status_logs_2026_10_03",
+      "note": "Runtime observation is newer than the last D1/source-mapped field baseline but is not promoted without signer/source mapping."
     }
   },
   "local_execution": {
@@ -112,7 +127,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20333_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20334_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -153,7 +168,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20333,
+    "candidate_version": 20334,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -170,7 +185,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_VERIFIED_20317_TO_20333",
+    "install_relation": "FORWARD_UPDATE_FROM_LIVE_20333_OR_VERIFIED_20317_TO_20334_AFTER_D1_PRECHECK",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",

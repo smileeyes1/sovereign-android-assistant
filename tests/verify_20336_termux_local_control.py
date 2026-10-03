@@ -23,7 +23,7 @@ require("termux-local-control-r27" in gradle,"version_name")
 for token in [
     '<uses-permission android:name="com.termux.permission.RUN_COMMAND" />',
     '<package android:name="com.termux" />',
-    'android:name=".HakimTermuxResultService"',
+    'android:name=".HakimTermuxResultReceiver"',
 ]:
     require(token in manifest,"manifest:"+token)
 
@@ -47,8 +47,9 @@ for token in [
     '.put("high_impact_requires_separate_gate", true)',
     '.put("unlimited_claim", false)',
     '.put("resource_limits_apply", true)',
-    'class HakimTermuxResultService',
+    'class HakimTermuxResultReceiver',
     'getBundleExtra("result")',
+    'PendingIntent.getBroadcast(app, id, callback, flags)',
     'result.getString("stdout"',
     'result.getString("stderr"',
     'result.getInt("exitCode"',
@@ -121,3 +122,16 @@ require(promotion["termux_local_control_source_integrated"] is True,"promotion_s
 require(promotion["termux_local_control_field_verified"] is False,"promotion_field_pending")
 
 print("TERMUX_LOCAL_CONTROL_20336=PASS")
+
+
+relay=(root/"app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
+for token in [
+    '"termux_status"',
+    '"termux_probe"',
+    '"termux_recover"',
+    'SAFE_AUTOMATIC_OPS',
+    'HakimTermuxControl.status(context)',
+    'HakimTermuxControl.probe(context, "secure_relay_probe")',
+    'HakimTermuxControl.recover(context, "secure_relay_recover")',
+]:
+    require(token in relay,"relay:"+token)

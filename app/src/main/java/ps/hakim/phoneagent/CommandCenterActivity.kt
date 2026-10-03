@@ -54,6 +54,7 @@ class CommandCenterActivity : ComponentActivity() {
         override fun run() {
             refreshOperations()
             HakimTaskManager.syncSystemTasks(this@CommandCenterActivity)
+            HakimAutonomousGoalRunner.finalizeIfVisible(this@CommandCenterActivity)
             maybeResumeAutonomousTask()
             maybeOpenLocalRouterAuth()
             maybeEnsureDeviceProtection()
@@ -96,6 +97,7 @@ class CommandCenterActivity : ComponentActivity() {
         HakimConnectionResilience.recover(this, "command_center_open")
         buildUi()
         loadConversation()
+        HakimAutonomousGoalRunner.finalizeIfVisible(this)
         refreshOperations()
         attachments.addAll(HakimAttachmentSessionStore.restore(this))
         handleIntent(intent)
@@ -112,6 +114,7 @@ class CommandCenterActivity : ComponentActivity() {
         HakimResilienceAlarmReceiver.schedule(this)
         HakimTaskManager.syncSystemTasks(this)
         HakimAutonomousContinuation.pulse(this, "command_center_resume")
+        HakimAutonomousGoalRunner.finalizeIfVisible(this)
         browserHandler.postDelayed({ maybeResumeAutonomousTask() }, 500L)
         maybeOpenLocalRouterAuth()
         maybeEnsureDeviceProtection()

@@ -190,12 +190,15 @@ object HakimTaskManager {
         return get(context, id)
     }
 
-    fun nextAutoResume(context: Context): Task? =
+    fun nextAutoResume(context: Context, includeWaiting: Boolean = false): Task? =
         all(context).firstOrNull { task ->
             task.kind == "user_goal" &&
                 task.autoResume &&
                 task.resumable &&
-                task.state in setOf(State.RUNNING, State.VERIFYING, State.QUEUED, State.PAUSED)
+                (
+                    task.state in setOf(State.RUNNING, State.VERIFYING, State.QUEUED, State.PAUSED) ||
+                        (includeWaiting && task.state == State.WAITING)
+                )
         }
 
     @Synchronized

@@ -20,12 +20,12 @@
       "exact_public_source_mapping": "NOT_PROVEN"
     },
     "latest_source_parent": {
-      "version_code": 20334,
-      "commit": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
-      "ci_run_number": 1521,
+      "version_code": 20317,
+      "commit": "9dceea5dae37a39a8ef914af19570d317e7ad541",
+      "ci_run_number": 1349,
       "source_ci_verified": true,
       "field_verified": true,
-      "exact_apk_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b"
+      "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
       "version_code": 20334,

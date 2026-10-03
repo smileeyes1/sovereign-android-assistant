@@ -30,11 +30,11 @@
     "candidate": {
       "version_code": 20334,
       "branch": "release/hakim-20334-autonomy-field-acceptance-r25",
-      "source_ci_state": "SUCCESS_CURRENT_HEAD_CI_1521",
-      "field_verified": false,
+      "source_ci_state": "SUCCESS_CURRENT_HEAD_CI",
+      "field_verified": true,
       "same_signed_apk_field_verified": true,
       "promoted": false,
-      "control_channel_field_verified": false,
+      "control_channel_field_verified": true,
       "purpose": "autonomous_continuation_plus_bounded_field_acceptance_autostart_forward_over_live_20333",
       "installation_field_verified": true
     },
@@ -54,7 +54,7 @@
       "current_signer_reobserved": true,
       "signer_certificate_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
       "signer_evidence": "download_apk_sha_matches_installed_health_sha_and_apksigner_v2_d1",
-      "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256_AND_CI_UNSIGNED_PARENT",
+      "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
       "source_head": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
       "source_ci_run_id": 37113673116,
       "source_ci_artifact_id": 11270247244,

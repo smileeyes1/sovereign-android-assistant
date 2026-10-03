@@ -41,13 +41,23 @@ object HakimAutonomousContinuation {
         }
 
         var queued = false
+        var headlessScheduled = false
         val task = HakimTaskManager.nextAutoResume(app)
         val pending = HakimTaskManager.pendingResumeRequest(app)
         val loopState = HakimExecutiveLoop.publicStatus(app).optString("state")
         val restartPulse = reason == "app_start" || reason == "boot_or_replace"
         val lastQueuedId = p.getString("last_queued_task_id", "").orEmpty()
         val lastQueuedAt = p.getLong("last_queued_at", 0L)
-        val canQueue = task != null &&
+
+        if (task != null &&
+            action !in setOf("WAIT", "GATED", "COMPLETE") &&
+            (loopState != "active" || restartPulse)
+        ) {
+            headlessScheduled = HakimAutonomousGoalRunner.scheduleIfSafe(app, task, reason)
+        }
+
+        val canQueue = !headlessScheduled &&
+            task != null &&
             pending?.id != task.id &&
             action !in setOf("WAIT", "GATED", "COMPLETE") &&
             (loopState != "active" || restartPulse) &&
@@ -69,6 +79,7 @@ object HakimAutonomousContinuation {
             .putString("last_action", action.take(40))
             .putBoolean("last_goal_active", supervisor.optBoolean("active"))
             .putBoolean("last_resume_queued", queued)
+            .putBoolean("last_headless_scheduled", headlessScheduled)
             .putLong("last_pulse_at", now)
             .apply()
 
@@ -77,6 +88,7 @@ object HakimAutonomousContinuation {
             .put("goal_active", supervisor.optBoolean("active"))
             .put("action", action)
             .put("resume_queued", queued)
+            .put("headless_scheduled", headlessScheduled)
             .put("loop_state", loopState)
             .put("continuity", continuity)
             .put("supervisor", supervisor)
@@ -96,6 +108,7 @@ object HakimAutonomousContinuation {
             .put("last_action", p.getString("last_action", ""))
             .put("last_goal_active", p.getBoolean("last_goal_active", false))
             .put("last_resume_queued", p.getBoolean("last_resume_queued", false))
+            .put("last_headless_scheduled", p.getBoolean("last_headless_scheduled", false))
             .put("last_pulse_at", p.getLong("last_pulse_at", 0L))
     }
 

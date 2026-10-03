@@ -38,3 +38,49 @@ if "effect -> State.EFFECT_VERIFIED" not in src or "gate -> State.PROVEN_GATE" n
     raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL closure_semantics_changed")
 
 print("AUTONOMOUS_CONTINUATION_GATE=PASS")
+
+
+runtime = (root / "app/src/main/java/ps/hakim/phoneagent/HakimAutonomousContinuation.kt").read_text(encoding="utf-8")
+app = (root / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
+boot = (root / "app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text(encoding="utf-8")
+alarm = (root / "app/src/main/java/ps/hakim/phoneagent/HakimResilienceAlarmReceiver.kt").read_text(encoding="utf-8")
+connection = (root / "app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt").read_text(encoding="utf-8")
+evolution = (root / "app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService.kt").read_text(encoding="utf-8")
+tasks = (root / "app/src/main/java/ps/hakim/phoneagent/HakimTaskManager.kt").read_text(encoding="utf-8")
+ui = (root / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
+
+runtime_required = [
+    "object HakimAutonomousContinuation",
+    "fun pulse(context: Context, reason: String)",
+    "HakimValueContinuityEngine.resumePending(app)",
+    "HakimGoalSupervisor.resume(app)",
+    "HakimGoalExecutor.tick(app)",
+    "HakimTaskManager.nextAutoResume(app)",
+    "HakimTaskManager.requestResume(app, task.id)",
+    "loopState != \"active\" || restartPulse",
+    "high_impact_still_gated",
+]
+missing_runtime = [x for x in runtime_required if x not in runtime]
+if missing_runtime:
+    raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL runtime=" + ",".join(missing_runtime))
+
+hooks = {
+    "app_start": (app, 'HakimAutonomousContinuation.pulse(this, "app_start")'),
+    "boot": (boot, 'HakimAutonomousContinuation.pulse(context, "boot_or_replace")'),
+    "alarm": (alarm, 'HakimAutonomousContinuation.pulse(app, "alarm_receiver_$reason")'),
+    "network_available": (connection, 'HakimAutonomousContinuation.pulse(context, "network_available")'),
+    "network_capabilities": (connection, 'HakimAutonomousContinuation.pulse(context, "network_capabilities")'),
+    "periodic": (evolution, 'HakimAutonomousContinuation.pulse(applicationContext, "evolution_job")'),
+    "ui_consume": (ui, "maybeResumeAutonomousTask()"),
+}
+for name, (body, token) in hooks.items():
+    if token not in body:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL hook=" + name)
+
+if tasks.count('.put("auto_resume", true)') < 2:
+    raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL auto_resume_default")
+for token in ["fun pendingResumeRequest", "fun nextAutoResume", "task.autoResume", "task.resumable"]:
+    if token not in tasks:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL task_manager=" + token)
+
+print("AUTONOMOUS_RUNTIME_CONTINUATION=PASS")

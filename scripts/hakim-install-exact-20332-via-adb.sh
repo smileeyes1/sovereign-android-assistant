@@ -80,6 +80,39 @@ BEFORE_CODE="$(sed -n 's/.*versionCode=\([0-9][0-9]*\).*/\1/p' <<<"$BEFORE" | he
 [[ -n "$BEFORE_CODE" ]] || fail "installed_version_unreadable"
 (( BEFORE_CODE < EXPECTED_VERSION_CODE )) || fail "not_a_forward_update"
 
+# افشل قبل أي تثبيت إذا لم تكن النسخة الحالية أصلًا ضمن سلسلة D1 الميدانية.
+CURRENT_REMOTE="$(adb -s "$DEVICE" shell pm path "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r' | sed -n 's/^package://p' | grep '/base.apk
+  printf '%s\n' "$INSTALL_OUT" >&2
+  fail "adb_install_failed"
+}
+grep -q "Success" <<<"$INSTALL_OUT" || fail "adb_install_not_confirmed"
+
+AFTER="$(adb -s "$DEVICE" shell dumpsys package "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r')"
+grep -q "versionCode=$EXPECTED_VERSION_CODE" <<<"$AFTER" || fail "installed_version_mismatch"
+
+REMOTE_PATH="$(adb -s "$DEVICE" shell pm path "$EXPECTED_PACKAGE" 2>/dev/null | tr -d '\r' | sed -n 's/^package://p' | grep '/base.apk$' | head -n1)"
+[[ -n "$REMOTE_PATH" ]] || fail "installed_base_path_missing"
+TMP="${TMPDIR:-$HOME/.cache}/hakim-installed-20332-$.apk"
+mkdir -p "$(dirname "$TMP")"
+trap 'rm -f "$TMP" "$CURRENT_TMP"' EXIT
+adb -s "$DEVICE" pull "$REMOTE_PATH" "$TMP" >/dev/null 2>&1 || fail "pull_installed_apk_failed"
+INSTALLED_SHA="$(sha256_file "$TMP")"
+[[ "$INSTALLED_SHA" == "$SIGNED_SHA" ]] || fail "installed_same_artifact_sha_mismatch"
+
+adb -s "$DEVICE" shell monkey -p "$EXPECTED_PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || fail "launch_failed"
+sleep 2
+adb -s "$DEVICE" shell pidof "$EXPECTED_PACKAGE" >/dev/null 2>&1 || fail "process_not_running_after_launch"
+
+printf 'HAKIM_FIELD_INSTALL=PASS device=%s before=%s after=%s current_sha256=%s signed_sha256=%s current_signer_d1=true same_artifact=true data_clear=false uninstall=false\n' \
+  "$DEVICE" "$BEFORE_CODE" "$EXPECTED_VERSION_CODE" "$CURRENT_SHA" "$SIGNED_SHA"
+ | head -n1)"
+[[ -n "$CURRENT_REMOTE" ]] || fail "current_base_path_missing"
+CURRENT_TMP="${TMPDIR:-$HOME/.cache}/hakim-current-before-20332-$.apk"
+mkdir -p "$(dirname "$CURRENT_TMP")"
+adb -s "$DEVICE" pull "$CURRENT_REMOTE" "$CURRENT_TMP" >/dev/null 2>&1 || fail "pull_current_apk_failed"
+APKSIGNER="$APKSIGNER_BIN" bash "$ROOT/scripts/verify-field-signer.sh" "$CURRENT_TMP" >/dev/null || fail "current_field_signer_mismatch"
+CURRENT_SHA="$(sha256_file "$CURRENT_TMP")"
+
 INSTALL_OUT="$(adb -s "$DEVICE" install -r --no-streaming "$APK" 2>&1)" || {
   printf '%s\n' "$INSTALL_OUT" >&2
   fail "adb_install_failed"

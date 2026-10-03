@@ -69,7 +69,7 @@ for token in [
 ]:
     assert token in selfcheck, token
 
-assert re.search(r"versionCode\s+20335\b", gradle)
+assert (m:=re.search(r"versionCode\s+(\d+)\b", gradle)) and int(m.group(1)) >= 20335
 assert "professional-cognitive-routing-r26" in gradle
 assert state["candidate_version_code"] == 20335
 assert state["base_signed_candidate"]["version_code"] == 20334

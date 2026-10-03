@@ -18,11 +18,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  * It never reads user conversation text, user files, browser pages, or credentials.
  */
 object HakimFieldAcceptance {
-    const val VERSION = "FIELD-ACCEPTANCE-20313-v1"
+    const val VERSION = "FIELD-ACCEPTANCE-20333-v2"
     private const val PREFS = "hakim_field_acceptance"
     private const val REPORT = "report"
     private const val LAST_VERSION = "last_version"
     private const val LAST_RUN_AT = "last_run_at"
+    private const val RETRY_NONPASS_AFTER_MS = 30L * 60L * 1000L
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "hakim-field-acceptance").apply { isDaemon = true }
@@ -32,7 +33,15 @@ object HakimFieldAcceptance {
         val app = context.applicationContext
         val version = currentVersion(app)
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (p.getLong(LAST_VERSION, -1L) == version && p.getString(REPORT, "").orEmpty().isNotBlank()) return
+        val previous = p.getString(REPORT, "").orEmpty()
+        val previousStatus = runCatching { JSONObject(previous).optString("status") }.getOrDefault("")
+        val lastVersion = p.getLong(LAST_VERSION, -1L)
+        val lastRunAt = p.getLong(LAST_RUN_AT, 0L)
+        val now = System.currentTimeMillis()
+        if (lastVersion == version && previous.isNotBlank()) {
+            if (previousStatus == "PASS") return
+            if (lastRunAt > 0L && now - lastRunAt < RETRY_NONPASS_AFTER_MS) return
+        }
         if (!running.compareAndSet(false, true)) return
         executor.execute {
             try {
@@ -57,6 +66,8 @@ object HakimFieldAcceptance {
             .put("running", running.get())
             .put("last_version", p.getLong(LAST_VERSION, -1L))
             .put("last_run_at", p.getLong(LAST_RUN_AT, 0L))
+            .put("retry_nonpass_after_ms", RETRY_NONPASS_AFTER_MS)
+            .put("reruns_nonpass_after_cooldown", true)
             .put("report", parsed ?: JSONObject.NULL)
     }
 

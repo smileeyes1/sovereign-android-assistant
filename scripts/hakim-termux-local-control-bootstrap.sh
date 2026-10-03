@@ -1,4 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 set -euo pipefail
 
 BASE="$HOME/.hakim/termux-control"
@@ -73,6 +78,11 @@ enable_external_apps(){
 install_control(){
   cat > "$CONTROL" <<'CTRL'
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 set -euo pipefail
 PROFILE="${1:-status}"
 
@@ -82,7 +92,7 @@ connected_ep(){
 adb_connect(){
   adb start-server >/dev/null 2>&1 || true
   local ep
-  ep="$(connected_ep)"
+  ep="$(connected_ep || true)"
   if [ -n "$ep" ]; then
     echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
     return 0
@@ -90,7 +100,7 @@ adb_connect(){
 
   if [ -x "$HOME/.hakim/adb-self.sh" ]; then
     timeout 8 "$HOME/.hakim/adb-self.sh" >/dev/null 2>&1 || true
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     if [ -n "$ep" ]; then
       echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
       return 0
@@ -100,7 +110,7 @@ adb_connect(){
   if [ -s "$HOME/.omega/adb/last-endpoint" ]; then
     ep="$(head -1 "$HOME/.omega/adb/last-endpoint" | tr -d '\r\n')"
     [ -n "$ep" ] && timeout 6 adb connect "$ep" >/dev/null 2>&1 || true
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     if [ -n "$ep" ]; then
       echo "HAKIM_TERMUX_ADB=PASS endpoint=$ep"
       return 0
@@ -130,16 +140,16 @@ case "$PROFILE" in
     hakim-adb selftest
     ;;
   hakim_status)
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     [ -n "$ep" ] || { echo "HAKIM_TERMUX_APP=OFFLINE"; exit 2; }
     ver="$(adb -s "$ep" shell dumpsys package ps.hakim.stable 2>/dev/null | sed -n 's/.*versionCode=\([0-9][0-9]*\).*/\1/p' | head -n1 | tr -d '\r')"
     pid="$(adb -s "$ep" shell pidof ps.hakim.stable 2>/dev/null | tr -d '\r')"
     echo "HAKIM_TERMUX_APP=PASS versionCode=${ver:-unknown} running=$([ -n "$pid" ] && echo true || echo false)"
     ;;
   hakim_restart)
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     [ -n "$ep" ] || adb_connect >/dev/null 2>&1 || { echo "HAKIM_TERMUX_RESTART=BLOCKED reason=self_adb_offline"; exit 2; }
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     adb -s "$ep" shell am force-stop ps.hakim.stable >/dev/null 2>&1 || true
     sleep 1
     adb -s "$ep" shell monkey -p ps.hakim.stable -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || {
@@ -171,6 +181,11 @@ CTRL
 
   cat > "$BOOT_HOOK" <<'BOOT'
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
+: "${TMPDIR:=/data/data/com.termux/files/usr/tmp}"
+export TMPDIR
+mkdir -p "$TMPDIR" 2>/dev/null || true
 sleep 8
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
 adb start-server >/dev/null 2>&1 || true
@@ -194,7 +209,7 @@ status(){
   [ -x "$BOOT_HOOK" ] && boot="true"
   if command -v adb >/dev/null 2>&1; then
     local ep
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     if [ -n "$ep" ]; then
       adb_state="online"
       if adb -s "$ep" shell dumpsys package "$PACKAGE" 2>/dev/null | grep -A80 'runtime permissions:' | grep -q "$RUN_PERMISSION: granted=true"; then
@@ -238,7 +253,7 @@ rollback(){
   rm -f "$CONTROL" "$BOOT_HOOK"
   if command -v adb >/dev/null 2>&1; then
     local ep
-    ep="$(connected_ep)"
+    ep="$(connected_ep || true)"
     [ -n "$ep" ] && adb -s "$ep" shell pm revoke "$PACKAGE" "$RUN_PERMISSION" >/dev/null 2>&1 || true
   fi
   echo "HAKIM_TERMUX_BOOTSTRAP=ROLLED_BACK"

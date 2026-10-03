@@ -94,6 +94,8 @@ for token in [
     '$HOME/.termux/boot',
     'PROFILE="${1:-status}"',
     'HAKIM_TERMUX_CONTROL=BLOCKED reason=profile_not_allowed',
+    'timeout 8 "$HOME/.hakim/adb-self.sh"',
+    'timeout 6 adb connect "$ep"',
 ]:
     require(token in bootstrap,"bootstrap:"+token)
 
@@ -103,6 +105,8 @@ for forbidden in [
     'REMOTE_MAINTENANCE',
     'curl ',
     'wget ',
+    'scan_host',
+    'ports=range(30000,50001)',
 ]:
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
 

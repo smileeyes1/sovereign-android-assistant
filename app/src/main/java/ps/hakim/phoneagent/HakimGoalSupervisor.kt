@@ -78,6 +78,33 @@ object HakimGoalSupervisor {
         return next
     }
 
+    fun resumeIfCondition(context: Context, event: String): Boolean {
+        val normalized = event.trim().lowercase().replace(Regex("[^a-z0-9_\\-]"), "_").take(80)
+        if (normalized.isBlank()) return false
+
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (p.getString("state", "") != State.WAIT.name) return false
+
+        val condition = p.getString("resume_condition", "").orEmpty()
+            .lowercase()
+            .replace(Regex("[^a-z0-9_\\-]"), "_")
+            .take(1000)
+        if (condition.isBlank()) return false
+
+        val alternatives = condition.split("_or_")
+            .map { it.trim('_') }
+            .filter { it.isNotBlank() }
+        if (normalized !in alternatives) return false
+
+        p.edit()
+            .putString("state", State.EXECUTE.name)
+            .putString("recovery_evidence", "resume_condition_met:" + normalized)
+            .putString("resume_condition", "")
+            .putLong("updated_at", System.currentTimeMillis())
+            .apply()
+        return true
+    }
+
     fun reroute(context: Context, route: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("reroute", route.take(1000)).putString("state", State.REROUTE.name)
@@ -116,6 +143,7 @@ object HakimGoalSupervisor {
             .put("failure_of_means_never_closes_goal", true).put("same_failure_forces_reroute", true).put("wait_must_be_resumable", true).put("state", p.getString("state", ""))
             .put("goal_id", p.getString("goal_id", "")).put("effect_verified", p.getBoolean("effect_verified", false))
             .put("gate_proven", p.getBoolean("gate_proven", false))
+            .put("resume_condition", p.getString("resume_condition", ""))
             .put("acceptance_gate", HakimAcceptanceGate.status(context))
     }
 }

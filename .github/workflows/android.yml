@@ -139,6 +139,7 @@ jobs:
           python3 tests/verify_no_hypothetical_gate_policy.py
           python3 tests/verify_goal_supervisor_policy.py
           python3 tests/verify_autonomous_continuation_gate.py
+          python3 tests/verify_resumable_wait_event_gate.py
           python3 tests/verify_execution_continuity.py
           python3 tests/verify_self_check_continuity.py
           python3 tests/verify_fault_containment_policy.py

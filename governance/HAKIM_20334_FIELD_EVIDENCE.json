@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "candidate_version": 20334,
+  "package": "ps.hakim.stable",
+  "source": {
+    "branch": "release/hakim-20334-autonomy-field-acceptance-r25",
+    "head": "a5fd08ce653e58e13fd49a5ff4f8b11a807fd0e1",
+    "ci_run_number": 1521,
+    "ci_run_id": 37113673116,
+    "ci_conclusion": "success",
+    "ci_artifact_id": 11270247244,
+    "unsigned_sha256": "8d22639739247c0f5c3feff7aa4e1ab32e6ef3ee9a828e3c5b69fb0eabf298a6"
+  },
+  "signed_artifact": {
+    "file": "Hakim-20334-D1.apk",
+    "sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b",
+    "certificate_sha256": "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3",
+    "signature_scheme": "APK Signature Scheme v2",
+    "signature_algorithm": "RSA PKCS#1 v1.5 with SHA-512",
+    "local_apksigner_verified": true,
+    "signer_reproduction_control_byte_identical": true
+  },
+  "field": {
+    "installed_version": 20334,
+    "installed_apk_sha256": "ddacc815bfd5033bd41e6e7db0c498594c3a4aa6f95430c96e80f176ec3e9f4b",
+    "same_signed_apk_field_verified": true,
+    "service_running": true,
+    "self_check": "PASS",
+    "execution_fabric_online": true,
+    "legacy_connected": true,
+    "secure_relay_primary_connected": false,
+    "full_product_acceptance_matrix": false,
+    "product_promoted": false
+  },
+  "evidence_sources": [
+    "authenticated Railway HAKIM_HEALTH_EVIDENCE reports version_code 20334 and exact installed APK SHA-256",
+    "authenticated Railway HAKIM_STATUS_PROBE reports self_check PASS and execution_fabric ONLINE",
+    "authorized Termux/Remote Desktop sha256sum and apksigner verify on the same APK"
+  ],
+  "boundary": "Installation and same-artifact identity are verified. Remaining feature-specific field gates stay independent and unpromoted."
+}

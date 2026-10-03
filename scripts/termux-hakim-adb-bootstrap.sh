@@ -1,4 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+export PREFIX
 set -u
 
 STATE_DIR="$HOME/.omega/adb"

@@ -47,6 +47,66 @@ object HakimCapabilityKernel {
 
     private const val ONE_TIME_GRANT_TTL_MS = 5L * 60L * 1000L
 
+    data class Probe(
+        val id: String,
+        val declared: Boolean,
+        val available: Boolean,
+        val authorizedNow: Boolean,
+        val requiresGate: Boolean,
+        val evidence: String
+    )
+
+    /**
+     * فحص بلا أثر جانبي: لا يستهلك التفويض المؤقت ولا يمنح صلاحية.
+     * availability تعني وجود وسيلة تشغيل حالية لهذا التطبيق، لا نجاح المقصد.
+     */
+    fun probe(context: Context, capabilityId: String, target: String = ""): Probe {
+        val cap = builtIns.firstOrNull { it.id == capabilityId }
+            ?: return Probe(capabilityId, false, false, false, true, "unknown_capability")
+
+        val available = when (cap.id) {
+            "observe_ui", "navigate_ui", "type_text" -> HakimAccessibilityService.instance != null
+            "browser_open" -> true // متصفح حكيم مكوّن داخلي؛ الاتصال بالإنترنت يُفحص في مساره.
+            "local_file_read", "local_file_write" -> true // نطاق التطبيق المأذون فقط.
+            "build_candidate" -> false // البناء ليس قدرة هاتفية داخل التطبيق.
+            "install_candidate" -> false // لا self-installer ولا REQUEST_INSTALL_PACKAGES.
+            "send_external" -> true // primitive موجود، ويبقى الإرسال نفسه خلف بوابة التفويض.
+            "financial_action", "grant_permission" -> false
+            else -> false
+        }
+
+        val key = grantKey(cap.id, target)
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val oneTimeGrant = p.getLong(key + "_once_until", 0L) >= System.currentTimeMillis()
+        val requiresGate = cap.sensitive || !cap.reversible
+        val authorizedNow = available && (!requiresGate || oneTimeGrant)
+
+        val evidence = when {
+            !available && cap.id in setOf("observe_ui", "navigate_ui", "type_text") -> "accessibility_not_live"
+            !available && cap.id == "build_candidate" -> "build_environment_not_inside_android_app"
+            !available && cap.id == "install_candidate" -> "self_installer_disabled"
+            !available && cap.id == "financial_action" -> "financial_primitive_not_exposed"
+            !available && cap.id == "grant_permission" -> "permission_grant_not_exposed"
+            oneTimeGrant -> "explicit_one_time_grant_present"
+            requiresGate -> "available_but_requires_explicit_gate"
+            else -> "available_low_impact"
+        }
+        return Probe(cap.id, true, available, authorizedNow, requiresGate, evidence)
+    }
+
+    fun runtimeMatrix(context: Context): JSONArray = JSONArray().apply {
+        builtIns.forEach { cap ->
+            val p = probe(context, cap.id)
+            put(JSONObject()
+                .put("id", p.id)
+                .put("declared", p.declared)
+                .put("available", p.available)
+                .put("authorized_now", p.authorizedNow)
+                .put("requires_gate", p.requiresGate)
+                .put("evidence", p.evidence))
+        }
+    }
+
     fun grantOnce(context: Context, capabilityId: String, target: String): Boolean {
         if (builtIns.none { it.id == capabilityId }) return false
         val key = grantKey(capabilityId, target)
@@ -103,6 +163,9 @@ object HakimCapabilityKernel {
             .put("unknown_capability_denied", true)
             .put("sensitive_material_gated", true)
             .put("catalog_size", builtIns.size)
+            .put("capability_is_not_availability", true)
+            .put("availability_is_not_authorization", true)
+            .put("runtime_matrix", runtimeMatrix(context))
             .put("last_decision", p.getString("last_decision", ""))
             .put("last_decision_at", p.getLong("last_decision_at", 0L))
     }

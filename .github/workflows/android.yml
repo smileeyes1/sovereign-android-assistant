@@ -168,6 +168,14 @@ jobs:
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace
+      - name: بوابة ثبات مخرجات الإصدار
+        run: |
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          if unzip -Z1 "$APK" | grep -Fxq 'META-INF/version-control-info.textproto'; then
+            echo 'REPRODUCIBLE_RELEASE_GATE=FAIL reason=vcs_info_embedded' >&2
+            exit 1
+          fi
+          echo 'REPRODUCIBLE_RELEASE_GATE=PASS vcs_info_embedded=false'
       - name: بوابة توافق صفحات الذاكرة 16KB
         run: |
           ZIPALIGN_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/zipalign"

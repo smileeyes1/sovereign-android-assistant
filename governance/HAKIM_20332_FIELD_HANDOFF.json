@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "candidate_version_code": 20332,
+  "package": "ps.hakim.stable",
+  "source_branch": "feature/hakim-20332-autonomous-continuation-gate",
+  "source_head": "ed475233746388e1b8b94324874adc743957a1ef",
+  "source_ci": {
+    "run_number": 1485,
+    "run_id": 37110249064,
+    "conclusion": "success",
+    "autonomous_continuation_gate": true,
+    "autonomous_runtime_continuation": true,
+    "autonomous_headless_safe_runner": true,
+    "autonomous_event_recovery": true,
+    "goal_supervisor_policy": true,
+    "goal_executor_policy": true,
+    "build_release": true,
+    "alignment_16kb": true
+  },
+  "frozen_unsigned_artifact": {
+    "artifact_id": 11270005895,
+    "artifact_name": "hakim-ci-NOT-INSTALLABLE",
+    "member": "release/app-release-unsigned.apk",
+    "sha256": "182b06dea9ea0e94fa6240d2d2663aa5e5af265283510c69e2a8050e0feb7cf7",
+    "must_not_be_rebuilt_for_same_artifact_signing": true
+  },
+  "field_signing": {
+    "certificate_sha256": "D1:3E:7A:A8:27:1C:B6:D3:2A:EC:21:57:CC:5B:A4:FA:FD:22:69:57:EB:0C:73:1E:9C:EB:A8:27:BF:78:B0:D3",
+    "private_material_in_ci": false,
+    "private_material_must_not_be_committed": true,
+    "exact_signing_script": "scripts/hakim-sign-exact-20332-ci1485.sh",
+    "signed_sha256": null,
+    "verified": false
+  },
+  "field_install": {
+    "verified_baseline_floor": 20317,
+    "install_script": "scripts/hakim-install-exact-20332-via-adb.sh",
+    "same_signed_artifact_verified": false,
+    "field_installed": false
+  },
+  "pull_requests": {
+    "autonomous_source_gate": 281,
+    "field_handoff_gate": 282
+  },
+  "state": "SOURCE_CI_VERIFIED_AWAITING_D1_SIGNING",
+  "next_gate": "SIGN_EXACT_FROZEN_UNSIGNED_APK_WITH_AUTHORIZED_D1_CHANNEL_THEN_VERIFY_AND_FIELD_INSTALL_SAME_SIGNED_ARTIFACT",
+  "forbidden_shortcuts": [
+    "sign_a_rebuilt_apk_instead_of_the_frozen_ci_artifact",
+    "use_debug_apk_as_field_update",
+    "use_non_d1_signer",
+    "uninstall_existing_app",
+    "clear_app_data",
+    "claim_field_approval_without_same_artifact_evidence"
+  ]
+}

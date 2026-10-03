@@ -1,12 +1,11 @@
 package ps.hakim.phoneagent
 
 import android.app.PendingIntent
-import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.IBinder
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -101,7 +100,7 @@ object HakimTermuxControl {
             .putExtra("reason", reason.take(80))
         val flags = PendingIntent.FLAG_ONE_SHOT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-        val pending = PendingIntent.getService(app, id, callback, flags)
+        val pending = PendingIntent.getBroadcast(app, id, callback, flags)
 
         val intent = Intent().apply {
             setClassName(TERMUX_PACKAGE, TERMUX_SERVICE)
@@ -144,16 +143,20 @@ object HakimTermuxControl {
 
     fun recover(context: Context, reason: String): JSONObject {
         val app = context.applicationContext
-        if (!ready(app)) return status(app)
+        if (!ready(app)) return status(app).put("ok", false).put("error", "termux_not_ready")
         val result = dispatch(app, "adb_connect", reason)
-        return status(app).put("recover_dispatch", result)
+        return status(app)
+            .put("ok", result.optBoolean("ok", false))
+            .put("recover_dispatch", result)
     }
 
     fun probe(context: Context, reason: String = "probe"): JSONObject {
         val app = context.applicationContext
-        if (!ready(app)) return status(app)
+        if (!ready(app)) return status(app).put("ok", false).put("error", "termux_not_ready")
         val result = dispatch(app, "status", reason)
-        return status(app).put("probe_dispatch", result)
+        return status(app)
+            .put("ok", result.optBoolean("ok", false))
+            .put("probe_dispatch", result)
     }
 
     fun recordResult(
@@ -228,28 +231,21 @@ object HakimTermuxControl {
     }
 }
 
-class HakimTermuxResultService : Service() {
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            val result = intent.getBundleExtra("result")
-            val executionId = intent.getIntExtra("execution_id", 0)
-            val profile = intent.getStringExtra("profile").orEmpty()
-            if (result != null && executionId > 0 && profile.isNotBlank()) {
-                HakimTermuxControl.recordResult(
-                    this,
-                    executionId,
-                    profile,
-                    result.getString("stdout", "").orEmpty(),
-                    result.getString("stderr", "").orEmpty(),
-                    result.getInt("exitCode", -1),
-                    result.getInt("err", -1),
-                    result.getString("errmsg", "").orEmpty(),
-                )
-            }
-        }
-        stopSelf(startId)
-        return START_NOT_STICKY
+class HakimTermuxResultReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val result = intent.getBundleExtra("result") ?: return
+        val executionId = intent.getIntExtra("execution_id", 0)
+        val profile = intent.getStringExtra("profile").orEmpty()
+        if (executionId <= 0 || profile.isBlank()) return
+        HakimTermuxControl.recordResult(
+            context.applicationContext,
+            executionId,
+            profile,
+            result.getString("stdout", "").orEmpty(),
+            result.getString("stderr", "").orEmpty(),
+            result.getInt("exitCode", -1),
+            result.getInt("err", -1),
+            result.getString("errmsg", "").orEmpty(),
+        )
     }
 }

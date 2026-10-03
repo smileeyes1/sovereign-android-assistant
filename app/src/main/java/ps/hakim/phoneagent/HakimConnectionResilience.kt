@@ -82,6 +82,7 @@ object HakimConnectionResilience {
                     prefs(context).edit().putLong("last_network_available_at", System.currentTimeMillis()).apply()
                     recover(context, "network_available")
                     HakimAutonomousContinuation.pulse(context, "network_available")
+                    if (HakimService.running) HakimFieldAcceptance.install(context)
                 }
 
                 override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {

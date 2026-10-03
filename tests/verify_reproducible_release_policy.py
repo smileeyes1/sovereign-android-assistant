@@ -3,6 +3,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 gradle = (root / "app/build.gradle").read_text(encoding="utf-8")
+workflow = (root / ".github/workflows/android.yml").read_text(encoding="utf-8")
 
 required = [
     "buildTypes {",
@@ -16,3 +17,12 @@ if missing:
 print("REPRODUCIBLE_RELEASE_GATE=PASS vcs_info_embedded=false")
 
 # second-build probe: test-only commit must not change release APK bytes
+
+for token in [
+    "META-INF/version-control-info.textproto",
+    "hakim-build-evidence.json",
+    '"provenance_external_to_apk":True',
+    "BUILD_EVIDENCE=PASS",
+]:
+    if token not in workflow:
+        raise SystemExit("REPRODUCIBLE_RELEASE_GATE=FAIL workflow=" + token)

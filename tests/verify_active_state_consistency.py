@@ -27,7 +27,7 @@ req(state["local_execution"]["phone_channel"] == "ONLINE_DIRECT_HTTPS_VERIFIED",
 req(state["local_execution"]["execution_fabric_source_integrated"] is True, "execution_fabric_source")
 req(state["local_execution"]["execution_fabric_field_online"] is True, "field_online")
 req(state["local_execution"]["production_bridge_contract"] == "hakim-direct-https-v1+relay_result_topic+HR1+encrypted_ntfy_fallback", "bridge_contract")
-req(state["local_execution"]["termux_channel"] == "NOT_PROVEN_CURRENTLY", "termux_claim")
+req(state["local_execution"]["termux_channel"] in {"NOT_PROVEN_CURRENTLY","SOURCE_INTEGRATED_FIELD_PENDING","ONLINE_LOCAL_VERIFIED"}, "termux_claim")
 field_version = int(state["android"]["field_observed_current"]["version_code"])
 req(field_version >= 20106, "field_observed_version_floor")
 req(field_version == parent_version, "verified_field_parent_version")

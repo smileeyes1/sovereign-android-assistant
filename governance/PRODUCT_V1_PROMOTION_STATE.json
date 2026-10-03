@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20335,
+  "candidate_version": 20336,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -28,6 +28,12 @@
   "auto_update_wakeup_source_integrated": true,
   "auto_update_wakeup_field_verified": false,
   "professional_cognitive_routing_source_integrated": true,
-  "professional_cognitive_routing_source_ci_verified": false,
-  "professional_cognitive_routing_field_verified": false
+  "professional_cognitive_routing_source_ci_verified": true,
+  "professional_cognitive_routing_field_verified": false,
+  "termux_local_control_source_integrated": true,
+  "termux_local_control_source_ci_verified": false,
+  "termux_local_control_field_verified": false,
+  "termux_run_command_permission_field_verified": false,
+  "termux_allow_external_apps_field_verified": false,
+  "termux_same_artifact_field_verified": false
 }

@@ -84,3 +84,36 @@ for token in ["fun pendingResumeRequest", "fun nextAutoResume", "task.autoResume
         raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL task_manager=" + token)
 
 print("AUTONOMOUS_RUNTIME_CONTINUATION=PASS")
+
+
+runner = (root / "app/src/main/java/ps/hakim/phoneagent/HakimAutonomousGoalRunner.kt").read_text(encoding="utf-8")
+selfcheck = (root / "app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
+
+for token in [
+    "object HakimAutonomousGoalRunner",
+    "fun scheduleIfSafe",
+    "HakimModelToolRouter.Channel.LOCAL_RESPONSE",
+    "HakimModelToolRouter.Channel.DIRECT_MODEL",
+    "if (intent.highImpact || intent.needsUserGate) return false",
+    "HakimAttachmentSessionStore.restore(app).isNotEmpty()",
+    "EvidenceStage.DISPATCHED",
+    "effectVerified = false",
+    "fun finalizeIfVisible",
+    "EvidenceStage.UI_OBSERVED",
+    "ui_observation_required_before_close",
+]:
+    if token not in runner:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL headless_runner=" + token)
+
+if "HakimAutonomousGoalRunner.scheduleIfSafe(app, task, reason)" not in runtime:
+    raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL headless_not_wired")
+if "HakimAutonomousGoalRunner.finalizeIfVisible" not in ui:
+    raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL visible_finalize_not_wired")
+for token in [
+    "HakimAutonomousContinuation.status(context)",
+    "HakimAutonomousGoalRunner.status(context)",
+]:
+    if token not in selfcheck:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL selfcheck=" + token)
+
+print("AUTONOMOUS_HEADLESS_SAFE_RUNNER=PASS")

@@ -11,6 +11,7 @@ fabric=(root/"app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt").re
 selfcheck=(root/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
 command_center=(root/"app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 bootstrap=(root/"scripts/hakim-termux-local-control-bootstrap.sh").read_text(encoding="utf-8")
+rescue=(root/"scripts/hakim-zero-burden-rescue.sh").read_text(encoding="utf-8")
 adb_bootstrap=(root/"scripts/termux-hakim-adb-bootstrap.sh").read_text(encoding="utf-8")
 active=json.loads((root/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
 promotion=json.loads((root/"governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
@@ -42,10 +43,16 @@ for token in [
     '"adb_connect"',
     '"adb_selftest"',
     '"resilience_status"',
+    '"hakim_status"',
+    '"hakim_restart"',
+    '"local_rescue"',
     '.put("fixed_profiles_only", true)',
     '.put("arbitrary_shell_exposed", false)',
     '.put("external_remote_quota_required", false)',
+    '.put("no_external_usage_quota", true)',
     '.put("paid_provider_required", false)',
+    '.put("local_first_control", true)',
+    '.put("works_without_cloud_after_bootstrap", true)',
     '.put("high_impact_requires_separate_gate", true)',
     '.put("unlimited_claim", false)',
     '.put("resource_limits_apply", true)',
@@ -107,6 +114,11 @@ for token in [
     'HAKIM_TERMUX_CONTROL=BLOCKED reason=profile_not_allowed',
     'timeout 8 "$HOME/.hakim/adb-self.sh"',
     'timeout 6 adb connect "$ep"',
+    'HAKIM_TERMUX_APP=PASS',
+    'HAKIM_TERMUX_RESTART=PASS',
+    'EXTERNAL_USAGE_QUOTA_REQUIRED=false',
+    'PAID_PROVIDER_REQUIRED=false',
+    'LOCAL_FIRST_AFTER_BOOTSTRAP=true',
 ]:
     require(token in bootstrap,"bootstrap:"+token)
 
@@ -121,6 +133,25 @@ for forbidden in [
     'pm grant "$PACKAGE" "$RUN_PERMISSION"',
 ]:
     require(forbidden not in bootstrap,"external_dependency:"+forbidden)
+
+
+for token in [
+    'HAKIM_LOCAL_RESCUE=PASS',
+    'REMOTE_DESKTOP_REQUIRED=false',
+    'EXTERNAL_USAGE_QUOTA_REQUIRED=false',
+    'PAID_PROVIDER_REQUIRED=false',
+    'self_ip()',
+    'connected_ep()',
+]:
+    require(token in rescue,"rescue:"+token)
+for forbidden in [
+    '@wonderwhy-er/desktop-commander',
+    'npx ',
+    'REMOTE_MAINTENANCE',
+    'scan_host',
+    'ports=range(30000,50001)',
+]:
+    require(forbidden not in rescue,"rescue_external_dependency:"+forbidden)
 
 for token in [
     ': "${PREFIX:=/data/data/com.termux/files/usr}"',

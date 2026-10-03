@@ -63,6 +63,13 @@ class CommandCenterActivity : ComponentActivity() {
         }
     }
 
+    private val termuxPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        HakimTermuxControl.recordPermissionResult(this, granted)
+        refreshOperations()
+    }
+
     private val mediaPickerLauncher = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(HakimAttachmentGateway.MAX_ATTACHMENTS_PER_TASK)
     ) { uris ->
@@ -128,8 +135,10 @@ class CommandCenterActivity : ComponentActivity() {
         if (!termux.optBoolean("termux_installed", false) ||
             termux.optBoolean("run_command_permission", false)
         ) return
+        val request = HakimTermuxControl.prepareRunCommandPermission(this, "command_center_resume")
+        if (!request.optBoolean("permission_requested", false)) return
         termuxPermissionPromptAttempted = true
-        HakimTermuxControl.requestRunCommandPermission(this, "command_center_resume")
+        termuxPermissionLauncher.launch("com.termux.permission.RUN_COMMAND")
     }
 
     private fun maybeResumeAutonomousTask() {
@@ -204,21 +213,6 @@ class CommandCenterActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray,
-    ) {
-        if (requestCode == HakimTermuxControl.REQUEST_CODE_RUN_COMMAND) {
-            val granted = grantResults.isNotEmpty() &&
-                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
-            HakimTermuxControl.recordPermissionResult(this, granted)
-            refreshOperations()
-            return
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

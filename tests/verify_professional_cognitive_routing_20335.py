@@ -10,6 +10,7 @@ telemetry=(root/"app/src/main/java/ps/hakim/phoneagent/HakimEngineTelemetry.kt")
 intent=(root/"app/src/main/java/ps/hakim/phoneagent/HakimIntentDirector.kt").read_text(encoding="utf-8")
 relay=(root/"app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 selfcheck=(root/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
+capability=(root/"app/src/main/java/ps/hakim/phoneagent/HakimCapabilityKernel.kt").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
 state=json.loads((root/"governance/HAKIM_20335_COGNITIVE_CANDIDATE.json").read_text(encoding="utf-8"))
 
@@ -50,6 +51,16 @@ for token in [
 assert "HakimCognitivePolicy.analyze(goal, attachmentCount)" in intent
 assert "HakimCognitivePolicy.directive(cognitive)" in intent
 assert '.put("cognitive_policy", HakimCognitivePolicy.status(context))' in relay
+assert '.put("capability_kernel", HakimCapabilityKernel.status(context))' in relay
+for token in [
+    "data class Probe",
+    "fun probe(context: Context, capabilityId: String, target: String = \"\")",
+    "fun runtimeMatrix(context: Context)",
+    "capability_is_not_availability",
+    "availability_is_not_authorization",
+    "self_installer_disabled",
+]:
+    assert token in capability, token
 for token in [
     "سياسة الإدراك الاحترافية مفعّلة",
     "التوجيه المعرفي قائم على الدليل",

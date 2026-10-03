@@ -117,3 +117,33 @@ for token in [
         raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL selfcheck=" + token)
 
 print("AUTONOMOUS_HEADLESS_SAFE_RUNNER=PASS")
+
+
+relay = (root / "app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt").read_text(encoding="utf-8")
+executive = (root / "app/src/main/java/ps/hakim/phoneagent/HakimExecutiveLoop.kt").read_text(encoding="utf-8")
+selfcheck = (root / "app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
+
+for token in [
+    'HakimAutonomousContinuation.pulse(context, "secure_relay_connected")',
+    'HakimAutonomousContinuation.pulse(context, "secure_relay_legacy_connected")',
+]:
+    if token not in relay:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL relay_hook=" + token)
+
+for token in [
+    "HakimGoalSupervisor.Recovery.REROUTE",
+    '"execution_window_exhausted"',
+    '"next_autonomous_wakeup"',
+]:
+    if token not in executive:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL execution_window=" + token)
+
+for token in [
+    "HakimAutonomousContinuation.status(context)",
+    '"الاستمرار الذاتي الحدثي مفعّل"',
+    '.put("autonomous_continuation", autonomous)',
+]:
+    if token not in selfcheck:
+        raise SystemExit("AUTONOMOUS_CONTINUATION_GATE=FAIL selfcheck=" + token)
+
+print("AUTONOMOUS_EVENT_RECOVERY=PASS")

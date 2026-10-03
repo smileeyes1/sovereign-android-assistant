@@ -3,7 +3,12 @@ e=Path("app/src/main/java/ps/hakim/phoneagent/HakimGoalExecutor.kt").read_text(e
 for x in ["fun tick", "fun heartbeat", '"EXECUTE"', '"VERIFY"', '"REROUTE"', '"WAIT"', '"COMPLETE"', '"GATED"', "heartbeat_at"]:
     assert x in e, x
 boot=Path("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text(encoding="utf-8")
-assert "HakimGoalExecutor.tick" in boot, "BootReceiver.kt"
+auto=Path("app/src/main/java/ps/hakim/phoneagent/HakimAutonomousContinuation.kt").read_text(encoding="utf-8")
+assert (
+    "HakimGoalExecutor.tick" in boot
+    or 'HakimAutonomousContinuation.pulse(context, "boot_or_replace")' in boot
+), "BootReceiver.kt must resume the executor directly or through the autonomous continuation gate"
+assert "HakimGoalExecutor.tick(app)" in auto, "autonomous continuation must drive the executor"
 evolution=Path("app/src/main/java/ps/hakim/phoneagent/HakimEvolutionJobService.kt").read_text(encoding="utf-8")
 assert (
     "HakimGoalExecutor.tick" in evolution

@@ -45,6 +45,7 @@ class CommandCenterActivity : ComponentActivity() {
     private var operationsExpanded = false
     private var pendingResumeTaskId: String? = null
     private var lastAutonomousResumeAt = 0L
+    private var termuxPermissionPromptAttempted = false
     @Volatile private var currentDirectEngine: HakimInferenceEngine? = null
     private var streamingBase = ""
     private val streamingBuffer = StringBuilder()
@@ -116,8 +117,19 @@ class CommandCenterActivity : ComponentActivity() {
         HakimAutonomousContinuation.pulse(this, "command_center_resume")
         HakimAutonomousGoalRunner.finalizeIfVisible(this)
         browserHandler.postDelayed({ maybeResumeAutonomousTask() }, 500L)
+        maybeEnsureTermuxControlPermission()
         maybeOpenLocalRouterAuth()
         maybeEnsureDeviceProtection()
+    }
+
+    private fun maybeEnsureTermuxControlPermission() {
+        if (termuxPermissionPromptAttempted) return
+        val termux = HakimTermuxControl.status(this)
+        if (!termux.optBoolean("termux_installed", false) ||
+            termux.optBoolean("run_command_permission", false)
+        ) return
+        termuxPermissionPromptAttempted = true
+        HakimTermuxControl.requestRunCommandPermission(this, "command_center_resume")
     }
 
     private fun maybeResumeAutonomousTask() {
@@ -192,6 +204,21 @@ class CommandCenterActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        if (requestCode == HakimTermuxControl.REQUEST_CODE_RUN_COMMAND) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            HakimTermuxControl.recordPermissionResult(this, granted)
+            refreshOperations()
+            return
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

@@ -125,7 +125,7 @@ class CommandCenterActivity : ComponentActivity() {
             return
         }
         val loopState = HakimExecutiveLoop.publicStatus(this).optString("state")
-        if (loopState == "active") return
+        if (loopState == "active" && pending.state != HakimTaskManager.State.QUEUED) return
         val now = System.currentTimeMillis()
         if (now - lastAutonomousResumeAt < 5_000L) return
 

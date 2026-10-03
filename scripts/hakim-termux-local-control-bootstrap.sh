@@ -17,8 +17,35 @@ chmod 700 "$HOME/.hakim" "$BASE" "$BIN_DIR" "$BOOT_DIR" 2>/dev/null || true
 
 say(){ printf '%s\n' "$*"; }
 
+self_ip(){
+  python3 - <<'PY' 2>/dev/null
+import socket
+for target in [("192.168.1.1",80),("8.8.8.8",53)]:
+    s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    try:
+        s.connect(target)
+        ip=s.getsockname()[0]
+        if ip and ip!="0.0.0.0":
+            print(ip); break
+    except Exception:
+        pass
+    finally:
+        s.close()
+PY
+}
+
 connected_ep(){
-  adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1; exit}'
+  local sip ep state rest host
+  sip="$(self_ip)"
+  while read -r ep state rest; do
+    [ "$state" = "device" ] || continue
+    host="${ep%%:*}"
+    if [ "$host" = "127.0.0.1" ] || { [ -n "$sip" ] && [ "$host" = "$sip" ]; }; then
+      printf '%s\n' "$ep"
+      return 0
+    fi
+  done < <(adb devices 2>/dev/null | tail -n +2)
+  return 1
 }
 
 ensure_adb(){
@@ -102,6 +129,29 @@ case "$PROFILE" in
     command -v hakim-adb >/dev/null 2>&1 || { echo "HAKIM_TERMUX_SELFTEST=BLOCKED reason=hakim_adb_missing"; exit 3; }
     hakim-adb selftest
     ;;
+  hakim_status)
+    ep="$(connected_ep)"
+    [ -n "$ep" ] || { echo "HAKIM_TERMUX_APP=OFFLINE"; exit 2; }
+    ver="$(adb -s "$ep" shell dumpsys package ps.hakim.stable 2>/dev/null | sed -n 's/.*versionCode=\([0-9][0-9]*\).*/\1/p' | head -n1 | tr -d '\r')"
+    pid="$(adb -s "$ep" shell pidof ps.hakim.stable 2>/dev/null | tr -d '\r')"
+    echo "HAKIM_TERMUX_APP=PASS versionCode=${ver:-unknown} running=$([ -n "$pid" ] && echo true || echo false)"
+    ;;
+  hakim_restart)
+    ep="$(connected_ep)"
+    [ -n "$ep" ] || adb_connect >/dev/null 2>&1 || { echo "HAKIM_TERMUX_RESTART=BLOCKED reason=self_adb_offline"; exit 2; }
+    ep="$(connected_ep)"
+    adb -s "$ep" shell am force-stop ps.hakim.stable >/dev/null 2>&1 || true
+    sleep 1
+    adb -s "$ep" shell monkey -p ps.hakim.stable -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || {
+      echo "HAKIM_TERMUX_RESTART=FAIL"
+      exit 3
+    }
+    echo "HAKIM_TERMUX_RESTART=PASS"
+    ;;
+  local_rescue)
+    command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
+    adb_connect
+    ;;
   resilience_status)
     if [ -x "$HOME/.hakim/bin/hakim-termux-resilience" ]; then
       "$HOME/.hakim/bin/hakim-termux-resilience" status
@@ -169,6 +219,9 @@ install(){
   command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
   status
   echo "HAKIM_TERMUX_BOOTSTRAP=PASS permission_gate=ANDROID_USER_PROMPT_IN_HAKIM"
+  echo "EXTERNAL_USAGE_QUOTA_REQUIRED=false"
+  echo "PAID_PROVIDER_REQUIRED=false"
+  echo "LOCAL_FIRST_AFTER_BOOTSTRAP=true"
 }
 
 rollback(){

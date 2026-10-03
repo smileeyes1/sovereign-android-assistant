@@ -131,6 +131,7 @@ jobs:
           python3 tests/verify_d1_exact_signing_handoff.py
           python3 tests/verify_field_install_handoff.py
           python3 tests/verify_20332_field_handoff_state.py
+          python3 tests/verify_exact_promotion_20332.py
           python3 tests/verify_termux_resilience_policy.py
           python3 tests/verify_capability_kernel_policy.py
           python3 tests/verify_value_continuity_policy.py
@@ -152,6 +153,7 @@ jobs:
           bash -n scripts/verify-field-signer.sh
           bash -n scripts/hakim-sign-exact-20332-ci1485.sh
           bash -n scripts/hakim-install-exact-20332-via-adb.sh
+          bash -n scripts/hakim-promote-exact-20332.sh
           bash -n scripts/termux-hakim-adb-bootstrap.sh
           bash -n scripts/hakim-zero-burden-rescue.sh
           bash -n scripts/hakim-termux-resilience.sh

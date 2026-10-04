@@ -7,6 +7,7 @@ pair = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt").
 resilience = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimConnectionResilience.kt").read_text(encoding="utf-8")
 service = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimService.kt").read_text(encoding="utf-8")
 app = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
+orchestrator = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimOrchestrator.kt").read_text(encoding="utf-8")
 boot = (ROOT / "app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text(encoding="utf-8")
 gradle = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 
@@ -45,7 +46,7 @@ req("HakimExecutionFabric.recover(app, reason)" in resilience, "resilience_not_d
 req("HakimUnifiedRelay.start(applicationContext)" in service, "secure_relay_not_hosted_by_service")
 req("HakimLocalPairing.reconnectAsync(applicationContext)" in service, "adb_not_recovered_by_service")
 req('HakimExecutionFabric.recover(applicationContext, "task_removed")' in service, "task_removed_recovery")
-req('HakimExecutionFabric.recover(this, "app_start")' in app, "app_start_recovery")
+req(('HakimExecutionFabric.recover(this, "app_start")' in app) or ('HakimOrchestrator.recover(this, "app_start")' in app and 'HakimExecutionFabric.recover(context, reason)' in orchestrator), "app_start_recovery")
 req('HakimExecutionFabric.recover(context, "boot_or_replace")' in boot, "boot_recovery")
 
 # Known failure: restoring the stale result-url contract must be detected.

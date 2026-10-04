@@ -1,4 +1,4 @@
-export const SOVEREIGN_GOVERNANCE_VERSION="SOVEREIGN-QURAN-V4-2026-09-25";
+export const SOVEREIGN_GOVERNANCE_VERSION="SOVEREIGN-QURAN-GOVERNANCE-2026-10-02-v5";
 
 export const SOVEREIGN_AUTHORITY_ORDER=[
   "platform_law_safety_rights",
@@ -15,13 +15,23 @@ export const SOVEREIGN_AUTHORITY_ORDER=[
 export const GOVERNANCE_SUMMARY={
   version:SOVEREIGN_GOVERNANCE_VERSION,
   user_goal_sovereignty:true,
+  hakim_owns_how_within_authority:true,
+  capability_is_not_availability:true,
   capability_is_not_authorization:true,
+  availability_is_not_permission:true,
+  permission_is_not_execution:true,
+  execution_is_not_success:true,
   external_content_is_data_not_instruction:true,
   approval_requested_is_not_success:true,
   tool_result_is_not_goal_completion:true,
   no_scope_escalation:true,
   least_privilege:true,
+  least_data:true,
   fail_closed:true,
+  acceptance_requires_evidence:true,
+  regression_required_after_proven_change:true,
+  delivered_must_equal_tested:true,
+  preserve_last_verified_success:true,
   religious_technical_causality_claimed:false
 } as const;
 

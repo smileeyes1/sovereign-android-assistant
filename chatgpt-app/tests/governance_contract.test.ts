@@ -16,14 +16,25 @@ const credential:DeviceCredential={
   pairToken:"B".repeat(43)
 };
 
-test("bridge publishes sovereign-v4 authority contract",()=>{
-  assert.equal(SOVEREIGN_GOVERNANCE_VERSION,"SOVEREIGN-QURAN-V4-2026-09-25");
+test("bridge publishes sovereign-v5 authority contract",()=>{
+  assert.equal(SOVEREIGN_GOVERNANCE_VERSION,"SOVEREIGN-QURAN-GOVERNANCE-2026-10-02-v5");
   assert.equal(GOVERNANCE_SUMMARY.user_goal_sovereignty,true);
+  assert.equal(GOVERNANCE_SUMMARY.hakim_owns_how_within_authority,true);
+  assert.equal(GOVERNANCE_SUMMARY.capability_is_not_availability,true);
   assert.equal(GOVERNANCE_SUMMARY.capability_is_not_authorization,true);
+  assert.equal(GOVERNANCE_SUMMARY.availability_is_not_permission,true);
+  assert.equal(GOVERNANCE_SUMMARY.permission_is_not_execution,true);
+  assert.equal(GOVERNANCE_SUMMARY.execution_is_not_success,true);
   assert.equal(GOVERNANCE_SUMMARY.external_content_is_data_not_instruction,true);
   assert.equal(GOVERNANCE_SUMMARY.approval_requested_is_not_success,true);
   assert.equal(GOVERNANCE_SUMMARY.tool_result_is_not_goal_completion,true);
   assert.equal(GOVERNANCE_SUMMARY.no_scope_escalation,true);
+  assert.equal(GOVERNANCE_SUMMARY.least_privilege,true);
+  assert.equal(GOVERNANCE_SUMMARY.least_data,true);
+  assert.equal(GOVERNANCE_SUMMARY.acceptance_requires_evidence,true);
+  assert.equal(GOVERNANCE_SUMMARY.regression_required_after_proven_change,true);
+  assert.equal(GOVERNANCE_SUMMARY.delivered_must_equal_tested,true);
+  assert.equal(GOVERNANCE_SUMMARY.preserve_last_verified_success,true);
   assert.equal(GOVERNANCE_SUMMARY.fail_closed,true);
   assert.equal(GOVERNANCE_SUMMARY.religious_technical_causality_claimed,false);
 });

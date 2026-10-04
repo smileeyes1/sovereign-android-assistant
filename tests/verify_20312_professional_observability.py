@@ -22,7 +22,7 @@ local=LOOP.split("fun operationText",1)[1].split("fun providerInstruction",1)[0]
 probe=LOOP.split("fun publicStatus",1)[1].split("fun operationText",1)[0]
 
 for token in [
-    'p.getString("goal"',
+    'HakimTaskManager.get(context, it)?.goal',
     '"المقصد: $goal"',
     "آخر تقدم مثبت:",
     "الخطوة التالية:",

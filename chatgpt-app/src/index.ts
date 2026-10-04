@@ -19,6 +19,7 @@ import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.j
 import {
   CONTROL_PLANE_VERSION,controlPlaneStore,ingressTokenMatches
 } from "./control-plane.js";
+import { dispatchControlLaunch,dispatchControlNavigate } from "./control-dispatch.js";
 import { developmentRequestStore } from "./development-request-store.js";
 import { verifyGitHubWorkerOidc } from "./github-worker-oidc.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
@@ -1397,8 +1398,7 @@ app.post("/control/v1/ingress",async(req,res)=>{
         if(!["http:","https:"].includes(u.protocol)||url.length>1500) throw new Error("control_launch_url_invalid");
       }
       if(pkg&&!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg)) throw new Error("control_launch_package_invalid");
-      const requestId=await publishCommand(credential,"launch",{package:pkg,url});
-      await continuityStore.recordRequested(credential,requestId,"launch");
+      const requestId=await dispatchControlLaunch(credential,{package:pkg,url});
       await controlPlaneStore.markDispatched(operationId,requestId);
       noStore(res);
       return res.status(202).json({ok:true,status:"approval_requested",operation_id:operationId,operation_token:requestId});
@@ -1409,8 +1409,7 @@ app.post("/control/v1/ingress",async(req,res)=>{
       if(keys.some(k=>k!=="kind")) throw new Error("control_navigate_args_invalid");
       const kind=args.kind;
       if(typeof kind!=="string"||!["home","back","recents"].includes(kind)) throw new Error("control_navigate_kind_invalid");
-      const requestId=await publishCommand(credential,"action",{action:kind});
-      await continuityStore.recordRequested(credential,requestId,"action");
+      const requestId=await dispatchControlNavigate(credential,kind);
       await controlPlaneStore.markDispatched(operationId,requestId);
       noStore(res);
       return res.status(202).json({ok:true,status:"approval_requested",operation_id:operationId,operation_token:requestId,validated_action:kind});

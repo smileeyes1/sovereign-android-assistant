@@ -212,8 +212,17 @@ class CommandCenterActivity : ComponentActivity() {
 
         operations = TextView(this).apply {
             text = ""
-            visibility = View.GONE
-            contentDescription = "تفاصيل تشغيل داخلية مخفية عن واجهة المنتج"
+            visibility = View.VISIBLE
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            textSize = 13f
+            gravity = Gravity.RIGHT
+            setPadding(10, 4, 10, 8)
+            contentDescription = "حالة تشغيل حكيم؛ اضغط لعرض التفاصيل الآمنة"
+            setOnClickListener {
+                operationsExpanded = !operationsExpanded
+                refreshOperations()
+            }
         }
         root.addView(operations)
 
@@ -321,12 +330,31 @@ class CommandCenterActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
+            actionButton("مشاركة") {
+                shareToAny(command.text.toString().trim(), userInitiated = true)
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        composerArea.addView(toolsRow)
+
+        val manageRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        manageRow.addView(
+            actionButton("المهام") {
+                startActivity(Intent(this, HakimTaskManagerActivity::class.java))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        manageRow.addView(
             actionButton("الإعدادات") {
                 startActivity(Intent(this, UnifiedHomeActivity::class.java))
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
-        composerArea.addView(toolsRow)
+        composerArea.addView(manageRow)
 
         root.addView(
             composerArea,
@@ -356,6 +384,7 @@ class CommandCenterActivity : ComponentActivity() {
             titleView.visibility = if (imeVisible) View.GONE else View.VISIBLE
             status.visibility = if (imeVisible) View.GONE else View.VISIBLE
             toolsRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
+            manageRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
 
             if (imeVisible && operationsExpanded) {
                 operationsExpanded = false
@@ -1760,10 +1789,18 @@ class CommandCenterActivity : ComponentActivity() {
 
     private fun refreshOperations() {
         if (!::operations.isInitialized) return
-        // المنتج النهائي يحتفظ بالتشخيص داخليًا ولا يعرضه في المحادثة الرئيسية.
-        operations.visibility = View.GONE
-        operations.text = HakimExecutiveLoop.latestOperationText(this)
-        operations.contentDescription = "تفاصيل تشغيل داخلية"
+        operations.visibility = View.VISIBLE
+        if (operationsExpanded) {
+            operations.maxLines = 8
+            operations.ellipsize = null
+            operations.text = HakimExecutiveLoop.operationText(this)
+            operations.contentDescription = "تفاصيل حالة التشغيل الآمنة؛ اضغط للاختصار"
+        } else {
+            operations.maxLines = 1
+            operations.ellipsize = TextUtils.TruncateAt.END
+            operations.text = HakimExecutiveLoop.latestOperationText(this)
+            operations.contentDescription = "حالة تشغيل حكيم؛ اضغط لعرض التفاصيل الآمنة"
+        }
     }
 
     private fun loadConversation() {

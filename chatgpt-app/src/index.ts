@@ -1407,8 +1407,9 @@ app.post("/control/v1/ingress",async(req,res)=>{
     if(intent==="navigate"){
       const keys=Object.keys(args);
       if(keys.some(k=>k!=="kind")) throw new Error("control_navigate_args_invalid");
-      const kind=args.kind;
-      if(typeof kind!=="string"||!["home","back","recents"].includes(kind)) throw new Error("control_navigate_kind_invalid");
+      const rawKind=args.kind;
+      if(typeof rawKind!=="string"||!["home","back","recents"].includes(rawKind)) throw new Error("control_navigate_kind_invalid");
+      const kind=rawKind as "home"|"back"|"recents";
       const requestId=await dispatchControlNavigate(credential,kind);
       await controlPlaneStore.markDispatched(operationId,requestId);
       noStore(res);

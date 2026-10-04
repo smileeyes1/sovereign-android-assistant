@@ -49,6 +49,8 @@ object HakimProductOutput {
             "القيود التقنية",
             "التحقق الداخلي",
             "سلسلة التفكير",
+            "القياس",
+            "ملاحظة أخيرة",
             "internal reasoning",
             "technical limitations"
         )
@@ -66,21 +68,33 @@ object HakimProductOutput {
             val trimmed = line.trim()
             val lower = trimmed.lowercase()
             val startsInternal = headings.any { h ->
-                lower == h.lowercase() ||
-                    lower.startsWith(h.lowercase() + ":") ||
-                    lower.startsWith(h.lowercase() + " ")
-            } || lower.matches(Regex("^(الدليل والقيود|القيود|التحقق|القياس|internal reasoning|technical limitations)\\b.*"))
+                val hh = h.lowercase()
+                lower == hh ||
+                    lower.startsWith(hh + ":") ||
+                    lower.startsWith(hh + " ")
+            } || lower.matches(
+                Regex("^(🔎\\s*)?(الدليل والقيود|القيود|التحقق|القياس|internal reasoning|technical limitations)\\b.*")
+            )
 
             if (startsInternal) {
                 skipping = true
                 continue
             }
+
             if (skipping) {
-                if (trimmed == "---" || trimmed == "—" || trimmed == "___") skipping = false
+                if (trimmed == "---" || trimmed == "—" || trimmed == "___") {
+                    skipping = false
+                    continue
+                }
+                if (trimmed == "أنت:" || trimmed == "حكيم:") {
+                    skipping = false
+                    out += line
+                }
                 continue
             }
+
             val looksLikeInternalBullet = lower.matches(
-                Regex("^([•\\-*]\\s*)?(القياس|القيود|التحقق|المحرك|المزود|binary|joining|addition|subtraction)\\s*[:：].*")
+                Regex("^([•\\-*]\\s*)?(القياس|القيود|التحقق|المحرك|المزود|binary|binaries|joining|addition|subtraction)\\s*[:：].*")
             )
             if (!looksLikeInternalBullet) out += line
         }
@@ -92,7 +106,10 @@ object HakimProductOutput {
         return listOf(
             "<html", "</html", "<body", "</body", "<table", "</table",
             "<tr", "</tr", "<td", "</td", "<div", "</div", "class=\\\"",
-            "\\n<tr", "\\n<td"
+            "\\n<tr", "\\n<td",
+            "###", "**", "```",
+            "الدليل والقيود", "القيود التقنية", "التحقق الداخلي",
+            "internal reasoning", "technical limitations"
         ).any { q.contains(it) }
     }
 

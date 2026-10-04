@@ -25,9 +25,18 @@ local_adb = text("app/src/main/java/ps/hakim/phoneagent/HakimAdbConnectionManage
 home = text("app/src/main/java/ps/hakim/phoneagent/UnifiedHomeActivity.kt")
 boot = text("app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt")
 fabric = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt")
+executive = text("app/src/main/java/ps/hakim/phoneagent/HakimExecutiveLoop.kt")
+router = text("app/src/main/java/ps/hakim/phoneagent/HakimToolRouter.kt")
+orchestrator = text("app/src/main/java/ps/hakim/phoneagent/HakimOrchestrator.kt")
 chatgpt_index = text("app/src/main/java/ps/hakim/phoneagent/HakimChatGptIndex.kt")
 
 require("applicationId 'ps.hakim.stable'" in build, "P0: تغيرت هوية تطبيق حكيم")
+require('.putString("goal",' not in executive and '.putString("acceptance",' not in executive, "P0: ExecutiveLoop ما زال مخزن حالة موازٍ للمقصد/القبول")
+require("HakimTaskManager.get(context, id)" in executive, "P0: ExecutiveLoop لا يقرأ الحالة الحية من TaskManager")
+require('.put("canonical_live_state", "HakimTaskManager")' in orchestrator, "P0: سجل الحالة الحي الموحد غير معلن")
+require("HakimTaskManager.consumeResumeRequest" in orchestrator, "P0: الاستئناف المحفوظ غير موصول بالأوركسترا")
+require("HakimToolRouter.decide(context, op)" in relay, "P0: Secure Relay لا يمر عبر Tool Router")
+require("HakimFaultContainment.canExecuteHighImpact" in router, "P0: Tool Router لا يحترم حجز الأثر العالي")
 version_match = re.search(r"versionCode\s+(\d+)", build)
 require(version_match is not None, "P0: رقم إصدار حكيم مفقود")
 require(int(version_match.group(1)) >= 20087, "P0: خفض إصدار حكيم دون خط الأساس الميداني")
@@ -49,8 +58,9 @@ require('android:name=".HakimNotificationListener"' not in manifest, "P0: مست
 require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ربط الإشعارات الحساس ما زال مكشوفًا")
 require(
     ('HakimUnifiedRelay.start(this)' in app) or
-    ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric),
-    "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر نسيج التنفيذ"
+    ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric) or
+    ('HakimOrchestrator.recover(this, "app_start")' in app and 'HakimExecutionFabric.recover(context, reason)' in orchestrator and 'HakimUnifiedRelay.start(app)' in fabric),
+    "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر الأوركسترا/نسيج التنفيذ"
 )
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
 service = text("app/src/main/java/ps/hakim/phoneagent/HakimService.kt")

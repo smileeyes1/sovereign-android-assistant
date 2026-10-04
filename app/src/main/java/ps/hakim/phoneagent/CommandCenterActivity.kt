@@ -261,11 +261,16 @@ class CommandCenterActivity : ComponentActivity() {
         root.addView(status)
 
         operations = TextView(this).apply {
+            text = ""
+            visibility = View.VISIBLE
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
             textSize = 14f
             gravity = Gravity.RIGHT
             setPadding(12, 8, 12, 8)
             isClickable = true
             isFocusable = true
+            contentDescription = "حالة تشغيل حكيم؛ اضغط لعرض التفاصيل الآمنة"
             setOnClickListener {
                 operationsExpanded = !operationsExpanded
                 refreshOperations()
@@ -378,18 +383,6 @@ class CommandCenterActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         toolsRow.addView(
-            actionButton("المهام") {
-                startActivity(Intent(this, HakimTaskManagerActivity::class.java))
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
-            actionButton("الإعدادات") {
-                startActivity(Intent(this, UnifiedHomeActivity::class.java))
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        toolsRow.addView(
             actionButton("مشاركة") {
                 val text = command.text.toString().trim()
                 if (text.isBlank() && attachments.isEmpty()) {
@@ -401,6 +394,25 @@ class CommandCenterActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         )
         composerArea.addView(toolsRow)
+
+        val manageRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        manageRow.addView(
+            actionButton("المهام") {
+                startActivity(Intent(this, HakimTaskManagerActivity::class.java))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        manageRow.addView(
+            actionButton("الإعدادات") {
+                startActivity(Intent(this, UnifiedHomeActivity::class.java))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        composerArea.addView(manageRow)
 
         root.addView(
             composerArea,
@@ -430,6 +442,7 @@ class CommandCenterActivity : ComponentActivity() {
             titleView.visibility = if (imeVisible) View.GONE else View.VISIBLE
             status.visibility = if (imeVisible) View.GONE else View.VISIBLE
             toolsRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
+            manageRow.visibility = if (imeVisible) View.GONE else View.VISIBLE
 
             if (imeVisible && operationsExpanded) {
                 operationsExpanded = false
@@ -1836,16 +1849,16 @@ class CommandCenterActivity : ComponentActivity() {
         if (!::operations.isInitialized) return
         operations.visibility = View.VISIBLE
         if (operationsExpanded) {
-            operations.maxLines = 7
+            operations.maxLines = 8
             operations.ellipsize = null
             operations.text = HakimExecutiveLoop.operationText(this)
+            operations.contentDescription = "تفاصيل حالة التشغيل الآمنة؛ اضغط للاختصار"
         } else {
             operations.maxLines = 1
             operations.ellipsize = TextUtils.TruncateAt.END
             operations.text = HakimExecutiveLoop.latestOperationText(this)
+            operations.contentDescription = "حالة تشغيل حكيم؛ اضغط لعرض التفاصيل الآمنة"
         }
-        operations.contentDescription = operations.text.toString() +
-            if (operationsExpanded) "؛ اضغط لإخفاء المراحل" else "؛ اضغط لإظهار المراحل"
     }
 
     private fun loadConversation() {

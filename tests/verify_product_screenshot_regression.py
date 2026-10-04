@@ -6,6 +6,7 @@ APP=ROOT/"app/src/main/java/ps/hakim/phoneagent"
 OUT=(APP/"HakimProductOutput.kt").read_text(encoding="utf-8")
 FACTORY=(APP/"HakimLocalArtifactFactory.kt").read_text(encoding="utf-8")
 CENTER=(APP/"CommandCenterActivity.kt").read_text(encoding="utf-8")
+LOOP=(APP/"HakimExecutiveLoop.kt").read_text(encoding="utf-8")
 DIRECTOR=(APP/"HakimIntentDirector.kt").read_text(encoding="utf-8")
 BUILD=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 
@@ -74,3 +75,32 @@ for phrase in ["save as pdf","ctrl + p","انسخ الكود","collection within
     req(phrase in OUT.lower(),"field_bad_dump_sentinel:"+phrase)
 
 print("PRODUCT_SCREENSHOT_REGRESSION=PASS markdown=hidden html=hidden artifact_stream=silent pdf=file context=restored")
+
+
+# 20331 product-final regression from the real field screenshot:
+# internal diagnostic blocks must be removed as blocks, without deleting later user turns.
+req("stripInternalDiagnosticBlocks" in OUT,"internal_block_stripper_missing")
+req("s = stripInternalDiagnosticBlocks(s, internalHeadings)" in OUT,"internal_block_stripper_not_applied")
+for leaked in ["الدليل والقيود","القيود التقنية","التحقق الداخلي","ملاحظة أخيرة","internal reasoning","technical limitations"]:
+    req(leaked in OUT,"internal_block_marker_missing:"+leaked)
+req('trimmed == "أنت:" || trimmed == "حكيم:"' in OUT,"conversation_boundary_not_preserved")
+
+# Primary product surface remains calm while exposing bounded user-facing progress.
+# Raw event diagnostics stay internal; the visible strip is compact and expands only to
+# the governed local task state.
+req('operations.visibility = View.VISIBLE' in CENTER,"safe_operation_status_hidden")
+req('operations.maxLines = 1' in CENTER and 'TextUtils.TruncateAt.END' in CENTER,
+    "safe_operation_status_not_compact")
+req('operations.text = HakimExecutiveLoop.latestOperationText(this)' in CENTER,
+    "safe_operation_summary_missing")
+req('operations.text = HakimExecutiveLoop.operationText(this)' in CENTER,
+    "safe_operation_details_missing")
+panel=LOOP.split("fun operationText",1)[1].split("fun providerInstruction",1)[0]
+req('e.optString("detail")' not in panel,"raw_internal_operation_detail_visible")
+req('HakimTaskManager.get(context, it)' in panel,"operation_state_not_from_canonical_task")
+req('actionButton("المهام")' in CENTER,"tasks_button_missing")
+req('actionButton("مشاركة")' in CENTER and 'userInitiated = true' in CENTER,
+    "explicit_manual_share_missing")
+
+# Persisted old screenshots with Markdown/internal headings must be migrated through clean().
+req('"###", "**"' in OUT,"markdown_not_detected_for_migration")

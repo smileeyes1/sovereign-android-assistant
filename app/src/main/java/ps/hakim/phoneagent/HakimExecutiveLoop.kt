@@ -46,8 +46,6 @@ object HakimExecutiveLoop {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         p.edit()
             .putString("session_id", id)
-            .putString("goal", goal)
-            .putString("acceptance", criteria)
             .putInt("cycle", 1)
             .putString("phase", Phase.UNDERSTANDING.name)
             .putBoolean("active", true)
@@ -69,8 +67,6 @@ object HakimExecutiveLoop {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         p.edit()
             .putString("session_id", task.id)
-            .putString("goal", goal)
-            .putString("acceptance", criteria)
             .putInt("cycle", (task.attempts + 1).coerceAtLeast(1))
             .putString("phase", Phase.REPAIRING.name)
             .putBoolean("active", true)
@@ -88,14 +84,15 @@ object HakimExecutiveLoop {
         if (!p.getBoolean("active", false)) return null
         val id = p.getString("session_id", "").orEmpty()
         if (id.isBlank()) return null
+        val task = HakimTaskManager.get(context, id) ?: return null
         val phase = runCatching {
-            Phase.valueOf(p.getString("phase", Phase.UNDERSTANDING.name).orEmpty())
+            Phase.valueOf(task.phase.ifBlank { Phase.UNDERSTANDING.name })
         }.getOrDefault(Phase.UNDERSTANDING)
         return Session(
             id = id,
-            goal = p.getString("goal", "").orEmpty(),
-            acceptance = p.getString("acceptance", "").orEmpty(),
-            cycle = p.getInt("cycle", 1),
+            goal = task.goal,
+            acceptance = task.acceptance,
+            cycle = p.getInt("cycle", task.attempts.coerceAtLeast(1)),
             phase = phase
         )
     }
@@ -310,11 +307,17 @@ object HakimExecutiveLoop {
         }
 
         val phase = p.getString("phase", "").orEmpty()
-        val goal = p.getString("goal", "").orEmpty().trim().replace(Regex("\\s+"), " ").take(180)
+        val task = p.getString("session_id", "").orEmpty()
+            .takeIf { it.isNotBlank() }
+            ?.let { HakimTaskManager.get(context, it) }
+        val goal = task?.goal.orEmpty()
+            .trim().replace(Regex("\\s+"), " ").take(180)
+        val blocker = task?.blocker.orEmpty()
+            .trim().replace(Regex("\\s+"), " ").take(180)
+        val taskNext = task?.nextAction.orEmpty()
+            .trim().replace(Regex("\\s+"), " ").take(180)
         val lastGain = p.getString("last_material_gain", "").orEmpty()
             .trim().replace(Regex("\\s+"), " ").take(180)
-        val latestDetail = events.optJSONObject(events.length() - 1)
-            ?.optString("detail").orEmpty().trim().replace(Regex("\\s+"), " ").take(180)
         val fabricState = runCatching {
             HakimExecutionFabric.status(context).optString("state", "UNKNOWN")
         }.getOrDefault("UNKNOWN")
@@ -329,10 +332,10 @@ object HakimExecutiveLoop {
             else -> "قيد التحقق"
         }
         if (lastGain.isNotBlank()) lines += "آخر تقدم مثبت: $lastGain"
-        if ((phase == Phase.GATED.name || phase == Phase.WAITING_EXTERNAL.name) && latestDetail.isNotBlank()) {
-            lines += (if (phase == Phase.GATED.name) "المانع: " else "الانتظار: ") + latestDetail
+        if (phase == Phase.GATED.name && blocker.isNotBlank()) {
+            lines += "المانع: $blocker"
         }
-        lines += "الخطوة التالية: ${nextStepLabel(phase)}"
+        lines += "الخطوة التالية: " + taskNext.ifBlank { nextStepLabel(phase) }
         if (cloudLines.isNotEmpty()) {
             lines += "— الاستمرارية السحابية —"
             lines += cloudLines

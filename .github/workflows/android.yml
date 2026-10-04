@@ -36,6 +36,7 @@ jobs:
       - name: بوابة عقد حكيم الوحيد
         run: |
           python3 tests/verify_unified_hakim.py
+          python3 tests/verify_hakim_unified_orchestrator.py
           python3 tests/verify_multimodel_router_policy.py
           python3 tests/verify_independence_baseline.py
           python3 tests/verify_portable_state.py

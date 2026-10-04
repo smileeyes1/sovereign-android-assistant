@@ -48,6 +48,7 @@ type CapabilityRecord={
   last_verified_at_ms:number;
   evidence:string;
 };
+type PairingSecret={credential:DeviceCredential;nonce:string};
 type PairingRecord={
   version:"HAKIM_CONTROL_PAIR_V1";
   sealed:string;
@@ -315,7 +316,8 @@ export class ControlPlaneStore{
   }
 
   private async pairingRecord(){return this.readJson<PairingRecord>(this.pairingFile);}
-  private credentialFrom(record:PairingRecord){return open<DeviceCredential>(this.secret,record.sealed);}
+  private pairingSecret(record:PairingRecord){return open<PairingSecret>(this.secret,record.sealed);}
+  private credentialFrom(record:PairingRecord){return this.pairingSecret(record).credential;}
 
   async startPairing(bridgeBase:string){
     return this.locked("pairing",async()=>{
@@ -325,22 +327,32 @@ export class ControlPlaneStore{
         return {status:"paired" as const,paired:true,pairing_url:null,expires_at_ms:null};
       }
       if(current&&current.expires_at_ms>now){
-        const c=this.credentialFrom(current);
-        return {status:"pending" as const,paired:false,pairing_url:pairingUrl(c,bridgeBase),expires_at_ms:current.expires_at_ms};
+        const value=this.pairingSecret(current);
+        return {status:"pending" as const,paired:false,pairing_path:"/control/v1/pair/"+value.nonce,expires_at_ms:current.expires_at_ms};
       }
       const credential=createDeviceCredential();
+      const nonce=crypto.randomBytes(24).toString("base64url");
       await directRelayStore.registerCredential(credential,10*60_000);
       const record:PairingRecord={
         version:"HAKIM_CONTROL_PAIR_V1",
-        sealed:seal(this.secret,credential),
+        sealed:seal(this.secret,{credential,nonce} satisfies PairingSecret),
         paired:false,
         created_at_ms:now,
         updated_at_ms:now,
         expires_at_ms:now+10*60_000
       };
       await this.writeJson(this.pairingFile,record);
-      return {status:"pending" as const,paired:false,pairing_url:pairingUrl(credential,bridgeBase),expires_at_ms:record.expires_at_ms};
+      return {status:"pending" as const,paired:false,pairing_path:"/control/v1/pair/"+nonce,expires_at_ms:record.expires_at_ms};
     });
+  }
+
+  async pairingDeepLink(nonce:string,bridgeBase:string){
+    if(!/^[A-Za-z0-9_-]{24,80}$/.test(nonce)) throw new Error("control_pairing_nonce_invalid");
+    const record=await this.pairingRecord();
+    if(!record||record.paired||record.expires_at_ms<=Date.now()) throw new Error("control_pairing_not_available");
+    const value=this.pairingSecret(record);
+    if(!safeEqual(value.nonce,nonce)) throw new Error("control_pairing_nonce_invalid");
+    return pairingUrl(value.credential,bridgeBase);
   }
 
   async confirmPairing(waitMs=2_000){

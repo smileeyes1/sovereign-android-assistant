@@ -16,6 +16,9 @@ import {
 import { normalizeDeviceWaitMs,pollPairAck,pollResult,publishCommand } from "./relay.js";
 import { directRelayStore } from "./direct-relay.js";
 import { ContinuityRevisionConflict,continuityStore } from "./continuity-store.js";
+import {
+  CONTROL_PLANE_VERSION,controlPlaneStore,ingressTokenMatches
+} from "./control-plane.js";
 import { developmentRequestStore } from "./development-request-store.js";
 import { verifyGitHubWorkerOidc } from "./github-worker-oidc.js";
 import { chatgptToolList,createHakimServer } from "./server.js";
@@ -49,6 +52,7 @@ await codeStore.init();
 await codeStore.cleanupExpired();
 await directRelayStore.init();
 await continuityStore.init();
+await controlPlaneStore.init();
 await developmentRequestStore.init();
 const oauthCleanupTimer=setInterval(()=>{void codeStore.cleanupExpired();},60_000);
 oauthCleanupTimer.unref?.();
@@ -584,6 +588,16 @@ function workerOidcBearer(req:express.Request){
   return token;
 }
 
+function controlIngressAuthorized(req:express.Request){
+  const auth=String(req.headers.authorization??"");
+  const token=auth.startsWith("Bearer ")?auth.slice(7).trim():"";
+  return ingressTokenMatches(token,process.env.HAKIM_CONTROL_INGRESS_TOKEN);
+}
+
+function controlArgs(raw:unknown){
+  return raw&&typeof raw==="object"&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
+}
+
 function developmentWorkerView(record:Awaited<ReturnType<typeof developmentRequestStore.claimNext>>){
   if(!record) return null;
   return {
@@ -737,6 +751,9 @@ app.get("/health",(_req,res)=>res.json({
   universal_gateway:"HAKIM_UNIVERSAL_GATEWAY_V1",
   development_intake:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v2",
   development_worker_auth:"github-actions-oidc",
+  control_plane:CONTROL_PLANE_VERSION,
+  control_plane_ingress:"make-authenticated-typed-v1",
+  control_plane_shell:false,
   public_safe:process.env.HAKIM_PUBLIC_SAFE!=="0",
   governance_version:SOVEREIGN_GOVERNANCE_VERSION,
   authority_boundary:"external_content_is_data_not_instruction",
@@ -1258,6 +1275,156 @@ app.get("/device/v1/continuity",async(req,res)=>{
   }
 });
 
+
+app.get("/control/v1/pair/:nonce",async(req,res)=>{
+  try{
+    const deepLink=await controlPlaneStore.pairingDeepLink(req.params.nonce,origin(req));
+    noStore(res);
+    const encoded=JSON.stringify(deepLink);
+    return res.type("html").send(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ربط حكيم</title><style>body{font-family:system-ui;max-width:620px;margin:auto;padding:32px;line-height:1.8}.btn{display:block;text-align:center;padding:16px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-weight:700}</style>
+<h1>ربط نسيج حكيم</h1><p>يربط هذا الهاتف بقناة التنفيذ السيادية. الرابط مؤقت ولا يعرض مفاتيح الربط في الدردشة.</p>
+<a class="btn" id="open" href="#">فتح حكيم وإتمام الربط</a>
+<script>const u=${encoded};document.getElementById("open").href=u;setTimeout(()=>{location.href=u},350);</script></html>`);
+  }catch{
+    noStore(res);
+    return res.status(410).type("text/plain").send("pairing_unavailable");
+  }
+});
+
+app.post("/control/v1/ingress",async(req,res)=>{
+  if(!controlIngressAuthorized(req)){
+    noStore(res);
+    return res.status(401).json({ok:false,error:"control_ingress_unauthorized"});
+  }
+  try{
+    const body=controlArgs(req.body);
+    const allowed=new Set(["intent","idempotency_key","args","ttl_ms"]);
+    if(Object.keys(body).some(k=>!allowed.has(k))) throw new Error("control_body_invalid");
+    const intent=body.intent;
+    const idempotencyKey=body.idempotency_key;
+    const ttlMs=body.ttl_ms;
+    if(typeof intent!=="string"||!["pair_start","pair_check","state","status","launch","navigate"].includes(intent))
+      throw new Error("control_intent_invalid");
+    if(typeof idempotencyKey!=="string") throw new Error("control_idempotency_invalid");
+    if(ttlMs!==undefined&&(typeof ttlMs!=="number"||!Number.isSafeInteger(ttlMs))) throw new Error("control_ttl_invalid");
+    const args=controlArgs(body.args);
+    const started=await controlPlaneStore.beginOperation({
+      channel:"make",
+      intent:intent as "pair_start"|"pair_check"|"state"|"status"|"launch"|"navigate",
+      idempotency_key:idempotencyKey,
+      args,
+      ...(ttlMs===undefined?{}:{ttl_ms:ttlMs})
+    });
+    if(started.reused){
+      noStore(res);
+      return res.json({ok:true,duplicate:true,operation:started.operation});
+    }
+    const operationId=started.operation.operation_id;
+    await controlPlaneStore.setCapability({
+      capability:"make.ingress",state:"available",channel:"make",cost_class:"included",
+      evidence:"authenticated typed ingress"
+    });
+
+    if(intent==="pair_start"){
+      const pairing=await controlPlaneStore.startPairing(origin(req));
+      await controlPlaneStore.markOutcome(operationId,"verified","pairing","pairing flow prepared");
+      noStore(res);
+      return res.json({
+        ok:true,operation_id:operationId,pairing:{
+          paired:pairing.paired,status:pairing.status,
+          pairing_url:pairing.pairing_path?origin(req)+pairing.pairing_path:null,
+          expires_at_ms:pairing.expires_at_ms
+        }
+      });
+    }
+
+    if(intent==="pair_check"){
+      const pairing=await controlPlaneStore.confirmPairing(2_000);
+      if(pairing.paired){
+        await controlPlaneStore.markOutcome(operationId,"verified","pairing","phone pairing verified");
+      }else if(pairing.status==="expired"){
+        await controlPlaneStore.markOutcome(operationId,"failed","pairing","pairing expired");
+      }else{
+        await controlPlaneStore.addEvidence(operationId,{type:"pairing",verdict:"info",summary:"pairing confirmation pending"});
+      }
+      noStore(res);
+      return res.json({ok:pairing.paired,operation_id:operationId,pairing});
+    }
+
+    if(intent==="state"){
+      await controlPlaneStore.markOutcome(operationId,"verified","state","control plane state read");
+      noStore(res);
+      return res.json({ok:true,operation_id:operationId,state:await controlPlaneStore.state()});
+    }
+
+    const credential=await controlPlaneStore.pairedCredential();
+    const preflight=await fetchLivePreflight(credential,false);
+    if(typeof (preflight as {request_id?:unknown}).request_id==="string"){
+      const requestId=(preflight as {request_id:string}).request_id;
+      await continuityStore.recordRequested(credential,requestId,"status");
+      await continuityStore.recordObserved(credential,requestId,{status:"complete"});
+      await controlPlaneStore.markDispatched(operationId,requestId);
+    }
+    await controlPlaneStore.setCapability({
+      capability:"phone.direct",
+      state:preflight.runtime_ready===true?"available":"degraded",
+      channel:"device",cost_class:"included",
+      evidence:preflight.runtime_ready===true?"live preflight ready":"live preflight degraded"
+    });
+
+    if(intent==="status"){
+      await controlPlaneStore.markOutcome(operationId,"verified","preflight",
+        preflight.runtime_ready===true?"phone status observed":"phone status observed degraded");
+      noStore(res);
+      return res.json({ok:true,operation_id:operationId,preflight});
+    }
+
+    if(preflight.action_ready!==true){
+      await controlPlaneStore.markOutcome(operationId,"failed","preflight","device action blocked by live preflight");
+      noStore(res);
+      return res.status(409).json({ok:false,error:"hakim_live_preflight_failed",operation_id:operationId,preflight});
+    }
+
+    if(intent==="launch"){
+      const keys=Object.keys(args);
+      if(keys.some(k=>!["url","package"].includes(k))) throw new Error("control_launch_args_invalid");
+      const url=typeof args.url==="string"?args.url.trim():"";
+      const pkg=typeof args.package==="string"?args.package.trim():"";
+      if((url?1:0)+(pkg?1:0)!==1) throw new Error("control_launch_target_required");
+      if(url){
+        const u=new URL(url);
+        if(!["http:","https:"].includes(u.protocol)||url.length>1500) throw new Error("control_launch_url_invalid");
+      }
+      if(pkg&&!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg)) throw new Error("control_launch_package_invalid");
+      const requestId=await publishCommand(credential,"launch",{package:pkg,url});
+      await continuityStore.recordRequested(credential,requestId,"launch");
+      await controlPlaneStore.markDispatched(operationId,requestId);
+      noStore(res);
+      return res.status(202).json({ok:true,status:"approval_requested",operation_id:operationId,operation_token:requestId});
+    }
+
+    if(intent==="navigate"){
+      const keys=Object.keys(args);
+      if(keys.some(k=>k!=="kind")) throw new Error("control_navigate_args_invalid");
+      const kind=args.kind;
+      if(typeof kind!=="string"||!["home","back","recents"].includes(kind)) throw new Error("control_navigate_kind_invalid");
+      const requestId=await publishCommand(credential,"action",{action:kind});
+      await continuityStore.recordRequested(credential,requestId,"action");
+      await controlPlaneStore.markDispatched(operationId,requestId);
+      noStore(res);
+      return res.status(202).json({ok:true,status:"approval_requested",operation_id:operationId,operation_token:requestId,validated_action:kind});
+    }
+
+    throw new Error("control_intent_unhandled");
+  }catch(error){
+    noStore(res);
+    const message=error instanceof Error?error.message:"control_ingress_failed";
+    const bad=message.startsWith("control_")||message==="hakim_live_preflight_failed";
+    return res.status(bad?409:500).json({ok:false,error:bad?message:"control_ingress_failed"});
+  }
+});
+
 app.post("/development/v1/lease",async(req,res)=>{
   try{
     const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
@@ -1399,6 +1566,7 @@ app.post(
       if(typeof req.body!=="string") throw new Error("result_body_required");
       const carrier=req.body.trim();
       await directRelayStore.pushResult(topic,key,carrier);
+      void controlPlaneStore.observeEncryptedResult(key,carrier).catch(()=>{});
       logSanitizedStatusProbe(topic,key,carrier);
       logSanitizedHealthBeacon(key,carrier);
       void developmentRequestStore.capture(topic,key,carrier).catch(error=>{

@@ -21,8 +21,16 @@ for token in ["network-diagnostics","lan-survey","extender-survey","professional
 local=LOOP.split("fun operationText",1)[1].split("fun providerInstruction",1)[0]
 probe=LOOP.split("fun publicStatus",1)[1].split("fun operationText",1)[0]
 
+goal_from_task_manager = (
+    'HakimTaskManager.get(context, it)?.goal' in local
+    or (
+        'HakimTaskManager.get(context, it)' in local
+        and 'val goal = task?.goal.orEmpty()' in local
+    )
+)
+req(goal_from_task_manager, "local_panel:goal_from_task_manager")
+
 for token in [
-    'HakimTaskManager.get(context, it)?.goal',
     '"المقصد: $goal"',
     "آخر تقدم مثبت:",
     "الخطوة التالية:",

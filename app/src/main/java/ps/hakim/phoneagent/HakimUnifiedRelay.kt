@@ -634,6 +634,13 @@ object HakimUnifiedRelay {
 
     private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
         val op = envelope.optString("op")
+        val route = HakimToolRouter.decide(context, op)
+        if (!route.allowed) {
+            return JSONObject()
+                .put("ok", false)
+                .put("error", route.reason)
+                .put("capability", route.capability)
+        }
         val payload = decodePayload(envelope)
         return try {
             val result = when (op) {
@@ -713,6 +720,7 @@ object HakimUnifiedRelay {
             .put("direct_bridge", true)
             .put("secure_relay_running", isRunning())
             .put("secure_relay_connected", liveConnected)
+            .put("orchestrator", HakimOrchestrator.status(context))
             .put("operation", HakimExecutiveLoop.publicStatus(context))
             .put("task_manager", HakimTaskManager.publicStatus(context))
             .put("cloud_continuity", HakimCloudContinuity.publicStatus(context))

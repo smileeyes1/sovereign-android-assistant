@@ -17,8 +17,8 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "pairing_defaults", critical = true) {
             PairingDefaults.ensure(prefs)
         }
-        HakimFaultContainment.guard(this, "app_start", "execution_fabric_recover") {
-            HakimExecutionFabric.recover(this, "app_start")
+        HakimFaultContainment.guard(this, "app_start", "orchestrator_recover") {
+            HakimOrchestrator.recover(this, "app_start")
         }
         HakimFaultContainment.guard(this, "app_start", "connection_resilience_install") {
             HakimConnectionResilience.install(this)
@@ -31,9 +31,6 @@ class HakimApp : Application() {
         }
         HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
             HakimNetworkGuardian.install(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "task_manager_sync") {
-            HakimTaskManager.syncSystemTasks(this)
         }
         HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
             HakimDeviceProtection.ensureRunning(this)

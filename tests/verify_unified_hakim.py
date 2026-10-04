@@ -47,10 +47,12 @@ require('android:name=".HakimAccessibilityService"' not in manifest, "P0: خدم
 require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: ربط الوصول الحساس ما زال مكشوفًا")
 require('android:name=".HakimNotificationListener"' not in manifest, "P0: مستمع الإشعارات الحساس لا يجوز إعلانُه في ملف التثبيت الآمن")
 require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ربط الإشعارات الحساس ما زال مكشوفًا")
+orchestrator = text("app/src/main/java/ps/hakim/phoneagent/HakimOrchestrator.kt")
 require(
     ('HakimUnifiedRelay.start(this)' in app) or
-    ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric),
-    "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر نسيج التنفيذ"
+    ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric) or
+    ('HakimOrchestrator.recover(this, "app_start")' in app and 'HakimExecutionFabric.recover(context, reason)' in orchestrator and 'HakimUnifiedRelay.start(app)' in fabric),
+    "P0: القناة الموحدة لا تبدأ مع حكيم مباشرة أو عبر الأوركسترا/نسيج التنفيذ"
 )
 require('HakimUnifiedRelay.configure' in pair, "P0: الاقتران لا يهيئ القناة الموحدة")
 service = text("app/src/main/java/ps/hakim/phoneagent/HakimService.kt")

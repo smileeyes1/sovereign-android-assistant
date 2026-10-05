@@ -20,6 +20,6 @@
   "field_baseline_version": 20312,
   "candidate_field_verified": false,
   "capability_fabric_source_integrated": true,
-  "capability_fabric_source_ci_verified": false,
+  "capability_fabric_source_ci_verified": true,
   "capability_fabric_field_verified": false
 }

@@ -11,6 +11,8 @@ VERIFIER=(APP/"HakimCapabilityVerifier.kt").read_text(encoding="utf-8")
 RELAY=(APP/"HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 MANIFEST=(ROOT/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 WORKFLOW=(ROOT/".github/workflows/android.yml").read_text(encoding="utf-8")
+STATE=__import__("json").loads((ROOT/"governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
+PROMOTION=__import__("json").loads((ROOT/"governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
 
 
 def req(ok, reason):
@@ -70,6 +72,15 @@ for permission in [
 req('python3 tests/verify_capability_fabric_v1.py' in WORKFLOW,"v1_gate")
 req('python3 tests/verify_20313_capability_fabric.py' in WORKFLOW,"20313_gate")
 req('test "$VERSION_CODE" = "20313"' in WORKFLOW,"workflow_version")
+req(STATE["android"]["candidate"]["version_code"]==20313,"state_candidate")
+req(STATE["android"]["candidate"]["field_verified"] is False,"candidate_field_must_remain_false")
+req(STATE["android"]["candidate"]["same_signed_apk_field_verified"] is False,"candidate_same_artifact_must_remain_false")
+req(STATE["android"]["field_observed_current"]["version_code"]==20312,"field_baseline_must_remain_20312")
+req(STATE["productization"]["candidate_version"]==20313,"product_candidate")
+req(STATE["productization"]["signed_candidate_version"]==20312,"last_signed_artifact_baseline")
+req(STATE["productization"]["same_signed_apk_field_verified"] is False,"product_same_artifact_must_remain_false")
+req(PROMOTION["candidate_version"]==20313 and PROMOTION["promoted"] is False,"promotion_gate")
+req(PROMOTION["same_signed_apk_field_verified"] is False,"promotion_same_artifact_must_remain_false")
 
 print(
     "CAPABILITY_FABRIC_20313=PASS "

@@ -29,10 +29,12 @@ object HakimToolRouter {
 
     private val READ_ONLY = setOf(
         "status", "ui", "notifications", "screenshot",
-        "browser_read", "chatgpt_read", "chatgpt_navigate"
+        "browser_read", "chatgpt_read", "chatgpt_navigate",
+        "termux_status", "capabilities", "capability_read"
     )
+    private val SAFE_AUTOMATIC = setOf("termux_probe", "termux_recover")
     private val MUTATING = setOf("action", "launch", "browser_back", "chatgpt_action")
-    private val SUPPORTED = READ_ONLY + MUTATING
+    private val SUPPORTED = READ_ONLY + SAFE_AUTOMATIC + MUTATING
 
     fun decide(context: Context, operation: String): Decision {
         val op = operation.trim()
@@ -48,6 +50,9 @@ object HakimToolRouter {
             "notifications" -> HakimNotificationListener.isConnected()
             "browser_read", "browser_back", "chatgpt_read", "chatgpt_navigate", "chatgpt_action" ->
                 HakimUnifiedRelay.isConfigured(context)
+            "termux_status" -> HakimTermuxControl.isInstalled(context)
+            "termux_probe", "termux_recover" -> HakimTermuxControl.ready(context)
+            "capabilities", "capability_read", "status" -> true
             else -> true
         }
         return if (available) {
@@ -76,6 +81,8 @@ object HakimToolRouter {
         "notifications" -> "notification_listener"
         "browser_read", "browser_back" -> "browser"
         "chatgpt_read", "chatgpt_navigate", "chatgpt_action" -> "chatgpt_web"
+        "termux_status", "termux_probe", "termux_recover" -> "termux_local_control"
+        "capabilities", "capability_read" -> "capability_fabric"
         "launch" -> "android_launch"
         "status" -> "status"
         else -> "none"

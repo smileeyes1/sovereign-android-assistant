@@ -51,7 +51,7 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "capabilities", "capability_read")
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "browser_back")
     private val running = AtomicBoolean(false)
     @Volatile private var connected = false
@@ -510,6 +510,12 @@ object HakimUnifiedRelay {
         val payload = decodePayload(envelope)
         return when (op) {
             "status" -> status(context)
+            "capabilities" -> HakimCapabilityFabric.status(context)
+            "capability_read" -> HakimCapabilityFabric.executeReadOnly(
+                context,
+                envelope.optString("request_id"),
+                payload
+            )
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
             "ui" -> {
@@ -562,6 +568,7 @@ object HakimUnifiedRelay {
             .put("network_guardian", HakimNetworkGuardian.status(context))
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
+            .put("capability_fabric", HakimCapabilityFabric.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("self_check", self.getString("last_self_check_status", "NOT_TESTED"))
             .put("learning", HakimLearning.snapshot(context))

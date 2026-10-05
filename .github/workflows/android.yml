@@ -81,6 +81,7 @@ jobs:
           python3 tests/verify_20310_resilience.py
           python3 tests/verify_20311_extender_survey.py
           python3 tests/verify_20312_professional_observability.py
+          python3 tests/verify_capability_fabric_v1.py
           python3 tests/verify_enterprise_policy.py
           python3 tests/verify_product_privacy_controls.py
           python3 tests/verify_product_copy.py

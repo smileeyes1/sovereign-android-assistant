@@ -193,13 +193,13 @@ for token in [
 ]:
     require(token in resilience,"resilience_env:"+token)
 
-require(active["android"]["candidate"]["version_code"]==20336,"active_candidate")
-require(active["productization"]["candidate_version"]==20336,"product_candidate")
+require(active["android"]["candidate"]["version_code"]==candidate_version,"active_candidate")
+require(active["productization"]["candidate_version"]==candidate_version,"product_candidate")
 require(active["productization"]["termux_local_control_source_integrated"] is True,"source_integrated")
 require(active["productization"]["termux_local_control_field_verified"] is False,"field_must_be_pending")
 require(active["productization"]["termux_external_remote_quota_required"] is False,"quota")
 require(active["productization"]["termux_arbitrary_shell_exposed"] is False,"shell")
-require(promotion["candidate_version"]==20336,"promotion_candidate")
+require(promotion["candidate_version"]==candidate_version,"promotion_candidate")
 require(promotion["termux_local_control_source_integrated"] is True,"promotion_source")
 require(promotion["termux_local_control_field_verified"] is False,"promotion_field_pending")
 

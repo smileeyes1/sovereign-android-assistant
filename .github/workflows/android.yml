@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20336 professional cognitive routing + governed local Termux control R27 candidate
+# 20337 capability fabric R28 + governed local Termux control R27 candidate
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*', 'release/hakim-20337-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -101,6 +101,7 @@ jobs:
           python3 tests/verify_20334_field_acceptance_autostart.py
           python3 tests/verify_professional_cognitive_routing_20335.py
           python3 tests/verify_20336_termux_local_control.py
+          python3 tests/verify_20337_capability_fabric.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -168,7 +169,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20336"
+          test "$VERSION_CODE" = "20337"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleDebug assembleRelease --stacktrace

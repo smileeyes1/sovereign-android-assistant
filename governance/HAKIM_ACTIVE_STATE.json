@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-28",
+  "snapshot_date": "2026-10-05",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -27,14 +27,17 @@
       "field_verified": true
     },
     "candidate": {
-      "version_code": 20312,
-      "branch": "release/hakim-20312-professional-candidate",
+      "version_code": 20313,
+      "branch": "feature/hakim-capability-fabric-v1",
       "source_ci_state": "SOURCE_CI_VERIFIED",
-      "field_verified": true,
-      "same_signed_apk_field_verified": true,
+      "field_verified": false,
+      "same_signed_apk_field_verified": false,
       "promoted": false,
-      "control_channel_field_verified": true,
-      "purpose": "professional_local_operation_observability_and_cross_session_continuity"
+      "control_channel_field_verified": false,
+      "purpose": "read_only_capability_fabric_registry_receipts_and_verification",
+      "field_baseline_version": 20312,
+      "source_ci_run_number": 1596,
+      "source_ci_verified_head": "a5978b6057b62201ea4e2e78d458ed5fe7b8cf6a"
     },
     "field_observed_current": {
       "observed_at": "2026-09-28",
@@ -170,7 +173,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20312,
+    "candidate_version": 20313,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -189,7 +192,7 @@
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
     "signed_candidate_file": "HAKIM-20312-D1-FINAL.apk",
-    "install_relation": "UPGRADE_FROM_VERIFIED_20311_TO_20312",
+    "install_relation": "UPGRADE_FROM_VERIFIED_20312_TO_20313",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -263,12 +266,18 @@
     "professional_observability_field_verified": false,
     "cross_session_continuity_cloud_verified": true,
     "cross_session_continuity_android_field_verified": true,
-    "same_signed_apk_field_verified": true,
+    "same_signed_apk_field_verified": false,
     "release_source_tested_head": "1769585409850130935847a48ecfc9344862417f",
     "release_merge_commit": "d6b866cf98c71f6eedd489bac3490e1d6d1a067d",
     "release_ci_run_id": 36378301981,
     "release_ci_artifact_id": 10951292910,
     "professional_observability_runtime_field_verified": true,
-    "professional_observability_visual_field_verified": false
+    "professional_observability_visual_field_verified": false,
+    "capability_fabric_source_integrated": true,
+    "capability_fabric_source_ci_verified": true,
+    "capability_fabric_field_verified": false,
+    "capability_fabric_read_only_v1": true,
+    "capability_fabric_new_android_permissions": false,
+    "field_baseline_version": 20312
   }
 }

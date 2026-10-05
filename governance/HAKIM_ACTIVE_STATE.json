@@ -29,13 +29,15 @@
     "candidate": {
       "version_code": 20313,
       "branch": "feature/hakim-capability-fabric-v1",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
       "purpose": "read_only_capability_fabric_registry_receipts_and_verification",
-      "field_baseline_version": 20312
+      "field_baseline_version": 20312,
+      "source_ci_run_number": 1596,
+      "source_ci_verified_head": "a5978b6057b62201ea4e2e78d458ed5fe7b8cf6a"
     },
     "field_observed_current": {
       "observed_at": "2026-09-28",
@@ -272,7 +274,7 @@
     "professional_observability_runtime_field_verified": true,
     "professional_observability_visual_field_verified": false,
     "capability_fabric_source_integrated": true,
-    "capability_fabric_source_ci_verified": false,
+    "capability_fabric_source_ci_verified": true,
     "capability_fabric_field_verified": false,
     "capability_fabric_read_only_v1": true,
     "capability_fabric_new_android_permissions": false,

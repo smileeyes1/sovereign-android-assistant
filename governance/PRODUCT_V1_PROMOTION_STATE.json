@@ -1,10 +1,10 @@
 {
-  "candidate_version": 20312,
+  "candidate_version": 20313,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
   "failover_or_precise_blocker_verified": false,
-  "same_signed_apk_field_verified": true,
+  "same_signed_apk_field_verified": false,
   "promoted": false,
   "sovereign_constitution_field_verified": false,
   "control_channel_field_verified": true,
@@ -16,5 +16,10 @@
   "professional_observability_field_verified": false,
   "cross_session_continuity_field_verified": true,
   "professional_observability_runtime_field_verified": true,
-  "professional_observability_visual_field_verified": false
+  "professional_observability_visual_field_verified": false,
+  "field_baseline_version": 20312,
+  "candidate_field_verified": false,
+  "capability_fabric_source_integrated": true,
+  "capability_fabric_source_ci_verified": false,
+  "capability_fabric_field_verified": false
 }

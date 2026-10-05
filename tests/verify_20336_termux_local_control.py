@@ -21,7 +21,9 @@ def require(ok,msg):
     if not ok:
         raise SystemExit("TERMUX_LOCAL_CONTROL_20336=FAIL "+msg)
 
-require(re.search(r"versionCode\s+20336\b",gradle) is not None,"version_code")
+version_match=re.search(r"versionCode\s+(\d+)",gradle)
+require(version_match is not None and int(version_match.group(1))>=20336,"version_code_floor")
+candidate_version=int(version_match.group(1))
 require("termux-local-control-r27" in gradle,"version_name")
 
 for token in [

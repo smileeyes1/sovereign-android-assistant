@@ -31,7 +31,23 @@ object HakimCapabilityKernel {
         Capability("install_candidate", "تثبيت/ترقية مرشح", false, true, true),
         Capability("send_external", "إرسال أو نشر خارجي", false, true, true),
         Capability("financial_action", "دفع أو تحويل مالي", false, true, true),
-        Capability("grant_permission", "منح صلاحية جديدة", false, true, true)
+        Capability("grant_permission", "منح صلاحية جديدة", false, true, true),
+        Capability("calendar_read", "قراءة التقويم المأذون", true, true, false),
+        Capability("calendar_write", "إنشاء/تعديل حدث تقويم", true, true, true),
+        Capability("contacts_read", "قراءة جهة اتصال مأذونة", true, true, false),
+        Capability("contacts_write", "إنشاء/تعديل جهة اتصال", true, true, true),
+        Capability("sms_read", "قراءة رسالة مأذونة", true, true, false),
+        Capability("sms_send", "إرسال رسالة نصية", false, true, true),
+        Capability("call_place", "إجراء مكالمة", false, true, true),
+        Capability("location_read", "قراءة الموقع", true, true, false),
+        Capability("alarm_write", "إنشاء/تعديل منبه", true, false, true),
+        Capability("notification_read", "قراءة الإشعارات", true, true, false),
+        Capability("notification_reply", "الرد عبر إشعار", false, true, true),
+        Capability("health_read", "قراءة بيانات صحية مأذونة", true, true, false),
+        Capability("connector_read", "قراءة من موصل خارجي مأذون", true, true, false),
+        Capability("connector_write", "تغيير عبر موصل خارجي", false, true, true),
+        Capability("computer_observe", "مراقبة جلسة حاسوب مأذونة", true, true, false),
+        Capability("computer_control", "التحكم في جلسة حاسوب مأذونة", false, true, true)
     )
 
     fun catalog(): JSONArray = JSONArray().apply {

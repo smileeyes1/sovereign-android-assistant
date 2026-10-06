@@ -22,7 +22,7 @@ def req(ok, reason):
         raise SystemExit("CAPABILITY_FABRIC_20337=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20337,"version")
+req(m is not None and int(m.group(1))>=20337,"version_floor")
 req("termux-local-control-r27-capability-fabric-r28" in BUILD,"version_lineage")
 
 for token in [
@@ -136,26 +136,26 @@ for permission in [
 ]:
     req(permission not in MANIFEST,"new_manifest_permission:"+permission)
 
-req(STATE["android"]["candidate"]["version_code"]==20337,"state_candidate")
+req(STATE["android"]["candidate"]["version_code"]==int(m.group(1)),"state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False,"candidate_field_must_remain_false")
 req(STATE["android"]["candidate"]["same_signed_apk_field_verified"] is False,"candidate_same_artifact_must_remain_false")
 runtime=STATE["android"]["latest_runtime_observation_unpromoted"]
-req(runtime["version_code"]==20336,"runtime_baseline_version")
-req(runtime["apk_sha256"]=="28467885a36e9833b8ef49b76ed929b8bde4454d8e5bd5e7a04e36cbfc7a679b","runtime_baseline_hash")
+req(runtime["version_code"]==20337,"runtime_baseline_version")
+req(runtime["apk_sha256"]=="0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04","runtime_baseline_hash")
 req(runtime["service_connected_observed"] is True,"runtime_bridge")
 req(runtime["termux_wrapper_status"]=="PASS","termux_wrapper_observed")
 req(runtime["termux_app_to_secure_relay_route_verified"] is False,"termux_route_must_not_be_overclaimed")
 req("missing_from_tool_router_supported_set" in runtime["termux_router_source_gap"],"root_cause_recorded")
 
-req(STATE["productization"]["candidate_version"]==20337,"product_candidate")
+req(STATE["productization"]["candidate_version"]==int(m.group(1)),"product_candidate")
 req(STATE["productization"]["same_signed_apk_field_verified"] is False,"product_same_artifact_must_remain_false")
 req(STATE["productization"]["capability_fabric_r28_field_verified"] is False,"fabric_field_must_remain_false")
-req(PROMOTION["candidate_version"]==20337 and PROMOTION["promoted"] is False,"promotion_gate")
+req(PROMOTION["candidate_version"]==int(m.group(1)) and PROMOTION["promoted"] is False,"promotion_gate")
 req(PROMOTION["same_signed_apk_field_verified"] is False,"promotion_same_artifact_must_remain_false")
 req(PROMOTION["capability_fabric_r28_field_verified"] is False,"promotion_fabric_field_must_remain_false")
 
 req('python3 tests/verify_20337_capability_fabric.py' in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20337"' in WORKFLOW,"workflow_version")
+req('python3 tests/verify_20338_product_foundation.py' in WORKFLOW,"product_foundation_successor_gate")
 
 print(
     "CAPABILITY_FABRIC_20337=PASS "

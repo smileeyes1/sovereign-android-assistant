@@ -49,7 +49,9 @@ class HakimApp : Application() {
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
-        HakimConstraintDoctor.runAsync(this, "app_start")
+        if (HakimProductMode.allowsAdvancedDeviceControl(this)) {
+            HakimConstraintDoctor.runAsync(this, "app_start")
+        }
         if (HakimProductMode.allowsAdvancedDeviceControl(this)) {
             HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
                 HakimSelfImprovementLoop.install(this)

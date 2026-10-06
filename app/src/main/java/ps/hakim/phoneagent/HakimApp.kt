@@ -29,25 +29,31 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "relay_watchdog_install") {
             HakimRelayWatchdog.install(this)
         }
-        HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
-            HakimNetworkGuardian.install(this)
+        if (HakimProductMode.allowsAdvancedDeviceControl(this)) {
+            HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
+                HakimNetworkGuardian.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
+                HakimDeviceProtection.ensureRunning(this)
+            }
         }
-        HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
-            HakimDeviceProtection.ensureRunning(this)
+        if (HakimProductMode.allowsSideloadUpdates(this)) {
+            HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
+                AutoUpdater.schedule(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
+                AutoUpdater.startRealtimeListener(this)
+            }
+            AutoUpdater.checkAsync(this)
         }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
-            AutoUpdater.schedule(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
-            AutoUpdater.startRealtimeListener(this)
-        }
-        AutoUpdater.checkAsync(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
         HakimConstraintDoctor.runAsync(this, "app_start")
-        HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
-            HakimSelfImprovementLoop.install(this)
+        if (HakimProductMode.allowsAdvancedDeviceControl(this)) {
+            HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
+                HakimSelfImprovementLoop.install(this)
+            }
         }
         HakimFaultContainment.guard(this, "app_start", "autonomous_continuation") {
             HakimAutonomousContinuation.pulse(this, "app_start")

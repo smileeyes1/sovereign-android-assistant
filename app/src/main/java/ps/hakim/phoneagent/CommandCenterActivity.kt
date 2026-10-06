@@ -101,8 +101,10 @@ class CommandCenterActivity : ComponentActivity() {
         HakimConstitution.install(this)
         HakimLearning.initialize(this)
         HakimTaskManager.syncSystemTasks(this)
-        HakimExecutionFabric.recover(this, "command_center_open")
-        HakimConnectionResilience.recover(this, "command_center_open")
+        if (HakimProductEdition.isAdvanced) {
+            HakimExecutionFabric.recover(this, "command_center_open")
+            HakimConnectionResilience.recover(this, "command_center_open")
+        }
         buildUi()
         loadConversation()
         HakimAutonomousGoalRunner.finalizeIfVisible(this)
@@ -117,11 +119,13 @@ class CommandCenterActivity : ComponentActivity() {
         refreshOperations()
         browserHandler.removeCallbacks(operationRefresh)
         browserHandler.postDelayed(operationRefresh, 15_000L)
-        HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
-        HakimConnectionResilience.recover(this, "command_center_resume")
-        HakimResilienceAlarmReceiver.schedule(this)
+        if (HakimProductEdition.isAdvanced) {
+            HakimUnifiedRelay.ensureAlive(this, "command_center_resume")
+            HakimConnectionResilience.recover(this, "command_center_resume")
+            HakimResilienceAlarmReceiver.schedule(this)
+            HakimAutonomousContinuation.pulse(this, "command_center_resume")
+        }
         HakimTaskManager.syncSystemTasks(this)
-        HakimAutonomousContinuation.pulse(this, "command_center_resume")
         HakimAutonomousGoalRunner.finalizeIfVisible(this)
         browserHandler.postDelayed({ maybeResumeAutonomousTask() }, 500L)
         maybeEnsureTermuxControlPermission()
@@ -130,6 +134,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureTermuxControlPermission() {
+        if (!HakimProductEdition.isAdvanced) return
         if (termuxPermissionPromptAttempted) return
         val termux = HakimTermuxControl.status(this)
         if (!termux.optBoolean("termux_installed", false) ||
@@ -164,6 +169,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeOpenLocalRouterAuth() {
+        if (!HakimProductEdition.isAdvanced) return
         if (!HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
         val guardian = HakimNetworkGuardian.status(this)
         val nativeDnsResume =
@@ -179,6 +185,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureDeviceProtection() {
+        if (!HakimProductEdition.isAdvanced) return
         // أولوية واجهة الراوتر أولًا حتى لا تتراكب نافذتا نظام/ويب.
         if (HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
 

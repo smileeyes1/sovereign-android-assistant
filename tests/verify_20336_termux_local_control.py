@@ -6,6 +6,7 @@ import re
 root=Path(__file__).resolve().parents[1]
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
 manifest=(root/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+advanced_manifest=(root/"app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 termux=(root/"app/src/main/java/ps/hakim/phoneagent/HakimTermuxControl.kt").read_text(encoding="utf-8")
 fabric=(root/"app/src/main/java/ps/hakim/phoneagent/HakimExecutionFabric.kt").read_text(encoding="utf-8")
 selfcheck=(root/"app/src/main/java/ps/hakim/phoneagent/HakimSelfCheck.kt").read_text(encoding="utf-8")
@@ -31,7 +32,8 @@ for token in [
     '<package android:name="com.termux" />',
     'android:name=".HakimTermuxResultReceiver"',
 ]:
-    require(token in manifest,"manifest:"+token)
+    require(token in advanced_manifest,"advanced_manifest:"+token)
+    require(token not in manifest,"consumer_manifest_leak:"+token)
 
 for token in [
     'object HakimTermuxControl',

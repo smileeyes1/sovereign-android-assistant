@@ -2,6 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+advanced_manifest = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 activity = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimMobileTaskActivity.kt").read_text(encoding="utf-8")
 task = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkProtectionTask.kt").read_text(encoding="utf-8")
 guardian = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkGuardian.kt").read_text(encoding="utf-8")
@@ -13,10 +14,11 @@ def req(condition: bool, message: str):
     if not condition:
         raise AssertionError(message)
 
-req('android:name=".HakimMobileTaskActivity"' in manifest, "mobile_task_activity_missing")
-req('android:scheme="hakim"' in manifest, "hakim_scheme_missing")
-req('android:host="task"' in manifest, "bounded_task_host_missing")
-req('android:path="/network-protection"' in manifest, "network_protection_path_missing")
+req('android:name=".HakimMobileTaskActivity"' in advanced_manifest, "advanced_mobile_task_activity_missing")
+req('android:name=".HakimMobileTaskActivity"' not in manifest, "consumer_mobile_task_activity_leak")
+req('android:scheme="hakim"' in advanced_manifest, "advanced_hakim_scheme_missing")
+req('android:host="task"' in advanced_manifest, "advanced_bounded_task_host_missing")
+req('android:path="/network-protection"' in advanced_manifest, "advanced_network_protection_path_missing")
 
 # Preserve safe-install P0: no Accessibility surface is declared.
 req('android:name=".HakimAccessibilityService"' not in manifest, "accessibility_service_must_remain_undeclared")
@@ -79,8 +81,9 @@ req('CookieManager.getInstance()' in guardian, "local_router_cookie_store_missin
 req('getCookie("https://$EXPECTED_GATEWAY/")' in guardian, "local_router_cookie_scope_missing")
 req('persistLocalRouterCookie(cookie)' in guardian, "local_router_cookie_persistence_missing")
 req('web_local_session_present_at_attempt' in guardian, "local_router_session_evidence_missing")
-req('android:name=".HakimRouterAuthActivity"' in manifest, "router_auth_activity_missing")
-req('android:name=".HakimRouterAuthActivity"\n            android:exported="false"' in manifest, "router_auth_activity_must_not_be_exported")
+req('android:name=".HakimRouterAuthActivity"' in advanced_manifest, "advanced_router_auth_activity_missing")
+req('android:name=".HakimRouterAuthActivity"' not in manifest, "consumer_router_auth_activity_leak")
+req('android:name=".HakimRouterAuthActivity"\n            android:exported="false"' in advanced_manifest, "advanced_router_auth_activity_must_not_be_exported")
 req('ROUTER_ORIGIN = "https://192.168.1.1"' in router_auth, "router_auth_origin_not_bounded")
 req('uri.host == ROUTER_HOST' in router_auth and 'uri.port in setOf(-1, 443)' in router_auth, "router_auth_navigation_not_bounded")
 req('addJavascriptInterface' not in router_auth, "router_auth_js_bridge_forbidden")

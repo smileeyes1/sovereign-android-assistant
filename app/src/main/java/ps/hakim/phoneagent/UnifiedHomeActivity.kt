@@ -73,13 +73,19 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(updateStatus)
 
-        root.addView(button("فحص تحديث حكيم") {
-            updateStatus.text = "يفحص وجود تحديث موثّق…"
-            AutoUpdater.checkAsync(this)
-            updateStatus.postDelayed({
-                updateStatus.text = AutoUpdater.statusSummary(this)
-            }, 1800L)
-        })
+        if (HakimProductEdition.isAdvanced) {
+            root.addView(button("فحص تحديث حكيم") {
+                updateStatus.text = "يفحص وجود تحديث موثّق…"
+                AutoUpdater.checkAsync(this)
+                updateStatus.postDelayed({
+                    updateStatus.text = if (HakimProductEdition.isAdvanced) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "الإصدار الاستهلاكي — التحديث عبر قناة التوزيع الموثوقة فقط."
+        }
+                }, 1800L)
+            })
+        }
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
@@ -143,14 +149,19 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
-        updateStatus.text = AutoUpdater.statusSummary(this)
+        updateStatus.text = if (HakimProductEdition.isAdvanced) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "الإصدار الاستهلاكي — التحديث عبر قناة التوزيع الموثوقة فقط."
+        }
 
         val policy = HakimEnterprisePolicy.current(this)
-        organizationStatus.text = if (policy.managed) {
+        val edition = if (HakimProductEdition.isAdvanced) "Advanced" else "Consumer"
+        organizationStatus.text = (if (policy.managed) {
             "هذا الجهاز مُدار بسياسة المؤسسة."
         } else {
             "الوضع الشخصي — الصلاحيات والبيانات بأقل نطاق افتراضيًا."
-        }
+        }) + " · النسخة: " + edition
     }
 
     @Suppress("DEPRECATION")

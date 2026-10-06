@@ -13,6 +13,7 @@ app = (APP / "HakimApp.kt").read_text(encoding="utf-8")
 health = (APP / "HakimHealthBeacon.kt").read_text(encoding="utf-8")
 relay = (APP / "HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+advanced_manifest = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 build = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 
 def req(ok, reason):
@@ -28,13 +29,13 @@ req("markConsentDenied" in activity, "consent_denial_not_honored")
 req("startActivityForResult" not in service, "service_must_not_fake_consent")
 
 # Private VPN surface.
-req('android:name=".HakimFamilyDnsVpnService"' in manifest, "vpn_service_missing")
-req('android:permission="android.permission.BIND_VPN_SERVICE"' in manifest, "bind_vpn_permission_missing")
-req('android:name=".HakimFamilyDnsVpnActivity"' in manifest, "vpn_consent_activity_missing")
-req('android:name=".HakimFamilyDnsVpnService"\n            android:permission="android.permission.BIND_VPN_SERVICE"\n            android:exported="false"' in manifest,
-    "vpn_service_not_private")
-req('android:name=".HakimFamilyDnsVpnActivity"\n            android:exported="false"' in manifest,
-    "vpn_activity_not_private")
+req('android:name=".HakimFamilyDnsVpnService"' in advanced_manifest, "advanced_vpn_service_missing")
+req('android:permission="android.permission.BIND_VPN_SERVICE"' in advanced_manifest, "advanced_bind_vpn_permission_missing")
+req('android:name=".HakimFamilyDnsVpnActivity"' in advanced_manifest, "advanced_vpn_consent_activity_missing")
+req('android:name=".HakimFamilyDnsVpnService"\n            android:permission="android.permission.BIND_VPN_SERVICE"\n            android:exported="false"' in advanced_manifest,
+    "advanced_vpn_service_not_private")
+req('android:name=".HakimFamilyDnsVpnActivity"\n            android:exported="false"' in advanced_manifest,
+    "advanced_vpn_activity_not_private")
 
 # Split tunnel: only virtual DNS /32 enters TUN. Never capture general browsing.
 req('.addDnsServer(VPN_DNS)' in service and '.addRoute(VPN_DNS, 32)' in service, "dns_split_route_missing")
@@ -94,7 +95,7 @@ status = device.split("fun status(context: Context)", 1)[1]
 req("last_error" not in status, "public_status_exposes_error_detail")
 
 # Forbidden privilege regressions.
-req("WRITE_SECURE_SETTINGS" not in manifest, "secure_settings_forbidden")
+req("WRITE_SECURE_SETTINGS" not in manifest + advanced_manifest, "secure_settings_forbidden")
 req('android:name=".HakimAccessibilityService"' not in manifest, "accessibility_regression")
 req("DevicePolicyManager" not in service + device + activity, "device_owner_scope_forbidden")
 req("su " not in service + device + activity, "root_shell_forbidden")

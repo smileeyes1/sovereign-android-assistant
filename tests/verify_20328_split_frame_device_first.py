@@ -7,6 +7,7 @@ router=(APP/"HakimRouterAuthActivity.kt").read_text(encoding="utf-8")
 tasks=(APP/"HakimTaskManager.kt").read_text(encoding="utf-8")
 device=(APP/"HakimDeviceProtection.kt").read_text(encoding="utf-8")
 manifest=(ROOT/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+advanced_manifest=(ROOT/"app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 build=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 
 def req(ok, reason):
@@ -48,8 +49,8 @@ for token in (
 
 # Android VPN consent remains mandatory; no privilege regression.
 req("VpnService.prepare(context)" in device,"vpn_consent_check_missing")
-req('android.permission.BIND_VPN_SERVICE' in manifest,"vpn_permission_missing")
-req("WRITE_SECURE_SETTINGS" not in manifest,"secure_settings_forbidden")
+req('android.permission.BIND_VPN_SERVICE' in advanced_manifest,"advanced_vpn_permission_missing")
+req("WRITE_SECURE_SETTINGS" not in manifest+advanced_manifest,"secure_settings_forbidden")
 req('android:name=".HakimAccessibilityService"' not in manifest,"accessibility_regression")
 req("DevicePolicyManager" not in router+tasks+device,"device_owner_scope_forbidden")
 

@@ -4,6 +4,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+ADVANCED_MANIFEST = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 BASELINE = (ROOT / "governance/LAST_VERIFIED_BASELINE.md").read_text(encoding="utf-8")
 APP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
 AUTO = (ROOT / "app/src/main/java/ps/hakim/phoneagent/AutoUpdater.kt").read_text(encoding="utf-8")
@@ -29,11 +30,15 @@ for forbidden in [
 
 for needed in [
     "android.permission.INTERNET",
-    "android.permission.CAMERA",
-    "android.permission.RECORD_AUDIO",
     "android.intent.action.SEND_MULTIPLE",
 ]:
-    req(needed in MANIFEST, "core_capability_missing:" + needed)
+    req(needed in MANIFEST, "consumer_core_capability_missing:" + needed)
+
+for needed in [
+    "android.permission.CAMERA",
+    "android.permission.RECORD_AUDIO",
+]:
+    req(needed in ADVANCED_MANIFEST, "advanced_core_capability_missing:" + needed)
 
 req("c84359e422dad0aa205f59a153a1f29d7f4c4e81" in BASELINE, "cloud_baseline")
 req("20092" in BASELINE and "Play Protect" in BASELINE, "playprotect_field_evidence_not_recorded")

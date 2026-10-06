@@ -7,6 +7,7 @@ BUILD=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 DIAG=(APP/"HakimNetworkDiagnostics.kt").read_text(encoding="utf-8")
 RELAY=(APP/"HakimUnifiedRelay.kt").read_text(encoding="utf-8")
 MANIFEST=(ROOT/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+ADVANCED_MANIFEST=(ROOT/"app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 WORKFLOW=(ROOT/".github/workflows/android.yml").read_text(encoding="utf-8")
 
 def req(v, reason):
@@ -33,12 +34,13 @@ for token in [
 ]:
     req(token in DIAG,"diag:"+token)
 
+req("android.permission.ACCESS_NETWORK_STATE" in MANIFEST,"consumer_network_state_permission")
 for permission in [
-    "android.permission.ACCESS_NETWORK_STATE",
     "android.permission.ACCESS_WIFI_STATE",
     "android.permission.CHANGE_WIFI_MULTICAST_STATE",
 ]:
-    req(permission in MANIFEST,"permission:"+permission)
+    req(permission in ADVANCED_MANIFEST,"advanced_permission:"+permission)
+    req(permission not in MANIFEST,"consumer_permission_leak:"+permission)
 
 for forbidden in ["setWifiEnabled(", "wifiManager.disconnect(", "wifiManager.reassociate(", "removeNetwork(", "enableNetwork("]:
     req(forbidden not in DIAG,"read_only_violation:"+forbidden)

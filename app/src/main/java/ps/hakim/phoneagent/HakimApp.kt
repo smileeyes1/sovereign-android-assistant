@@ -14,50 +14,52 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "learning_initialize") {
             HakimLearning.initialize(this)
         }
-        HakimFaultContainment.guard(this, "app_start", "pairing_defaults", critical = true) {
-            PairingDefaults.ensure(prefs)
+        if (HakimProductEdition.isAdvanced) {
+            HakimFaultContainment.guard(this, "app_start", "pairing_defaults", critical = true) {
+                PairingDefaults.ensure(prefs)
+            }
+            HakimFaultContainment.guard(this, "app_start", "orchestrator_recover") {
+                HakimOrchestrator.recover(this, "app_start")
+            }
+            HakimFaultContainment.guard(this, "app_start", "connection_resilience_install") {
+                HakimConnectionResilience.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "alarm_schedule") {
+                HakimResilienceAlarmReceiver.schedule(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "relay_watchdog_install") {
+                HakimRelayWatchdog.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
+                HakimNetworkGuardian.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
+                HakimDeviceProtection.ensureRunning(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
+                AutoUpdater.schedule(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
+                AutoUpdater.startRealtimeListener(this)
+            }
+            AutoUpdater.checkAsync(this)
+            HakimHealthBeacon.sendAsync(this, "app_start")
+            HakimConstraintDoctor.runAsync(this, "app_start")
+            HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
+                HakimSelfImprovementLoop.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "autonomous_continuation") {
+                HakimAutonomousContinuation.pulse(this, "app_start")
+            }
+            startHakimIfPaired(prefs)
         }
-        HakimFaultContainment.guard(this, "app_start", "orchestrator_recover") {
-            HakimOrchestrator.recover(this, "app_start")
-        }
-        HakimFaultContainment.guard(this, "app_start", "connection_resilience_install") {
-            HakimConnectionResilience.install(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "alarm_schedule") {
-            HakimResilienceAlarmReceiver.schedule(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "relay_watchdog_install") {
-            HakimRelayWatchdog.install(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
-            HakimNetworkGuardian.install(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
-            HakimDeviceProtection.ensureRunning(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
-            AutoUpdater.schedule(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
-            AutoUpdater.startRealtimeListener(this)
-        }
-        AutoUpdater.checkAsync(this)
-        HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)
-        HakimConstraintDoctor.runAsync(this, "app_start")
-        HakimFaultContainment.guard(this, "app_start", "self_improvement_install") {
-            HakimSelfImprovementLoop.install(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "autonomous_continuation") {
-            HakimAutonomousContinuation.pulse(this, "app_start")
-        }
-        startHakimIfPaired(prefs)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+        if (HakimProductEdition.isAdvanced && level >= TRIM_MEMORY_UI_HIDDEN) {
             HakimResilienceAlarmReceiver.schedule(this, 2L * 60L * 1000L)
             HakimConnectionResilience.scheduleSoon(this, "trim_memory_" + level)
         }

@@ -27,7 +27,8 @@ assert "MAX_APK_BYTES = 32L * 1024L * 1024L" in UPDATER
 assert "verify-field-signer.sh" in WORKFLOW
 assert 'id: candidate_version' in WORKFLOW
 assert 'steps.candidate_version.outputs.code' in WORKFLOW
-assert 'hakim-field-${{ steps.candidate_version.outputs.code }}.apk' in WORKFLOW
+assert 'hakim-field-${{ steps.candidate_version.outputs.code }}-advanced.apk' in WORKFLOW
+assert 'hakim-consumer-20338-NOT-FOR-PUBLISHING' in WORKFLOW
 assert 'hakim-field-20018.apk' not in WORKFLOW
 assert "NOT-INSTALLABLE" in WORKFLOW
 print("SIGNING_CONTINUITY_POLICY=PASS")

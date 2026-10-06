@@ -109,6 +109,22 @@ for token in [
     req(CENTER.count(token) >= 3, "command_center_advanced_gates")
 req('HakimProductMode.allowsSideloadUpdates(this)' in HOME, "consumer_update_ui_gate")
 req('التحديثات عبر قناة التوزيع الرسمية.' in HOME, "consumer_update_copy")
+for token in [
+    'maybeShowConsumerOnboarding()',
+    'consumer_onboarding_version',
+    'مرحبًا بك في حكيم',
+    'مراجعة الخصوصية أو مسح بياناتك المحلية',
+]:
+    req(token in CENTER, "consumer_onboarding:" + token)
+for token in [
+    'HakimProductMode.isConsumer(this@UnifiedHomeActivity)',
+    'BuildConfig.VERSION_NAME',
+    'نسخة المستخدم',
+    'النسخة المتقدمة',
+]:
+    req(token in HOME, "edition_status:" + token)
+req(HOME.count('التحديثات عبر قناة التوزيع الرسمية.') >= 2, "consumer_update_copy_refresh")
+
 
 candidate = STATE["android"]["candidate"]
 req(candidate["version_code"] == 20338, "state_candidate")

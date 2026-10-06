@@ -7,7 +7,7 @@
 <meta name="author" content="محمد وجيه">
 <meta name="copyright" content="© محمد وجيه">
 <meta name="license" content="Educational content: CC BY-NC-SA 4.0; application code: © محمد وجيه, all rights reserved">
-<meta name="application-version" content="CITY99-PARENT-COMPANION-2026-10-06-v6">
+<meta name="application-version" content="CITY99-SIMPLE-STUDENT-2026-10-06-v7">
 <meta name="description" content="مدينة ٩٩: تجربة تعلم تفاعلية للوحدة الأولى في رياضيات الصف الثاني — المقارنة والترتيب والقيمة المنزلية والزوجي والفردي.">
 <link rel="manifest" href="./manifest.webmanifest">
 <title>مدينة ٩٩ — مغامرة الأعداد للصف الثاني</title>
@@ -67,43 +67,79 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
 
 /* رفيق ولي الأمر: إرشاد تكيفي قصير يحافظ على استقلال الطفل */
 .parent-view{max-width:760px;margin:auto}.parent-hero{padding:18px;border:2px solid #d8e5d8;border-radius:24px;background:linear-gradient(135deg,#f4fff7,#fffaf0);margin-bottom:14px}.parent-hero h1{margin:0 0 7px;font-size:clamp(26px,7vw,38px)}.parent-hero p{margin:0;color:#4b596f;line-height:1.8}.parent-grid{display:grid;grid-template-columns:1fr;gap:12px}.parent-card{border:2px solid var(--line);border-radius:20px;padding:15px;background:#fff;box-shadow:0 8px 22px rgba(31,42,68,.05)}.parent-card h2{font-size:18px;margin:0 0 8px}.parent-card p{margin:6px 0;line-height:1.8;color:#3d485e}.parent-card.good{border-color:#b8dfc4;background:#fbfffc}.parent-card.warn{border-color:#f0cd76;background:#fffaf0}.parent-status{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.parent-status div{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.parent-status b{display:block;font-size:14px}.parent-status span{font-size:12px;color:var(--muted);line-height:1.5}.parent-steps{margin:7px 0 0;padding:0 20px 0 0;line-height:1.95}.parent-script{padding:12px;border-radius:15px;background:#f6f8ff;line-height:1.85}.parent-do-not{padding:12px;border-radius:15px;background:#fff3f3;color:#7e2c2c;line-height:1.8}.parent-privacy{font-size:12px;color:var(--muted);line-height:1.75;margin-top:10px}.student-home-help.hidden{display:none!important}@media(max-width:430px){.parent-status{grid-template-columns:1fr}.parent-card{padding:13px}.parent-hero{padding:15px}}
+
+/* تبسيط واجهة الطالب v7: خطوة واحدة واضحة ثم كشف تدريجي لما هو ثانوي */
+#home .card{padding-top:16px}
+#home .section-title.home-map-title{display:none}
+.home-focus-note{display:flex;align-items:center;gap:9px;margin:10px 0 4px;padding:10px 12px;border-radius:15px;background:#fff9e9;border:1px solid #f0d889;font-weight:900}
+.home-focus-note span{font-size:13px;color:#5e6472;font-weight:700}
+.student-more{margin-top:12px;border:1px solid #e1e5ef;border-radius:16px;background:#fafbfe;overflow:hidden}
+.student-more>summary{cursor:pointer;list-style:none;padding:13px 14px;font-weight:900;color:#35415d;display:flex;align-items:center;justify-content:space-between}
+.student-more>summary::-webkit-details-marker{display:none}.student-more>summary:after{content:'⌄';font-size:18px}.student-more[open]>summary:after{content:'⌃'}
+.student-more .map,.student-more .premium-strip,.student-more .student-share,.student-more .reward-shelf{margin:0 12px 12px}
+#mastery{display:none!important}
+#storageNote:empty{display:none}
+#home .smart-card{padding:17px;margin:12px 0;border-width:3px;box-shadow:0 10px 28px rgba(49,72,216,.08)}
+#home .smart-card b{font-size:22px;margin:2px 0 4px}
+#home #smartText{font-size:15px;line-height:1.65;margin-bottom:4px}
+#home #smartStart{min-height:58px;font-size:19px}
+#home .story-hero{padding:13px;margin-bottom:10px}.story-copy span{line-height:1.45}.mascot{width:50px;height:50px;font-size:28px;border-radius:16px}
+#home .notebook-home{display:none}
+#home .premium-strip{grid-template-columns:1fr 1fr}
+#home .station{min-height:68px;padding:11px 12px}.station b{font-size:18px}.station small{font-size:13px;line-height:1.4}.station .icon{font-size:28px;min-width:36px}
+#play .goal{display:none}
+#play .journey{justify-content:flex-start;margin:6px 0 9px}
+#play .journey .step-pill{font-size:13px;padding:6px 10px}
+#play .guide-bubble{margin:8px 0 10px;padding:9px 11px}.guide-bubble .face{font-size:21px}.guide-bubble b{display:none}
+#play .micro{display:none!important}
+#play .mastery-gate{font-size:13px;line-height:1.55;padding:9px 10px}
+#play .lesson-title{font-size:20px}
+#play .question{margin-top:12px}
+.welcome-card .guide-choices{display:none!important}.welcome-card{padding:24px 20px}.welcome-card p{font-size:16px;line-height:1.7}.welcome-card h2{font-size:27px}
+@media(max-width:430px){#home .brand p{font-size:12px}#home .story-copy span{font-size:13px}#home .smart-card b{font-size:21px}.student-more>summary{padding:12px}.home-focus-note{align-items:flex-start}}
 </style>
 </head>
 <body>
 <main class="app">
 <section id="home">
   <div class="top">
-    <div class="brand"><h1>مدينة ٩٩</h1><p>مغامرة الأعداد • رياضيات الصف الثاني • الوحدة الأولى</p></div>
+    <div class="brand"><h1>مدينة ٩٩</h1><p>رياضيات الصف الثاني • الوحدة الأولى</p></div>
     <div class="badge" aria-label="النجوم">⭐ <span id="starsHome">٠</span></div>
   </div>
   <div class="story-hero"><div id="guideHomeIcon" class="mascot" aria-hidden="true">✨</div><div class="story-copy"><b id="storyHeadline">أهلًا يا بطل في مدينة ٩٩!</b><span id="storyLine">أربع محطات تنتظر فهمك، ثم تفتح قلعة الإتقان.</span></div></div>
   <div class="card">
-    <div class="section-title">خريطة المغامرة</div>
+    <div class="section-title home-map-title">خريطة المغامرة</div>
     <div id="homeProgressText" class="goal">أنجزت ٠ من ٥ مراحل.</div>
     <div class="progress" aria-label="تقدم الوحدة"><i id="homeBar"></i></div>
-    <div class="smart-card" aria-live="polite"><span class="mission-tag">مهمتك الآن</span><b id="missionTitle">المحطة الأنسب لك</b><div id="smartText" class="goal"></div><div class="tools"><button id="smartStart" class="primary wide">🚀 ابدأ المهمة</button></div></div>
-    <div class="map">
-      <button class="station" data-kind="compare"><span class="icon" aria-hidden="true">⚖️</span><span><b>بوابة الميزان</b><small>المقارنة بين عددين: أنظر إلى العشرات والآحاد وأفسّر اختياري.</small></span><span class="tick"></span></button>
-      <button class="station" data-kind="order"><span class="icon" aria-hidden="true">🚂</span><span><b>قطار الأعداد</b><small>الترتيب: أضع العربات من الأصغر إلى الأكبر أو بالعكس.</small></span><span class="tick"></span></button>
-      <button class="station" data-kind="place"><span class="icon" aria-hidden="true">🏠</span><span><b>بيت المنازل</b><small>القيمة المنزلية: أكتشف كيف يغيّر المكان قيمة الرقم.</small></span><span class="tick"></span></button>
-      <button class="station" data-kind="evenodd"><span class="icon" aria-hidden="true">👫</span><span><b>ساحة الأزواج</b><small>الزوجي والفردي: أكوّن أزواجًا وأكتشف من يبقى بلا شريك.</small></span><span class="tick"></span></button>
-      <button class="station" data-kind="review"><span class="icon" aria-hidden="true">🏆</span><span><b>قلعة الإتقان</b><small>مهمة النهاية: أثبت أهداف الوحدة، نعالج أي فجوة، ثم نفتح القلعة.</small></span><span class="tick"></span></button>
-    </div>
-    <div id="rewardShelf" class="reward-shelf" aria-label="مفاتيح الفهم"></div>
+    <div class="smart-card" aria-live="polite"><span class="mission-tag">خطوتك الآن</span><b id="missionTitle">المحطة الأنسب لك</b><div id="smartText" class="goal"></div><div class="tools"><button id="smartStart" class="primary wide">ابدأ الآن</button></div></div>
+    <div class="home-focus-note">✍️ <div>جهّز دفترًا وقلمًا <span>سنطلب الكتابة فقط عندما تساعدك على الفهم.</span></div></div>
 
-    <div class="notebook-home" aria-label="دفتر المستكشف"><div class="notebook-icon" aria-hidden="true">✍️</div><div><b>دفتر المستكشف جزء من المغامرة</b><span>جهّز دفتر الرياضيات وقلمًا. في لحظات مختارة ستكتب أو ترسم أولًا، ثم تفتح الإجابات على الشاشة. ورقة وقلم يكفيان.</span></div></div>
+    <details class="student-more" id="stationsMore">
+      <summary>🗺️ أريد اختيار محطة بنفسي</summary>
+      <div class="map">
+        <button class="station" data-kind="compare"><span class="icon" aria-hidden="true">⚖️</span><span><b>بوابة الميزان</b><small>المقارنة بين عددين.</small></span><span class="tick"></span></button>
+        <button class="station" data-kind="order"><span class="icon" aria-hidden="true">🚂</span><span><b>قطار الأعداد</b><small>ترتيب الأعداد.</small></span><span class="tick"></span></button>
+        <button class="station" data-kind="place"><span class="icon" aria-hidden="true">🏠</span><span><b>بيت المنازل</b><small>العشرات والآحاد والقيمة.</small></span><span class="tick"></span></button>
+        <button class="station" data-kind="evenodd"><span class="icon" aria-hidden="true">👫</span><span><b>ساحة الأزواج</b><small>الزوجي والفردي.</small></span><span class="tick"></span></button>
+        <button class="station" data-kind="review"><span class="icon" aria-hidden="true">🏆</span><span><b>قلعة الإتقان</b><small>تحدّي نهاية الوحدة.</small></span><span class="tick"></span></button>
+      </div>
+    </details>
 
-    <div class="premium-strip" aria-label="لعب وتفضيلات">
-      <button id="playLabBtn" class="premium-btn">🎮 مختبر اللعب الذكي</button>
-      <button id="prefsBtn" class="premium-btn">⚙️ راحتي وطريقتي</button>
-    </div>
+    <details class="student-more" id="studentExtras">
+      <summary>⋯ المزيد</summary>
+      <div id="rewardShelf" class="reward-shelf" aria-label="مفاتيح الفهم"></div>
+      <div class="premium-strip" aria-label="لعب وتفضيلات">
+        <button id="playLabBtn" class="premium-btn">🎮 تدريب إضافي</button>
+        <button id="prefsBtn" class="premium-btn">⚙️ إعدادات الراحة</button>
+      </div>
     <div id="recallCard" class="recall-card hidden">
       <div class="recall-icon" aria-hidden="true">🧠</div>
       <div style="flex:1"><b>تحدّي ذاكرة قصير</b><span id="recallText">عدتَ إلى المدينة؛ لنسترجع فكرة أتقنتها سابقًا.</span></div>
       <button id="recallBtn" class="secondary">ابدأ</button>
     </div>
 
-    <div class="tools student-share"><button id="shareProgress" class="secondary wide">📤 أرسل إنجازي للمعلم</button><button id="shareParent" class="secondary wide student-home-help hidden">🏠 ساعدني في البيت</button><button id="installApp" class="secondary wide hidden">📲 أضف إلى الهاتف</button></div>
+      <div class="tools student-share"><button id="shareProgress" class="secondary wide">📤 مشاركة التقدم</button><button id="shareParent" class="secondary wide student-home-help hidden">🏠 مساعدة في البيت</button><button id="installApp" class="secondary wide hidden">📲 أضف إلى الهاتف</button></div>
+    </details>
     <div class="mastery" id="mastery"></div>
     <div id="teacherTools" class="tools hidden"><button id="teacherToggle" class="secondary" aria-expanded="false">متابعة المعلم</button><button id="reset" class="secondary danger">إعادة التقدم من البداية</button></div>
     <div id="teacherPanel" class="teacher-panel hidden"><div class="section-title">متابعة التعلّم دون أسماء</div><div id="teacherGrid" class="teacher-grid"></div><div class="section-title" style="margin-top:14px">أدلة أهداف الوحدة</div><div id="teacherObjectives" class="objective-list"></div><div id="teacherRecommendation" class="recommendation"></div><div class="storage-note">المحتوى التعليمي © محمد وجيه — CC BY-NC-SA 4.0 • كود التطبيق © محمد وجيه — جميع الحقوق محفوظة.</div></div>
@@ -112,7 +148,7 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
 </section>
 
 <section id="play" class="hidden">
-  <div class="top"><button id="back" class="secondary">← الخريطة</button><div class="badge" aria-label="النجوم">⭐ <span id="starsPlay">٠</span></div></div>
+  <div class="top"><button id="back" class="secondary">← المدينة</button><div class="badge" aria-label="النجوم">⭐ <span id="starsPlay">٠</span></div></div>
   <div class="card">
     <div class="lesson-head"><div><div id="lessonTitle" class="lesson-title"></div><div id="goal" class="goal"></div></div><button id="speak" class="secondary" title="قراءة المحتوى بصوت الجهاز">🔊 استمع</button></div>
     <div class="guide-bubble"><span id="guidePlayIcon" class="face" aria-hidden="true">✨</span><div><b id="guideName">نور</b><span id="guideLine">فكّر أولًا، وأنا معك عندما تحتاجني.</span></div></div>
@@ -181,13 +217,13 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
   <div class="welcome-card">
     <div class="mascot" style="margin:auto">🏙️</div>
     <h2 id="welcomeTitle">أهلًا بك في مدينة ٩٩!</h2>
-    <p>سنكتشف الأعداد في أربع محطات. اختر رفيقًا يرافقك، وجهّز <b>دفتر الرياضيات وقلمًا</b>؛ سنكتب ونرسم في لحظات قصيرة ثم نعود للشاشة. لا سرعة مطلوبة؛ خذ وقتك.</p>
+    <p>جهّز <b>دفتر الرياضيات وقلمًا</b>. سأعطيك خطوة واحدة كل مرة، ويمكنك طلب المساعدة متى احتجت.</p>
     <div class="guide-choices" aria-label="اختر رفيق المغامرة">
       <button class="guide-choice selected" data-guide="noor"><span>✨</span>نور</button>
       <button class="guide-choice" data-guide="qamar"><span>🌙</span>قمر</button>
       <button class="guide-choice" data-guide="najem"><span>⭐</span>نجم</button>
     </div>
-    <button id="beginAdventure" class="primary">ابدأ المغامرة</button>
+    <button id="beginAdventure" class="primary">ابدأ</button>
   </div>
 </div>
 </main>
@@ -439,12 +475,13 @@ function completedCount(){return SKILLS.filter(k=>state.skills[k].mastered).leng
 function ratio(skill){const s=state.skills[skill];return s.seen?s.firstCorrect/s.seen:1}
 function recommendedKind(){const incomplete=SKILLS.filter(k=>!state.skills[k].mastered);if(incomplete.length){const started=incomplete.filter(k=>state.skills[k].seen>0).sort((a,b)=>ratio(a)-ratio(b)||state.skills[b].errors-state.skills[a].errors);return started[0]||incomplete[0]}if(!isUnitComplete())return'review';return SKILLS.slice().sort((a,b)=>ratio(a)-ratio(b)||state.skills[b].errors-state.skills[a].errors)[0]}
 function recommendationText(k){if(k==='review')return'المهارات الأربع متقنة داخل الدروس؛ حان فحص أهداف الوحدة الاثني عشر بسؤال جديد لكل هدف.';const s=state.skills[k];if(s.seen===0)return'ابدأ بـ '+skillNames[k]+'؛ هذه المهارة التالية في تسلسل الوحدة.';if(!s.readiness)return'نثبت المتطلب السابق في '+skillNames[k]+' قبل التقدم.';if(!s.mastered)return'أكمل '+skillNames[k]+'؛ ما زال هناك هدف لم يثبت بإجابة مستقلة.';return'للمحافظة على الإتقان، أعد '+skillNames[k]+' لأنها الأقل ثباتًا في المحاولة الأولى.'}
+function studentMissionText(k){const m={compare:'سنقارن عددين خطوة خطوة.',order:'سنرتب الأعداد بهدوء.',place:'سنكتشف قيمة الرقم من مكانه.',evenodd:'سنكوّن أزواجًا لنعرف الزوجي والفردي.',review:'سنثبت ما تعلمته في تحدٍّ قصير.'};return m[k]||'لنبدأ بخطوة واحدة.'}
 function drawHome(){
  const g=guide();$('guideHomeIcon').textContent=g.icon;$('guidePlayIcon').textContent=g.icon;$('guideName').textContent=g.name;
  $('starsHome').textContent=ar(state.stars);$('starsPlay').textContent=ar(state.stars);const n=completedCount();$('homeBar').style.width=(n/5*100)+'%';$('homeProgressText').textContent=n===0?'المغامرة تبدأ من أول مفتاح فهم.':'فتحت '+ar(n)+' من ٥ مراحل.';
  document.querySelectorAll('.station').forEach(b=>{const k=b.dataset.kind,done=k==='review'?isUnitComplete():state.skills[k].mastered;const locked=k==='review'&&!SKILLS.every(x=>state.skills[x].mastered);b.classList.toggle('done',done);b.classList.toggle('locked',locked);b.setAttribute('aria-disabled',locked?'true':'false');b.querySelector('.tick').textContent=done?'✓':''});
  $('mastery').innerHTML=SKILLS.map(k=>{const s=state.skills[k];const first=s.seen?Math.round(s.firstCorrect/s.seen*100):0;return '<div><b>'+skillNames[k]+'</b><span>'+(s.mastered?'متقن ✓':'أهداف مثبتة: '+ar(objectiveProgress(k).split('/')[0])+' من '+ar(objectiveProgress(k).split('/')[1]))+(s.seen?' • أول محاولة '+ar(first)+'٪':'')+'</span></div>'}).join('');
- const rec=recommendedKind();$('missionTitle').textContent=missionTitle(rec);$('smartText').textContent=rec==='review'?'المحطات جاهزة. بقيت مهمة القلعة لإثبات ما فهمته.':curiosity[rec]+' '+recommendationText(rec);$('smartStart').dataset.kind=rec;$('rewardShelf').innerHTML=rewardHtml();$('storyHeadline').textContent=isUnitComplete()?'مدينة ٩٩ أضاءت بالكامل! 👑':'أهلًا يا بطل، '+g.name+' معك في مدينة ٩٩!';$('storyLine').textContent=isUnitComplete()?'أثبتَّ أهداف الوحدة. يمكنك العودة إلى أي محطة لتثبيت فهمك.':'كل مفتاح تحصل عليه يعني أنك فهمت محطة، لا أنك أسرعت فيها.';renderTeacherPanel();const ph=$('shareParent');if(ph)ph.classList.toggle('hidden',!SKILLS.some(k=>state.skills[k].seen>0));$('storageNote').textContent=teacherModeEnabled()?(storagePersistent?'التقدم محفوظ محليًا على هذا الجهاز.':'التقدم محفوظ خلال هذه الجلسة فقط لأن التخزين المحلي غير متاح.') : '';
+ const rec=recommendedKind();$('missionTitle').textContent=missionTitle(rec);$('smartText').textContent=studentMissionText(rec);$('smartStart').dataset.kind=rec;$('rewardShelf').innerHTML=rewardHtml();$('storyHeadline').textContent=isUnitComplete()?'أحسنت! اكتملت مدينة ٩٩ 👑':'أهلًا يا بطل!';$('storyLine').textContent=isUnitComplete()?'يمكنك العودة لأي محطة للتدريب.':'اضغط «ابدأ الآن» وسأرشدك خطوة خطوة.';renderTeacherPanel();const ph=$('shareParent');if(ph)ph.classList.toggle('hidden',!SKILLS.some(k=>state.skills[k].seen>0));$('storageNote').textContent=teacherModeEnabled()?(storagePersistent?'التقدم محفوظ محليًا على هذا الجهاز.':'التقدم محفوظ خلال هذه الجلسة فقط لأن التخزين المحلي غير متاح.') : '';
 }
 function renderTeacherPanel(){
  $('teacherGrid').innerHTML=SKILLS.map(k=>{const s=state.skills[k],first=s.seen?Math.round(s.firstCorrect/s.seen*100):0;return '<div class="teacher-row"><b>'+skillNames[k]+'</b><span>'+(s.mastered?'متقن':'قيد التعلم')+'</span><span>'+ar(first)+'٪ من أول محاولة</span></div>'}).join('');
@@ -474,11 +511,11 @@ async function shareParentGuide(){const url=parentGuideUrl();const text='رفي�
 
 let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installApp').classList.remove('hidden')});window.addEventListener('appinstalled',()=>{$('installApp').classList.add('hidden');installPrompt=null;showSpark('📲 أضيفت مدينة ٩٩ إلى الهاتف')});async function installApp(){if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installApp').classList.add('hidden')}
 function resetQuestionUi(){session.mistakes=0;session.help=0;session.answered=false;session.orderSelection=[];session.notebookUnlocked=false;$('visual').innerHTML='';$('q').textContent='';$('math').textContent='';$('interaction').innerHTML='';$('interaction').classList.remove('notebook-locked');$('notebookTask').classList.add('hidden');$('notebookTask').classList.remove('done');$('notebookTask').innerHTML='';$('support').classList.add('hidden');$('support').innerHTML='';$('feedback').className='feedback';$('feedback').textContent='انظر أولًا، فكر، ثم اختر. أنا معك.';updateGuideLine('فكّر أولًا، وأنا معك عندما تحتاجني.');$('hint').disabled=false;$('next').classList.add('hidden');$('next').textContent='التالي';$('masteryGate').classList.add('hidden')}
-function journey(){const phases=session.kind==='review'?['فحص ١٢ هدفًا','علاج موجّه','إعادة اختبار']:['التهيئة','اكتشف','تدرّب معي','جرّب','فسّر','أثبت الإتقان','تحدٍّ'];let active=0;if(session.kind==='review'){active=session.review.phase==='diagnostic'?0:session.review.phase==='repair'?1:2}else active=['readiness','concept','guided','practice','reason','mastery','enrich'].indexOf(session.phase);$('journey').innerHTML=phases.map((p,i)=>'<span class="step-pill '+(i<active?'done':i===active?'active':'')+'">'+p+'</span>').join('')}
+function journey(){const phases=session.kind==='review'?['فحص الوحدة','نتعلم ما نحتاجه','نتأكد من جديد']:['نستعد','نكتشف','نجرب معًا','أجرب بنفسي','أشرح فكرتي','أتأكد أني فهمت','تحدٍّ إضافي'];let active=0;if(session.kind==='review'){active=session.review.phase==='diagnostic'?0:session.review.phase==='repair'?1:2}else active=['readiness','concept','guided','practice','reason','mastery','enrich'].indexOf(session.phase);active=Math.max(0,active);$('journey').innerHTML='<span class="step-pill active">الآن: '+phases[active]+'</span>'}
 function progressValue(){if(session.kind==='review'){if(session.review.phase==='diagnostic')return Math.max(4,Math.round(((session.review.pos+1)/UNIT_CHECKS.length)*55));const map={repair:68,retest:86,done:100};return map[session.review.phase]||0}const map={readiness:5,concept:15,guided:30,practice:55,reason:72,mastery:85,enrich:100,done:100};return map[session.phase]||0}
 function phaseTitle(){if(session.kind==='review')return'';return phaseLabels[session.phase]||''}
-function showLessonInfo(){const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>هدف الدرس</h2><p>'+L.goal+'</p><div class="source-note"><b>المتطلب السابق:</b> '+L.prereq+'</div><div class="objective-list">'+L.objectives.map(o=>'<div class="objective-item '+((state.skills[session.kind].masteryHits[o[0]]||0)>=2?'done':'')+'"><span class="mark">'+((state.skills[session.kind].masteryHits[o[0]]||0)>=2?'✓':'○')+'</span><span>'+o[1]+'</span></div>').join('')+'</div><div class="expert-contract"><b>كيف سأثبت أنك فهمت؟</b><div>'+L.evidence+'</div><div class="source-note">نحتاج إثباتين مستقلين لكل هدف في الدرس، ثم فحصًا جديدًا في نهاية الوحدة.</div></div>'}
-function showConcept(){resetQuestionUi();const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>اكتشف الفكرة</h2><p>'+L.concept.text+'</p><div class="concept-example"><b>مثال محلول</b><p>'+L.concept.example+'</p>'+visualHtml(L.concept.visual)+'</div><div class="source-note"><b>خطأ شائع ننتبه له:</b> '+L.misconception+'</div>';$('feedback').className='feedback good';$('feedback').textContent='اقرأ المثال، ثم أخبرني عندما تكون مستعدًا للتدريب.';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='أنا مستعد';$('lessonBar').style.width=progressValue()+'%';$('micro').textContent='المعلم الخبير لا يقفز إلى الرمز قبل أن تتضح الفكرة.';journey();focusNext()}
+function showLessonInfo(){const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>ماذا سنتعلم؟</h2><p>'+L.goal+'</p><div class="concept-example"><b>جاهز؟</b><p>سنبدأ بسؤال صغير، ثم نتعلم ونجرّب خطوة خطوة.</p></div>'}
+function showConcept(){resetQuestionUi();const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>اكتشف الفكرة</h2><p>'+L.concept.text+'</p><div class="concept-example"><b>شاهد المثال</b><p>'+L.concept.example+'</p>'+visualHtml(L.concept.visual)+'</div>';$('feedback').className='feedback good';$('feedback').textContent='شاهد المثال، ثم اضغط «جرّب». ';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='جرّب';$('lessonBar').style.width=progressValue()+'%';$('micro').textContent='';journey();focusNext()}
 function phasePool(){const L=LESSONS[session.kind];if(session.phase==='readiness')return L.readiness;if(session.phase==='guided')return L.guided;if(session.phase==='practice')return L.practice;if(session.phase==='reason')return L.reason;if(session.phase==='enrich')return L.enrich;return[]}
 function firstUnfinishedMastery(skill,start=0){const T=LESSONS[skill].mastery.targets;for(let i=start;i<T.length;i++){if((state.skills[skill].masteryHits[T[i]]||0)<2)return i}return-1}
 function chooseMasteryQuestion(){const L=LESSONS[session.kind],target=L.mastery.targets[session.masteryTargetIndex];const used=session.masteryUsed[target]||[];let pool=L.mastery.pool.filter(q=>q.obj===target&&!used.includes(q.id));if(!pool.length){session.masteryUsed[target]=[];pool=L.mastery.pool.filter(q=>q.obj===target)}const q=pool[0];session.masteryUsed[target]=(session.masteryUsed[target]||[]).concat(q.id);session.currentMastery=q;return q}
@@ -523,7 +560,7 @@ function confirmNotebook(q,skill,check){
  $('feedback').className='feedback';$('feedback').textContent='الآن اختبر ما كتبته على الشاشة من دون تغيير جوابك لمجرد رؤية الخيارات.';updateGuideLine('الآن قارن ما فكرت فيه بما ستختاره على الشاشة.');focusFirstInteractive();
 }
 function notebookEvidenceCount(){return Object.keys(state.notebookEvidence||{}).length}
-function renderQuestion(){resetQuestionUi();const q=currentQuestion();if(!q)return;const skill=session.kind==='review'?(q.skill||'compare'):session.kind;$('objectiveBox').classList.add('hidden');$('q').textContent=q.ask;$('visual').innerHTML=visualHtml(q.visual);if(q.type==='order')renderOrder(q);else renderChoices(q);notebookGate(q,skill);if(session.phase==='mastery'&&session.kind!=='review'){$('masteryGate').classList.remove('hidden');$('masteryGate').textContent='اختبار إتقان مستقل: نحتاج إجابتين صحيحتين مستقلتين لهذا الهدف، من أول محاولة ومن دون مساعدة، ثم سيعود الهدف في فحص الوحدة بسؤال جديد.'}if(session.kind==='review'){$('masteryGate').classList.remove('hidden');if(session.review.phase==='diagnostic')$('masteryGate').textContent='فحص شامل: هذا سؤال مستقل لهدف واحد من أهداف الوحدة. لن نعد الهدف ثابتًا إذا احتاج مساعدة.';if(session.review.phase==='repair')$('masteryGate').textContent='علاج موجّه للهدف الذي ظهر فيه احتياج. بعده سيأتي سؤال جديد مختلف.';if(session.review.phase==='retest')$('masteryGate').textContent='إعادة اختبار مستقلة بسؤال جديد للهدف نفسه. نريد دليل انتقال الفهم، لا حفظ الإجابة.'}$('lessonBar').style.width=progressValue()+'%';$('micro').textContent=session.kind==='review'?'نبحث عن الفجوة فقط، ثم نعالجها.':phaseMessage(skill,q);journey();if(!notebookRequired()||session.notebookUnlocked)focusFirstInteractive()}
+function renderQuestion(){resetQuestionUi();const q=currentQuestion();if(!q)return;const skill=session.kind==='review'?(q.skill||'compare'):session.kind;$('objectiveBox').classList.add('hidden');$('q').textContent=q.ask;$('visual').innerHTML=visualHtml(q.visual);if(q.type==='order')renderOrder(q);else renderChoices(q);notebookGate(q,skill);if(session.phase==='mastery'&&session.kind!=='review'){$('masteryGate').classList.remove('hidden');$('masteryGate').textContent='تحدّي فهم: أجب بنفسك من دون مساعدة.'}if(session.kind==='review'){$('masteryGate').classList.remove('hidden');if(session.review.phase==='diagnostic')$('masteryGate').textContent='تحدّي الوحدة: أجب بنفسك.';if(session.review.phase==='repair')$('masteryGate').textContent='نتعلم هذه الفكرة مرة أخرى، ثم نجرب سؤالًا جديدًا.';if(session.review.phase==='retest')$('masteryGate').textContent='جرّب سؤالًا جديدًا بنفسك.'}$('lessonBar').style.width=progressValue()+'%';$('micro').textContent=session.kind==='review'?'نبحث عن الفجوة فقط، ثم نعالجها.':phaseMessage(skill,q);journey();if(!notebookRequired()||session.notebookUnlocked)focusFirstInteractive()}
 function phaseMessage(skill,q){if(session.phase==='readiness')return'تهيئة قصيرة للمتطلب السابق: '+LESSONS[skill].prereq;if(session.phase==='guided')return'نتدرّب معًا؛ المساعدة متاحة فورًا.';if(session.phase==='practice')return'الآن دورك. حاول قبل طلب المساعدة.';if(session.phase==='reason')return'لا يكفي أن تختار؛ نريد فهم السبب.';if(session.phase==='mastery')return'إثبات مستقل لهدف: '+objectiveLabel(skill,q.obj);if(session.phase==='enrich')return'هذا تحدٍّ للمتقن، وليس شرطًا لإغلاق الدرس.';return''}
 function shuffled(a){const x=a.slice();for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
 function renderChoices(q){const box=document.createElement('div');box.className='answers'+(q.reason?' reason-answers':'');shuffled(q.opts).forEach(v=>{const b=document.createElement('button');b.className='ans';b.textContent=typeof v==='number'?ar(v):v;b.addEventListener('click',()=>answerChoice(v,b));box.appendChild(b)});$('interaction').appendChild(box)}
@@ -577,7 +614,7 @@ function next(){
  if(session.phase==='masteryComplete'){session.phase='enrich';session.index=0;renderQuestion();return}
  if(session.phase==='enrich'){returnHome();return}
 }
-function showMasteryComplete(){resetQuestionUi();const k=session.kind;$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت '+storyNames[k]+' 🔑</h2><p>أثبتَّ كل هدف مرتين بإجابة مستقلة. سيعود الهدف لاحقًا بسؤال جديد حتى نتأكد أن الفهم انتقل.</p><div class="objective-list">'+LESSONS[k].objectives.map(o=>'<div class="objective-item done"><span class="mark">✓</span><span>'+o[1]+'</span></div>').join('')+'</div><div class="discovery-card"><b>بطاقة اكتشاف</b>'+discoveries[k]+'</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت. الآن يمكنك الانتقال إلى تحدٍّ اختياري.';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='تحدٍّ اختياري';$('lessonBar').style.width='92%';journey();persist()}
+function showMasteryComplete(){resetQuestionUi();const k=session.kind;$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت '+storyNames[k]+' 🔑</h2><p>أحسنت! فهمت أهداف هذه المحطة.</p><div class="objective-list">'+LESSONS[k].objectives.map(o=>'<div class="objective-item done"><span class="mark">✓</span><span>'+o[1]+'</span></div>').join('')+'</div><div class="discovery-card"><b>بطاقة اكتشاف</b>'+discoveries[k]+'</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت! يمكنك العودة للمدينة أو تجربة تحدٍّ إضافي.';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='تحدٍّ اختياري';$('lessonBar').style.width='92%';journey();persist()}
 function nextReview(){
  const r=session.review;
  if(r.phase==='diagnostic'){
@@ -590,9 +627,9 @@ function nextReview(){
  if(r.phase==='retest'){renderQuestion();return}
  if(r.phase==='done'){showReviewFinish();return}
 }
-function showReviewFinish(){resetQuestionUi();$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت قلعة الإتقان! 👑</h2><p>أثبتَّ أهداف الوحدة بأسئلة جديدة، وكل فجوة ظهرت عالجناها ثم اختبرناها مرة أخرى.</p><div class="concept-example"><b>خريطة المدينة اكتملت</b><p>١٢ هدفًا من ١٢: المقارنة • الترتيب • القيمة المنزلية • الزوجي والفردي</p></div><div class="discovery-card"><b>رسالة المدينة</b>الفهم الحقيقي ليس أن تتذكر مكان الإجابة؛ بل أن تعرف لماذا هي صحيحة.</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت! المدينة اكتملت لأنك فهمت أهدافها خطوة خطوة.';showSpark('👑 قلعة الإتقان مفتوحة');$('next').classList.remove('hidden');$('next').textContent='العودة إلى الخريطة';$('next').onclick=()=>{restoreNext();returnHome()};$('hint').disabled=true;$('lessonBar').style.width='100%';journey();persist()}
+function showReviewFinish(){resetQuestionUi();$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت قلعة الإتقان! 👑</h2><p>أحسنت! أكملت تحدّي الوحدة.</p><div class="concept-example"><b>خريطة المدينة اكتملت</b><p>١٢ هدفًا من ١٢: المقارنة • الترتيب • القيمة المنزلية • الزوجي والفردي</p></div><div class="discovery-card"><b>رسالة المدينة</b>الفهم الحقيقي ليس أن تتذكر مكان الإجابة؛ بل أن تعرف لماذا هي صحيحة.</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت! المدينة اكتملت لأنك فهمت أهدافها خطوة خطوة.';showSpark('👑 قلعة الإتقان مفتوحة');$('next').classList.remove('hidden');$('next').textContent='العودة إلى الخريطة';$('next').onclick=()=>{restoreNext();returnHome()};$('hint').disabled=true;$('lessonBar').style.width='100%';journey();persist()}
 function restoreNext(){$('next').onclick=next}
-function openStage(k){if(k==='review'&&!SKILLS.every(x=>state.skills[x].mastered)){showSpark('🔒 أتقن المحطات الأربع أولًا');$('smartText').textContent='قلعة الإتقان تفتح بعد إثبات أهداف المحطات الأربع. أكمل المحطة المقترحة أولًا.';return}restoreNext();session={kind:k,phase:k==='review'?'review':'readiness',index:0,mistakes:0,help:0,answered:false,orderSelection:[],readinessIndex:0,masteryTargetIndex:0,masteryUsed:{},currentMastery:null,review:null};if(k==='review'){state.reviewRound++;session.review={phase:'diagnostic',pos:0,failed:[],failedIndex:0,currentObj:null,retestRound:{},outcomes:{}};persist()}$('home').classList.add('hidden');$('play').classList.remove('hidden');window.scrollTo(0,0);$('lessonTitle').textContent=storyNames[k]+(k==='review'?'':' — '+LESSONS[k].title);$('goal').textContent=k==='review'?'فحص جميع أهداف الوحدة، علاج كل فجوة، ثم إعادة اختبار مستقل بسؤال جديد.':LESSONS[k].goal;if(k==='review')renderQuestion();else{showLessonInfo();$('feedback').className='feedback';$('feedback').textContent=curiosity[k]+' قبل أن نبدأ، سأتحقق سريعًا من فكرة نحتاجها.';updateGuideLine(curiosity[k]);$('next').classList.remove('hidden');$('next').textContent='جهزت دفتري وقلمي — ابدأ التهيئة';$('hint').disabled=true;$('lessonBar').style.width='0%';$('micro').textContent='دفتر أو ورقة وقلم يكفيان. سنكتب فقط عندما تخدم الكتابة الفهم، لا في كل ضغطة.';journey();$('next').onclick=()=>{restoreNext();session.phase='readiness';session.index=0;renderQuestion()}}drawHome()}
+function openStage(k){if(k==='review'&&!SKILLS.every(x=>state.skills[x].mastered)){showSpark('🔒 أتقن المحطات الأربع أولًا');$('smartText').textContent='قلعة الإتقان تفتح بعد إثبات أهداف المحطات الأربع. أكمل المحطة المقترحة أولًا.';return}restoreNext();session={kind:k,phase:k==='review'?'review':'readiness',index:0,mistakes:0,help:0,answered:false,orderSelection:[],readinessIndex:0,masteryTargetIndex:0,masteryUsed:{},currentMastery:null,review:null};if(k==='review'){state.reviewRound++;session.review={phase:'diagnostic',pos:0,failed:[],failedIndex:0,currentObj:null,retestRound:{},outcomes:{}};persist()}$('home').classList.add('hidden');$('play').classList.remove('hidden');window.scrollTo(0,0);$('lessonTitle').textContent=storyNames[k]+(k==='review'?'':' — '+LESSONS[k].title);$('goal').textContent=k==='review'?'فحص جميع أهداف الوحدة، علاج كل فجوة، ثم إعادة اختبار مستقل بسؤال جديد.':LESSONS[k].goal;if(k==='review')renderQuestion();else{showLessonInfo();$('feedback').className='feedback';$('feedback').textContent='سنبدأ بسؤال صغير.';updateGuideLine(curiosity[k]);$('next').classList.remove('hidden');$('next').textContent='ابدأ';$('hint').disabled=true;$('lessonBar').style.width='0%';$('micro').textContent='';journey();$('next').onclick=()=>{restoreNext();session.phase='readiness';session.index=0;renderQuestion()}}drawHome()}
 function returnHome(){restoreNext();$('play').classList.add('hidden');$('home').classList.remove('hidden');if('speechSynthesis'in window)speechSynthesis.cancel();drawHome();window.scrollTo(0,0)}
 function speechText(){if(session.kind&&session.kind!=='review'&&session.phase==='concept'){const c=LESSONS[session.kind].concept;return c.text+' '+c.example}if(!$('objectiveBox').classList.contains('hidden')&&$('q').textContent==='')return $('objectiveBox').innerText;const q=currentQuestion();if(!q)return $('feedback').textContent;let t=q.ask;if(Array.isArray(q.opts))t+=' الخيارات: '+q.opts.map(x=>typeof x==='number'?ar(x):x).join('، ');return t}
 function bestArabicVoice(){if(!('speechSynthesis'in window))return null;const voices=speechSynthesis.getVoices();return voices.find(v=>/^ar-PS/i.test(v.lang))||voices.find(v=>/^ar/i.test(v.lang))||null}

@@ -1,0 +1,31 @@
+name: Transfer Hakim 20337 field APK
+
+on:
+  push:
+    branches:
+      - transfer/hakim-20337-field-apk
+
+permissions:
+  contents: read
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exact signed APK from one-shot field endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://67f4863f6d2c98.lhr.life/7ad12c535a78395e808dbb3b37724bb9/HAKIM-20337-D1-VERIFIED.apk'
+          curl --fail --location --retry 2 --max-time 240 "$URL" -o HAKIM-20337-D1-VERIFIED.apk
+          test "$(stat -c %s HAKIM-20337-D1-VERIFIED.apk)" = "14270253"
+          echo "0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04  HAKIM-20337-D1-VERIFIED.apk" | sha256sum -c -
+      - name: Upload exact signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-20337-d1-verified
+          path: HAKIM-20337-D1-VERIFIED.apk
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error

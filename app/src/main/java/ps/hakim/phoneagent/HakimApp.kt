@@ -29,19 +29,21 @@ class HakimApp : Application() {
         HakimFaultContainment.guard(this, "app_start", "relay_watchdog_install") {
             HakimRelayWatchdog.install(this)
         }
-        HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
-            HakimNetworkGuardian.install(this)
+        if (HakimProductProfile.advanced) {
+            HakimFaultContainment.guard(this, "app_start", "network_guardian_install") {
+                HakimNetworkGuardian.install(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
+                HakimDeviceProtection.ensureRunning(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
+                AutoUpdater.schedule(this)
+            }
+            HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
+                AutoUpdater.startRealtimeListener(this)
+            }
+            AutoUpdater.checkAsync(this)
         }
-        HakimFaultContainment.guard(this, "app_start", "device_family_dns_resume") {
-            HakimDeviceProtection.ensureRunning(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_schedule") {
-            AutoUpdater.schedule(this)
-        }
-        HakimFaultContainment.guard(this, "app_start", "auto_update_realtime") {
-            AutoUpdater.startRealtimeListener(this)
-        }
-        AutoUpdater.checkAsync(this)
         HakimHealthBeacon.sendAsync(this, "app_start")
         HakimSelfCheck.schedule(this)
         HakimSelfCheck.runAsync(this)

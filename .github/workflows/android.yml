@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20338 Product Foundation V1: Consumer/Play + Advanced, preserving 20337 baseline
+# 20339 Private Voice Vault R29 on Product Foundation V1; preserves 20337 field baseline
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*', 'release/hakim-20337-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*', 'release/hakim-20337-*', 'release/hakim-20339-*' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -103,6 +103,7 @@ jobs:
           python3 tests/verify_20336_termux_local_control.py
           python3 tests/verify_20337_capability_fabric.py
           python3 tests/verify_20338_product_foundation.py
+          python3 tests/verify_20339_private_voice_vault.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -170,7 +171,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20338"
+          test "$VERSION_CODE" = "20339"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleConsumerDebug assembleConsumerRelease assembleAdvancedDebug assembleAdvancedRelease bundleConsumerRelease --stacktrace

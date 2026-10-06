@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20338,
+  "candidate_version": 20339,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -52,5 +52,8 @@
   "consumer_play_bundle_sha256": "05930f91b86d65ebe5f635cc00cdac88e61b1dd66b2f34c11077e64d083d1538",
   "source_ci_run_number": 1655,
   "source_ci_run_id": 37414588704,
-  "source_ci_verified_head": "c70259c407a98dcc4ba728ba37c20ddb2d409e59"
+  "source_ci_verified_head": "c70259c407a98dcc4ba728ba37c20ddb2d409e59",
+  "private_voice_vault_r29_source_integrated": true,
+  "private_voice_vault_r29_source_ci_verified": false,
+  "private_voice_vault_r29_field_verified": false
 }

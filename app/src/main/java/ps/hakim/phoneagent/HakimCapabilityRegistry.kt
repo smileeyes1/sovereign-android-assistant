@@ -12,7 +12,7 @@ import org.json.JSONObject
  * تنفيذًا مستقلًا داخل حكيم أو خطة مستقلة؛ ولا تنسب أي بنية خاصة بمزوّد خارجي.
  */
 object HakimCapabilityRegistry {
-    const val VERSION = "CAPABILITY-REGISTRY-2026-10-05-r28"
+    const val VERSION = "CAPABILITY-REGISTRY-2026-10-06-r29"
 
     data class Contract(
         val id: String,
@@ -68,6 +68,7 @@ object HakimCapabilityRegistry {
             listOf("android.permission.BLUETOOTH_SCAN")),
         Contract("camera.capture", "التقاط صورة مأذونة", "media", "planned", false, false, false, true, true, "explicit_approval", "planned", "local_file_write",
             listOf("android.permission.CAMERA")),
+        Contract("voice.profile.local", "حفظ عينة الصوت الشخصية محليًا", "voice", "owned", true, false, false, true, true, "explicit_scope", "voice_profile_store", "local_file_write"),
         Contract("voice.dictate", "إملاء صوتي", "voice", "planned", false, true, false, true, true, "explicit_scope", "planned", "observe_status",
             listOf("android.permission.RECORD_AUDIO")),
         Contract("artifact.create", "إنشاء ملف أو أثر", "artifacts", "planned", false, false, false, true, false, "explicit_scope", "planned", "local_file_write"),
@@ -108,7 +109,7 @@ object HakimCapabilityRegistry {
             "notifications.read" -> HakimNotificationListener.isConnected()
             "termux.status" -> HakimTermuxControl.isInstalled(context)
             "screenshot.capture" -> Build.VERSION.SDK_INT >= 30 && HakimAccessibilityService.instance != null
-            "app.launch" -> true
+            "app.launch", "voice.profile.local" -> true
             else -> false
         }
         return JSONObject()

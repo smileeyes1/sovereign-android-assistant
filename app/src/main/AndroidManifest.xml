@@ -58,6 +58,11 @@
             android:launchMode="singleTop" />
 
         <activity
+            android:name=".HakimVoiceProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
             android:name=".CommandCenterActivity"
             android:exported="true"
             android:launchMode="singleTop"

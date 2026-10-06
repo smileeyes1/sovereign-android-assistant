@@ -130,6 +130,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureTermuxControlPermission() {
+        if (!HakimProductProfile.advanced) return
         if (termuxPermissionPromptAttempted) return
         val termux = HakimTermuxControl.status(this)
         if (!termux.optBoolean("termux_installed", false) ||
@@ -164,6 +165,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeOpenLocalRouterAuth() {
+        if (!HakimProductProfile.advanced) return
         if (!HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
         val guardian = HakimNetworkGuardian.status(this)
         val nativeDnsResume =
@@ -179,6 +181,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureDeviceProtection() {
+        if (!HakimProductProfile.advanced) return
         // أولوية واجهة الراوتر أولًا حتى لا تتراكب نافذتا نظام/ويب.
         if (HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
 

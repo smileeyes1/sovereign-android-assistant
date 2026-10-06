@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app/src/main/java/ps/hakim/phoneagent"
 GRADLE = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+ADVANCED_MANIFEST = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 APPKT = (APP / "HakimApp.kt").read_text(encoding="utf-8")
 BOOT = (APP / "BootReceiver.kt").read_text(encoding="utf-8")
 DOCTOR = (APP / "HakimConstraintDoctor.kt").read_text(encoding="utf-8")
@@ -21,8 +22,9 @@ m = re.search(r"versionCode\s+(\d+)\b", GRADLE)
 req(m is not None and int(m.group(1)) >= 20316, "version")
 CURRENT_VERSION = int(m.group(1))
 req("autoupdate-wakeup-v1" in GRADLE, "version_name")
-req('android:name=".UpdateJobService"' in MANIFEST, "job_service_not_registered")
-req('android.permission.BIND_JOB_SERVICE' in MANIFEST, "job_service_permission")
+req('android:name=".UpdateJobService"' in ADVANCED_MANIFEST, "advanced_job_service_not_registered")
+req('android:name=".UpdateJobService"' not in MANIFEST, "consumer_update_job_leak")
+req('android.permission.BIND_JOB_SERVICE' in ADVANCED_MANIFEST, "advanced_job_service_permission")
 
 for token in [
     'AutoUpdater.schedule(this)',
@@ -53,8 +55,8 @@ req('AutoUpdater.checkNow(applicationContext)' in EVOLUTION, "periodic_fallback_
 # Preserve the current safety contract: updater discovers/verifies/exports;
 # it does not gain a silent package-install privilege in this root-fix release.
 req('installer_capability", false' in AUTO, "installer_contract_changed")
-req("REQUEST_INSTALL_PACKAGES" not in MANIFEST, "install_permission_expansion")
-req("UPDATE_PACKAGES_WITHOUT_USER_ACTION" not in MANIFEST, "silent_install_permission")
+req("REQUEST_INSTALL_PACKAGES" not in MANIFEST + ADVANCED_MANIFEST, "install_permission_expansion")
+req("UPDATE_PACKAGES_WITHOUT_USER_ACTION" not in MANIFEST + ADVANCED_MANIFEST, "silent_install_permission")
 
 req(STATE["android"]["candidate"]["version_code"] == CURRENT_VERSION, "state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "field_claim")

@@ -1,0 +1,42 @@
+{
+  "name": "مدينة ٩٩ — مغامرة الأعداد",
+  "short_name": "مدينة ٩٩",
+  "description": "مدينة ٩٩: تعلم تفاعلي متكيف للوحدة الأولى في رياضيات الصف الثاني مع دفتر المستكشف ورفيق ولي الأمر.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f7fb",
+  "theme_color": "#3148d8",
+  "categories": [
+    "education",
+    "kids"
+  ],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "مختبر اللعب الذكي",
+      "short_name": "المختبر",
+      "url": "./#play"
+    },
+    {
+      "name": "رفيق ولي الأمر",
+      "short_name": "ولي الأمر",
+      "url": "./#parent"
+    },
+    {
+      "name": "وضع المعلم",
+      "short_name": "المعلم",
+      "url": "./#teacher"
+    }
+  ]
+}

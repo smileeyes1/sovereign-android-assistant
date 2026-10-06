@@ -48,8 +48,20 @@ class UnifiedHomeActivity : Activity() {
         root.addView(TextView(this).apply {
             text = "الإعدادات"
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 20)
+            setPadding(8, 8, 8, 8)
             HakimUiKit.title(this)
+        })
+
+        root.addView(TextView(this).apply {
+            val edition = if (HakimProductMode.isConsumer(this@UnifiedHomeActivity)) {
+                "نسخة المستخدم"
+            } else {
+                "النسخة المتقدمة"
+            }
+            text = "$edition · " + BuildConfig.VERSION_NAME.substringBefore("-control-channel")
+            gravity = Gravity.CENTER
+            setPadding(8, 0, 8, 18)
+            HakimUiKit.status(this)
         })
 
         intelligenceStatus = TextView(this).apply {
@@ -73,13 +85,21 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(updateStatus)
 
-        root.addView(button("فحص تحديث حكيم") {
-            updateStatus.text = "يفحص وجود تحديث موثّق…"
-            AutoUpdater.checkAsync(this)
-            updateStatus.postDelayed({
-                updateStatus.text = AutoUpdater.statusSummary(this)
-            }, 1800L)
-        })
+        if (HakimProductMode.allowsSideloadUpdates(this)) {
+            root.addView(button("فحص تحديث حكيم") {
+                updateStatus.text = "يفحص وجود تحديث موثّق…"
+                AutoUpdater.checkAsync(this)
+                updateStatus.postDelayed({
+                    updateStatus.text = if (HakimProductMode.allowsSideloadUpdates(this)) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "التحديثات عبر قناة التوزيع الرسمية."
+        }
+                }, 1800L)
+            })
+        } else {
+            updateStatus.text = "التحديثات عبر قناة التوزيع الرسمية."
+        }
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)
@@ -143,7 +163,11 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
-        updateStatus.text = AutoUpdater.statusSummary(this)
+        updateStatus.text = if (HakimProductMode.allowsSideloadUpdates(this)) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "التحديثات عبر قناة التوزيع الرسمية."
+        }
 
         val policy = HakimEnterprisePolicy.current(this)
         organizationStatus.text = if (policy.managed) {

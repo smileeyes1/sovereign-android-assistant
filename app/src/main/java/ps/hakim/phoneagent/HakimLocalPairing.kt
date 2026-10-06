@@ -12,7 +12,7 @@ import androidx.core.app.RemoteInput
 import java.util.concurrent.Executors
 
 object HakimLocalPairing {
-    const val ACTION_SUBMIT_PAIRING_CODE = "ps.hakim.stable.SUBMIT_LOCAL_ADB_PAIRING_CODE"
+    val ACTION_SUBMIT_PAIRING_CODE = BuildConfig.APPLICATION_ID + ".SUBMIT_LOCAL_ADB_PAIRING_CODE"
     const val REMOTE_INPUT_CODE = "hakim_pairing_code"
     private const val CHANNEL_ID = "hakim_local_adb_pairing"
     private const val NOTIFICATION_ID = 42042

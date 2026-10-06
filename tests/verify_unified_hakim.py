@@ -51,7 +51,7 @@ launcher_pattern = re.compile(
     r'<category android:name="android.intent.category.LAUNCHER" />'
 )
 require(launcher_pattern.search(manifest) is not None, "P0: مركز قيادة حكيم ليس نقطة الدخول الوحيدة")
-require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
+require('android:scheme="hakim" android:host="pair"' in advanced_contract, "P0: رابط اقتران حكيم المتقدم غير مسجل")
 require('android:name=".HakimPairingActivity"' in advanced_contract, "P0: بوابة الاقتران المتقدمة غير معلنة")
 require('android:name=".HakimPairingReceiver"' in advanced_contract, "P0: مستقبل الاقتران المحلي المتقدم غير معلن")
 require('android:name=".HakimAccessibilityService"' not in manifest, "P0: خدمة الوصول الحساسة تسربت إلى قاعدة Consumer")

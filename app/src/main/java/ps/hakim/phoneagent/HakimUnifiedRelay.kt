@@ -40,8 +40,8 @@ object HakimUnifiedRelay {
     private const val DEFAULT_BRIDGE_BASE = "https://hakim-chatgpt-bridge-production.up.railway.app"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
-    private const val ACTION_APPROVE = "ps.hakim.stable.REMOTE_APPROVE"
-    private const val ACTION_REJECT = "ps.hakim.stable.REMOTE_REJECT"
+    private val ACTION_APPROVE = BuildConfig.APPLICATION_ID + ".REMOTE_APPROVE"
+    private val ACTION_REJECT = BuildConfig.APPLICATION_ID + ".REMOTE_REJECT"
     private const val EXTRA_REQUEST_ID = "request_id"
     private const val CARRIER_PREFIX = "HC1."
     private const val CARRIER_AAD = "HAKIM-CARRIER-v1"

@@ -234,7 +234,7 @@ object HakimSelfCheck {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
             if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
         } catch (_: Exception) { 0L }
-        check("هوية الحزمة الصحيحة", context.packageName == "ps.hakim.stable")
+        check("هوية الحزمة الصحيحة", context.packageName == BuildConfig.APPLICATION_ID)
         check("رقم إصدار صالح", version > 0)
 
         val status = when {

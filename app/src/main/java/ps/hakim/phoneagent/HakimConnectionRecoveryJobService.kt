@@ -10,9 +10,11 @@ class HakimConnectionRecoveryJobService : JobService() {
                 val app = applicationContext
                 HakimFaultContainment.guard(app, "recovery_job", "periodic_watchdog") {
                     HakimConnectionResilience.recover(app, "periodic_watchdog")
-                    HakimConstraintDoctor.run(app, "periodic_watchdog")
                     HakimSelfCheck.runAsync(app)
-                    HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
+                    if (HakimProductMode.allowsAdvancedDeviceControl(app)) {
+                        HakimConstraintDoctor.run(app, "periodic_watchdog")
+                        HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")
+                    }
                 }
             } finally {
                 jobFinished(params, false)

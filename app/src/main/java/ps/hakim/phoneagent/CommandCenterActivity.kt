@@ -130,6 +130,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureTermuxControlPermission() {
+        if (!HakimProductMode.allowsAdvancedDeviceControl(this)) return
         if (termuxPermissionPromptAttempted) return
         val termux = HakimTermuxControl.status(this)
         if (!termux.optBoolean("termux_installed", false) ||

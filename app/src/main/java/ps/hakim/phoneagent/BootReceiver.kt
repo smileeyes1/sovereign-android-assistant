@@ -17,20 +17,24 @@ class BootReceiver : BroadcastReceiver() {
         }
         HakimAutonomousContinuation.pulse(context, "boot_or_replace")
         HakimSelfCheck.schedule(context)
-        HakimFaultContainment.guard(context, "boot", "auto_update_schedule") {
-            AutoUpdater.schedule(context)
+        if (HakimProductProfile.advanced) {
+            HakimFaultContainment.guard(context, "boot", "auto_update_schedule") {
+                AutoUpdater.schedule(context)
+            }
+            HakimFaultContainment.guard(context, "boot", "auto_update_realtime") {
+                AutoUpdater.startRealtimeListener(context)
+            }
+            AutoUpdater.checkAsync(context)
         }
-        HakimFaultContainment.guard(context, "boot", "auto_update_realtime") {
-            AutoUpdater.startRealtimeListener(context)
-        }
-        AutoUpdater.checkAsync(context)
         HakimExecutionFabric.recover(context, "boot_or_replace")
         HakimResilienceAlarmReceiver.schedule(context, 90_000L)
         HakimRelayWatchdog.install(context)
         HakimConnectionResilience.install(context)
-        HakimNetworkGuardian.install(context)
+        if (HakimProductProfile.advanced) {
+            HakimNetworkGuardian.install(context)
+            HakimLocalPairing.reconnectAsync(context)
+        }
         HakimSelfCheck.runAsync(context)
-        HakimLocalPairing.reconnectAsync(context)
 
         val prefs = context.getSharedPreferences("hakim", Context.MODE_PRIVATE)
         PairingDefaults.ensure(prefs)

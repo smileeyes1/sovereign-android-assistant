@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,7 +27,8 @@ require('permissions_added", false' in router, "P0: الموجّه يدعي تو
 require("HakimFaultContainment.canExecuteHighImpact" in router, "P0: الأثر العالي لا يحترم fault containment")
 require("claimRemoteRequest" in relay and "duplicate_request" in relay, "P0: idempotency للقناة تراجع")
 require("showApproval" in relay, "P0: موافقة الهاتف للأفعال المتغيرة تراجعت")
-require("versionCode 20336" in build, "P0: تغير رقم الإصدار الأمامي ٢٠٣٣٦")
+m=re.search(r"versionCode\s+(\d+)",build)
+require(m is not None and int(m.group(1))>=20336, "P0: تراجع رقم الإصدار دون خط ٢٠٣٣٦")
 require("vpn-dns-fail-open-r21" in build, "P0: فقد خط الأساس الشبكي الموروث")
 require("termux-local-control-r27" in build, "P0: فقد خط ٢٠٣٣٦ المحلي أثناء النقل الأمامي")
 print("HAKIM_UNIFIED_ORCHESTRATOR_CONTRACT=PASS")

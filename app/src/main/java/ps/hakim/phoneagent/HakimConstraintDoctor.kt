@@ -104,12 +104,13 @@ object HakimConstraintDoctor {
             .putLong("last_constraint_check_at", System.currentTimeMillis())
             .apply()
 
-        val gate = chooseSystemGate(disabled, paired, backgroundRestricted, batteryExempt, notificationsAllowed)
+        val gate = chooseSystemGate(app, disabled, paired, backgroundRestricted, batteryExempt, notificationsAllowed)
         if (gate != null) notifyGate(app, gate.first, gate.second)
         return report
     }
 
     private fun chooseSystemGate(
+        context: Context,
         disabled: Boolean,
         paired: Boolean,
         backgroundRestricted: Boolean,
@@ -117,13 +118,13 @@ object HakimConstraintDoctor {
         notificationsAllowed: Boolean
     ): Pair<String, Intent>? {
         if (disabled) return null
-        if (!paired) return "إكمال اقتران حكيم" to Intent(Intent.ACTION_MAIN).setClassName("ps.hakim.stable", "ps.hakim.phoneagent.MainActivity")
+        if (!paired) return "إكمال اقتران حكيم" to Intent(Intent.ACTION_MAIN).setClassName(context.packageName, "ps.hakim.phoneagent.MainActivity")
         if (backgroundRestricted || !batteryExempt) {
             return "رفع قيود الخلفية/البطارية عن حكيم" to Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         }
         if (!notificationsAllowed && Build.VERSION.SDK_INT >= 26) {
             return "تفعيل إشعارات حكيم" to Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, "ps.hakim.stable")
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
         return null
     }

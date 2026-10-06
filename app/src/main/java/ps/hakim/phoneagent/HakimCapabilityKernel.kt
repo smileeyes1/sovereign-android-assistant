@@ -21,6 +21,10 @@ object HakimCapabilityKernel {
     )
 
     private val builtIns = listOf(
+        Capability("observe_status", "قراءة حالة حكيم التشغيلية", true, false, false),
+        Capability("observe_browser", "قراءة صفحة المتصفح المأذونة", true, false, false),
+        Capability("observe_notifications", "قراءة الإشعارات المنقحة", true, false, false),
+        Capability("observe_termux", "قراءة حالة قناة Termux المحلية", true, false, false),
         Capability("observe_ui", "قراءة واجهة غير حساسة", true, false, false),
         Capability("navigate_ui", "تنقل محلي في الواجهة", true, false, false),
         Capability("type_text", "كتابة نص غير حساس", true, false, true),
@@ -65,6 +69,10 @@ object HakimCapabilityKernel {
             ?: return Probe(capabilityId, false, false, false, true, "unknown_capability")
 
         val available = when (cap.id) {
+            "observe_status" -> true
+            "observe_browser" -> HakimUnifiedRelay.isConfigured(context)
+            "observe_notifications" -> HakimNotificationListener.isConnected()
+            "observe_termux" -> HakimTermuxControl.isInstalled(context)
             "observe_ui", "navigate_ui", "type_text" -> HakimAccessibilityService.instance != null
             "browser_open" -> true // متصفح حكيم مكوّن داخلي؛ الاتصال بالإنترنت يُفحص في مساره.
             "local_file_read", "local_file_write" -> true // نطاق التطبيق المأذون فقط.
@@ -82,6 +90,9 @@ object HakimCapabilityKernel {
         val authorizedNow = available && (!requiresGate || oneTimeGrant)
 
         val evidence = when {
+            !available && cap.id == "observe_browser" -> "secure_relay_not_configured"
+            !available && cap.id == "observe_notifications" -> "notification_listener_not_live"
+            !available && cap.id == "observe_termux" -> "termux_not_installed"
             !available && cap.id in setOf("observe_ui", "navigate_ui", "type_text") -> "accessibility_not_live"
             !available && cap.id == "build_candidate" -> "build_environment_not_inside_android_app"
             !available && cap.id == "install_candidate" -> "self_installer_disabled"

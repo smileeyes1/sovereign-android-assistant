@@ -10,9 +10,32 @@ android {
     defaultConfig {
         applicationId 'ps.hakim.stable'
         minSdk 26
-        targetSdk 35
-        versionCode 20336
-        versionName '3.4.1-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6-strict-web-dns-r7-modern-menu-dns-r8-router-local-session-reuse-r9-local-router-auth-handoff-r10-webview-native-dns-r11-task-manager-r12-webview-dns-adaptive-r13-apply-gate-r14-webview-baseline-r15-network-task-autoresume-r16-device-family-dns-vpn-r17-split-frame-dns-device-first-r18-f8040-source-inference-r19-f8040-auto-source-rollback-r20-vpn-dns-fail-open-r21-product-field-hardening-r22-install-forward-r23-autonomous-continuation-r24-field-acceptance-autostart-r25-professional-cognitive-routing-r26-termux-local-control-r27'
+        targetSdk 36
+        versionCode 20338
+        versionName '3.5.0-control-channel-recovery-direct-autostart-resilient-alarm-watchdog-network-diagnostics-lan-survey-extender-survey-professional-observability-continuity-chatgpt-web-control-fault-containment-coherent-status-autoupdate-wakeup-v1-dns-local-adb-r3-zte-f8040-router-guardian-r4-secondary-gateway-upstream-f8040-r5-f8040-web-surface-probe-r6-strict-web-dns-r7-modern-menu-dns-r8-router-local-session-reuse-r9-local-router-auth-handoff-r10-webview-native-dns-r11-task-manager-r12-webview-dns-adaptive-r13-apply-gate-r14-webview-baseline-r15-network-task-autoresume-r16-device-family-dns-vpn-r17-split-frame-dns-device-first-r18-f8040-source-inference-r19-f8040-auto-source-rollback-r20-vpn-dns-fail-open-r21-product-field-hardening-r22-install-forward-r23-autonomous-continuation-r24-field-acceptance-autostart-r25-professional-cognitive-routing-r26-termux-local-control-r27-capability-fabric-r28-product-foundation-v1'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    flavorDimensions += "distribution"
+
+    productFlavors {
+        advanced {
+            dimension "distribution"
+            applicationId 'ps.hakim.stable'
+            buildConfigField "boolean", "HAKIM_ADVANCED", "true"
+            buildConfigField "String", "HAKIM_DISTRIBUTION_CHANNEL", '"advanced"'
+            versionNameSuffix "-advanced"
+        }
+        consumer {
+            dimension "distribution"
+            applicationId 'ps.hakim.app'
+            buildConfigField "boolean", "HAKIM_ADVANCED", "false"
+            buildConfigField "String", "HAKIM_DISTRIBUTION_CHANNEL", '"consumer"'
+            versionNameSuffix "-consumer"
+        }
     }
 
     compileOptions {

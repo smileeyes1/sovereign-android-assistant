@@ -40,8 +40,8 @@ object HakimUnifiedRelay {
     private const val DEFAULT_BRIDGE_BASE = "https://hakim-chatgpt-bridge-production.up.railway.app"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
-    private const val ACTION_APPROVE = "ps.hakim.stable.REMOTE_APPROVE"
-    private const val ACTION_REJECT = "ps.hakim.stable.REMOTE_REJECT"
+    private val ACTION_APPROVE = BuildConfig.APPLICATION_ID + ".REMOTE_APPROVE"
+    private val ACTION_REJECT = BuildConfig.APPLICATION_ID + ".REMOTE_REJECT"
     private const val EXTRA_REQUEST_ID = "request_id"
     private const val CARRIER_PREFIX = "HC1."
     private const val CARRIER_AAD = "HAKIM-CARRIER-v1"
@@ -52,7 +52,7 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate", "termux_status")
+    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "browser_read", "chatgpt_read", "chatgpt_navigate", "termux_status", "capabilities", "capability_read")
     private val SAFE_AUTOMATIC_OPS = setOf("termux_probe", "termux_recover")
     private val ALLOWED_OPS = READ_ONLY_OPS + SAFE_AUTOMATIC_OPS + setOf("action", "launch", "browser_back", "chatgpt_action")
     private val running = AtomicBoolean(false)
@@ -645,6 +645,12 @@ object HakimUnifiedRelay {
         return try {
             val result = when (op) {
             "status" -> status(context)
+            "capabilities" -> HakimCapabilityFabric.status(context)
+            "capability_read" -> HakimCapabilityFabric.executeReadOnly(
+                context,
+                envelope.optString("request_id"),
+                payload
+            )
             "browser_read" -> HakimService.readActiveBrowser()
             "browser_back" -> HakimService.backActiveBrowser()
             "chatgpt_read" -> HakimService.chatGptRead(payload)
@@ -734,6 +740,7 @@ object HakimUnifiedRelay {
             .put("network_diagnostics", HakimNetworkDiagnostics.inspect(context))
             .put("execution_fabric", HakimExecutionFabric.status(context))
             .put("capability_kernel", HakimCapabilityKernel.status(context))
+            .put("capability_fabric", HakimCapabilityFabric.status(context))
             .put("fault_containment", HakimFaultContainment.status(context))
             .put("self_improvement", HakimSelfImprovementLoop.status(context))
             .put("cognitive_policy", HakimCognitivePolicy.status(context))

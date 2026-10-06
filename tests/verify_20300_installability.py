@@ -18,7 +18,8 @@ req(code>=20300,"version_below_installable_floor")
 req(code>20207,"must_exceed_all_known_20207_builds")
 req("applicationId 'ps.hakim.stable'" in BUILD,"package_changed")
 req("minSdk 26" in BUILD,"min_sdk_changed")
-req("targetSdk 35" in BUILD,"target_sdk_changed")
+target=re.search(r"targetSdk\s+(\d+)",BUILD)
+req(target is not None and int(target.group(1))>=35,"target_sdk_below_supported_floor")
 req('android:allowBackup="false"' in MANIFEST,"backup_policy_changed")
 req('android:usesCleartextTraffic="false"' in MANIFEST,"cleartext_policy_changed")
 req(STATE["android"]["candidate"]["version_code"]==code,"state_candidate")
@@ -26,6 +27,11 @@ req(STATE["productization"]["candidate_version"]==code,"product_candidate")
 req("D1" in SIGN or "d13e7aa8271cb6d32aec2157cc5ba4fafd226957eb0c731e9ceba827bf78b0d3" in SIGN.lower(),"d1_anchor_missing")
 relation=STATE["productization"]["install_relation"]
 verified_parent=int(STATE["android"]["latest_source_parent"]["version_code"])
+runtime_observed=STATE["android"].get("latest_runtime_observation_unpromoted",{})
+runtime_version=int(runtime_observed.get("version_code",0) or 0)
+runtime_exact=runtime_observed.get("exact_public_source_mapping")=="PROVEN_BY_EXACT_SIGNED_APK_SHA256"
 allowed={f"UPGRADE_FROM_ANY_KNOWN_202XX_BUILD_TO_{code}", f"UPGRADE_FROM_VERIFIED_{verified_parent}_TO_{code}"}
+if runtime_exact and runtime_version>0:
+    allowed.add(f"UPGRADE_FROM_OBSERVED_{runtime_version}_TO_{code}")
 req(relation in allowed,"install_relation")
 print(f"INSTALLABILITY_20300=PASS package=ps.hakim.stable version={code} floor=20207 signer=D1")

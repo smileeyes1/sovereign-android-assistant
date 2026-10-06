@@ -21,7 +21,9 @@ def require(ok,msg):
     if not ok:
         raise SystemExit("TERMUX_LOCAL_CONTROL_20336=FAIL "+msg)
 
-require(re.search(r"versionCode\s+20336\b",gradle) is not None,"version_code")
+version_match=re.search(r"versionCode\s+(\d+)",gradle)
+require(version_match is not None and int(version_match.group(1))>=20336,"version_code_floor")
+candidate_version=int(version_match.group(1))
 require("termux-local-control-r27" in gradle,"version_name")
 
 for token in [
@@ -193,13 +195,13 @@ for token in [
 ]:
     require(token in resilience,"resilience_env:"+token)
 
-require(active["android"]["candidate"]["version_code"]==20336,"active_candidate")
-require(active["productization"]["candidate_version"]==20336,"product_candidate")
+require(active["android"]["candidate"]["version_code"]==candidate_version,"active_candidate")
+require(active["productization"]["candidate_version"]==candidate_version,"product_candidate")
 require(active["productization"]["termux_local_control_source_integrated"] is True,"source_integrated")
 require(active["productization"]["termux_local_control_field_verified"] is False,"field_must_be_pending")
 require(active["productization"]["termux_external_remote_quota_required"] is False,"quota")
 require(active["productization"]["termux_arbitrary_shell_exposed"] is False,"shell")
-require(promotion["candidate_version"]==20336,"promotion_candidate")
+require(promotion["candidate_version"]==candidate_version,"promotion_candidate")
 require(promotion["termux_local_control_source_integrated"] is True,"promotion_source")
 require(promotion["termux_local_control_field_verified"] is False,"promotion_field_pending")
 

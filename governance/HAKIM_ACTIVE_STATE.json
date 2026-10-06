@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-10-05",
+  "snapshot_date": "2026-10-06",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -28,16 +28,16 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20337,
-      "branch": "feature/hakim-20337-capability-fabric-r28",
+      "version_code": 20338,
+      "branch": "feature/hakim-product-foundation-20338",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "capability_fabric_r28_plus_termux_router_repair_without_inheriting_field_success",
+      "purpose": "product_foundation_v1_consumer_advanced_split_api36",
       "signed_d1_verified": false,
-      "installed_field_baseline_version": 20336
+      "installed_field_baseline_version": 20337
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -55,24 +55,18 @@
       "promoted_as_source_baseline": true
     },
     "latest_runtime_observation_unpromoted": {
-      "observed_at": "2026-10-05",
-      "version_code": 20336,
-      "apk_sha256": "28467885a36e9833b8ef49b76ed929b8bde4454d8e5bd5e7a04e36cbfc7a679b",
-      "service_running": true,
-      "service_connected_observed": true,
-      "execution_fabric_online": true,
-      "secure_relay_connected": true,
-      "self_check": "PASS_WITH_WARNINGS",
+      "observed_at": "2026-10-06",
+      "version_code": 20337,
+      "apk_sha256": "0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04",
       "signer_reobserved": true,
+      "signer_lineage": "D1",
       "exact_public_source_mapping": "PROVEN_BY_EXACT_SIGNED_APK_SHA256",
-      "source_branch": "upgrade/hakim-20336-unified-orchestrator-v1",
-      "source_head": "c6219f93b291edc358ebb6992c0bf9982b00c281",
-      "evidence": "installed_apk_hash_plus_pr298_d1_provenance_plus_railway_status_and_health_2026_10_05",
+      "source_branch": "feature/hakim-20337-capability-fabric-r28",
+      "source_head": "e11182b995f117bf650ec2c9855b3671ed76de29",
+      "evidence": "installed_apk_version_hash_and_D1_signer_reobserved_2026_10_06",
       "runtime_acceptance_complete": false,
-      "termux_wrapper_status": "PASS",
-      "termux_app_to_secure_relay_route_verified": false,
-      "termux_router_source_gap": "termux_ops_allowed_by_relay_but_missing_from_tool_router_supported_set",
-      "note": "20336 is the exact installed D1-mapped Orchestrator artifact and is live on the bridge, but Termux relay routing is not accepted because the source router omitted its Termux operations."
+      "capability_fabric_r28_runtime_verified": false,
+      "note": "20337 exact D1 candidate is installed and hash-matched; functional product/runtime acceptance remains incomplete."
     }
   },
   "local_execution": {
@@ -141,7 +135,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20337_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20338_SOURCE_CI_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -182,7 +176,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20337,
+    "candidate_version": 20338,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -199,7 +193,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_OBSERVED_20336_TO_20337",
+    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20338",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -208,7 +202,7 @@
       "corrected_artifact_structure_verified": true,
       "corrected_artifact_field_install": "PENDING"
     },
-    "signed_candidate_version": 20336,
+    "signed_candidate_version": 20337,
     "verified_multimodal_intake": true,
     "exact_text_no_upload_fallback": true,
     "visual_original_required": true,
@@ -345,7 +339,21 @@
     "capability_fabric_r28_source_ci_verified": false,
     "capability_fabric_r28_field_verified": false,
     "capability_fabric_r28_read_only": true,
-    "capability_fabric_r28_new_android_permissions": false
+    "capability_fabric_r28_new_android_permissions": false,
+    "product_foundation_v1_source_integrated": true,
+    "product_foundation_v1_source_ci_verified": false,
+    "product_foundation_v1_field_verified": false,
+    "consumer_advanced_split": true,
+    "consumer_application_id": "ps.hakim.stable.consumer",
+    "advanced_application_id": "ps.hakim.stable",
+    "consumer_target_sdk": 36,
+    "advanced_target_sdk": 36,
+    "consumer_advanced_surfaces_disabled_by_build": true,
+    "advanced_accessibility_manifest_declared": true,
+    "advanced_notification_listener_manifest_declared": true,
+    "consumer_play_ready": false,
+    "consumer_aab_ci_verified": false,
+    "advanced_apk_ci_verified": false
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

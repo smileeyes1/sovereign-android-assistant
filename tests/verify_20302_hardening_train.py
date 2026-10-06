@@ -25,7 +25,7 @@ m = re.search(r"versionCode\s+(\d+)", BUILD)
 req(m is not None and int(m.group(1)) >= 20302, "version_floor")
 req("versionName" in BUILD, "version_name_present")
 req("compileSdk 36" in BUILD, "compile_sdk_not_36")
-target = re.search(r"targetSdk\\s+(\\d+)", BUILD)
+target = re.search(r"targetSdk\s+(\d+)", BUILD)
 req(target is not None and int(target.group(1)) >= 35, "target_sdk_below_hardening_floor")
 req("androidx.activity:activity-ktx:1.12.4" in BUILD, "sdk35_activity_dependency")
 

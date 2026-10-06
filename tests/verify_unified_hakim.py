@@ -14,6 +14,8 @@ def require(condition: bool, message: str) -> None:
 
 
 manifest = text("app/src/main/AndroidManifest.xml")
+advanced_manifest = text("app/src/advanced/AndroidManifest.xml")
+advanced_contract = manifest + "\n" + advanced_manifest
 build = text("app/build.gradle")
 app = text("app/src/main/java/ps/hakim/phoneagent/HakimApp.kt")
 pair = text("app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt")
@@ -50,12 +52,16 @@ launcher_pattern = re.compile(
 )
 require(launcher_pattern.search(manifest) is not None, "P0: مركز قيادة حكيم ليس نقطة الدخول الوحيدة")
 require('android:scheme="hakim" android:host="pair"' in manifest, "P0: رابط اقتران حكيم غير مسجل")
-require('android:name=".HakimPairingActivity"' in manifest, "P0: بوابة الاقتران غير معلنة")
-require('android:name=".HakimPairingReceiver"' in manifest, "P0: مستقبل الاقتران المحلي غير معلن")
-require('android:name=".HakimAccessibilityService"' not in manifest, "P0: خدمة الوصول الحساسة لا يجوز إعلانها في ملف التثبيت الآمن")
-require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: ربط الوصول الحساس ما زال مكشوفًا")
-require('android:name=".HakimNotificationListener"' not in manifest, "P0: مستمع الإشعارات الحساس لا يجوز إعلانُه في ملف التثبيت الآمن")
-require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ربط الإشعارات الحساس ما زال مكشوفًا")
+require('android:name=".HakimPairingActivity"' in advanced_contract, "P0: بوابة الاقتران المتقدمة غير معلنة")
+require('android:name=".HakimPairingReceiver"' in advanced_contract, "P0: مستقبل الاقتران المحلي المتقدم غير معلن")
+require('android:name=".HakimAccessibilityService"' not in manifest, "P0: خدمة الوصول الحساسة تسربت إلى قاعدة Consumer")
+require('android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest, "P0: ربط الوصول الحساس تسرب إلى قاعدة Consumer")
+require('android:name=".HakimNotificationListener"' not in manifest, "P0: مستمع الإشعارات الحساس تسرب إلى قاعدة Consumer")
+require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' not in manifest, "P0: ربط الإشعارات الحساس تسرب إلى قاعدة Consumer")
+require('android:name=".HakimAccessibilityService"' in advanced_manifest, "P0: خدمة الوصول المتقدمة غير معلنة في Advanced")
+require('android.permission.BIND_ACCESSIBILITY_SERVICE' in advanced_manifest, "P0: إذن ربط الوصول غير موجود في Advanced")
+require('android:name=".HakimNotificationListener"' in advanced_manifest, "P0: مستمع الإشعارات غير معلن في Advanced")
+require('android.permission.BIND_NOTIFICATION_LISTENER_SERVICE' in advanced_manifest, "P0: إذن ربط الإشعارات غير موجود في Advanced")
 require(
     ('HakimUnifiedRelay.start(this)' in app) or
     ('HakimExecutionFabric.recover(this, "app_start")' in app and 'HakimUnifiedRelay.start(app)' in fabric) or
@@ -100,7 +106,7 @@ require('fun reconnectAsync' in local_pairing, "P0: قدرة ADB المحلية 
 require('الإعدادات' in home and 'العودة إلى حكيم' in home, "P0: إعدادات المنتج غير قابلة للاستخدام")
 require('تأسيس ADB المحلي' not in home, "P0: تسرب عنصر تطويري ADB إلى إعدادات العميل")
 
-all_runtime = "\n".join([manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot, fabric])
+all_runtime = "\n".join([manifest, advanced_manifest, build, app, pair, relay, accessibility, notifications, local_pairing, local_adb, home, boot, fabric])
 require("org.hakim.omega.companion" not in all_runtime, "P0: تسرب اعتماد التطبيق الموازي القديم")
 require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست مربوطة بحكيم الوحيد")
 

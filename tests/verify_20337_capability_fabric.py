@@ -34,7 +34,6 @@ for token in [
     req(token in KERNEL,"kernel_read_class:"+token)
 
 for token in [
-    'CAPABILITY-REGISTRY-2026-10-05-r28',
     'Contract("system.status"',
     'Contract("browser.read"',
     'Contract("ui.observe"',

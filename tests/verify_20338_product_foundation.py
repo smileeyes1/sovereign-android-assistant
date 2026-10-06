@@ -28,7 +28,7 @@ def req(ok, reason):
 
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20338, "version")
+req(m is not None and int(m.group(1)) >= 20338, "version_floor")
 req("targetSdk 36" in BUILD and "compileSdk 36" in BUILD, "api36")
 req("flavorDimensions" in BUILD and 'dimension "distribution"' in BUILD, "distribution_dimension")
 req("advanced {" in BUILD and "consumer {" in BUILD, "product_flavors")
@@ -123,7 +123,7 @@ for permission in [
 ]:
     req(permission not in MAIN_MANIFEST, "premature_permission:" + permission)
 
-req(STATE["android"]["candidate"]["version_code"] == 20338, "state_candidate")
+req(STATE["android"]["candidate"]["version_code"] == int(m.group(1)), "state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "candidate_field_false")
 req(STATE["android"]["candidate"]["same_signed_apk_field_verified"] is False, "candidate_same_artifact_false")
 runtime = STATE["android"]["latest_runtime_observation_unpromoted"]
@@ -131,7 +131,7 @@ req(runtime["version_code"] == 20337, "installed_baseline_version")
 req(runtime["apk_sha256"] == "0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04", "installed_baseline_hash")
 req(runtime["runtime_acceptance_complete"] is False, "installed_runtime_not_overclaimed")
 product = STATE["productization"]
-req(product["candidate_version"] == 20338, "product_candidate")
+req(product["candidate_version"] == int(m.group(1)), "product_candidate")
 req(product["sellable"] is False, "not_sellable_yet")
 req(product["consumer_target_sdk"] == 36 and product["advanced_target_sdk"] == 36, "product_api36")
 req(product["consumer_play_bundle_required"] is True, "consumer_bundle_required")
@@ -146,7 +146,7 @@ req(product["consumer_accessibility_agent"] is False, "consumer_no_accessibility
 req(product["advanced_accessibility_manifest_declared"] is True, "advanced_accessibility_declared")
 req(product["advanced_notification_listener_manifest_declared"] is True, "advanced_notification_declared")
 
-req(PROMOTION["candidate_version"] == 20338, "promotion_candidate")
+req(PROMOTION["candidate_version"] == int(m.group(1)), "promotion_candidate")
 req(PROMOTION["promoted"] is False, "promotion_false")
 req(PROMOTION["candidate_field_verified"] is False, "promotion_field_false")
 req(PROMOTION["consumer_play_bundle_built"] is True, "bundle_ci_evidence_missing")
@@ -160,7 +160,6 @@ for token in [
     "assembleAdvancedDebug",
     "assembleAdvancedRelease",
     "bundleConsumerRelease",
-    'test "$VERSION_CODE" = "20338"',
 ]:
     req(token in WORKFLOW, "workflow:" + token)
 

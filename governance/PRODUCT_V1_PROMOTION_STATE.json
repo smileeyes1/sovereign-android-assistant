@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20337,
+  "candidate_version": 20338,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -36,10 +36,19 @@
   "termux_run_command_permission_field_verified": false,
   "termux_allow_external_apps_field_verified": false,
   "termux_same_artifact_field_verified": false,
-  "installed_observed_version": 20336,
-  "installed_observed_sha256": "28467885a36e9833b8ef49b76ed929b8bde4454d8e5bd5e7a04e36cbfc7a679b",
+  "installed_observed_version": 20337,
+  "installed_observed_sha256": "0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04",
   "candidate_field_verified": false,
   "capability_fabric_r28_source_integrated": true,
   "capability_fabric_r28_source_ci_verified": false,
-  "capability_fabric_r28_field_verified": false
+  "capability_fabric_r28_field_verified": false,
+  "product_foundation_v1_source_integrated": true,
+  "product_foundation_v1_source_ci_verified": false,
+  "product_foundation_v1_field_verified": false,
+  "consumer_advanced_split": true,
+  "consumer_target_sdk_36": true,
+  "advanced_target_sdk_36": true,
+  "consumer_play_ready": false,
+  "consumer_aab_ci_verified": false,
+  "advanced_apk_ci_verified": false
 }

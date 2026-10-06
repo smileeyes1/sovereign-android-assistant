@@ -4,6 +4,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+ADVANCED_MANIFEST = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 APP = (ROOT / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text(encoding="utf-8")
 CENTER = (ROOT / "app/src/main/java/ps/hakim/phoneagent/CommandCenterActivity.kt").read_text(encoding="utf-8")
 BOOT = (ROOT / "app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text(encoding="utf-8")
@@ -31,8 +32,9 @@ for forbidden in [
 ]:
     req(forbidden not in MANIFEST, "manifest:" + forbidden)
 
-req('android:name=".UpdateJobService"' in MANIFEST, "safe_update_job_missing")
-req("android.permission.BIND_JOB_SERVICE" in MANIFEST, "safe_update_job_binding_missing")
+req('android:name=".UpdateJobService"' in ADVANCED_MANIFEST, "advanced_safe_update_job_missing")
+req("android.permission.BIND_JOB_SERVICE" in ADVANCED_MANIFEST, "advanced_safe_update_job_binding_missing")
+req('android:name=".UpdateJobService"' not in MANIFEST, "consumer_update_job_must_be_absent")
 
 runtime = "\n".join([APP, CENTER, BOOT, EVOLUTION, DOCTOR, SELF])
 for forbidden in [

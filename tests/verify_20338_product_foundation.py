@@ -11,6 +11,7 @@ EDITION = (APP / "HakimProductEdition.kt").read_text(encoding="utf-8")
 APP_KT = (APP / "HakimApp.kt").read_text(encoding="utf-8")
 COMMAND = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 SETTINGS = (APP / "UnifiedHomeActivity.kt").read_text(encoding="utf-8")
+ONBOARD = (APP / "HakimProductOnboarding.kt").read_text(encoding="utf-8")
 STATE = json.loads((ROOT / "governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
 PROMOTION = json.loads((ROOT / "governance/PRODUCT_V1_PROMOTION_STATE.json").read_text(encoding="utf-8"))
 WORKFLOW = (ROOT / ".github/workflows/android.yml").read_text(encoding="utf-8")
@@ -103,7 +104,15 @@ for fn in [
     req(marker in COMMAND, "command_boundary:" + fn)
 
 req('if (HakimProductEdition.isAdvanced) {' in SETTINGS, "settings_advanced_update_gate")
-req('"الإصدار الاستهلاكي — التحديث عبر قناة التوزيع الموثوقة فقط."' in SETTINGS, "consumer_update_copy")
+req(SETTINGS.count('"الإصدار الاستهلاكي — التحديث عبر قناة التوزيع الموثوقة فقط."') >= 2, "consumer_update_copy")
+for token in [
+    'setTitle("مرحبًا بك في حكيم")',
+    'setPositiveButton("ابدأ")',
+    'setNeutralButton("الخصوصية والإعدادات")',
+    'HakimProductEdition.isAdvanced',
+]:
+    req(token in ONBOARD, "onboarding:" + token)
+req("HakimProductOnboarding.showIfNeeded(this)" in COMMAND, "onboarding_not_connected")
 
 req(STATE["android"]["candidate"]["version_code"] == 20338, "state_candidate")
 req(STATE["android"]["candidate"]["field_verified"] is False, "candidate_field_false")

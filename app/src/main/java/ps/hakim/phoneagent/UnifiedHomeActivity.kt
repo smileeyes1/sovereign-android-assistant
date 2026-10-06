@@ -73,13 +73,21 @@ class UnifiedHomeActivity : Activity() {
         }
         root.addView(updateStatus)
 
-        root.addView(button("فحص تحديث حكيم") {
-            updateStatus.text = "يفحص وجود تحديث موثّق…"
-            AutoUpdater.checkAsync(this)
-            updateStatus.postDelayed({
-                updateStatus.text = AutoUpdater.statusSummary(this)
-            }, 1800L)
-        })
+        if (HakimProductMode.allowsSideloadUpdates(this)) {
+            root.addView(button("فحص تحديث حكيم") {
+                updateStatus.text = "يفحص وجود تحديث موثّق…"
+                AutoUpdater.checkAsync(this)
+                updateStatus.postDelayed({
+                    updateStatus.text = if (HakimProductMode.allowsSideloadUpdates(this)) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "التحديثات عبر قناة التوزيع الرسمية."
+        }
+                }, 1800L)
+            })
+        } else {
+            updateStatus.text = "التحديثات عبر قناة التوزيع الرسمية."
+        }
 
         root.addView(button("ربط خدمة الذكاء", primary = true) {
             OpenRouterOAuthManager.start(this)

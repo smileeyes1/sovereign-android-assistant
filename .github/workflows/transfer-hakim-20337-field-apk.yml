@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL='https://67f4863f6d2c98.lhr.life/7ad12c535a78395e808dbb3b37724bb9/HAKIM-20337-D1-VERIFIED.apk'
+          URL='https://tmpfiles.org/dl/1791256092.3509140a2b946cbb/wiA0l5ldSgoQ/hakim-20337-d1-verified.apk'
           curl --fail --location --retry 2 --max-time 240 "$URL" -o HAKIM-20337-D1-VERIFIED.apk
           test "$(stat -c %s HAKIM-20337-D1-VERIFIED.apk)" = "14270253"
           echo "0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04  HAKIM-20337-D1-VERIFIED.apk" | sha256sum -c -

@@ -7,6 +7,7 @@ src = (root / "app/src/main/java/ps/hakim/phoneagent/HakimNetworkGuardian.kt").r
 app = (root / "app/src/main/java/ps/hakim/phoneagent/HakimApp.kt").read_text()
 boot = (root / "app/src/main/java/ps/hakim/phoneagent/BootReceiver.kt").read_text()
 manifest = (root / "app/src/main/AndroidManifest.xml").read_text()
+advanced_manifest = (root / "app/src/advanced/AndroidManifest.xml").read_text()
 gradle = (root / "app/build.gradle").read_text()
 workflow = (root / ".github/workflows/android.yml").read_text()
 health = (root / "app/src/main/java/ps/hakim/phoneagent/HakimHealthBeacon.kt").read_text()
@@ -99,8 +100,11 @@ if "HakimNetworkGuardian.install(this)" not in app:
 if "HakimNetworkGuardian.install(context)" not in boot:
     print("NETWORK_GUARDIAN_GATE=FAIL reason=boot_not_installed")
     sys.exit(1)
-if 'android:name=".HakimNetworkGuardianJobService"' not in manifest:
-    print("NETWORK_GUARDIAN_GATE=FAIL reason=job_not_manifested")
+if 'android:name=".HakimNetworkGuardianJobService"' not in advanced_manifest:
+    print("NETWORK_GUARDIAN_GATE=FAIL reason=advanced_job_not_manifested")
+    sys.exit(1)
+if 'android:name=".HakimNetworkGuardianJobService"' in manifest:
+    print("NETWORK_GUARDIAN_GATE=FAIL reason=consumer_job_leak")
     sys.exit(1)
 m = re.search(r"versionCode\s+(\d+)", gradle)
 if not m or int(m.group(1)) < 20108:

@@ -30,7 +30,7 @@
     "candidate": {
       "version_code": 20338,
       "branch": "feature/hakim-product-20338",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
@@ -39,7 +39,9 @@
       "signed_d1_verified": false,
       "installed_field_baseline_version": 20337,
       "source_ci_run_number": 1610,
-      "source_ci_verified_code_head": "219a5c377396a2e6f12267af36b4135c54f52344"
+      "source_ci_verified_code_head": "219a5c377396a2e6f12267af36b4135c54f52344",
+      "current_source_head": "86a209d91a209285125960f2df3c3a6b47093875",
+      "last_source_ci_verified_code_head": "219a5c377396a2e6f12267af36b4135c54f52344"
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -361,7 +363,7 @@
     "capability_fabric_r28_read_only": true,
     "capability_fabric_r28_new_android_permissions": false,
     "product_foundation_v1_source_integrated": true,
-    "product_foundation_v1_source_ci_verified": true,
+    "product_foundation_v1_source_ci_verified": false,
     "product_foundation_v1_field_verified": false,
     "distribution_split_source_integrated": true,
     "consumer_package": "ps.hakim.consumer",
@@ -371,12 +373,14 @@
     "consumer_advanced_device_control": false,
     "advanced_accessibility_manifest_declared": true,
     "advanced_notification_listener_manifest_declared": true,
-    "consumer_aab_ci_verified": true,
-    "advanced_apk_ci_verified": true,
+    "consumer_aab_ci_verified": false,
+    "advanced_apk_ci_verified": false,
     "source_ci_run_number": 1610,
     "source_ci_verified_code_head": "219a5c377396a2e6f12267af36b4135c54f52344",
     "ci_noninstallable_artifact_digest": "sha256:2899886999f4874460d0555d4027a533f2f944d1f4fa2bbd57dcc8203fb5aa35",
-    "consumer_aab_artifact_digest": "sha256:f9e907aa469df1ad65328beaa2d1a2b4430b23c2cfc1d86e7594ad18eb2afa9e"
+    "consumer_aab_artifact_digest": "sha256:f9e907aa469df1ad65328beaa2d1a2b4430b23c2cfc1d86e7594ad18eb2afa9e",
+    "current_source_head": "86a209d91a209285125960f2df3c3a6b47093875",
+    "last_source_ci_verified_code_head": "219a5c377396a2e6f12267af36b4135c54f52344"
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

@@ -149,7 +149,11 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
-        updateStatus.text = AutoUpdater.statusSummary(this)
+        updateStatus.text = if (HakimProductEdition.isAdvanced) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "الإصدار الاستهلاكي — التحديث عبر قناة التوزيع الموثوقة فقط."
+        }
 
         val policy = HakimEnterprisePolicy.current(this)
         val edition = if (HakimProductEdition.isAdvanced) "Advanced" else "Consumer"

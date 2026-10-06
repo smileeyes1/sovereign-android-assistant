@@ -103,7 +103,8 @@ for token in [
 # Variant package identity must be dynamic; hard-coded stable package cannot be the check target.
 req('context.packageName == BuildConfig.APPLICATION_ID' in SELF_CHECK, "selfcheck_variant_identity")
 req('setClassName(context.packageName' in CONSTRAINT, "constraint_variant_identity")
-req('Uri.parse("package:${context.packageName}")' in CONSTRAINT, "unknown_sources_variant_identity")
+req('chooseSystemGate(app, disabled, paired' in CONSTRAINT, "constraint_context_forwarded")
+req('.putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)' in CONSTRAINT, "notification_settings_variant_identity")
 req('BuildConfig.APPLICATION_ID + ".REMOTE_APPROVE"' in RELAY, "relay_variant_approve")
 req('BuildConfig.APPLICATION_ID + ".REMOTE_REJECT"' in RELAY, "relay_variant_reject")
 req('BuildConfig.APPLICATION_ID + ".SUBMIT_LOCAL_ADB_PAIRING_CODE"' in PAIRING, "pairing_variant_action")

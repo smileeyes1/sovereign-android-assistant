@@ -104,6 +104,7 @@ class CommandCenterActivity : ComponentActivity() {
         HakimExecutionFabric.recover(this, "command_center_open")
         HakimConnectionResilience.recover(this, "command_center_open")
         buildUi()
+        maybeShowConsumerOnboarding()
         loadConversation()
         HakimAutonomousGoalRunner.finalizeIfVisible(this)
         refreshOperations()
@@ -127,6 +128,29 @@ class CommandCenterActivity : ComponentActivity() {
         maybeEnsureTermuxControlPermission()
         maybeOpenLocalRouterAuth()
         maybeEnsureDeviceProtection()
+    }
+
+    private fun maybeShowConsumerOnboarding() {
+        if (!HakimProductMode.isConsumer(this)) return
+        val prefs = getSharedPreferences("hakim_product_onboarding", MODE_PRIVATE)
+        if (prefs.getInt("consumer_onboarding_version", 0) >= 1) return
+
+        AlertDialog.Builder(this)
+            .setTitle("مرحبًا بك في حكيم")
+            .setMessage(
+                "حكيم يساعدك في المحادثة والملفات والمهام. يعالج ما يستطيع محليًا أولًا، " +
+                    "ويطلب الصلاحية عند الحاجة إلى ميزة محددة. يمكنك ربط خدمة الذكاء من الإعدادات، " +
+                    "ومراجعة الخصوصية أو مسح بياناتك المحلية في أي وقت."
+            )
+            .setPositiveButton("ابدأ") { _, _ ->
+                prefs.edit().putInt("consumer_onboarding_version", 1).apply()
+            }
+            .setNeutralButton("الإعدادات") { _, _ ->
+                prefs.edit().putInt("consumer_onboarding_version", 1).apply()
+                startActivity(Intent(this, UnifiedHomeActivity::class.java))
+            }
+            .setCancelable(false)
+            .show()
     }
 
     private fun maybeEnsureTermuxControlPermission() {

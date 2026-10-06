@@ -135,6 +135,10 @@ req(product["candidate_version"] == 20338, "product_candidate")
 req(product["sellable"] is False, "not_sellable_yet")
 req(product["consumer_target_sdk"] == 36 and product["advanced_target_sdk"] == 36, "product_api36")
 req(product["consumer_play_bundle_required"] is True, "consumer_bundle_required")
+req(product["product_foundation_v1_source_ci_verified"] is True, "product_source_ci_evidence")
+req(product["consumer_play_bundle_built"] is True, "product_bundle_built")
+req(product["consumer_play_bundle_publishable"] is False, "product_bundle_not_publishable")
+req(product["consumer_play_bundle_sha256"] == "05930f91b86d65ebe5f635cc00cdac88e61b1dd66b2f34c11077e64d083d1538", "product_bundle_hash")
 req(product["consumer_side_load_update_flow"] is False, "consumer_no_sideload_updater")
 req(product["consumer_termux_control"] is False, "consumer_no_termux")
 req(product["consumer_device_vpn"] is False, "consumer_no_device_vpn")
@@ -145,7 +149,9 @@ req(product["advanced_notification_listener_manifest_declared"] is True, "advanc
 req(PROMOTION["candidate_version"] == 20338, "promotion_candidate")
 req(PROMOTION["promoted"] is False, "promotion_false")
 req(PROMOTION["candidate_field_verified"] is False, "promotion_field_false")
-req(PROMOTION["consumer_play_bundle_built"] is False, "bundle_not_claimed_before_ci")
+req(PROMOTION["consumer_play_bundle_built"] is True, "bundle_ci_evidence_missing")
+req(PROMOTION["consumer_play_bundle_publishable"] is False, "bundle_must_not_be_publishable")
+req(PROMOTION["product_foundation_v1_source_ci_verified"] is True, "source_ci_evidence_missing")
 
 for token in [
     "python3 tests/verify_20338_product_foundation.py",

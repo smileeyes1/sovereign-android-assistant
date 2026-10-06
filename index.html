@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3148d8">
+<meta name="author" content="محمد وجيه">
+<meta name="copyright" content="© محمد وجيه">
+<meta name="license" content="Educational content: CC BY-NC-SA 4.0; application code: © محمد وجيه, all rights reserved">
+<meta name="application-version" content="CITY99-IMPACT-NOTEBOOK-2026-10-06-v4">
+<meta name="description" content="مدينة ٩٩: تجربة تعلم تفاعلية للوحدة الأولى في رياضيات الصف الثاني — المقارنة والترتيب والقيمة المنزلية والزوجي والفردي.">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>مدينة ٩٩ — مغامرة الأعداد للصف الثاني</title>
+<style>
+:root{--ink:#172033;--muted:#667085;--line:#dfe5ef;--surface:#fff;--bg:#f5f7fb;--primary:#3148d8;--soft:#eef2ff;--good:#eaf8ef;--goodInk:#176b38;--warn:#fff7e7;--warnInk:#875c06;--bad:#fff1f1;--badInk:#9d2929;--shadow:0 12px 34px rgba(31,42,68,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}button{font:inherit}.hidden{display:none!important}.app{width:min(860px,100%);margin:auto;min-height:100vh;padding:18px 16px 34px}.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.brand h1{font-size:clamp(26px,7vw,40px);line-height:1.2;margin:0 0 6px}.brand p{margin:0;color:var(--muted);font-size:15px}.badge{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:10px 14px;white-space:nowrap;font-weight:800}.card{background:var(--surface);border:2px solid var(--line);border-radius:26px;padding:20px;box-shadow:var(--shadow)}
+.section-title{font-size:19px;font-weight:900}.progress{height:13px;background:#e9edf5;border-radius:99px;overflow:hidden;margin:12px 0 18px}.progress>i{display:block;height:100%;width:0;background:var(--primary);transition:width .25s ease}.journey{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap;margin:8px 0 16px}.step-pill{border:1px solid var(--line);border-radius:99px;padding:7px 9px;background:#fff;color:var(--muted);font-size:12px;font-weight:800}.step-pill.active{background:var(--soft);color:#2239b8;border-color:#bdc7ff}.step-pill.done{background:var(--good);color:var(--goodInk);border-color:#b8dfc4}
+.smart-card{margin:14px 0;padding:14px;border:2px solid #cbd7ff;background:#f8f9ff;border-radius:18px}.smart-card b{display:block;font-size:17px;margin-bottom:5px}.map{display:grid;grid-template-columns:1fr;gap:12px}.station{width:100%;text-align:right;border:2px solid var(--line);background:#fff;border-radius:21px;padding:15px;cursor:pointer;display:flex;gap:14px;align-items:center;min-height:86px}.station:active{transform:scale(.99)}.station.done{border-color:#b9dfc5;background:#fbfffc}.icon{font-size:34px;min-width:42px;text-align:center}.station b{display:block;font-size:20px;margin-bottom:4px}.station small{color:var(--muted);font-size:14px;line-height:1.55}.tick{margin-right:auto;font-weight:900;color:#198754}
+.tools{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.primary,.secondary{border:0;border-radius:16px;padding:13px 17px;font-weight:900;cursor:pointer;min-height:50px}.primary{background:var(--primary);color:#fff}.secondary{background:#eef1f7;color:#25314b}.danger{background:#fff0f0;color:#9c2929}.wide{flex:1}.primary:focus-visible,.secondary:focus-visible,.station:focus-visible,.ans:focus-visible,.num-chip:focus-visible{outline:4px solid #aab6ff;outline-offset:2px}
+.mastery{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.mastery>div{border:1px solid var(--line);border-radius:15px;padding:10px;background:#fff}.mastery b{display:block;font-size:14px}.mastery span{font-size:12px;color:var(--muted)}
+.teacher-panel{margin-top:12px;border:2px solid var(--line);border-radius:18px;padding:14px;background:#fbfcff}.teacher-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}.teacher-row{display:grid;grid-template-columns:1.15fr .8fr .9fr;gap:8px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.teacher-row b{font-size:14px}.teacher-row span{font-size:13px;color:var(--muted);text-align:center}.objective-list{display:grid;gap:7px;margin-top:10px}.objective-item{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:13px;padding:9px 11px;background:#fff}.objective-item .mark{font-weight:900;min-width:18px}.objective-item.done{border-color:#b9dfc5;background:#fbfffc}.recommendation{margin-top:10px;padding:11px;border-radius:14px;background:var(--good);line-height:1.65}.storage-note{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
+.lesson-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.lesson-title{font-size:21px;font-weight:900;line-height:1.45}.goal{color:var(--muted);font-size:14px;margin-top:4px;line-height:1.65}.phase-card{border:2px solid #d9e0ff;background:#f8f9ff;border-radius:22px;padding:16px;margin:12px 0 16px}.phase-card h2{font-size:20px;margin:0 0 8px}.phase-card p{line-height:1.8;margin:6px 0;color:#34405a}.source-note{font-size:13px;color:var(--muted);margin-top:8px}.concept-example{background:#fff;border:1px solid var(--line);border-radius:17px;padding:12px;margin-top:12px}.concept-example b{display:block;margin-bottom:6px}
+.question{font-size:25px;font-weight:900;line-height:1.65;margin:17px 0 10px;text-align:center}.math{direction:ltr;unicode-bidi:isolate;font-size:38px;font-weight:900;text-align:center;margin:12px 0 18px;letter-spacing:.5px}.visual{margin:12px 0}.number-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;direction:ltr}.number-card{border:2px solid var(--line);border-radius:20px;padding:12px;background:#fbfcff;min-width:0}.number-label{font-size:28px;font-weight:900;text-align:center;direction:ltr;unicode-bidi:isolate}.blocks{direction:ltr;display:flex;gap:5px;justify-content:center;align-items:flex-end;flex-wrap:wrap;margin:11px 0 3px;min-height:86px}.ten{width:20px;height:80px;border-radius:6px;background:#8fa3ff;border:2px solid #5269d9}.one{width:21px;height:21px;border-radius:50%;background:#ffd76f;border:2px solid #d0a62c}
+.place-board{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:420px;margin:10px auto;direction:ltr}.place-col{border:2px solid var(--line);border-radius:18px;padding:12px;text-align:center}.place-col b{display:block;font-size:17px;margin-bottom:8px}.place-col strong{font-size:30px}.pairs{direction:ltr;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:16px auto;max-width:420px}.pair{display:flex;gap:4px;padding:5px;border:2px solid #d9e0f0;border-radius:15px}.dot{width:24px;height:24px;border-radius:50%;display:block;background:#ffcf66;border:2px solid #c79928}.lonely-wrap{padding:5px;border:3px dashed #ef6b6b;border-radius:15px}.units-note{text-align:center;color:var(--muted);font-size:14px;line-height:1.6;margin:7px 0}.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.reason-answers{grid-template-columns:1fr}.ans,.num-chip{min-height:56px;border:2px solid var(--line);background:#fff;border-radius:17px;padding:11px;font-weight:900;font-size:19px;cursor:pointer}.reason-answers .ans{font-size:16px;line-height:1.55;text-align:right}.ans.correct{border-color:#6fbd83;background:var(--good)}.ans.wrong{border-color:#ef8e8e;background:var(--bad)}.order-area{display:grid;gap:12px}.number-buttons{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;direction:ltr}.num-chip{min-width:70px}.num-chip.used{opacity:.35}.order-strip{min-height:64px;border:2px dashed #bbc3d4;border-radius:18px;padding:9px;display:flex;gap:9px;justify-content:center;align-items:center;direction:ltr;color:var(--muted)}.picked{padding:8px 13px;background:var(--soft);border-radius:13px;font-weight:900;font-size:21px}.feedback{border-radius:17px;padding:13px 15px;background:#f4f6fa;line-height:1.75;margin-top:14px;min-height:52px}.feedback.good{background:var(--good);color:var(--goodInk)}.feedback.warn{background:var(--warn);color:var(--warnInk)}.feedback.bad{background:var(--bad);color:var(--badInk)}.support{border:2px solid #f0cd76;background:#fffaf0;border-radius:18px;padding:13px;margin-top:12px;line-height:1.7}.support b{display:block;margin-bottom:6px}.mastery-gate{border:2px solid #9ec9ad;background:#f6fff8;border-radius:17px;padding:12px;margin:10px 0;color:#235f37;line-height:1.65;font-weight:800}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}.micro{font-size:13px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.65}.footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.65;padding:18px 8px}.status-chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:6px 10px;background:#f1f3f8;color:#3b475f;font-size:12px;font-weight:800;margin:2px}.status-chip.good{background:var(--good);color:var(--goodInk)}
+
+.expert-contract{margin-top:12px;border:2px solid #b9c7ff;background:#f8f9ff;border-radius:18px;padding:13px;line-height:1.7}.expert-contract b{display:block;margin-bottom:4px}.proof-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:99px;background:#f1f3f8;color:#45506a;font-size:12px;font-weight:800;margin:3px}.proof-chip.good{background:var(--good);color:var(--goodInk)}.proof-chip.warn{background:var(--warn);color:var(--warnInk)}
+
+/* تجربة مدينة ٩٩: تشويق يخدم الفهم دون مؤقتات أو ترتيب اجتماعي أو مكافآت عشوائية */
+.story-hero{position:relative;overflow:hidden;margin-bottom:14px;padding:17px;border:2px solid #cfd8ff;border-radius:24px;background:linear-gradient(135deg,#f5f7ff 0%,#fff9e8 100%);display:flex;gap:14px;align-items:center}.story-hero:after{content:"";position:absolute;width:130px;height:130px;border-radius:50%;background:rgba(255,215,111,.2);left:-42px;top:-54px}.mascot{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;font-size:34px;background:#fff;border:2px solid #dbe1f3;box-shadow:0 8px 20px rgba(31,42,68,.08);flex:0 0 auto}.story-copy{position:relative;z-index:1}.story-copy b{font-size:19px;display:block;margin-bottom:4px}.story-copy span{font-size:14px;line-height:1.65;color:#45506a}.reward-shelf{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:12px 0 4px}.reward-key{min-width:58px;border:2px solid #e1e5ef;border-radius:16px;padding:8px 9px;background:#fff;text-align:center;font-size:12px;color:#697386;font-weight:800}.reward-key strong{display:block;font-size:23px;filter:grayscale(1);opacity:.35}.reward-key.earned{border-color:#e6c54a;background:#fffbea;color:#735d00}.reward-key.earned strong{filter:none;opacity:1}.station{position:relative;overflow:hidden}.station:before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:6px;background:#cfd6e8}.station[data-kind="compare"]:before{background:#899cff}.station[data-kind="order"]:before{background:#70c6b3}.station[data-kind="place"]:before{background:#efb768}.station[data-kind="evenodd"]:before{background:#da8fd1}.station[data-kind="review"]:before{background:#e7c84a}.station.done{box-shadow:0 8px 20px rgba(36,118,67,.08)}.mission-tag{display:inline-block;border-radius:99px;padding:5px 9px;background:#eef2ff;color:#2c42bd;font-size:12px;font-weight:900;margin-bottom:6px}.guide-bubble{margin:10px 0 14px;border:2px solid #d8dff3;background:#fcfdff;border-radius:18px;padding:11px 13px;display:flex;gap:10px;align-items:flex-start;line-height:1.65}.guide-bubble .face{font-size:24px;line-height:1}.guide-bubble b{display:block;margin-bottom:2px}.discovery-card{margin-top:12px;border:2px dashed #e2bd42;background:#fffbed;border-radius:18px;padding:13px;line-height:1.7}.discovery-card b{display:block;color:#705900;margin-bottom:4px}.spark{position:fixed;z-index:50;left:50%;top:18%;transform:translate(-50%,-20px) scale(.9);opacity:0;pointer-events:none;background:#172033;color:#fff;border-radius:20px;padding:12px 18px;font-weight:900;box-shadow:0 14px 40px rgba(0,0,0,.18);transition:.22s ease}.spark.show{opacity:1;transform:translate(-50%,0) scale(1)}.welcome{position:fixed;z-index:80;inset:0;background:rgba(20,28,48,.46);display:grid;place-items:center;padding:18px}.welcome-card{width:min(540px,100%);background:#fff;border-radius:28px;padding:22px;border:2px solid #e0e5f0;box-shadow:0 24px 80px rgba(0,0,0,.22);text-align:center}.welcome-card h2{font-size:28px;margin:0 0 8px}.welcome-card p{line-height:1.8;color:#58637a;margin:6px 0 16px}.guide-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 0}.guide-choice{border:2px solid #e0e5ef;border-radius:18px;background:#fff;padding:12px 7px;min-height:92px;cursor:pointer;font-weight:900}.guide-choice span{display:block;font-size:31px;margin-bottom:4px}.guide-choice.selected{border-color:#8395f4;background:#f2f4ff}.welcome .primary{width:100%;margin-top:6px}.mini-celebration{animation:softPop .45s ease}@keyframes softPop{0%{transform:scale(.98)}55%{transform:scale(1.02)}100%{transform:scale(1)}}
+@media(min-width:650px){.map{grid-template-columns:1fr 1fr}.station:last-child{grid-column:1/-1}.answers{grid-template-columns:repeat(4,1fr)}.reason-answers{grid-template-columns:1fr 1fr}.mastery{grid-template-columns:repeat(4,1fr)}.teacher-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.number-grid{grid-template-columns:1fr}.math{font-size:34px}.question{font-size:23px}.card{padding:16px}.app{padding-inline:12px}.lesson-head{align-items:center}.lesson-title{font-size:20px}.answers{grid-template-columns:1fr 1fr}.reason-answers{grid-template-columns:1fr}.teacher-row{grid-template-columns:1fr}.teacher-row span{text-align:right}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}.spark{transition:none!important}}
+
+/* ===== طبقة الأثر الممتازة v3 ===== */
+:root{--premium:#6d4aff;--premium2:#19a7a0;--gold:#f3b61f;--night:#10203b}
+body:before,body:after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(2px);opacity:.22;pointer-events:none}
+body:before{width:220px;height:220px;inset:7% auto auto -90px;background:radial-gradient(circle,#8f7cff,transparent 70%)}
+body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-gradient(circle,#67d9cc,transparent 70%)}
+.premium-strip{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.premium-btn{min-height:58px;border-radius:18px;border:2px solid #d9ddff;background:linear-gradient(135deg,#fff,#f4f1ff);font-weight:900;font-size:16px;color:#27314f;box-shadow:0 8px 20px rgba(49,72,216,.08)}
+.premium-btn:active{transform:scale(.985)}
+.recall-card{margin-top:12px;border:2px dashed #cabfff;background:linear-gradient(135deg,#fbf9ff,#f0fffd);border-radius:20px;padding:14px;display:flex;align-items:center;gap:12px}
+.recall-card .recall-icon{font-size:30px}.recall-card b{display:block}.recall-card span{font-size:13px;color:var(--muted)}
+.lab-shell{width:min(860px,100%);margin:auto;min-height:100vh;padding:18px 16px 36px}
+.lab-card{background:#fff;border:2px solid #dde3ef;border-radius:28px;box-shadow:var(--shadow);padding:18px;overflow:hidden;position:relative}
+.lab-card:before{content:"";position:absolute;width:160px;height:160px;border-radius:50%;left:-80px;top:-80px;background:linear-gradient(135deg,#ece8ff,#dff9f5);z-index:0}
+.lab-card>*{position:relative;z-index:1}
+.lab-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.lab-head h2{margin:0;font-size:24px}.lab-round{direction:ltr;unicode-bidi:isolate;font-weight:900;background:#f3f5ff;padding:8px 12px;border-radius:14px;white-space:nowrap}
+.lab-mission{margin:14px 0;background:linear-gradient(135deg,#f8f7ff,#effcf9);border:2px solid #d8e0ff;border-radius:22px;padding:16px}.lab-mission b{display:block;font-size:20px;margin-bottom:5px}.lab-mission span{color:#536078}
+.lab-visual{min-height:140px;display:grid;place-items:center;margin:12px 0}.lab-question{font-size:clamp(22px,6.5vw,31px);font-weight:900;text-align:center;line-height:1.5;margin:12px 0}.lab-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lab-option{min-height:68px;border:2px solid #dce3ef;border-radius:20px;background:#fff;font-size:22px;font-weight:900;color:#1f2940}.lab-option:hover{border-color:#abb8ff;background:#f8f9ff}.lab-option.correct{background:#eaf8ef;border-color:#68bd84}.lab-option.wrong{background:#fff1f1;border-color:#e09a9a}.lab-feedback{min-height:58px;border-radius:18px;padding:12px 14px;background:#f7f8fb;margin-top:12px;font-weight:800;line-height:1.6}.lab-feedback.good{background:#eaf8ef;color:#176b38}.lab-feedback.warn{background:#fff7e7;color:#875c06}
+.lab-order-pool,.lab-order-track{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin:12px 0}.lab-chip{min-width:68px;min-height:58px;border-radius:18px;border:2px solid #dce3ef;background:#fff;font-size:24px;font-weight:900}.lab-chip.used{opacity:.35}.lab-track-slot{min-width:65px;min-height:56px;border-radius:16px;border:2px dashed #b9c2d6;background:#fafbfe;display:grid;place-items:center;font-size:22px;font-weight:900}
+.prefs-sheet{position:fixed;inset:0;background:rgba(13,23,43,.45);z-index:9998;display:grid;place-items:end center;padding:12px}.prefs-card{width:min(620px,100%);background:#fff;border-radius:28px 28px 18px 18px;padding:20px;box-shadow:0 -10px 40px rgba(0,0,0,.18)}.prefs-card h2{margin:0 0 12px}.pref-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf0f5}.pref-row:last-of-type{border-bottom:0}.pref-row button{min-width:100px}.pref-note{font-size:13px;color:var(--muted);line-height:1.6}
+.city-toast{position:fixed;z-index:9999;left:50%;bottom:26px;transform:translate(-50%,30px);opacity:0;background:#14213d;color:#fff;padding:12px 18px;border-radius:999px;font-weight:900;box-shadow:0 10px 32px rgba(0,0,0,.22);pointer-events:none;transition:.25s}.city-toast.show{opacity:1;transform:translate(-50%,0)}
+.confetti-piece{position:fixed;z-index:9997;width:9px;height:14px;border-radius:3px;pointer-events:none;animation:cityFall 900ms ease-out forwards}@keyframes cityFall{0%{transform:translateY(-10vh) rotate(0);opacity:1}100%{transform:translateY(80vh) rotate(480deg);opacity:0}}
+.station{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.station:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(36,57,118,.08)}.station.done{background:linear-gradient(135deg,#f7fff9,#eef8ff)}
+.guide-bubble.coach-attention{animation:coachPulse .42s ease 2}@keyframes coachPulse{50%{transform:scale(1.015);box-shadow:0 0 0 5px rgba(109,74,255,.08)}}
+.big-text .question,.big-text .lab-question{font-size:clamp(26px,7.5vw,36px)}.big-text .ans,.big-text .lab-option{font-size:21px;min-height:72px}
+.high-contrast{--ink:#000;--muted:#313131;--line:#777;--bg:#fff}.high-contrast .card,.high-contrast .lab-card{box-shadow:none;border-color:#222}.high-contrast .secondary,.high-contrast .premium-btn{border-color:#222}
+.motion-off *, .motion-off *:before,.motion-off *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(max-width:420px){.premium-strip{grid-template-columns:1fr}.lab-options{grid-template-columns:1fr 1fr}.lab-card{padding:14px}.lab-option{font-size:20px}.recall-card{align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){.confetti-piece{display:none}.station,.premium-btn{transition:none}.guide-bubble.coach-attention{animation:none}}
+
+
+/* دفتر المستكشف: كتابة ورسم قصير قبل إظهار خيارات الإجابة */
+.notebook-home{margin:14px 0;border:2px solid #d9c7ff;background:linear-gradient(135deg,#fbf8ff,#fffdf4);border-radius:20px;padding:14px;display:flex;gap:12px;align-items:center;line-height:1.65}.notebook-home .notebook-icon{font-size:31px;flex:0 0 auto}.notebook-home b{display:block;font-size:17px;margin-bottom:2px}.notebook-home span{display:block;color:#596278;font-size:13px}.notebook-task{margin:14px 0;border:3px solid #7c61d9;background:#fbf9ff;border-radius:22px;padding:15px;box-shadow:0 8px 20px rgba(88,65,160,.08)}.notebook-task.done{border-color:#71b985;background:#f4fff7}.notebook-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}.notebook-head .pencil{font-size:30px}.notebook-head b{font-size:18px}.notebook-steps{margin:8px 0 12px;padding:0 20px 0 0;line-height:1.9;color:#343d55}.notebook-note{font-size:12px;color:#667085;line-height:1.6;margin-top:8px}.notebook-done{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.notebook-done .primary{flex:1}.notebook-locked{display:none!important}.notebook-check{border-top:1px dashed #b9c2d6;margin-top:10px;padding-top:9px;color:#3f4961;font-size:13px;line-height:1.7}.paper-chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;background:#f2edff;color:#533a9c;padding:5px 9px;font-size:12px;font-weight:900;margin:2px}@media(max-width:430px){.notebook-task{padding:13px}.notebook-home{align-items:flex-start}}
+</style>
+</head>
+<body>
+<main class="app">
+<section id="home">
+  <div class="top">
+    <div class="brand"><h1>مدينة ٩٩</h1><p>مغامرة الأعداد • رياضيات الصف الثاني • الوحدة الأولى</p></div>
+    <div class="badge" aria-label="النجوم">⭐ <span id="starsHome">٠</span></div>
+  </div>
+  <div class="story-hero"><div id="guideHomeIcon" class="mascot" aria-hidden="true">✨</div><div class="story-copy"><b id="storyHeadline">أهلًا يا بطل في مدينة ٩٩!</b><span id="storyLine">أربع محطات تنتظر فهمك، ثم تفتح قلعة الإتقان.</span></div></div>
+  <div class="card">
+    <div class="section-title">خريطة المغامرة</div>
+    <div id="homeProgressText" class="goal">أنجزت ٠ من ٥ مراحل.</div>
+    <div class="progress" aria-label="تقدم الوحدة"><i id="homeBar"></i></div>
+    <div class="smart-card" aria-live="polite"><span class="mission-tag">مهمتك الآن</span><b id="missionTitle">المحطة الأنسب لك</b><div id="smartText" class="goal"></div><div class="tools"><button id="smartStart" class="primary wide">🚀 ابدأ المهمة</button></div></div>
+    <div class="map">
+      <button class="station" data-kind="compare"><span class="icon" aria-hidden="true">⚖️</span><span><b>بوابة الميزان</b><small>المقارنة بين عددين: أنظر إلى العشرات والآحاد وأفسّر اختياري.</small></span><span class="tick"></span></button>
+      <button class="station" data-kind="order"><span class="icon" aria-hidden="true">🚂</span><span><b>قطار الأعداد</b><small>الترتيب: أضع العربات من الأصغر إلى الأكبر أو بالعكس.</small></span><span class="tick"></span></button>
+      <button class="station" data-kind="place"><span class="icon" aria-hidden="true">🏠</span><span><b>بيت المنازل</b><small>القيمة المنزلية: أكتشف كيف يغيّر المكان قيمة الرقم.</small></span><span class="tick"></span></button>
+      <button class="station" data-kind="evenodd"><span class="icon" aria-hidden="true">👫</span><span><b>ساحة الأزواج</b><small>الزوجي والفردي: أكوّن أزواجًا وأكتشف من يبقى بلا شريك.</small></span><span class="tick"></span></button>
+      <button class="station" data-kind="review"><span class="icon" aria-hidden="true">🏆</span><span><b>قلعة الإتقان</b><small>مهمة النهاية: أثبت أهداف الوحدة، نعالج أي فجوة، ثم نفتح القلعة.</small></span><span class="tick"></span></button>
+    </div>
+    <div id="rewardShelf" class="reward-shelf" aria-label="مفاتيح الفهم"></div>
+
+    <div class="notebook-home" aria-label="دفتر المستكشف"><div class="notebook-icon" aria-hidden="true">✍️</div><div><b>دفتر المستكشف جزء من المغامرة</b><span>جهّز دفتر الرياضيات وقلمًا. في لحظات مختارة ستكتب أو ترسم أولًا، ثم تفتح الإجابات على الشاشة. ورقة وقلم يكفيان.</span></div></div>
+
+    <div class="premium-strip" aria-label="لعب وتفضيلات">
+      <button id="playLabBtn" class="premium-btn">🎮 مختبر اللعب الذكي</button>
+      <button id="prefsBtn" class="premium-btn">⚙️ راحتي وطريقتي</button>
+    </div>
+    <div id="recallCard" class="recall-card hidden">
+      <div class="recall-icon" aria-hidden="true">🧠</div>
+      <div style="flex:1"><b>تحدّي ذاكرة قصير</b><span id="recallText">عدتَ إلى المدينة؛ لنسترجع فكرة أتقنتها سابقًا.</span></div>
+      <button id="recallBtn" class="secondary">ابدأ</button>
+    </div>
+
+    <div class="tools student-share"><button id="shareProgress" class="secondary wide">📤 أرسل إنجازي للمعلم</button><button id="installApp" class="secondary wide hidden">📲 أضف إلى الهاتف</button></div>
+    <div class="mastery" id="mastery"></div>
+    <div id="teacherTools" class="tools hidden"><button id="teacherToggle" class="secondary" aria-expanded="false">متابعة المعلم</button><button id="reset" class="secondary danger">إعادة التقدم من البداية</button></div>
+    <div id="teacherPanel" class="teacher-panel hidden"><div class="section-title">متابعة التعلّم دون أسماء</div><div id="teacherGrid" class="teacher-grid"></div><div class="section-title" style="margin-top:14px">أدلة أهداف الوحدة</div><div id="teacherObjectives" class="objective-list"></div><div id="teacherRecommendation" class="recommendation"></div><div class="storage-note">المحتوى التعليمي © محمد وجيه — CC BY-NC-SA 4.0 • كود التطبيق © محمد وجيه — جميع الحقوق محفوظة.</div></div>
+    <div id="storageNote" class="storage-note"></div>
+  </div>
+</section>
+
+<section id="play" class="hidden">
+  <div class="top"><button id="back" class="secondary">← الخريطة</button><div class="badge" aria-label="النجوم">⭐ <span id="starsPlay">٠</span></div></div>
+  <div class="card">
+    <div class="lesson-head"><div><div id="lessonTitle" class="lesson-title"></div><div id="goal" class="goal"></div></div><button id="speak" class="secondary" title="قراءة المحتوى بصوت الجهاز">🔊 استمع</button></div>
+    <div class="guide-bubble"><span id="guidePlayIcon" class="face" aria-hidden="true">✨</span><div><b id="guideName">نور</b><span id="guideLine">فكّر أولًا، وأنا معك عندما تحتاجني.</span></div></div>
+    <div id="journey" class="journey" aria-label="مسار التعلم"></div>
+    <div class="progress" aria-label="تقدم المرحلة"><i id="lessonBar"></i></div>
+    <div id="objectiveBox" class="phase-card hidden"></div>
+    <div id="masteryGate" class="mastery-gate hidden"></div>
+    <div id="visual" class="visual"></div>
+    <div id="q" class="question"></div>
+    <div id="math" class="math"></div>
+    <div id="notebookTask" class="notebook-task hidden" aria-live="polite"></div>
+    <div id="interaction"></div>
+    <div id="support" class="support hidden" aria-live="polite"></div>
+    <div id="feedback" class="feedback" aria-live="polite">أنا معك خطوة خطوة.</div>
+    <div class="actions"><button id="hint" class="secondary">💡 ساعدني</button><button id="next" class="primary wide hidden">التالي</button></div>
+    <div id="micro" class="micro"></div>
+  </div>
+</section>
+
+<section id="lab" class="hidden" aria-label="مختبر اللعب الذكي">
+  <div class="lab-shell">
+    <div class="top"><button id="labBack" class="secondary">← المدينة</button><div class="badge">✨ <span id="labWins">٠</span></div></div>
+    <div class="lab-card">
+      <div class="lab-head"><div><h2>مختبر اللعب الذكي</h2><div class="goal">لعب قصير يتغير حسب ما تحتاجه، بلا مؤقت وبلا خسارة.</div></div><div id="labRound" class="lab-round">١ / ٤</div></div>
+      <div id="labMission" class="lab-mission"><b>مهمة المختبر</b><span>سأختار لك تحديًا مناسبًا.</span></div>
+      <div id="labVisual" class="lab-visual"></div>
+      <div id="labQuestion" class="lab-question"></div>
+      <div id="labInteraction"></div>
+      <div id="labFeedback" class="lab-feedback">فكّر أولًا، ثم جرّب.</div>
+      <div class="tools"><button id="labHint" class="secondary">💡 لمحة</button><button id="labNext" class="primary wide hidden">التالي</button></div>
+    </div>
+  </div>
+</section>
+<div id="prefsSheet" class="prefs-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="prefsTitle">
+  <div class="prefs-card">
+    <h2 id="prefsTitle">راحتي وطريقتي</h2>
+    <div class="pref-row"><div><b>المؤثرات الصوتية</b><div class="pref-note">نغمات قصيرة للنجاح والتنبيه، وليست موسيقى مستمرة.</div></div><button id="soundToggle" class="secondary"></button></div>
+    <div class="pref-row"><div><b>اهتزاز لطيف</b><div class="pref-note">اهتزاز قصير عند النجاح إن كان الهاتف يدعمه.</div></div><button id="hapticToggle" class="secondary"></button></div>
+    <div class="pref-row"><div><b>الحركة</b><div class="pref-note">يمكن إيقاف الاحتفالات والحركة لمن يفضل الهدوء.</div></div><button id="motionToggle" class="secondary"></button></div>
+    <div class="pref-row"><div><b>نص أكبر</b><div class="pref-note">يزيد حجم السؤال والأزرار.</div></div><button id="textToggle" class="secondary"></button></div>
+    <div class="pref-row"><div><b>تباين أعلى</b><div class="pref-note">لزيادة وضوح الحدود والنص.</div></div><button id="contrastToggle" class="secondary"></button></div>
+    <div class="tools"><button id="prefsClose" class="primary wide">حفظ والعودة</button></div>
+  </div>
+</div>
+<div id="cityToast" class="city-toast" role="status" aria-live="polite"></div>
+
+<div class="footer">إعداد وتصميم تربوي: محمد وجيه<br>تعلّم بفضول • فكّر • جرّب • افهم • ثم أتقن</div>
+<div id="spark" class="spark" role="status" aria-live="polite"></div>
+<div id="welcome" class="welcome hidden" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+  <div class="welcome-card">
+    <div class="mascot" style="margin:auto">🏙️</div>
+    <h2 id="welcomeTitle">أهلًا بك في مدينة ٩٩!</h2>
+    <p>سنكتشف الأعداد في أربع محطات. اختر رفيقًا يرافقك، وجهّز <b>دفتر الرياضيات وقلمًا</b>؛ سنكتب ونرسم في لحظات قصيرة ثم نعود للشاشة. لا سرعة مطلوبة؛ خذ وقتك.</p>
+    <div class="guide-choices" aria-label="اختر رفيق المغامرة">
+      <button class="guide-choice selected" data-guide="noor"><span>✨</span>نور</button>
+      <button class="guide-choice" data-guide="qamar"><span>🌙</span>قمر</button>
+      <button class="guide-choice" data-guide="najem"><span>⭐</span>نجم</button>
+    </div>
+    <button id="beginAdventure" class="primary">ابدأ المغامرة</button>
+  </div>
+</div>
+</main>
+<script>
+'use strict';
+const DIGITS='٠١٢٣٤٥٦٧٨٩';
+const ar=n=>String(n).replace(/\d/g,d=>DIGITS[d]);
+const $=id=>document.getElementById(id);
+const SKILLS=['compare','order','place','evenodd'];
+const skillNames={compare:'المقارنة',order:'الترتيب',place:'القيمة المنزلية',evenodd:'الزوجي والفردي'};
+const phaseLabels={readiness:'تهيئة',concept:'اكتشف',guided:'تدرّب معي',practice:'جرّب',reason:'فسّر',mastery:'أثبت الإتقان',enrich:'تحدٍّ'};
+const GUIDES={noor:{name:'نور',icon:'✨'},qamar:{name:'قمر',icon:'🌙'},najem:{name:'نجم',icon:'⭐'}};
+const storyNames={compare:'بوابة الميزان',order:'قطار الأعداد',place:'بيت المنازل',evenodd:'ساحة الأزواج',review:'قلعة الإتقان'};
+const curiosity={compare:'هل يمكن لآحاد كثيرة أن تهزم عشرات أكثر؟ سنكتشف.',order:'كيف نعرف من يصعد أولًا إلى قطار الأعداد؟',place:'هل يبقى الرقم نفسه بالقيمة نفسها إذا غيّر مكانه؟',evenodd:'هل سيجد كل عنصر شريكًا، أم سيبقى واحد وحيدًا؟',review:'هل تستطيع فتح قلعة الإتقان بإثبات فهمك في كل هدف؟'};
+const discoveries={compare:'إذا اختلفت العشرات، فهي تحسم المقارنة قبل أن نحتاج إلى الآحاد.',order:'الترتيب سلسلة من مقارنات صغيرة: اختر البداية الصحيحة ثم أكمل.',place:'الرقم نفسه تتغيّر قيمته عندما تتغيّر منزلته.',evenodd:'كل عشرة تتكوّن من أزواج كاملة؛ لذلك رقم الآحاد يصبح اختصارًا بعد فهم التزاوج.'};
+const LESSONS={
+ compare:{
+  title:'المقارنة بين عددين ضمن ٩٩',
+  goal:'أن تقارن بين عددين ضمن ٩٩ اعتمادًا على القيمة، لا على شكل الرقم.',
+  prereq:'تمييز العشرات والآحاد وقراءة العددين.',
+  evidence:'يختار العدد الأكبر أو الأصغر ويعلّل بالمنزلة الأعلى دون تخمين.',
+  misconception:'التركيز على رقم الآحاد أو شكل الرقم بدل قيمة المنزلة.',
+  support:'ارجع إلى عشرات العددين أولًا؛ إذا تساوت فانتقل إلى الآحاد.',
+  enrich:'كوّن عددين جديدين بحيث يكون الأول أكبر من الثاني.',
+  fallback:'استخدم أعوادًا أو أغطية زجاجات والسبورة فقط.',
+  oral:'انظر إلى العشرات أولًا. ماذا تلاحظ؟',
+  objectives:[['ct','أقارن عددين عندما تختلف العشرات.'],['co','أقارن عددين عندما تتساوى العشرات.'],['cr','أختار الأكبر أو الأصغر وأذكر السبب الصحيح.']],
+  concept:{text:'العشرات أقوى من الآحاد. نقارن العشرات أولًا، وإذا تساوت ننتقل إلى الآحاد.',example:'في ٤٧ و٧٤: ننظر إلى ٤ عشرات و٧ عشرات، لذلك ٧٤ أكبر.',visual:{kind:'compare',a:47,b:74}},
+  readiness:[
+   {id:'c-r1',obj:'ct',type:'mcq',ask:'قبل أن نبدأ: في العدد ٣٤، كم عشرة وكم آحاد؟',opts:['٣ عشرات و٤ آحاد','٤ عشرات و٣ آحاد'],correct:'٣ عشرات و٤ آحاد',hint1:'العشرات هي الرقم الأيسر.',hint2:'مثال مشابه: ٢٦ فيها ٢ عشرات و٦ آحاد.',explain:'أحسنت؛ ٣٤ فيها ٣ عشرات و٤ آحاد.',visual:{kind:'place',n:34}},
+   {id:'c-r2',obj:'ct',type:'mcq',ask:'تهيئة جديدة: في العدد ٥٢، كم عشرة وكم آحاد؟',opts:['٥ عشرات و٢ آحاد','٢ عشرات و٥ آحاد'],correct:'٥ عشرات و٢ آحاد',hint1:'ابدأ بالرقم الأيسر.',hint2:'الرقم الأيسر عشرات، والأيمن آحاد.',explain:'٥٢ فيها ٥ عشرات و٢ آحاد.',visual:{kind:'place',n:52}}
+  ],
+  guided:[
+   {id:'c-g1',obj:'ct',type:'mcq',ask:'انظر إلى ٣٢ و٢٣. أيهما أكبر؟',opts:[32,23],correct:32,hint1:'قارن ٣ عشرات مع ٢ عشرات.',hint2:'لا تبدأ بالآحاد؛ العشرات تحسم المقارنة هنا.',explain:'٣ عشرات أكبر من ٢ عشرات، إذن ٣٢ أكبر.',visual:{kind:'compare',a:32,b:23}},
+   {id:'c-g2',obj:'co',type:'mcq',ask:'العشرات متساوية في ٥٢ و٥٧. أيهما أكبر؟',opts:[52,57],correct:57,hint1:'انتقل إلى الآحاد: ٢ و٧.',hint2:'٧ آحاد أكبر من ٢ آحاد.',explain:'العشرات متساوية، و٧ آحاد أكبر من ٢؛ إذن ٥٧ أكبر.',visual:{kind:'compare',a:52,b:57}}
+  ],
+  practice:[
+   {id:'c-p1',obj:'ct',type:'mcq',ask:'أي العددين أصغر؟',opts:[63,36],correct:36,hint1:'قارن العشرات أولًا.',hint2:'٣ عشرات أقل من ٦ عشرات.',explain:'٣٦ أصغر لأن ٣ عشرات أقل من ٦ عشرات.',visual:{kind:'compare',a:63,b:36}},
+   {id:'c-p2',obj:'co',type:'mcq',ask:'أي العددين أصغر؟',opts:[48,43],correct:43,hint1:'العشرات متساوية؛ قارن الآحاد.',hint2:'٣ آحاد أقل من ٨ آحاد.',explain:'٤٣ أصغر لأن العشرات متساوية و٣ آحاد أقل من ٨.',visual:{kind:'compare',a:48,b:43}},
+   {id:'c-p3',obj:'ct',type:'mcq',ask:'أي العددين أكبر؟',opts:[27,72],correct:72,hint1:'انظر إلى العشرات، لا إلى شكل الرقم.',hint2:'٧ عشرات أكبر من ٢ عشرات.',explain:'٧٢ أكبر لأن ٧ عشرات أكبر من ٢ عشرات.',visual:{kind:'compare',a:27,b:72}}
+  ],
+  reason:[
+   {id:'c-e1',obj:'cr',type:'mcq',reason:true,ask:'أي تفسير صحيح للمقارنة بين ٥٦ و٥٣؟',opts:['٥٦ أكبر؛ لأن العشرات متساوية و٦ آحاد أكبر من ٣ آحاد','٥٣ أكبر؛ لأن ٣ أصغر من ٦'],correct:'٥٦ أكبر؛ لأن العشرات متساوية و٦ آحاد أكبر من ٣ آحاد',hint1:'اذكر العشرات أولًا ثم الآحاد.',hint2:'العشرات متساوية؛ القرار يأتي من الآحاد.',explain:'هذا هو التعليل الصحيح بالمنزلة.',visual:{kind:'compare',a:56,b:53}}
+  ],
+  mastery:{targets:['ct','co','cr'],pool:[
+   {id:'c-m1',obj:'ct',type:'mcq',ask:'إتقان: أيهما أصغر؟',opts:[68,86],correct:68,hint1:'العشرات أولًا.',hint2:'٦ عشرات أقل من ٨ عشرات.',explain:'٦٨ أصغر لأن ٦ عشرات أقل من ٨ عشرات.',visual:{kind:'compare',a:68,b:86}},
+   {id:'c-m2',obj:'ct',type:'mcq',ask:'إتقان جديد: أيهما أكبر؟',opts:[41,74],correct:74,hint1:'قارن العشرات.',hint2:'٧ عشرات أكبر من ٤ عشرات.',explain:'٧٤ أكبر.',visual:{kind:'compare',a:41,b:74}},
+   {id:'c-m3',obj:'co',type:'mcq',ask:'إتقان: أيهما أصغر؟',opts:[56,53],correct:53,hint1:'العشرات متساوية.',hint2:'قارن ٦ و٣ آحاد.',explain:'٥٣ أصغر.',visual:{kind:'compare',a:56,b:53}},
+   {id:'c-m4',obj:'co',type:'mcq',ask:'إتقان جديد: أيهما أكبر؟',opts:[62,69],correct:69,hint1:'العشرات متساوية.',hint2:'٩ آحاد أكبر من ٢.',explain:'٦٩ أكبر.',visual:{kind:'compare',a:62,b:69}},
+   {id:'c-m5',obj:'cr',type:'mcq',reason:true,ask:'إتقان: أيهما أصغر، وما السبب؟',opts:['٢٧؛ لأن ٢ عشرات أقل من ٧ عشرات','٧٢؛ لأن ٢ آحاد أقل من ٧'],correct:'٢٧؛ لأن ٢ عشرات أقل من ٧ عشرات',hint1:'التعليل يجب أن يبدأ بالعشرات.',hint2:'٢ عشرات أقل من ٧ عشرات.',explain:'اختيارك وتعليلك صحيحان.',visual:{kind:'compare',a:72,b:27}},
+   {id:'c-m6',obj:'cr',type:'mcq',reason:true,ask:'إتقان جديد: أيهما أكبر، وما السبب؟',opts:['٤٩؛ لأن العشرات متساوية و٩ آحاد أكبر من ٥ آحاد','٤٥؛ لأن ٥ آحاد أصغر من ٩'],correct:'٤٩؛ لأن العشرات متساوية و٩ آحاد أكبر من ٥ آحاد',hint1:'العشرات متساوية.',hint2:'قارن الآحاد واذكر السبب كاملًا.',explain:'أثبتَّ المقارنة والتعليل.',visual:{kind:'compare',a:45,b:49}}
+  ]},
+  enrich:[{id:'c-x1',obj:'cr',type:'mcq',reason:true,ask:'تحدٍّ: أي زوج يحقق «العدد الأول أكبر من الثاني»؟',opts:['٦٤ ، ٤٦','٣٢ ، ٧٣'],correct:'٦٤ ، ٤٦',hint1:'قارن عشرات كل زوج.',hint2:'٦ عشرات أكبر من ٤ عشرات.',explain:'أحسنت؛ ٦٤ أكبر من ٤٦.'}]
+ },
+ order:{
+  title:'ترتيب الأعداد ضمن ٩٩',goal:'أن ترتب أعدادًا ضمن ٩٩ تصاعديًا أو تنازليًا وفق قيمتها.',prereq:'المقارنة بين عددين ضمن ٩٩.',evidence:'يرتب ثلاثة أعداد ويحافظ على اتجاه التصاعد أو التنازل.',misconception:'خلط معنى تصاعدي وتنازلي أو ترتيب الأرقام لا الأعداد.',support:'قارن العددين الأولين فقط ثم أدخل العدد الثالث؛ لا تعرض سلسلة طويلة.',enrich:'رتب أربعة أعداد ثم حدد العدد الواقع بين عددين.',fallback:'اكتب الأعداد على قصاصات ورق وحركها على الطاولة.',oral:'ابحث عن الأصغر أولًا ثم أكمل.',
+  objectives:[['oa','أرتب ثلاثة أعداد من الأصغر إلى الأكبر.'],['od','أرتب ثلاثة أعداد من الأكبر إلى الأصغر.'],['os','أرتب أعدادًا لها عشرات متساوية بالاعتماد على الآحاد.']],
+  concept:{text:'التصاعدي يعني من الأصغر إلى الأكبر، والتنازلي يعني من الأكبر إلى الأصغر. قارن عددين ثم أدخل الثالث.',example:'٣٨، ٥٢، ٤١ تصاعديًا تصبح: ٣٨، ٤١، ٥٢.',visual:{kind:'line',nums:[38,41,52]}},
+  readiness:[
+   {id:'o-r1',obj:'oa',type:'mcq',ask:'تهيئة: أيهما أصغر: ٢٥ أم ٥٢؟',opts:[25,52],correct:25,hint1:'قارن العشرات.',hint2:'٢ عشرات أقل من ٥ عشرات.',explain:'٢٥ أصغر من ٥٢.',visual:{kind:'compare',a:25,b:52}},
+   {id:'o-r2',obj:'oa',type:'mcq',ask:'تهيئة جديدة: أيهما أكبر: ٣٤ أم ٤٣؟',opts:[34,43],correct:43,hint1:'قارن العشرات.',hint2:'٤ عشرات أكبر من ٣.',explain:'٤٣ أكبر.',visual:{kind:'compare',a:34,b:43}}
+  ],
+  guided:[
+   {id:'o-g1',obj:'oa',type:'order',nums:[38,52,41],ask:'رتّب من الأصغر إلى الأكبر.',correct:[38,41,52],hint1:'ابحث عن أصغر عدد أولًا.',hint2:'العشرات: ٣ ثم ٤ ثم ٥.',explain:'٣٨ ثم ٤١ ثم ٥٢.'},
+   {id:'o-g2',obj:'od',type:'order',nums:[25,52,35],ask:'رتّب من الأكبر إلى الأصغر.',correct:[52,35,25],hint1:'ابدأ بأكبر عشرات.',hint2:'٥ عشرات، ثم ٣، ثم ٢.',explain:'٥٢ ثم ٣٥ ثم ٢٥.'}
+  ],
+  practice:[
+   {id:'o-p1',obj:'os',type:'order',nums:[67,61,69],ask:'رتّب من الأصغر إلى الأكبر.',correct:[61,67,69],hint1:'العشرات متساوية.',hint2:'رتب الآحاد ١ ثم ٧ ثم ٩.',explain:'٦١، ٦٧، ٦٩.'},
+   {id:'o-p2',obj:'oa',type:'order',nums:[44,31,58],ask:'رتّب من الأصغر إلى الأكبر.',correct:[31,44,58],hint1:'ابدأ بأصغر عشرات.',hint2:'٣ ثم ٤ ثم ٥ عشرات.',explain:'٣١، ٤٤، ٥٨.'},
+   {id:'o-p3',obj:'od',type:'order',nums:[73,66,71],ask:'رتّب من الأكبر إلى الأصغر.',correct:[73,71,66],hint1:'٧ عشرات أكبر من ٦.',hint2:'بين ٧٣ و٧١ قارن الآحاد.',explain:'٧٣، ٧١، ٦٦.'}
+  ],
+  reason:[{id:'o-e1',obj:'os',type:'mcq',reason:true,ask:'لماذا يأتي ٦١ قبل ٦٧ في الترتيب التصاعدي؟',opts:['لأن العشرات متساوية و١ آحاد أقل من ٧ آحاد','لأن ٦ أقل من ٧'],correct:'لأن العشرات متساوية و١ آحاد أقل من ٧ آحاد',hint1:'اذكر المنزلة التي حسمت المقارنة.',hint2:'العشرات متساوية؛ الآحاد حسمت.',explain:'تعليل صحيح بالمنزلة.'}],
+  mastery:{targets:['oa','od','os'],pool:[
+   {id:'o-m1',obj:'oa',type:'order',nums:[46,71,59],ask:'إتقان: رتّب من الأصغر إلى الأكبر.',correct:[46,59,71],hint1:'أصغر عشرات أولًا.',hint2:'٤ ثم ٥ ثم ٧ عشرات.',explain:'٤٦، ٥٩، ٧١.'},
+   {id:'o-m2',obj:'oa',type:'order',nums:[28,63,45],ask:'إتقان جديد: رتّب من الأصغر إلى الأكبر.',correct:[28,45,63],hint1:'قارن العشرات.',hint2:'٢ ثم ٤ ثم ٦ عشرات.',explain:'٢٨، ٤٥، ٦٣.'},
+   {id:'o-m3',obj:'od',type:'order',nums:[33,72,48],ask:'إتقان: رتّب من الأكبر إلى الأصغر.',correct:[72,48,33],hint1:'أكبر عشرات أولًا.',hint2:'٧ ثم ٤ ثم ٣.',explain:'٧٢، ٤٨، ٣٣.'},
+   {id:'o-m4',obj:'od',type:'order',nums:[54,29,61],ask:'إتقان جديد: رتّب من الأكبر إلى الأصغر.',correct:[61,54,29],hint1:'ابدأ بأكبر عشرات.',hint2:'٦ ثم ٥ ثم ٢.',explain:'٦١، ٥٤، ٢٩.'},
+   {id:'o-m5',obj:'os',type:'order',nums:[64,69,61],ask:'إتقان: رتّب من الأكبر إلى الأصغر.',correct:[69,64,61],hint1:'العشرات متساوية.',hint2:'رتب الآحاد ٩ ثم ٤ ثم ١.',explain:'٦٩، ٦٤، ٦١.'},
+   {id:'o-m6',obj:'os',type:'order',nums:[42,47,45],ask:'إتقان جديد: رتّب من الأصغر إلى الأكبر.',correct:[42,45,47],hint1:'العشرات متساوية.',hint2:'٢ ثم ٥ ثم ٧ آحاد.',explain:'٤٢، ٤٥، ٤٧.'}
+  ]},
+  enrich:[{id:'o-x1',obj:'oa',type:'order',nums:[57,42,68,49],ask:'تحدٍّ: رتّب أربعة أعداد من الأصغر إلى الأكبر.',correct:[42,49,57,68],hint1:'قارن عشرات الأعداد أولًا.',hint2:'ابدأ بالأربعينات، ثم الخمسينات، ثم الستينات.',explain:'٤٢، ٤٩، ٥٧، ٦٨.'}]
+ },
+ place:{
+  title:'القيمة المنزلية ضمن ٩٩',goal:'أن تميز منزلة الرقم وقيمته في عدد من منزلتين.',prereq:'تكوين العشرة من عشر آحاد.',evidence:'يميز بين الرقم ومنزلته وقيمته.',misconception:'القول إن قيمة ٦ في ٦٤ هي ٦ بدل ٦٠.',support:'افصل العشرات حزمًا والآحاد مفردات؛ لا تبدأ بالرمز.',enrich:'غيّر موضع الرقم نفسه في عددين واسأل كيف تغيرت قيمته.',fallback:'استخدم أعوادًا مربوطة في حزم من عشرة وأعوادًا مفردة.',oral:'الرقم نفسه، لكن ما المنزل الذي يقف فيه؟',
+  objectives:[['pc','أفكك العدد إلى عشرات وآحاد.'],['pp','أحدد منزلة الرقم.'],['pv','أحدد قيمة الرقم بحسب منزلته.']],
+  concept:{text:'العشرة حزمة من ١٠ آحاد. في العدد من منزلتين: الرقم الأيسر عشرات، والأيمن آحاد، والمنزلة هي التي تحدد القيمة.',example:'في ٦٤: الرقم ٦ في منزلة العشرات، لذلك قيمته ٦٠.',visual:{kind:'place',n:64}},
+  readiness:[
+   {id:'p-r1',obj:'pc',type:'mcq',ask:'تهيئة: في ٣٤، كم عشرة وكم آحاد؟',opts:['٣ عشرات و٤ آحاد','٤ عشرات و٣ آحاد'],correct:'٣ عشرات و٤ آحاد',hint1:'العشرات حزم، والآحاد مفردات.',hint2:'الرقم الأيسر للعشرات.',explain:'٣٤ = ٣ عشرات و٤ آحاد.',visual:{kind:'place',n:34}},
+   {id:'p-r2',obj:'pc',type:'mcq',ask:'تهيئة جديدة: في ٤٢، كم عشرة وكم آحاد؟',opts:['٤ عشرات و٢ آحاد','٢ عشرات و٤ آحاد'],correct:'٤ عشرات و٢ آحاد',hint1:'ابدأ بالعشرات.',hint2:'٤ في اليسار، ٢ في اليمين.',explain:'٤٢ = ٤ عشرات و٢ آحاد.',visual:{kind:'place',n:42}}
+  ],
+  guided:[
+   {id:'p-g1',obj:'pv',type:'mcq',n:64,ask:'في العدد ٦٤، ما قيمة الرقم ٦؟',opts:[6,60,4,40],correct:60,hint1:'٦ في منزلة العشرات.',hint2:'٦ عشرات = ٦٠.',explain:'قيمة ٦ هي ٦٠.',visual:{kind:'place',n:64}},
+   {id:'p-g2',obj:'pp',type:'mcq',n:37,ask:'في العدد ٣٧، ما منزلة الرقم ٧؟',opts:['الآحاد','العشرات'],correct:'الآحاد',hint1:'الرقم الأيمن هو الآحاد.',hint2:'٧ يقع في يمين العدد.',explain:'منزلة ٧ هي الآحاد.',visual:{kind:'place',n:37}}
+  ],
+  practice:[
+   {id:'p-p1',obj:'pv',type:'mcq',n:48,ask:'في العدد ٤٨، ما قيمة الرقم ٨؟',opts:[8,80,4,40],correct:8,hint1:'٨ في منزلة الآحاد.',hint2:'٨ آحاد = ٨.',explain:'قيمة ٨ هي ٨.',visual:{kind:'place',n:48}},
+   {id:'p-p2',obj:'pc',type:'mcq',n:52,ask:'في العدد ٥٢، كم عشرة؟',opts:[5,2,50,20],correct:5,hint1:'عدد العشرات هو الرقم الأيسر.',hint2:'٥٢ فيها ٥ عشرات.',explain:'في ٥٢ يوجد ٥ عشرات.',visual:{kind:'place',n:52}},
+   {id:'p-p3',obj:'pp',type:'mcq',n:83,ask:'في العدد ٨٣، ما منزلة الرقم ٨؟',opts:['الآحاد','العشرات'],correct:'العشرات',hint1:'الرقم ٨ في يسار العدد.',hint2:'اليسار في عدد من منزلتين هو العشرات.',explain:'منزلة ٨ هي العشرات.',visual:{kind:'place',n:83}}
+  ],
+  reason:[{id:'p-e1',obj:'pv',type:'mcq',reason:true,ask:'لماذا قيمة ٧ في ٧٢ هي ٧٠ وليست ٧؟',opts:['لأن ٧ في منزلة العشرات؛ أي ٧ عشرات','لأن ٧ أكبر من ٢'],correct:'لأن ٧ في منزلة العشرات؛ أي ٧ عشرات',hint1:'اربط القيمة بالمنزلة.',hint2:'العشرات تعني مجموعات من عشرة.',explain:'المنزلة هي التي غيّرت قيمة الرقم.',visual:{kind:'place',n:72}}],
+  mastery:{targets:['pc','pp','pv'],pool:[
+   {id:'p-m1',obj:'pc',type:'mcq',n:91,ask:'إتقان: كم عشرة وكم آحاد في ٩١؟',opts:['٩ عشرات و١ آحاد','١ عشرة و٩ آحاد'],correct:'٩ عشرات و١ آحاد',hint1:'الرقم الأيسر عشرات.',hint2:'٩ في العشرات و١ في الآحاد.',explain:'٩١ = ٩ عشرات و١ آحاد.',visual:{kind:'place',n:91}},
+   {id:'p-m2',obj:'pc',type:'mcq',n:46,ask:'إتقان جديد: كم عشرة وكم آحاد في ٤٦؟',opts:['٤ عشرات و٦ آحاد','٦ عشرات و٤ آحاد'],correct:'٤ عشرات و٦ آحاد',hint1:'الأيسر عشرات.',hint2:'٤ عشرات و٦ آحاد.',explain:'٤٦ = ٤ عشرات و٦ آحاد.',visual:{kind:'place',n:46}},
+   {id:'p-m3',obj:'pp',type:'mcq',n:85,ask:'إتقان: ما منزلة الرقم ٨ في ٨٥؟',opts:['الآحاد','العشرات'],correct:'العشرات',hint1:'٨ في يسار العدد.',hint2:'اليسار هو العشرات.',explain:'منزلة ٨ هي العشرات.',visual:{kind:'place',n:85}},
+   {id:'p-m4',obj:'pp',type:'mcq',n:29,ask:'إتقان جديد: ما منزلة الرقم ٩ في ٢٩؟',opts:['الآحاد','العشرات'],correct:'الآحاد',hint1:'٩ في يمين العدد.',hint2:'اليمين هو الآحاد.',explain:'منزلة ٩ هي الآحاد.',visual:{kind:'place',n:29}},
+   {id:'p-m5',obj:'pv',type:'mcq',n:72,ask:'إتقان: ما قيمة الرقم ٧ في ٧٢؟',opts:[7,70,2,20],correct:70,hint1:'٧ في العشرات.',hint2:'٧ عشرات = ٧٠.',explain:'قيمة ٧ هي ٧٠.',visual:{kind:'place',n:72}},
+   {id:'p-m6',obj:'pv',type:'mcq',n:46,ask:'إتقان جديد: ما قيمة الرقم ٤ في ٤٦؟',opts:[4,40,6,60],correct:40,hint1:'٤ في العشرات.',hint2:'٤ عشرات = ٤٠.',explain:'قيمة ٤ هي ٤٠.',visual:{kind:'place',n:46}}
+  ]},
+  enrich:[{id:'p-x1',obj:'pv',type:'mcq',reason:true,ask:'تحدٍّ: الرقم ٦ في ٦٤ والرقم ٦ في ٤٦؛ أين قيمته أكبر؟',opts:['في ٦٤؛ لأن ٦ في العشرات وقيمته ٦٠','في ٤٦؛ لأن ٦ في الآحاد'],correct:'في ٦٤؛ لأن ٦ في العشرات وقيمته ٦٠',hint1:'الرقم نفسه، لكن المنزل مختلف.',hint2:'قارن ٦ عشرات مع ٦ آحاد.',explain:'أحسنت؛ تغيرت القيمة بتغير المنزلة.',visual:{kind:'compare',a:64,b:46}}]
+ },
+ evenodd:{
+  title:'العدد الزوجي والعدد الفردي',goal:'أن تميز العدد الزوجي والفردي من معنى التزاوج قبل القاعدة.',prereq:'العد وتكوين أزواج بسيطة.',evidence:'يبرر الزوجي أو الفردي بالتزاوج، ثم يستخدم رقم الآحاد كاختصار بعد فهم المعنى.',misconception:'حفظ قاعدة رقم الآحاد دون فهم معنى الزوجية.',support:'لا تستخدم قاعدة رقم الآحاد أولًا؛ ارجع إلى تكوين أزواج.',enrich:'توقع زوجية عدد أكبر ثم بررها.',fallback:'استخدم الطلاب أنفسهم لتكوين أزواج.',oral:'كوّن أزواجًا؛ هل بقي عنصر وحيد؟',
+  objectives:[['ep','أكوّن أزواجًا وألاحظ إن بقي عنصر منفرد.'],['eu','أستخدم رقم الآحاد بعد فهم التزاوج.'],['er','أعلّل لماذا العدد زوجي أو فردي.']],
+  concept:{text:'كوّن أزواجًا. إذا وجد كل عنصر شريكًا فالعدد زوجي، وإذا بقي عنصر واحد بلا شريك فالعدد فردي. بعد فهم ذلك يمكننا فحص رقم الآحاد.',example:'٨ تكوّن ٤ أزواج كاملة؛ لذلك ٨ زوجي.',visual:{kind:'pairs',n:8}},
+  readiness:[
+   {id:'e-r1',obj:'ep',type:'mcq',ask:'تهيئة: كوّن أزواجًا من ٨ عناصر. هل يبقى عنصر بلا شريك؟',opts:['لا','نعم'],correct:'لا',hint1:'ضع كل عنصرين معًا.',hint2:'٨ = ٤ أزواج كاملة.',explain:'لا يبقى عنصر؛ هذه هي فكرة الزوجي.',visual:{kind:'pairs',n:8}},
+   {id:'e-r2',obj:'ep',type:'mcq',ask:'تهيئة جديدة: كوّن أزواجًا من ٧ عناصر. هل يبقى عنصر بلا شريك؟',opts:['نعم','لا'],correct:'نعم',hint1:'كوّن ٣ أزواج.',hint2:'بعد ٦ عناصر يبقى عنصر واحد.',explain:'نعم، يبقى عنصر واحد.',visual:{kind:'pairs',n:7}}
+  ],
+  guided:[
+   {id:'e-g1',obj:'ep',type:'mcq',n:7,ask:'هل ٧ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'هل بقي عنصر واحد بلا شريك؟',hint2:'٧ = ٣ أزواج وعنصر واحد.',explain:'٧ فردي؛ لأنه يبقى عنصر بلا شريك.',visual:{kind:'pairs',n:7}},
+   {id:'e-g2',obj:'eu',type:'mcq',n:27,ask:'بعد فهم التزاوج: هل ٢٧ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'العشرات أزواج كاملة؛ افحص ٧ آحاد.',hint2:'٧ آحاد تترك عنصرًا واحدًا.',explain:'٢٧ فردي لأن ٧ آحاد لا تتزاوج كلها.',visual:{kind:'units',n:27}}
+  ],
+  practice:[
+   {id:'e-p1',obj:'eu',type:'mcq',n:34,ask:'هل ٣٤ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٤ آحاد.',hint2:'٤ آحاد تكوّن زوجين.',explain:'٣٤ زوجي.',visual:{kind:'units',n:34}},
+   {id:'e-p2',obj:'ep',type:'mcq',n:9,ask:'كوّن أزواجًا من ٩ عناصر. هل العدد زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'هل يبقى عنصر واحد؟',hint2:'٨ عناصر تكوّن ٤ أزواج ويبقى ١.',explain:'٩ فردي.',visual:{kind:'pairs',n:9}},
+   {id:'e-p3',obj:'eu',type:'mcq',n:42,ask:'هل ٤٢ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٢ آحاد.',hint2:'٢ آحاد زوج كامل.',explain:'٤٢ زوجي.',visual:{kind:'units',n:42}}
+  ],
+  reason:[{id:'e-e1',obj:'er',type:'mcq',reason:true,ask:'أي تعليل صحيح للعدد ٣٥؟',opts:['فردي؛ لأن ٥ آحاد تترك عنصرًا واحدًا بلا شريك','زوجي؛ لأن ٣ عشرات موجودة'],correct:'فردي؛ لأن ٥ آحاد تترك عنصرًا واحدًا بلا شريك',hint1:'التعليل يجب أن يعود إلى التزاوج.',hint2:'افحص ٥ آحاد.',explain:'تعليل صحيح لمعنى الفردي.',visual:{kind:'units',n:35}}],
+  mastery:{targets:['ep','eu','er'],pool:[
+   {id:'e-m1',obj:'ep',type:'mcq',n:6,ask:'إتقان: هل ٦ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'كوّن أزواجًا.',hint2:'٣ أزواج كاملة.',explain:'٦ زوجي.',visual:{kind:'pairs',n:6}},
+   {id:'e-m2',obj:'ep',type:'mcq',n:5,ask:'إتقان جديد: هل ٥ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'كوّن أزواجًا.',hint2:'يبقى عنصر واحد.',explain:'٥ فردي.',visual:{kind:'pairs',n:5}},
+   {id:'e-m3',obj:'eu',type:'mcq',n:46,ask:'إتقان: هل ٤٦ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٦ آحاد.',hint2:'٦ آحاد تتزاوج كاملة.',explain:'٤٦ زوجي.',visual:{kind:'units',n:46}},
+   {id:'e-m4',obj:'eu',type:'mcq',n:31,ask:'إتقان جديد: هل ٣١ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'افحص ١ آحاد.',hint2:'يبقى عنصر واحد.',explain:'٣١ فردي.',visual:{kind:'units',n:31}},
+   {id:'e-m5',obj:'er',type:'mcq',reason:true,n:28,ask:'إتقان: هل ٢٨ زوجي أم فردي، ولماذا؟',opts:['زوجي؛ لأن ٨ آحاد تتزاوج بلا باقٍ','فردي؛ لأن ٢ عشرات أقل من ٨'],correct:'زوجي؛ لأن ٨ آحاد تتزاوج بلا باقٍ',hint1:'اربط السبب بالآحاد والتزاوج.',hint2:'٨ آحاد = ٤ أزواج.',explain:'النوع والتعليل صحيحان.',visual:{kind:'units',n:28}},
+   {id:'e-m6',obj:'er',type:'mcq',reason:true,n:43,ask:'إتقان جديد: هل ٤٣ زوجي أم فردي، ولماذا؟',opts:['فردي؛ لأن ٣ آحاد تترك عنصرًا واحدًا بلا شريك','زوجي؛ لأن ٤ عشرات عدد زوجي'],correct:'فردي؛ لأن ٣ آحاد تترك عنصرًا واحدًا بلا شريك',hint1:'افحص ٣ آحاد.',hint2:'٣ = زوج وعنصر واحد.',explain:'أثبتَّ النوع والسبب.',visual:{kind:'units',n:43}}
+  ]},
+  enrich:[{id:'e-x1',obj:'er',type:'mcq',reason:true,n:78,ask:'تحدٍّ: توقّع نوع ٧٨ وبرر.',opts:['زوجي؛ لأن ٨ آحاد تتزاوج بلا باقٍ','فردي؛ لأن ٧ عشرات عدد فردي'],correct:'زوجي؛ لأن ٨ آحاد تتزاوج بلا باقٍ',hint1:'العشرات أزواج كاملة.',hint2:'افحص رقم الآحاد ٨.',explain:'أحسنت؛ استخدمت الاختصار بعد فهم المعنى.',visual:{kind:'units',n:78}}]
+ }
+};
+
+const UNIT_CHECKS=[
+ {skill:'compare',obj:'ct',type:'mcq',ask:'فحص الهدف: أي العددين أكبر؟',opts:[34,71],correct:71,hint1:'ابدأ بالعشرات.',hint2:'٧ عشرات أكبر من ٣ عشرات.',explain:'٧١ أكبر لأن عشراته أكثر.',visual:{kind:'compare',a:34,b:71}},
+ {skill:'compare',obj:'co',type:'mcq',ask:'فحص الهدف: العشرات متساوية. أي العددين أصغر؟',opts:[64,68],correct:64,hint1:'انتقل إلى الآحاد.',hint2:'٤ آحاد أقل من ٨ آحاد.',explain:'٦٤ أصغر.',visual:{kind:'compare',a:64,b:68}},
+ {skill:'compare',obj:'cr',type:'mcq',reason:true,ask:'فحص الهدف: أي تعليل صحيح للمقارنة بين ٥٢ و٥٧؟',opts:['٥٧ أكبر؛ لأن العشرات متساوية و٧ آحاد أكبر من ٢ آحاد','٥٢ أكبر؛ لأن ٢ أصغر من ٧'],correct:'٥٧ أكبر؛ لأن العشرات متساوية و٧ آحاد أكبر من ٢ آحاد',hint1:'اذكر العشرات ثم الآحاد.',hint2:'العشرات متساوية؛ الآحاد تحسم.',explain:'أثبتَّ الاختيار والسبب.',visual:{kind:'compare',a:52,b:57}},
+ {skill:'order',obj:'oa',type:'order',nums:[39,24,51],ask:'فحص الهدف: رتّب من الأصغر إلى الأكبر.',correct:[24,39,51],hint1:'ابدأ بأقل عشرات.',hint2:'٢ ثم ٣ ثم ٥ عشرات.',explain:'٢٤، ٣٩، ٥١.'},
+ {skill:'order',obj:'od',type:'order',nums:[43,68,52],ask:'فحص الهدف: رتّب من الأكبر إلى الأصغر.',correct:[68,52,43],hint1:'ابدأ بأكبر عشرات.',hint2:'٦ ثم ٥ ثم ٤ عشرات.',explain:'٦٨، ٥٢، ٤٣.'},
+ {skill:'order',obj:'os',type:'mcq',reason:true,ask:'فحص الهدف: لماذا يأتي ٤٢ قبل ٤٧ في الترتيب التصاعدي؟',opts:['لأن العشرات متساوية و٢ آحاد أقل من ٧ آحاد','لأن ٤ أصغر من ٧'],correct:'لأن العشرات متساوية و٢ آحاد أقل من ٧ آحاد',hint1:'اذكر المنزلة التي حسمت.',hint2:'العشرات متساوية.',explain:'هذا تعليل صحيح للترتيب.'},
+ {skill:'place',obj:'pc',type:'mcq',n:73,ask:'فحص الهدف: كم عشرة وكم آحاد في ٧٣؟',opts:['٧ عشرات و٣ آحاد','٣ عشرات و٧ آحاد'],correct:'٧ عشرات و٣ آحاد',hint1:'الأيسر عشرات.',hint2:'٧ في العشرات و٣ في الآحاد.',explain:'٧٣ = ٧ عشرات و٣ آحاد.',visual:{kind:'place',n:73}},
+ {skill:'place',obj:'pp',type:'mcq',n:58,ask:'فحص الهدف: ما منزلة الرقم ٨ في ٥٨؟',opts:['الآحاد','العشرات'],correct:'الآحاد',hint1:'٨ في يمين العدد.',hint2:'اليمين هو الآحاد.',explain:'منزلة ٨ هي الآحاد.',visual:{kind:'place',n:58}},
+ {skill:'place',obj:'pv',type:'mcq',n:64,ask:'فحص الهدف: ما قيمة الرقم ٦ في ٦٤؟',opts:[6,60,4,40],correct:60,hint1:'٦ في العشرات.',hint2:'٦ عشرات = ٦٠.',explain:'قيمة ٦ هي ٦٠.',visual:{kind:'place',n:64}},
+ {skill:'evenodd',obj:'ep',type:'mcq',n:7,ask:'فحص الهدف: كوّن أزواجًا من ٧. هل العدد زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'هل يبقى عنصر؟',hint2:'٣ أزواج ويبقى عنصر واحد.',explain:'٧ فردي.',visual:{kind:'pairs',n:7}},
+ {skill:'evenodd',obj:'eu',type:'mcq',n:52,ask:'فحص الهدف: بعد فهم التزاوج، هل ٥٢ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٢ آحاد.',hint2:'٢ آحاد زوج كامل.',explain:'٥٢ زوجي.',visual:{kind:'units',n:52}},
+ {skill:'evenodd',obj:'er',type:'mcq',reason:true,n:47,ask:'فحص الهدف: هل ٤٧ زوجي أم فردي، ولماذا؟',opts:['فردي؛ لأن ٧ آحاد تترك عنصرًا واحدًا بلا شريك','زوجي؛ لأن ٤ عشرات عدد زوجي'],correct:'فردي؛ لأن ٧ آحاد تترك عنصرًا واحدًا بلا شريك',hint1:'السبب يجب أن يعود إلى التزاوج.',hint2:'٧ آحاد لا تتزاوج كلها.',explain:'أثبتَّ النوع والسبب.',visual:{kind:'units',n:47}}
+];
+
+const OBJECTIVE_REPAIR={
+ ct:{skill:'compare',obj:'ct',type:'mcq',ask:'نثبت الفكرة: أيهما أكبر؟',opts:[26,62],correct:62,hint1:'العشرات أولًا.',hint2:'٦ عشرات أكبر من ٢.',explain:'٦٢ أكبر.',visual:{kind:'compare',a:26,b:62}},
+ co:{skill:'compare',obj:'co',type:'mcq',ask:'نثبت الفكرة: أيهما أصغر؟',opts:[45,49],correct:45,hint1:'العشرات متساوية.',hint2:'٥ آحاد أقل من ٩.',explain:'٤٥ أصغر.',visual:{kind:'compare',a:45,b:49}},
+ cr:{skill:'compare',obj:'cr',type:'mcq',reason:true,ask:'نثبت السبب: أي تفسير صحيح للمقارنة بين ٦٣ و٣٦؟',opts:['٦٣ أكبر؛ لأن ٦ عشرات أكبر من ٣ عشرات','٣٦ أكبر؛ لأن ٦ آحاد أكبر من ٣'],correct:'٦٣ أكبر؛ لأن ٦ عشرات أكبر من ٣ عشرات',hint1:'ابدأ بالعشرات.',hint2:'المنزلة الأعلى تحسم هنا.',explain:'هذا هو السبب الصحيح.',visual:{kind:'compare',a:63,b:36}},
+ oa:{skill:'order',obj:'oa',type:'order',nums:[42,27,35],ask:'نثبت الفكرة: رتّب من الأصغر إلى الأكبر.',correct:[27,35,42],hint1:'أقل عشرات أولًا.',hint2:'٢ ثم ٣ ثم ٤.',explain:'٢٧، ٣٥، ٤٢.'},
+ od:{skill:'order',obj:'od',type:'order',nums:[36,59,44],ask:'نثبت الفكرة: رتّب من الأكبر إلى الأصغر.',correct:[59,44,36],hint1:'أكبر عشرات أولًا.',hint2:'٥ ثم ٤ ثم ٣.',explain:'٥٩، ٤٤، ٣٦.'},
+ os:{skill:'order',obj:'os',type:'mcq',reason:true,ask:'نثبت السبب: لماذا يأتي ٦١ قبل ٦٧ تصاعديًا؟',opts:['لأن العشرات متساوية و١ آحاد أقل من ٧ آحاد','لأن ٦ أقل من ٧'],correct:'لأن العشرات متساوية و١ آحاد أقل من ٧ آحاد',hint1:'العشرات متساوية.',hint2:'الآحاد تحسم.',explain:'تعليل صحيح.'},
+ pc:{skill:'place',obj:'pc',type:'mcq',n:52,ask:'نثبت الفكرة: كم عشرة وكم آحاد في ٥٢؟',opts:['٥ عشرات و٢ آحاد','٢ عشرات و٥ آحاد'],correct:'٥ عشرات و٢ آحاد',hint1:'الأيسر عشرات.',hint2:'٥ عشرات و٢ آحاد.',explain:'٥٢ = ٥ عشرات و٢ آحاد.',visual:{kind:'place',n:52}},
+ pp:{skill:'place',obj:'pp',type:'mcq',n:83,ask:'نثبت الفكرة: ما منزلة الرقم ٨ في ٨٣؟',opts:['العشرات','الآحاد'],correct:'العشرات',hint1:'٨ في يسار العدد.',hint2:'اليسار عشرات.',explain:'منزلة ٨ هي العشرات.',visual:{kind:'place',n:83}},
+ pv:{skill:'place',obj:'pv',type:'mcq',n:72,ask:'نثبت الفكرة: ما قيمة الرقم ٧ في ٧٢؟',opts:[7,70,2,20],correct:70,hint1:'٧ في العشرات.',hint2:'٧ عشرات = ٧٠.',explain:'القيمة ٧٠.',visual:{kind:'place',n:72}},
+ ep:{skill:'evenodd',obj:'ep',type:'mcq',n:5,ask:'نثبت الفكرة: كوّن أزواجًا من ٥. هل العدد زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'كوّن زوجين.',hint2:'يبقى عنصر واحد.',explain:'٥ فردي.',visual:{kind:'pairs',n:5}},
+ eu:{skill:'evenodd',obj:'eu',type:'mcq',n:34,ask:'نثبت الفكرة: هل ٣٤ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٤ آحاد.',hint2:'٤ آحاد تتزاوج كاملة.',explain:'٣٤ زوجي.',visual:{kind:'units',n:34}},
+ er:{skill:'evenodd',obj:'er',type:'mcq',reason:true,n:35,ask:'نثبت السبب: لماذا ٣٥ فردي؟',opts:['لأن ٥ آحاد تترك عنصرًا واحدًا بلا شريك','لأن ٣ عشرات عدد فردي'],correct:'لأن ٥ آحاد تترك عنصرًا واحدًا بلا شريك',hint1:'عد إلى التزاوج.',hint2:'٥ آحاد = زوجان وعنصر.',explain:'تعليل صحيح.',visual:{kind:'units',n:35}}
+};
+
+const OBJECTIVE_RETEST={
+ ct:[
+  {skill:'compare',obj:'ct',type:'mcq',ask:'إعادة اختبار جديدة: أيهما أكبر؟',opts:[48,83],correct:83,hint1:'العشرات أولًا.',hint2:'٨ عشرات أكبر من ٤.',explain:'٨٣ أكبر.',visual:{kind:'compare',a:48,b:83}},
+  {skill:'compare',obj:'ct',type:'mcq',ask:'إعادة اختبار أخرى: أيهما أصغر؟',opts:[71,29],correct:29,hint1:'العشرات أولًا.',hint2:'٢ عشرات أقل من ٧.',explain:'٢٩ أصغر.',visual:{kind:'compare',a:71,b:29}}
+ ],
+ co:[
+  {skill:'compare',obj:'co',type:'mcq',ask:'إعادة اختبار جديدة: أيهما أصغر؟',opts:[75,72],correct:72,hint1:'العشرات متساوية.',hint2:'٢ آحاد أقل من ٥.',explain:'٧٢ أصغر.',visual:{kind:'compare',a:75,b:72}},
+  {skill:'compare',obj:'co',type:'mcq',ask:'إعادة اختبار أخرى: أيهما أكبر؟',opts:[46,41],correct:46,hint1:'العشرات متساوية.',hint2:'٦ آحاد أكبر من ١.',explain:'٤٦ أكبر.',visual:{kind:'compare',a:46,b:41}}
+ ],
+ cr:[
+  {skill:'compare',obj:'cr',type:'mcq',reason:true,ask:'إعادة اختبار جديدة: أيهما أصغر، ولماذا؟',opts:['٣١؛ لأن ٣ عشرات أقل من ٦ عشرات','٦١؛ لأن ١ آحاد أقل من ٣'],correct:'٣١؛ لأن ٣ عشرات أقل من ٦ عشرات',hint1:'ابدأ بالعشرات.',hint2:'٣ عشرات أقل من ٦.',explain:'اختيار وتعليل صحيحان.',visual:{kind:'compare',a:31,b:61}},
+  {skill:'compare',obj:'cr',type:'mcq',reason:true,ask:'إعادة اختبار أخرى: أيهما أكبر، ولماذا؟',opts:['٥٩؛ لأن العشرات متساوية و٩ آحاد أكبر من ٤ آحاد','٥٤؛ لأن ٤ أقل من ٩'],correct:'٥٩؛ لأن العشرات متساوية و٩ آحاد أكبر من ٤ آحاد',hint1:'العشرات متساوية.',hint2:'قارن الآحاد.',explain:'تعليل صحيح.',visual:{kind:'compare',a:54,b:59}}
+ ],
+ oa:[
+  {skill:'order',obj:'oa',type:'order',nums:[46,28,33],ask:'إعادة اختبار جديدة: رتّب من الأصغر إلى الأكبر.',correct:[28,33,46],hint1:'ابدأ بالأقل عشرات.',hint2:'٢ ثم ٣ ثم ٤.',explain:'٢٨، ٣٣، ٤٦.'},
+  {skill:'order',obj:'oa',type:'order',nums:[67,41,53],ask:'إعادة اختبار أخرى: رتّب من الأصغر إلى الأكبر.',correct:[41,53,67],hint1:'٤ عشرات أولًا.',hint2:'٤ ثم ٥ ثم ٦.',explain:'٤١، ٥٣، ٦٧.'}
+ ],
+ od:[
+  {skill:'order',obj:'od',type:'order',nums:[38,61,49],ask:'إعادة اختبار جديدة: رتّب من الأكبر إلى الأصغر.',correct:[61,49,38],hint1:'ابدأ بالأكبر عشرات.',hint2:'٦ ثم ٤ ثم ٣.',explain:'٦١، ٤٩، ٣٨.'},
+  {skill:'order',obj:'od',type:'order',nums:[27,72,54],ask:'إعادة اختبار أخرى: رتّب من الأكبر إلى الأصغر.',correct:[72,54,27],hint1:'٧ عشرات أولًا.',hint2:'٧ ثم ٥ ثم ٢.',explain:'٧٢، ٥٤، ٢٧.'}
+ ],
+ os:[
+  {skill:'order',obj:'os',type:'mcq',reason:true,ask:'إعادة اختبار جديدة: لماذا يأتي ٥٤ قبل ٥٩ تصاعديًا؟',opts:['لأن العشرات متساوية و٤ آحاد أقل من ٩ آحاد','لأن ٥ أصغر من ٩'],correct:'لأن العشرات متساوية و٤ آحاد أقل من ٩ آحاد',hint1:'العشرات متساوية.',hint2:'الآحاد هي التي حسمت.',explain:'تعليل صحيح.'},
+  {skill:'order',obj:'os',type:'mcq',reason:true,ask:'إعادة اختبار أخرى: لماذا يأتي ٧٢ قبل ٦٨ تنازليًا؟',opts:['لأن ٧ عشرات أكبر من ٦ عشرات','لأن ٢ آحاد أقل من ٨'],correct:'لأن ٧ عشرات أكبر من ٦ عشرات',hint1:'في التنازلي نبدأ بالأكبر.',hint2:'٧ عشرات أكبر من ٦.',explain:'تعليل صحيح.'}
+ ],
+ pc:[
+  {skill:'place',obj:'pc',type:'mcq',n:82,ask:'إعادة اختبار جديدة: كم عشرة وكم آحاد في ٨٢؟',opts:['٨ عشرات و٢ آحاد','٢ عشرات و٨ آحاد'],correct:'٨ عشرات و٢ آحاد',hint1:'الأيسر عشرات.',hint2:'٨ عشرات و٢ آحاد.',explain:'٨٢ = ٨ عشرات و٢ آحاد.',visual:{kind:'place',n:82}},
+  {skill:'place',obj:'pc',type:'mcq',n:47,ask:'إعادة اختبار أخرى: كم عشرة وكم آحاد في ٤٧؟',opts:['٤ عشرات و٧ آحاد','٧ عشرات و٤ آحاد'],correct:'٤ عشرات و٧ آحاد',hint1:'الأيسر عشرات.',hint2:'٤ عشرات و٧ آحاد.',explain:'٤٧ = ٤ عشرات و٧ آحاد.',visual:{kind:'place',n:47}}
+ ],
+ pp:[
+  {skill:'place',obj:'pp',type:'mcq',n:37,ask:'إعادة اختبار جديدة: ما منزلة الرقم ٣ في ٣٧؟',opts:['العشرات','الآحاد'],correct:'العشرات',hint1:'٣ في اليسار.',hint2:'اليسار عشرات.',explain:'منزلة ٣ هي العشرات.',visual:{kind:'place',n:37}},
+  {skill:'place',obj:'pp',type:'mcq',n:69,ask:'إعادة اختبار أخرى: ما منزلة الرقم ٩ في ٦٩؟',opts:['الآحاد','العشرات'],correct:'الآحاد',hint1:'٩ في اليمين.',hint2:'اليمين آحاد.',explain:'منزلة ٩ هي الآحاد.',visual:{kind:'place',n:69}}
+ ],
+ pv:[
+  {skill:'place',obj:'pv',type:'mcq',n:85,ask:'إعادة اختبار جديدة: ما قيمة الرقم ٨ في ٨٥؟',opts:[8,80,5,50],correct:80,hint1:'٨ في العشرات.',hint2:'٨ عشرات = ٨٠.',explain:'قيمة ٨ هي ٨٠.',visual:{kind:'place',n:85}},
+  {skill:'place',obj:'pv',type:'mcq',n:29,ask:'إعادة اختبار أخرى: ما قيمة الرقم ٩ في ٢٩؟',opts:[9,90,2,20],correct:9,hint1:'٩ في الآحاد.',hint2:'٩ آحاد = ٩.',explain:'قيمة ٩ هي ٩.',visual:{kind:'place',n:29}}
+ ],
+ ep:[
+  {skill:'evenodd',obj:'ep',type:'mcq',n:6,ask:'إعادة اختبار جديدة: كوّن أزواجًا من ٦. هل هو زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'كوّن ٣ أزواج.',hint2:'لا يبقى عنصر.',explain:'٦ زوجي.',visual:{kind:'pairs',n:6}},
+  {skill:'evenodd',obj:'ep',type:'mcq',n:9,ask:'إعادة اختبار أخرى: كوّن أزواجًا من ٩. هل هو زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'كوّن ٤ أزواج.',hint2:'يبقى عنصر.',explain:'٩ فردي.',visual:{kind:'pairs',n:9}}
+ ],
+ eu:[
+  {skill:'evenodd',obj:'eu',type:'mcq',n:43,ask:'إعادة اختبار جديدة: هل ٤٣ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'فردي',hint1:'افحص ٣ آحاد.',hint2:'٣ آحاد تترك عنصرًا.',explain:'٤٣ فردي.',visual:{kind:'units',n:43}},
+  {skill:'evenodd',obj:'eu',type:'mcq',n:68,ask:'إعادة اختبار أخرى: هل ٦٨ زوجي أم فردي؟',opts:['زوجي','فردي'],correct:'زوجي',hint1:'افحص ٨ آحاد.',hint2:'٨ آحاد تتزاوج كلها.',explain:'٦٨ زوجي.',visual:{kind:'units',n:68}}
+ ],
+ er:[
+  {skill:'evenodd',obj:'er',type:'mcq',reason:true,n:36,ask:'إعادة اختبار جديدة: هل ٣٦ زوجي أم فردي، ولماذا؟',opts:['زوجي؛ لأن ٦ آحاد تتزاوج بلا باقٍ','فردي؛ لأن ٣ عشرات عدد فردي'],correct:'زوجي؛ لأن ٦ آحاد تتزاوج بلا باقٍ',hint1:'السبب من الآحاد والتزاوج.',hint2:'٦ آحاد = ٣ أزواج.',explain:'النوع والسبب صحيحان.',visual:{kind:'units',n:36}},
+  {skill:'evenodd',obj:'er',type:'mcq',reason:true,n:51,ask:'إعادة اختبار أخرى: هل ٥١ زوجي أم فردي، ولماذا؟',opts:['فردي؛ لأن ١ آحاد يبقى بلا شريك','زوجي؛ لأن ٥ عشرات موجودة'],correct:'فردي؛ لأن ١ آحاد يبقى بلا شريك',hint1:'افحص الآحاد.',hint2:'١ آحاد يبقى بلا شريك.',explain:'النوع والسبب صحيحان.',visual:{kind:'units',n:51}}
+ ]
+};
+
+const memoryStore={};let storagePersistent=true;
+const safeStorage={get(k,f){try{const v=localStorage.getItem(k);return v===null?(memoryStore[k]??f):v}catch(_){storagePersistent=false;return memoryStore[k]??f}},set(k,v){memoryStore[k]=v;try{localStorage.setItem(k,v)}catch(_){storagePersistent=false}}};
+const defaultSkill=()=>({seen:0,firstCorrect:0,errors:0,mastered:false,readiness:false,objectives:{},masteryHits:{},needs:{}});
+let saved={};try{saved=JSON.parse(safeStorage.get('u99_expert_state','{}'))||{}}catch(_){saved={}};
+let state={stars:Number(saved.stars)||0,completed:saved.completed||{},skills:saved.skills||{},reviewRound:Number(saved.reviewRound)||0,unitProof:saved.unitProof||{},reviewProtocolVersion:Number(saved.reviewProtocolVersion)||0,guide:GUIDES[saved.guide]?saved.guide:'noor',welcomeDone:saved.welcomeDone===true,notebookEvidence:saved.notebookEvidence||{}};
+for(const k of SKILLS){state.skills[k]=Object.assign(defaultSkill(),state.skills[k]||{});state.skills[k].objectives=state.skills[k].objectives||{};state.skills[k].masteryHits=state.skills[k].masteryHits||{};state.skills[k].needs=state.skills[k].needs||{};for(const [obj] of LESSONS[k].objectives){if(state.skills[k].objectives[obj]&&!state.skills[k].masteryHits[obj])state.skills[k].masteryHits[obj]=2;state.skills[k].objectives[obj]=(state.skills[k].masteryHits[obj]||0)>=2}state.skills[k].mastered=LESSONS[k].objectives.every(o=>state.skills[k].objectives[o[0]])}if(state.reviewProtocolVersion<2){state.completed.review=false;state.unitProof={}}
+let session={kind:'',phase:'',index:0,mistakes:0,help:0,answered:false,orderSelection:[],readinessIndex:0,masteryTargetIndex:0,masteryUsed:{},currentMastery:null,review:null};
+function persist(){safeStorage.set('u99_expert_state',JSON.stringify(state));drawHome()}
+function guide(){return GUIDES[state.guide]||GUIDES.noor}
+function showSpark(text){const el=$('spark');if(!el)return;el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(showSpark.t);showSpark.t=setTimeout(()=>el.classList.remove('show'),1500)}
+function rewardHtml(){const items=SKILLS.map(k=>'<div class="reward-key '+(state.skills[k].mastered?'earned':'')+'"><strong>🔑</strong>'+storyNames[k]+'</div>');items.push('<div class="reward-key '+(isUnitComplete()?'earned':'')+'"><strong>👑</strong>قلعة الإتقان</div>');return items.join('')}
+function missionTitle(k){return storyNames[k]||'مهمتك التالية'}
+function processPraise(skill,q){const bank={compare:['رتّبت تفكيرك من العشرات إلى الآحاد.','قارنت بالقيمة، لا بشكل الرقم.'],order:['بنيت الترتيب خطوة خطوة.','حافظت على اتجاه الترتيب حتى النهاية.'],place:['ربطت الرقم بمنزلته وقيمته.','فصلت بين الرقم وقيمته؛ هذه هي الفكرة.'],evenodd:['استخدمت معنى الأزواج قبل الاختصار.','تحققت بالتزاوج، ثم حكمت على العدد.']};const a=bank[skill]||['فكرت ثم أجبت.'];let sum=0;for(const ch of String(q.id||''))sum+=ch.charCodeAt(0);return a[sum%a.length]}
+function updateGuideLine(text){if($('guideLine'))$('guideLine').textContent=text}
+function blocks(n){const t=Math.floor(n/10),o=n%10;let s='<div class="blocks" aria-hidden="true">';for(let i=0;i<t;i++)s+='<i class="ten"></i>';for(let i=0;i<o;i++)s+='<i class="one"></i>';return s+'</div>'}
+function numberCard(n){const t=Math.floor(n/10),o=n%10;return '<div class="number-card" data-number="'+n+'" role="img" aria-label="'+ar(t)+' عشرات و'+ar(o)+' آحاد"><div class="number-label">'+ar(n)+'</div>'+blocks(n)+'</div>'}
+function compareVisual(a,b){return '<div class="number-grid">'+numberCard(a)+numberCard(b)+'</div>'}
+function placeBoard(n){const t=Math.floor(n/10),o=n%10;return '<div class="place-board" role="img" aria-label="'+ar(t)+' عشرات و'+ar(o)+' آحاد"><div class="place-col"><b>العشرات</b><strong>'+ar(t)+'</strong></div><div class="place-col"><b>الآحاد</b><strong>'+ar(o)+'</strong></div></div>'+blocks(n)}
+function pairing(n){let s='<div class="pairs" role="img" aria-label="'+ar(n)+' عناصر في أزواج'+(n%2?' مع عنصر واحد بلا شريك':' بلا عنصر متبقٍ')+'">';const p=Math.floor(n/2);for(let i=0;i<p;i++)s+='<span class="pair" aria-hidden="true"><i class="dot"></i><i class="dot"></i></span>';if(n%2)s+='<span class="lonely-wrap" aria-hidden="true"><i class="dot"></i></span>';return s+'</div>'}
+function unitsVisual(n){const ones=n%10;return '<div class="number-grid"><div class="number-card"><div class="number-label">'+ar(n)+'</div><div class="units-note">العشرات أزواج كاملة؛ نتحقق من '+ar(ones)+' آحاد.</div>'+pairing(ones)+'</div><div class="number-card"><div class="number-label">الآحاد: '+ar(ones)+'</div><div class="units-note">بعد فهم التزاوج، رقم الآحاد اختصار مفيد.</div></div></div>'}
+function lineVisual(nums){return '<div class="math">'+nums.map(ar).join('   ←   ')+'</div>'}
+function visualHtml(v){if(!v)return '';if(v.kind==='compare')return compareVisual(v.a,v.b);if(v.kind==='place')return placeBoard(v.n);if(v.kind==='pairs')return pairing(v.n);if(v.kind==='units')return unitsVisual(v.n);if(v.kind==='line')return lineVisual(v.nums);return ''}
+function objectiveLabel(skill,obj){const x=LESSONS[skill].objectives.find(o=>o[0]===obj);return x?x[1]:obj}
+function objectiveProgress(skill){const L=LESSONS[skill],s=state.skills[skill];return L.objectives.filter(o=>(s.masteryHits[o[0]]||0)>=2).length+'/'+L.objectives.length}
+function allObjectiveKeys(){return SKILLS.flatMap(k=>LESSONS[k].objectives.map(o=>o[0]))}
+function isUnitComplete(){return state.reviewProtocolVersion===2&&allObjectiveKeys().every(o=>state.unitProof[o]===true)}
+function completedCount(){return SKILLS.filter(k=>state.skills[k].mastered).length+(isUnitComplete()?1:0)}
+function ratio(skill){const s=state.skills[skill];return s.seen?s.firstCorrect/s.seen:1}
+function recommendedKind(){const incomplete=SKILLS.filter(k=>!state.skills[k].mastered);if(incomplete.length){const started=incomplete.filter(k=>state.skills[k].seen>0).sort((a,b)=>ratio(a)-ratio(b)||state.skills[b].errors-state.skills[a].errors);return started[0]||incomplete[0]}if(!isUnitComplete())return'review';return SKILLS.slice().sort((a,b)=>ratio(a)-ratio(b)||state.skills[b].errors-state.skills[a].errors)[0]}
+function recommendationText(k){if(k==='review')return'المهارات الأربع متقنة داخل الدروس؛ حان فحص أهداف الوحدة الاثني عشر بسؤال جديد لكل هدف.';const s=state.skills[k];if(s.seen===0)return'ابدأ بـ '+skillNames[k]+'؛ هذه المهارة التالية في تسلسل الوحدة.';if(!s.readiness)return'نثبت المتطلب السابق في '+skillNames[k]+' قبل التقدم.';if(!s.mastered)return'أكمل '+skillNames[k]+'؛ ما زال هناك هدف لم يثبت بإجابة مستقلة.';return'للمحافظة على الإتقان، أعد '+skillNames[k]+' لأنها الأقل ثباتًا في المحاولة الأولى.'}
+function drawHome(){
+ const g=guide();$('guideHomeIcon').textContent=g.icon;$('guidePlayIcon').textContent=g.icon;$('guideName').textContent=g.name;
+ $('starsHome').textContent=ar(state.stars);$('starsPlay').textContent=ar(state.stars);const n=completedCount();$('homeBar').style.width=(n/5*100)+'%';$('homeProgressText').textContent=n===0?'المغامرة تبدأ من أول مفتاح فهم.':'فتحت '+ar(n)+' من ٥ مراحل.';
+ document.querySelectorAll('.station').forEach(b=>{const k=b.dataset.kind,done=k==='review'?isUnitComplete():state.skills[k].mastered;b.classList.toggle('done',done);b.querySelector('.tick').textContent=done?'✓':''});
+ $('mastery').innerHTML=SKILLS.map(k=>{const s=state.skills[k];const first=s.seen?Math.round(s.firstCorrect/s.seen*100):0;return '<div><b>'+skillNames[k]+'</b><span>'+(s.mastered?'متقن ✓':'أهداف مثبتة: '+ar(objectiveProgress(k).split('/')[0])+' من '+ar(objectiveProgress(k).split('/')[1]))+(s.seen?' • أول محاولة '+ar(first)+'٪':'')+'</span></div>'}).join('');
+ const rec=recommendedKind();$('missionTitle').textContent=missionTitle(rec);$('smartText').textContent=rec==='review'?'المحطات جاهزة. بقيت مهمة القلعة لإثبات ما فهمته.':curiosity[rec]+' '+recommendationText(rec);$('smartStart').dataset.kind=rec;$('rewardShelf').innerHTML=rewardHtml();$('storyHeadline').textContent=isUnitComplete()?'مدينة ٩٩ أضاءت بالكامل! 👑':'أهلًا يا بطل، '+g.name+' معك في مدينة ٩٩!';$('storyLine').textContent=isUnitComplete()?'أثبتَّ أهداف الوحدة. يمكنك العودة إلى أي محطة لتثبيت فهمك.':'كل مفتاح تحصل عليه يعني أنك فهمت محطة، لا أنك أسرعت فيها.';renderTeacherPanel();$('storageNote').textContent=teacherModeEnabled()?(storagePersistent?'التقدم محفوظ محليًا على هذا الجهاز.':'التقدم محفوظ خلال هذه الجلسة فقط لأن التخزين المحلي غير متاح.') : '';
+}
+function renderTeacherPanel(){
+ $('teacherGrid').innerHTML=SKILLS.map(k=>{const s=state.skills[k],first=s.seen?Math.round(s.firstCorrect/s.seen*100):0;return '<div class="teacher-row"><b>'+skillNames[k]+'</b><span>'+(s.mastered?'متقن':'قيد التعلم')+'</span><span>'+ar(first)+'٪ من أول محاولة</span></div>'}).join('');
+ $('teacherObjectives').innerHTML=SKILLS.flatMap(k=>LESSONS[k].objectives.map(o=>{const hits=Math.min(2,state.skills[k].masteryHits[o[0]]||0),final=state.unitProof[o[0]]===true;return '<div class="objective-item '+(final?'done':'')+'"><span class="mark">'+(final?'✓':hits>=2?'◉':'○')+'</span><span><b>'+o[1]+'</b><br><span class="proof-chip '+(hits>=2?'good':'warn')+'">إثبات الدرس '+ar(hits)+' من ٢</span><span class="proof-chip '+(final?'good':'warn')+'">فحص الوحدة '+(final?'اجتاز':'بانتظار')+'</span></span></div>'})).join('');
+ const k=recommendedKind();const total=SKILLS.reduce((a,k)=>a+state.skills[k].errors,0);const L=k==='review'?null:LESSONS[k];$('teacherRecommendation').innerHTML='<b>التوصية التالية:</b> '+recommendationText(k)+'<br>إجمالي الأخطاء المسجلة: '+ar(total)+'. لا يُعد الخطأ فشلًا؛ هو دليل على موضع الدعم المطلوب.<br><b>مرور على مهمات دفترية:</b> '+ar(notebookEvidenceCount())+' مهمة بحسب ضغط الطالب على «كتبت حلي». هذه إشارة استخدام وليست دليل إتقان.'+(L?'<br><b>بديل بلا تقنية:</b> '+L.fallback+'<br><b>سؤال شفهي مفتاحي:</b> '+L.oral:'');
+}
+function progressReportText(){const mastered=SKILLS.filter(k=>state.skills[k].mastered).map(k=>storyNames[k]);const hits=SKILLS.reduce((n,k)=>n+LESSONS[k].objectives.filter(o=>(state.skills[k].masteryHits[o[0]]||0)>=2).length,0);const rec=recommendedKind();return ['تقرير مدينة ٩٩ — دون اسم طالب','المحطات المتقنة: '+(mastered.length?mastered.join(' • '):'بدأت الرحلة ولم تُتقن محطة كاملة بعد'),'أهداف مثبتة داخل الدروس: '+ar(hits)+' من ١٢','فحص الوحدة الشامل: '+(isUnitComplete()?'مكتمل ✓':'لم يكتمل بعد'),'مرور على مهمات دفترية: '+ar(notebookEvidenceCount())+' (إقرار ذاتي؛ لا يُعد دليل إتقان)','الخطوة المقترحة: '+missionTitle(rec)+' — '+recommendationText(rec),'إعداد وتصميم تربوي: محمد وجيه'].join('\n')}
+async function shareProgress(){const text=progressReportText();try{if(navigator.share){await navigator.share({title:'تقرير مدينة ٩٩',text});showSpark('📤 تم فتح المشاركة');return}if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);showSpark('📋 نُسخ التقرير؛ أرسله للمعلم');return}}catch(e){if(e&&e.name==='AbortError')return}const area=document.createElement('textarea');area.value=text;area.setAttribute('readonly','');area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();try{document.execCommand('copy');showSpark('📋 نُسخ التقرير؛ أرسله للمعلم')}catch(_){alert(text)}area.remove()}
+let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installApp').classList.remove('hidden')});window.addEventListener('appinstalled',()=>{$('installApp').classList.add('hidden');installPrompt=null;showSpark('📲 أضيفت مدينة ٩٩ إلى الهاتف')});async function installApp(){if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installApp').classList.add('hidden')}
+function resetQuestionUi(){session.mistakes=0;session.help=0;session.answered=false;session.orderSelection=[];session.notebookUnlocked=false;$('visual').innerHTML='';$('q').textContent='';$('math').textContent='';$('interaction').innerHTML='';$('interaction').classList.remove('notebook-locked');$('notebookTask').classList.add('hidden');$('notebookTask').classList.remove('done');$('notebookTask').innerHTML='';$('support').classList.add('hidden');$('support').innerHTML='';$('feedback').className='feedback';$('feedback').textContent='انظر أولًا، فكر، ثم اختر. أنا معك.';updateGuideLine('فكّر أولًا، وأنا معك عندما تحتاجني.');$('hint').disabled=false;$('next').classList.add('hidden');$('next').textContent='التالي';$('masteryGate').classList.add('hidden')}
+function journey(){const phases=session.kind==='review'?['فحص ١٢ هدفًا','علاج موجّه','إعادة اختبار']:['التهيئة','اكتشف','تدرّب معي','جرّب','فسّر','أثبت الإتقان','تحدٍّ'];let active=0;if(session.kind==='review'){active=session.review.phase==='diagnostic'?0:session.review.phase==='repair'?1:2}else active=['readiness','concept','guided','practice','reason','mastery','enrich'].indexOf(session.phase);$('journey').innerHTML=phases.map((p,i)=>'<span class="step-pill '+(i<active?'done':i===active?'active':'')+'">'+p+'</span>').join('')}
+function progressValue(){if(session.kind==='review'){if(session.review.phase==='diagnostic')return Math.max(4,Math.round(((session.review.pos+1)/UNIT_CHECKS.length)*55));const map={repair:68,retest:86,done:100};return map[session.review.phase]||0}const map={readiness:5,concept:15,guided:30,practice:55,reason:72,mastery:85,enrich:100,done:100};return map[session.phase]||0}
+function phaseTitle(){if(session.kind==='review')return'';return phaseLabels[session.phase]||''}
+function showLessonInfo(){const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>هدف الدرس</h2><p>'+L.goal+'</p><div class="source-note"><b>المتطلب السابق:</b> '+L.prereq+'</div><div class="objective-list">'+L.objectives.map(o=>'<div class="objective-item '+((state.skills[session.kind].masteryHits[o[0]]||0)>=2?'done':'')+'"><span class="mark">'+((state.skills[session.kind].masteryHits[o[0]]||0)>=2?'✓':'○')+'</span><span>'+o[1]+'</span></div>').join('')+'</div><div class="expert-contract"><b>كيف سأثبت أنك فهمت؟</b><div>'+L.evidence+'</div><div class="source-note">نحتاج إثباتين مستقلين لكل هدف في الدرس، ثم فحصًا جديدًا في نهاية الوحدة.</div></div>'}
+function showConcept(){resetQuestionUi();const L=LESSONS[session.kind];$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>اكتشف الفكرة</h2><p>'+L.concept.text+'</p><div class="concept-example"><b>مثال محلول</b><p>'+L.concept.example+'</p>'+visualHtml(L.concept.visual)+'</div><div class="source-note"><b>خطأ شائع ننتبه له:</b> '+L.misconception+'</div>';$('feedback').className='feedback good';$('feedback').textContent='اقرأ المثال، ثم أخبرني عندما تكون مستعدًا للتدريب.';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='أنا مستعد';$('lessonBar').style.width=progressValue()+'%';$('micro').textContent='المعلم الخبير لا يقفز إلى الرمز قبل أن تتضح الفكرة.';journey();focusNext()}
+function phasePool(){const L=LESSONS[session.kind];if(session.phase==='readiness')return L.readiness;if(session.phase==='guided')return L.guided;if(session.phase==='practice')return L.practice;if(session.phase==='reason')return L.reason;if(session.phase==='enrich')return L.enrich;return[]}
+function firstUnfinishedMastery(skill,start=0){const T=LESSONS[skill].mastery.targets;for(let i=start;i<T.length;i++){if((state.skills[skill].masteryHits[T[i]]||0)<2)return i}return-1}
+function chooseMasteryQuestion(){const L=LESSONS[session.kind],target=L.mastery.targets[session.masteryTargetIndex];const used=session.masteryUsed[target]||[];let pool=L.mastery.pool.filter(q=>q.obj===target&&!used.includes(q.id));if(!pool.length){session.masteryUsed[target]=[];pool=L.mastery.pool.filter(q=>q.obj===target)}const q=pool[0];session.masteryUsed[target]=(session.masteryUsed[target]||[]).concat(q.id);session.currentMastery=q;return q}
+function currentQuestion(){if(session.kind==='review'){const r=session.review;if(r.phase==='diagnostic')return UNIT_CHECKS[r.pos];if(r.phase==='repair')return OBJECTIVE_REPAIR[r.currentObj];if(r.phase==='retest'){const pool=OBJECTIVE_RETEST[r.currentObj]||[];return pool[(r.retestRound[r.currentObj]||0)%pool.length]||null}return null}if(session.phase==='mastery')return session.currentMastery||chooseMasteryQuestion();const p=phasePool();return p[session.index]||null}
+function scaffold(skill,q,level){if(level===1)return '<b>تلميح أول</b><div>'+q.hint1+'</div>';if(level===2)return '<b>نرجع إلى الصورة</b>'+visualHtml(q.visual)+'<div class="units-note">'+q.hint2+'</div>';const L=LESSONS[skill];return '<b>مثال مشابه، لا جواب السؤال</b><div>'+L.support+'</div><div class="units-note">خذ وقتك، ثم عد إلى السؤال نفسه.</div>'}
+function notebookRequired(){const q=currentQuestion();if(!q)return false;if(session.kind==='review'){if(!session.review)return false;if(session.review.phase==='diagnostic')return ['cr','os','pv','er'].includes(q.obj);if(session.review.phase==='retest')return q.reason===true||q.obj==='pv';return false}if(session.phase==='practice')return session.index===0;if(session.phase==='reason')return true;if(session.phase==='mastery'){const s=state.skills[session.kind];return q.reason===true&&((s.masteryHits[q.obj]||0)===0)}return false}
+function notebookKey(q,skill){return skill+':'+String(q.id||q.obj||'q')+':'+String(session.phase||((session.review&&session.review.phase)||''))}
+function notebookPrompt(q,skill){
+ const v=q.visual||{};let title='اكتب قبل أن تختار';let steps=[];const check='بعد أن تكتب، افتح الشاشة ونفّذ إجابتك هنا. الكتابة تساعدك على تنظيم التفكير، لكنها لا تُحسب وحدها دليل إتقان.';
+ if(q.type==='order'){
+  title='رتّبها أولًا في دفترك';steps=['اكتب الأعداد: '+q.nums.map(ar).join('، ')+'.','اكتب الترتيب كاملًا حسب المطلوب في السؤال.','راجع اتجاهك: من الأصغر للأكبر أو من الأكبر للأصغر.'];
+ }else if(v.kind==='compare'){
+  title='قارن بالقلم أولًا';steps=['اكتب العددين '+ar(v.a)+' و'+ar(v.b)+'.','ضع خطًا تحت رقم العشرات في كل عدد.','إذا تساوت العشرات، ضع دائرة حول الآحاد.','اكتب اختيارك وسببًا قصيرًا قبل فتح الإجابات.'];
+ }else if(v.kind==='place'){
+  title='ابنِ العدد في جدولك';steps=['اكتب العدد '+ar(v.n)+'.','ارسم عمودين صغيرين: «عشرات | آحاد».','ضع كل رقم في منزله ثم اكتب جواب السؤال.'];
+ }else if(v.kind==='pairs'){
+  title='كوّن الأزواج على الورق';steps=['ارسم '+ar(v.n)+' دوائر صغيرة.','ضع كل دائرتين معًا بخط أو قوس.','اكتب هل بقي عنصر بلا شريك، ثم اكتب حكمك.'];
+ }else if(v.kind==='units'){
+  title='افحص الآحاد على الورق';steps=['اكتب العدد '+ar(v.n)+'.','ضع دائرة حول رقم الآحاد.','مثّل آحاده بأزواج صغيرة، ثم اكتب الحكم والسبب.'];
+ }else if(q.reason){
+  title='اكتب السبب قبل الاختيار';steps=['اكتب جوابك في جملة قصيرة.','ابدأ بفكرة المنزلة أو التزاوج التي حسمت السؤال.'];
+ }else{
+  steps=['اكتب جوابك أولًا في الدفتر.','لا تفتح الإجابات قبل أن تحسم رأيك.'];
+ }
+ return {title,steps,check};
+}
+function notebookGate(q,skill){
+ const box=$('notebookTask');if(!box)return;
+ if(!notebookRequired()){box.classList.add('hidden');$('interaction').classList.remove('notebook-locked');return}
+ const p=notebookPrompt(q,skill);session.notebookUnlocked=false;
+ box.classList.remove('hidden','done');
+ box.innerHTML='<div class="notebook-head"><span class="pencil" aria-hidden="true">✍️</span><div><span class="paper-chip">دفتر المستكشف</span><b>'+p.title+'</b></div></div><ol class="notebook-steps">'+p.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol><div class="notebook-done"><button id="notebookDoneBtn" class="primary">كتبت حلي في الدفتر</button></div><div class="notebook-note">لا تحتاج إلى تصوير الدفتر أو رفعه. نريد أن تفكر وتكتب بيدك أولًا، ثم تتحقق على الشاشة.</div>';
+ $('interaction').classList.add('notebook-locked');$('hint').disabled=true;
+ $('feedback').className='feedback';$('feedback').textContent='هذه لحظة دفتر قصيرة: اكتب أولًا، ثم افتح الإجابات.';updateGuideLine('القلم يساعدك على ترتيب فكرتك. اكتب أولًا ثم ارجع إليّ.');
+ const b=$('notebookDoneBtn');if(b)b.onclick=()=>confirmNotebook(q,skill,p.check);
+}
+function confirmNotebook(q,skill,check){
+ session.notebookUnlocked=true;const key=notebookKey(q,skill);state.notebookEvidence[key]=true;persist();
+ $('interaction').classList.remove('notebook-locked');$('hint').disabled=false;$('notebookTask').classList.add('done');
+ const b=$('notebookDoneBtn');if(b){b.disabled=true;b.textContent='✓ كتبت في دفتري'}
+ const note=document.createElement('div');note.className='notebook-check';note.textContent=check;$('notebookTask').appendChild(note);
+ $('feedback').className='feedback';$('feedback').textContent='الآن اختبر ما كتبته على الشاشة من دون تغيير جوابك لمجرد رؤية الخيارات.';updateGuideLine('الآن قارن ما فكرت فيه بما ستختاره على الشاشة.');focusFirstInteractive();
+}
+function notebookEvidenceCount(){return Object.keys(state.notebookEvidence||{}).length}
+function renderQuestion(){resetQuestionUi();const q=currentQuestion();if(!q)return;const skill=session.kind==='review'?(q.skill||'compare'):session.kind;$('objectiveBox').classList.add('hidden');$('q').textContent=q.ask;$('visual').innerHTML=visualHtml(q.visual);if(q.type==='order')renderOrder(q);else renderChoices(q);notebookGate(q,skill);if(session.phase==='mastery'&&session.kind!=='review'){$('masteryGate').classList.remove('hidden');$('masteryGate').textContent='اختبار إتقان مستقل: نحتاج إجابتين صحيحتين مستقلتين لهذا الهدف، من أول محاولة ومن دون مساعدة، ثم سيعود الهدف في فحص الوحدة بسؤال جديد.'}if(session.kind==='review'){$('masteryGate').classList.remove('hidden');if(session.review.phase==='diagnostic')$('masteryGate').textContent='فحص شامل: هذا سؤال مستقل لهدف واحد من أهداف الوحدة. لن نعد الهدف ثابتًا إذا احتاج مساعدة.';if(session.review.phase==='repair')$('masteryGate').textContent='علاج موجّه للهدف الذي ظهر فيه احتياج. بعده سيأتي سؤال جديد مختلف.';if(session.review.phase==='retest')$('masteryGate').textContent='إعادة اختبار مستقلة بسؤال جديد للهدف نفسه. نريد دليل انتقال الفهم، لا حفظ الإجابة.'}$('lessonBar').style.width=progressValue()+'%';$('micro').textContent=session.kind==='review'?'نبحث عن الفجوة فقط، ثم نعالجها.':phaseMessage(skill,q);journey();if(!notebookRequired()||session.notebookUnlocked)focusFirstInteractive()}
+function phaseMessage(skill,q){if(session.phase==='readiness')return'تهيئة قصيرة للمتطلب السابق: '+LESSONS[skill].prereq;if(session.phase==='guided')return'نتدرّب معًا؛ المساعدة متاحة فورًا.';if(session.phase==='practice')return'الآن دورك. حاول قبل طلب المساعدة.';if(session.phase==='reason')return'لا يكفي أن تختار؛ نريد فهم السبب.';if(session.phase==='mastery')return'إثبات مستقل لهدف: '+objectiveLabel(skill,q.obj);if(session.phase==='enrich')return'هذا تحدٍّ للمتقن، وليس شرطًا لإغلاق الدرس.';return''}
+function shuffled(a){const x=a.slice();for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
+function renderChoices(q){const box=document.createElement('div');box.className='answers'+(q.reason?' reason-answers':'');shuffled(q.opts).forEach(v=>{const b=document.createElement('button');b.className='ans';b.textContent=typeof v==='number'?ar(v):v;b.addEventListener('click',()=>answerChoice(v,b));box.appendChild(b)});$('interaction').appendChild(box)}
+function renderOrder(q){$('math').textContent=q.nums.map(ar).join('   •   ');const area=document.createElement('div');area.className='order-area';const chips=document.createElement('div');chips.className='number-buttons';q.nums.forEach((n,i)=>{const b=document.createElement('button');b.className='num-chip';b.textContent=ar(n);b.dataset.i=String(i);b.addEventListener('click',()=>{if(session.orderSelection.some(x=>x.i===i))return;session.orderSelection.push({i,n});b.classList.add('used');drawOrderStrip()});chips.appendChild(b)});const strip=document.createElement('div');strip.id='orderStrip';strip.className='order-strip';strip.setAttribute('aria-live','polite');strip.textContent='اضغط الأعداد بالترتيب المطلوب.';const controls=document.createElement('div');controls.className='tools';const undo=document.createElement('button');undo.className='secondary';undo.textContent='تراجع';undo.onclick=()=>{const last=session.orderSelection.pop();if(last)chips.querySelector('[data-i="'+last.i+'"]').classList.remove('used');drawOrderStrip()};const check=document.createElement('button');check.className='primary wide';check.textContent='تحقق من الترتيب';check.onclick=()=>answerOrder(q);controls.append(undo,check);area.append(chips,strip,controls);$('interaction').appendChild(area)}
+function drawOrderStrip(){const strip=$('orderStrip');strip.innerHTML=session.orderSelection.length?session.orderSelection.map(x=>'<span class="picked">'+ar(x.n)+'</span>').join(''):'اضغط الأعداد بالترتيب المطلوب.'}
+function skillForCurrent(){if(session.kind!=='review')return session.kind;const q=currentQuestion();return q&&q.skill?q.skill:'compare'}
+function markSeen(skill,independent){const s=state.skills[skill];s.seen++;if(independent)s.firstCorrect++}
+function recordNeed(skill,q){const s=state.skills[skill];s.needs[q.obj]=(s.needs[q.obj]||0)+1;s.errors++}
+function wrong(q){const skill=skillForCurrent();session.mistakes++;recordNeed(skill,q);if(session.kind==='review'&&session.review.phase==='diagnostic'){const r=session.review;r.outcomes[q.obj]='needs_support';if(!r.failed.includes(q.obj))r.failed.push(q.obj)}$('feedback').className='feedback warn';$('feedback').textContent=session.mistakes===1?'قريب. '+q.hint1:'لا نريد التخمين. سنرجع إلى الفكرة ثم تحاول من جديد.';updateGuideLine(session.mistakes===1?'جرّب أن تغيّر الشيء الذي تنظر إليه، لا أن تسرع.':'الخطأ يخبرنا أين نحتاج المساعدة. سنفكك الفكرة ثم تعود أنت للحل.');if(session.mistakes>=2){$('support').innerHTML=scaffold(skill,q,Math.min(3,session.mistakes));$('support').classList.remove('hidden')}persist()}
+function independentNow(){return session.mistakes===0&&session.help===0}
+function answerChoice(v,b){if(session.answered)return;const q=currentQuestion();const ok=v===q.correct;if(!ok){b.classList.add('wrong');setTimeout(()=>b.classList.remove('wrong'),350);wrong(q);return}session.answered=true;document.querySelectorAll('.ans').forEach(x=>x.disabled=true);b.classList.add('correct');finishCorrect(q)}
+function answerOrder(q){if(session.answered)return;if(session.orderSelection.length!==q.correct.length){$('feedback').className='feedback warn';$('feedback').textContent='اختر جميع الأعداد أولًا.';return}const ok=session.orderSelection.every((x,i)=>x.n===q.correct[i]);if(!ok){wrong(q);session.orderSelection=[];document.querySelectorAll('.num-chip').forEach(x=>x.classList.remove('used'));$('orderStrip').textContent='حاول ترتيبًا جديدًا.';return}session.answered=true;finishCorrect(q)}
+function finishCorrect(q){const skill=skillForCurrent();const independent=independentNow();markSeen(skill,independent);if(independent)state.stars++;$('feedback').className='feedback good';$('feedback').textContent=(independent?processPraise(skill,q)+' ⭐ ':'وصلت إلى الإجابة بعد أن استخدمت الدعم. ')+q.explain;updateGuideLine(independent?'رائع: الفهم ظهر من طريقة الحل، لا من السرعة.':'المهم أنك عدت للفكرة وفهمتها؛ الآن سنعطيك فرصة جديدة للاستقلال.');if(independent)showSpark('⭐ نجمة فهم');$('hint').disabled=true;
+ if(session.kind==='review'){reviewCorrect(q,independent);persist();return}
+ if(session.phase==='readiness'){state.skills[skill].readiness=independent;$('next').textContent=state.skills[skill].readiness?'اكتشف الفكرة':'سؤال تهيئة جديد';$('next').classList.remove('hidden')}
+ else if(session.phase==='mastery'){if(independent){const s=state.skills[skill];s.masteryHits[q.obj]=Math.min(2,(s.masteryHits[q.obj]||0)+1);const hits=s.masteryHits[q.obj];s.objectives[q.obj]=hits>=2;$('feedback').textContent+=' دليل الإتقان لهذا الهدف: '+ar(hits)+' من ٢.';if(hits===2)showSpark('🔑 ثبت هدف جديد');if(hits<2){session.currentMastery=null;$('next').textContent='ثبّت الهدف بسؤال ثانٍ'}else{$('feedback').textContent+=' ثبتنا الهدف: '+objectiveLabel(skill,q.obj);const ni=firstUnfinishedMastery(skill,session.masteryTargetIndex+1);if(ni<0){s.mastered=true;state.completed[skill]=true;showSpark('🔑 فتحت '+storyNames[skill]);$('next').textContent='تحدٍّ اختياري';session.phase='masteryComplete'}else{session.masteryTargetIndex=ni;session.currentMastery=null;$('next').textContent='هدف الإتقان التالي'}}}else{$('next').textContent='سؤال إتقان جديد لنفس الهدف';session.currentMastery=null}$('next').classList.remove('hidden')}
+ else{$('next').classList.remove('hidden');$('next').textContent=session.phase==='enrich'?'العودة إلى الخريطة':'التالي'}persist()}
+function reviewCorrect(q,independent){
+ const r=session.review;
+ if(r.phase==='diagnostic'){
+  r.outcomes[q.obj]=independent?'pass':'needs_support';
+  state.unitProof[q.obj]=independent;
+  if(!independent&&!r.failed.includes(q.obj))r.failed.push(q.obj);
+  $('next').classList.remove('hidden');$('next').textContent='فحص الهدف التالي';
+ }else if(r.phase==='repair'){
+  $('next').classList.remove('hidden');$('next').textContent='أعد اختبار هذا الهدف بسؤال جديد';
+ }else if(r.phase==='retest'){
+  if(independent){
+   state.unitProof[q.obj]=true;
+   $('feedback').textContent+=' ثبتنا هذا الهدف في فحص الوحدة.';
+   r.failedIndex++;
+   if(r.failedIndex>=r.failed.length){state.reviewProtocolVersion=2;state.completed.review=true;r.phase='done';$('next').textContent='إنهاء إتقان الوحدة'}
+   else{r.currentObj=r.failed[r.failedIndex];r.phase='repair';$('next').textContent='عالج الهدف التالي'}
+  }else{
+   r.retestRound[q.obj]=(r.retestRound[q.obj]||0)+1;
+   $('next').textContent='سؤال جديد لنفس الهدف من دون مساعدة';
+  }
+  $('next').classList.remove('hidden');
+ }
+}
+function useHint(){const q=currentQuestion();if(!q)return;session.help++;const skill=skillForCurrent();$('support').innerHTML=scaffold(skill,q,Math.min(3,session.help));$('support').classList.remove('hidden');$('feedback').className='feedback warn';$('feedback').textContent=session.help===1?'تلميح صغير فقط؛ ما زلت أنت من سيحل.':'نوضح الفكرة أكثر، ثم تعود للحل.'}
+function next(){
+ if(session.kind==='review'){nextReview();return}
+ const L=LESSONS[session.kind];
+ if(session.phase==='readiness'){if(state.skills[session.kind].readiness){session.phase='concept';showConcept()}else{session.readinessIndex=(session.readinessIndex+1)%L.readiness.length;session.index=session.readinessIndex;renderQuestion()}return}
+ if(session.phase==='concept'){session.phase='guided';session.index=0;renderQuestion();return}
+ if(session.phase==='guided'){session.index++;if(session.index>=L.guided.length){session.phase='practice';session.index=0}renderQuestion();return}
+ if(session.phase==='practice'){session.index++;if(session.index>=L.practice.length){session.phase='reason';session.index=0}renderQuestion();return}
+ if(session.phase==='reason'){session.index++;if(session.index>=L.reason.length){const ni=firstUnfinishedMastery(session.kind,0);if(ni<0){state.skills[session.kind].mastered=true;state.completed[session.kind]=true;session.phase='masteryComplete'}else{session.phase='mastery';session.masteryTargetIndex=ni;session.masteryUsed={};session.currentMastery=null}}renderQuestion();if(session.phase==='masteryComplete'){showMasteryComplete()}return}
+ if(session.phase==='mastery'){session.currentMastery=null;renderQuestion();return}
+ if(session.phase==='masteryComplete'){session.phase='enrich';session.index=0;renderQuestion();return}
+ if(session.phase==='enrich'){returnHome();return}
+}
+function showMasteryComplete(){resetQuestionUi();const k=session.kind;$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت '+storyNames[k]+' 🔑</h2><p>أثبتَّ كل هدف مرتين بإجابة مستقلة. سيعود الهدف لاحقًا بسؤال جديد حتى نتأكد أن الفهم انتقل.</p><div class="objective-list">'+LESSONS[k].objectives.map(o=>'<div class="objective-item done"><span class="mark">✓</span><span>'+o[1]+'</span></div>').join('')+'</div><div class="discovery-card"><b>بطاقة اكتشاف</b>'+discoveries[k]+'</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت. الآن يمكنك الانتقال إلى تحدٍّ اختياري.';$('hint').disabled=true;$('next').classList.remove('hidden');$('next').textContent='تحدٍّ اختياري';$('lessonBar').style.width='92%';journey();persist()}
+function nextReview(){
+ const r=session.review;
+ if(r.phase==='diagnostic'){
+  r.pos++;
+  if(r.pos<UNIT_CHECKS.length){renderQuestion();return}
+  if(r.failed.length===0){for(const q of UNIT_CHECKS)state.unitProof[q.obj]=true;state.reviewProtocolVersion=2;state.completed.review=true;r.phase='done';showReviewFinish();return}
+  r.failedIndex=0;r.currentObj=r.failed[0];r.phase='repair';renderQuestion();$('feedback').className='feedback warn';$('feedback').textContent='وجدت '+ar(r.failed.length)+' هدفًا يحتاج تثبيتًا إضافيًا. سنعالج هدفًا واحدًا في كل مرة.';return
+ }
+ if(r.phase==='repair'){r.phase='retest';renderQuestion();return}
+ if(r.phase==='retest'){renderQuestion();return}
+ if(r.phase==='done'){showReviewFinish();return}
+}
+function showReviewFinish(){resetQuestionUi();$('objectiveBox').classList.remove('hidden');$('objectiveBox').innerHTML='<h2>فتحت قلعة الإتقان! 👑</h2><p>أثبتَّ أهداف الوحدة بأسئلة جديدة، وكل فجوة ظهرت عالجناها ثم اختبرناها مرة أخرى.</p><div class="concept-example"><b>خريطة المدينة اكتملت</b><p>١٢ هدفًا من ١٢: المقارنة • الترتيب • القيمة المنزلية • الزوجي والفردي</p></div><div class="discovery-card"><b>رسالة المدينة</b>الفهم الحقيقي ليس أن تتذكر مكان الإجابة؛ بل أن تعرف لماذا هي صحيحة.</div>';$('feedback').className='feedback good';$('feedback').textContent='أحسنت! المدينة اكتملت لأنك فهمت أهدافها خطوة خطوة.';showSpark('👑 قلعة الإتقان مفتوحة');$('next').classList.remove('hidden');$('next').textContent='العودة إلى الخريطة';$('next').onclick=()=>{restoreNext();returnHome()};$('hint').disabled=true;$('lessonBar').style.width='100%';journey();persist()}
+function restoreNext(){$('next').onclick=next}
+function openStage(k){restoreNext();session={kind:k,phase:k==='review'?'review':'readiness',index:0,mistakes:0,help:0,answered:false,orderSelection:[],readinessIndex:0,masteryTargetIndex:0,masteryUsed:{},currentMastery:null,review:null};if(k==='review'){state.reviewRound++;session.review={phase:'diagnostic',pos:0,failed:[],failedIndex:0,currentObj:null,retestRound:{},outcomes:{}};persist()}$('home').classList.add('hidden');$('play').classList.remove('hidden');window.scrollTo(0,0);$('lessonTitle').textContent=storyNames[k]+(k==='review'?'':' — '+LESSONS[k].title);$('goal').textContent=k==='review'?'فحص جميع أهداف الوحدة، علاج كل فجوة، ثم إعادة اختبار مستقل بسؤال جديد.':LESSONS[k].goal;if(k==='review')renderQuestion();else{showLessonInfo();$('feedback').className='feedback';$('feedback').textContent=curiosity[k]+' قبل أن نبدأ، سأتحقق سريعًا من فكرة نحتاجها.';updateGuideLine(curiosity[k]);$('next').classList.remove('hidden');$('next').textContent='جهزت دفتري وقلمي — ابدأ التهيئة';$('hint').disabled=true;$('lessonBar').style.width='0%';$('micro').textContent='دفتر أو ورقة وقلم يكفيان. سنكتب فقط عندما تخدم الكتابة الفهم، لا في كل ضغطة.';journey();$('next').onclick=()=>{restoreNext();session.phase='readiness';session.index=0;renderQuestion()}}drawHome()}
+function returnHome(){restoreNext();$('play').classList.add('hidden');$('home').classList.remove('hidden');if('speechSynthesis'in window)speechSynthesis.cancel();drawHome();window.scrollTo(0,0)}
+function speechText(){if(session.kind&&session.kind!=='review'&&session.phase==='concept'){const c=LESSONS[session.kind].concept;return c.text+' '+c.example}if(!$('objectiveBox').classList.contains('hidden')&&$('q').textContent==='')return $('objectiveBox').innerText;const q=currentQuestion();if(!q)return $('feedback').textContent;let t=q.ask;if(Array.isArray(q.opts))t+=' الخيارات: '+q.opts.map(x=>typeof x==='number'?ar(x):x).join('، ');return t}
+function bestArabicVoice(){if(!('speechSynthesis'in window))return null;const voices=speechSynthesis.getVoices();return voices.find(v=>/^ar-PS/i.test(v.lang))||voices.find(v=>/^ar/i.test(v.lang))||null}
+function speakCurrent(){if(!('speechSynthesis'in window)){$('feedback').className='feedback warn';$('feedback').textContent='القراءة الصوتية غير متاحة في هذا المتصفح.';return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(speechText());u.lang='ar-PS';u.rate=.84;u.pitch=1;const v=bestArabicVoice();if(v)u.voice=v;speechSynthesis.speak(u)}
+function focusFirstInteractive(){setTimeout(()=>{const el=$('interaction').querySelector('button');if(el)el.focus({preventScroll:true})},0)}function focusNext(){setTimeout(()=>$('next').focus({preventScroll:true}),0)}
+document.querySelectorAll('.station').forEach(b=>b.addEventListener('click',()=>openStage(b.dataset.kind)));$('smartStart').onclick=()=>openStage($('smartStart').dataset.kind);$('shareProgress').onclick=shareProgress;$('installApp').onclick=installApp;$('back').onclick=returnHome;$('hint').onclick=useHint;$('next').onclick=next;$('speak').onclick=speakCurrent;
+function teacherModeEnabled(){return location.hash==='#teacher'}
+function applyAudienceMode(){const teacher=teacherModeEnabled();$('teacherTools').classList.toggle('hidden',!teacher);if(!teacher){$('teacherPanel').classList.add('hidden');$('teacherToggle').setAttribute('aria-expanded','false');$('teacherToggle').textContent='متابعة المعلم'}else renderTeacherPanel()}
+$('teacherToggle').onclick=()=>{if(!teacherModeEnabled())return;const p=$('teacherPanel'),show=p.classList.contains('hidden');p.classList.toggle('hidden',!show);$('teacherToggle').setAttribute('aria-expanded',show?'true':'false');$('teacherToggle').textContent=show?'إخفاء متابعة المعلم':'متابعة المعلم';if(show)renderTeacherPanel()};
+$('reset').onclick=()=>{if(!teacherModeEnabled())return;if(confirm('هل تريد إعادة النجوم والتقدم من البداية؟')){state={stars:0,completed:{},skills:{},reviewRound:0,unitProof:{},reviewProtocolVersion:0,guide:state.guide,welcomeDone:true};for(const k of SKILLS)state.skills[k]=defaultSkill();persist()}};
+window.addEventListener('hashchange',applyAudienceMode);
+document.querySelectorAll('.guide-choice').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.guide-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.guide=b.dataset.guide;}));
+$('beginAdventure').onclick=()=>{state.welcomeDone=true;persist();$('welcome').classList.add('hidden');showSpark('🚀 بدأت مغامرة مدينة ٩٩')};
+function applyWelcome(){if(teacherModeEnabled()){state.welcomeDone=true;return}if(!state.welcomeDone){document.querySelectorAll('.guide-choice').forEach(b=>b.classList.toggle('selected',b.dataset.guide===state.guide));$('welcome').classList.remove('hidden')}}
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
+drawHome();applyAudienceMode();applyWelcome();
+</script>
+<!--
+حقوق النشر: © محمد وجيه.
+المحتوى التعليمي مرخص CC BY-NC-SA 4.0.
+كود التطبيق © محمد وجيه — جميع الحقوق محفوظة ما لم يُنص على خلاف ذلك.
+-->
+
+<script>
+'use strict';
+/* ===== محرك الأثر الممتاز: لعب تكيفي + استرجاع متباعد + وصول ===== */
+const CITY_PREMIUM_VERSION='CITY99-IMPACT-2026-10-06-v3';
+const PREMIUM_KEY='city99_premium_v3';
+let premium={wins:0,attempts:0,lastOpenDay:'',lastRecallDay:'',lastMastery:{},prefs:{sound:true,haptic:true,motion:true,bigText:false,contrast:false}};
+try{premium=Object.assign(premium,JSON.parse(safeStorage.get(PREMIUM_KEY,'{}'))||{});premium.prefs=Object.assign({sound:true,haptic:true,motion:true,bigText:false,contrast:false},premium.prefs||{})}catch(_){ }
+function premiumSave(){safeStorage.set(PREMIUM_KEY,JSON.stringify(premium))}
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function toast(t){const el=$('cityToast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1500)}
+function applyPrefs(){document.body.classList.toggle('motion-off',!premium.prefs.motion);document.body.classList.toggle('big-text',!!premium.prefs.bigText);document.body.classList.toggle('high-contrast',!!premium.prefs.contrast);for(const [id,k] of [['soundToggle','sound'],['hapticToggle','haptic'],['motionToggle','motion'],['textToggle','bigText'],['contrastToggle','contrast']]){const b=$(id);if(!b)continue;b.textContent=premium.prefs[k]?'مفعّل':'متوقف';b.setAttribute('aria-pressed',premium.prefs[k]?'true':'false')}}
+function tone(kind='tap'){if(!premium.prefs.sound)return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=new AC(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);const map={tap:[420,.035],good:[660,.09],great:[784,.14],hint:[360,.06]};const [f,d]=map[kind]||map.tap;o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.0001,c.currentTime);g.gain.exponentialRampToValueAtTime(.09,c.currentTime+.008);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);o.start();o.stop(c.currentTime+d+.02);setTimeout(()=>c.close(),220)}catch(_){}}
+function haptic(ms=28){if(premium.prefs.haptic&&navigator.vibrate)try{navigator.vibrate(ms)}catch(_){}}
+function celebrate(big=false){if(!premium.prefs.motion||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const n=big?26:10;const colors=['#6d4aff','#19a7a0','#f3b61f','#ef7c8e','#5f8cff'];for(let i=0;i<n;i++){const e=document.createElement('i');e.className='confetti-piece';e.style.left=(8+Math.random()*84)+'vw';e.style.top=(-5-Math.random()*18)+'vh';e.style.background=colors[i%colors.length];e.style.animationDelay=(Math.random()*180)+'ms';document.body.appendChild(e);setTimeout(()=>e.remove(),1300)}}
+function premiumWeakSkill(){let best=SKILLS[0],score=Infinity;for(const k of SKILLS){const s=state.skills[k]||defaultSkill();const accuracy=s.seen?((s.firstCorrect||0)/s.seen):0;const mastery=s.mastered?1:0;const need=Object.values(s.needs||{}).reduce((a,b)=>a+b,0);const v=mastery*3+accuracy*2-Math.min(need,5)*.12;if(v<score){score=v;best=k}}return best}
+function skillIcon(k){return {compare:'⚖️',order:'🚂',place:'🏠',evenodd:'👫'}[k]||'✨'}
+function showRecallCard(){const card=$('recallCard');if(!card)return;const day=todayKey();const mastered=SKILLS.filter(k=>state.skills[k]&&state.skills[k].mastered);const should=mastered.length>0&&premium.lastOpenDay&&premium.lastOpenDay!==day&&premium.lastRecallDay!==day;if(!should){card.classList.add('hidden');return}const k=mastered.sort((a,b)=>(premium.lastMastery[a]||0)-(premium.lastMastery[b]||0))[0];card.dataset.skill=k;$('recallText').textContent='هل ما زالت '+skillNames[k]+' ثابتة في ذاكرتك؟ سؤال لعب قصير يكفي.';card.classList.remove('hidden')}
+const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 مختبر اللعب الذكي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}}
+const _wrong=wrong;wrong=function(q){_wrong(q);tone('hint');const g=document.querySelector('.guide-bubble');if(g){g.classList.remove('coach-attention');void g.offsetWidth;g.classList.add('coach-attention')}}
+const _finishCorrect=finishCorrect;finishCorrect=function(q,independent){_finishCorrect(q,independent);tone(independent?'good':'tap');if(independent){haptic(24);celebrate(false)}}
+const _showMasteryComplete=showMasteryComplete;showMasteryComplete=function(){_showMasteryComplete();premium.lastMastery[session.kind]=Date.now();premiumSave();tone('great');haptic(45);celebrate(true)}
+const _showReviewFinish=showReviewFinish;showReviewFinish=function(){_showReviewFinish();tone('great');haptic(55);celebrate(true)}
+
+// ===== مختبر اللعب =====
+let lab={skill:null,round:0,total:4,q:null,selected:[],wrong:0,hint:false,recall:false};
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function uniqNums(n,min=11,max=99){const s=new Set();while(s.size<n)s.add(rand(min,max));return [...s]}
+function labDifficulty(k){const s=state.skills[k]||defaultSkill();const a=s.seen?((s.firstCorrect||0)/s.seen):0;return s.mastered||a>.72?2:1}
+function distinctLabOptions(correct,candidates){const out=[correct];for(const x of candidates){if(!out.includes(x))out.push(x);if(out.length===4)break}let step=1;while(out.length<4){const x=typeof correct==='number'?Math.max(0,correct+(step%2?step:-step)):String(correct)+' '+step;if(!out.includes(x))out.push(x);step++}return out}
+function makeLabQuestion(k){const d=labDifficulty(k);if(k==='compare'){let a,b;if(d===1){do{a=rand(11,89);b=rand(11,89)}while(Math.floor(a/10)===Math.floor(b/10)||a===b)}else{const t=rand(2,8);let x=rand(0,9),y=rand(0,9);while(y===x)y=rand(0,9);a=t*10+x;b=t*10+y}const askBig=Math.random()<.5;return {type:'choice',ask:askBig?'المهمة: اختر العدد الأكبر.':'المهمة: اختر العدد الأصغر.',opts:[a,b],correct:askBig?Math.max(a,b):Math.min(a,b),visual:{kind:'compare',a,b},hint:d===1?'انظر إلى العشرات أولًا.':'العشرات متساوية؛ انتقل إلى الآحاد.'}}
+ if(k==='place'){let n=rand(21,98),t=Math.floor(n/10),u=n%10;if(d===1){while(t===u){n=rand(21,98);t=Math.floor(n/10);u=n%10}}if(d===1)return {type:'choice',ask:'كم عشرة وكم آحاد في '+ar(n)+'؟',opts:[ar(t)+' عشرات و'+ar(u)+' آحاد',ar(u)+' عشرات و'+ar(t)+' آحاد'],correct:ar(t)+' عشرات و'+ar(u)+' آحاد',visual:{kind:'place',n},hint:'ابدأ بالرقم الأيسر: هو العشرات.'};const tens=Math.random()<.5;const correct=tens?t*10:u;const opts=tens?distinctLabOptions(correct,[t,u,u*10,correct+10,Math.max(0,correct-10)]):distinctLabOptions(correct,[u*10,t,t*10,(u+1)%10,(u+2)%10]);return {type:'choice',ask:tens?'ما قيمة رقم العشرات في '+ar(n)+'؟':'ما قيمة رقم الآحاد في '+ar(n)+'؟',opts,correct,visual:{kind:'place',n},hint:tens?'العشرات تعني مجموعات من عشرة.':'الآحاد تبقى بقيمتها نفسها.'}}
+ if(k==='evenodd'){const n=d===1?rand(3,12):rand(21,99);return {type:'choice',ask:'هل '+ar(n)+' عدد زوجي أم فردي؟',opts:['زوجي','فردي'],correct:n%2===0?'زوجي':'فردي',visual:d===1?{kind:'pairs',n}:{kind:'units',n},hint:d===1?'كوّن أزواجًا: هل بقي عنصر وحده؟':'افحص رقم الآحاد بعد أن فهمت معنى التزاوج.'}}
+ const nums=uniqNums(3,d===1?11:31,d===1?79:99);if(d===2&&Math.random()<.55){const t=rand(3,8);nums[0]=t*10+rand(0,3);nums[1]=t*10+rand(4,6);nums[2]=t*10+rand(7,9)}const asc=Math.random()<.5;return {type:'order',ask:asc?'رتّب من الأصغر إلى الأكبر.':'رتّب من الأكبر إلى الأصغر.',nums,correct:nums.slice().sort((a,b)=>asc?a-b:b-a),hint:'قارن العشرات أولًا، وإذا تساوت فقارن الآحاد.'}}
+function renderLab(){lab.q=makeLabQuestion(lab.skill);lab.selected=[];lab.wrong=0;lab.hint=false;$('labRound').textContent=ar(lab.round+1)+' / '+ar(lab.total);$('labMission').innerHTML='<b>'+skillIcon(lab.skill)+' '+skillNames[lab.skill]+'</b><span>'+(lab.recall?'استرجاع قصير لشيء أتقنته سابقًا.':'اللعبة تتكيف مع أدائك؛ لا مؤقت ولا خسارة.')+'</span>';$('labQuestion').textContent=lab.q.ask;$('labFeedback').className='lab-feedback';$('labFeedback').textContent='فكّر أولًا، ثم جرّب.';$('labHint').disabled=false;$('labNext').classList.add('hidden');const v=lab.q.visual;$('labVisual').innerHTML=v?visualHtml(v):'<div class="goal">حرّك الأعداد بفكرك ورتّبها.</div>';$('labInteraction').innerHTML='';if(lab.q.type==='choice'){const box=document.createElement('div');box.className='lab-options';shuffled(lab.q.opts).forEach(val=>{const b=document.createElement('button');b.className='lab-option';b.textContent=typeof val==='number'?ar(val):val;b.onclick=()=>labAnswer(val,b);box.appendChild(b)});$('labInteraction').appendChild(box)}else renderLabOrder()}
+function renderLabOrder(){const q=lab.q;const pool=document.createElement('div');pool.className='lab-order-pool';q.nums.forEach((n,i)=>{const b=document.createElement('button');b.className='lab-chip';b.textContent=ar(n);b.dataset.i=i;b.onclick=()=>{if(lab.selected.some(x=>x.i===i))return;lab.selected.push({i,n});b.classList.add('used');labDrawTrack();tone('tap');if(lab.selected.length===q.nums.length)labCheckOrder()};pool.appendChild(b)});const track=document.createElement('div');track.id='labOrderTrack';track.className='lab-order-track';$('labInteraction').append(pool,track);labDrawTrack()}
+function labDrawTrack(){const t=$('labOrderTrack');if(!t)return;t.innerHTML='';for(let i=0;i<3;i++){const s=document.createElement('div');s.className='lab-track-slot';s.textContent=lab.selected[i]?ar(lab.selected[i].n):'□';t.appendChild(s)}}
+function labAnswer(v,b){if($('labNext').classList.contains('hidden')===false)return;premium.attempts++;if(v===lab.q.correct){b.classList.add('correct');labSuccess()}else{b.classList.add('wrong');b.disabled=true;lab.wrong++;tone('hint');$('labFeedback').className='lab-feedback warn';$('labFeedback').textContent=lab.wrong===1?'قريب. '+lab.q.hint:'غيّر الطريقة التي تنظر بها للمسألة، ثم جرّب مرة أخرى.'}}
+function labCheckOrder(){premium.attempts++;const ok=lab.selected.map(x=>x.n).every((n,i)=>n===lab.q.correct[i]);if(ok)labSuccess();else{lab.wrong++;tone('hint');$('labFeedback').className='lab-feedback warn';$('labFeedback').textContent='قريب. '+lab.q.hint;setTimeout(()=>{lab.selected=[];document.querySelectorAll('.lab-chip').forEach(x=>x.classList.remove('used'));labDrawTrack()},650)}}
+function labSuccess(){premium.wins++;premiumSave();tone('good');haptic(25);celebrate(false);$('labFeedback').className='lab-feedback good';$('labFeedback').textContent=lab.wrong?'أحسنت! غيّرت طريقتك ووصلت للفكرة.':'رائع! حلّ مستقل من المحاولة الأولى.';document.querySelectorAll('#labInteraction button').forEach(x=>x.disabled=true);$('labNext').classList.remove('hidden');$('labNext').textContent=lab.round+1>=lab.total?'العودة إلى المدينة':'المهمة التالية';$('labWins').textContent=ar(premium.wins)}
+function openLab(skill=null,recall=false){lab={skill:skill||premiumWeakSkill(),round:0,total:recall?1:4,q:null,selected:[],wrong:0,hint:false,recall};$('home').classList.add('hidden');$('play').classList.add('hidden');$('lab').classList.remove('hidden');$('labWins').textContent=ar(premium.wins);window.scrollTo(0,0);renderLab()}
+function closeLab(){if(lab.recall){premium.lastRecallDay=todayKey();premiumSave()}$('lab').classList.add('hidden');$('home').classList.remove('hidden');drawHome();window.scrollTo(0,0)}
+$('playLabBtn').onclick=()=>openLab();$('labBack').onclick=closeLab;$('labHint').onclick=()=>{lab.hint=true;tone('hint');$('labFeedback').className='lab-feedback warn';$('labFeedback').textContent='لمحة فقط: '+lab.q.hint};$('labNext').onclick=()=>{if(lab.round+1>=lab.total){closeLab();return}lab.round++;renderLab()};$('recallBtn').onclick=()=>openLab($('recallCard').dataset.skill,true);
+
+// ===== تفضيلات وصول هادئة =====
+function openPrefs(){$('prefsSheet').classList.remove('hidden');applyPrefs()}
+function closePrefs(){premiumSave();$('prefsSheet').classList.add('hidden');applyPrefs()}
+$('prefsBtn').onclick=openPrefs;$('prefsClose').onclick=closePrefs;$('prefsSheet').addEventListener('click',e=>{if(e.target===$('prefsSheet'))closePrefs()});
+for(const [id,k] of [['soundToggle','sound'],['hapticToggle','haptic'],['motionToggle','motion'],['textToggle','bigText'],['contrastToggle','contrast']])$(id).onclick=()=>{premium.prefs[k]=!premium.prefs[k];applyPrefs();premiumSave();tone('tap')};
+
+// أول فتح في اليوم يدعم الاسترجاع المتباعد دون إشعارات أو ضغط.
+const _progressReportText=progressReportText;progressReportText=function(){return _progressReportText()+'\n• نجاحات تدريبية في مختبر اللعب: '+ar(premium.wins)+' (تدريب وليست دليل إتقان).'};
+const dayNow=todayKey();showRecallCard();premium.lastOpenDay=dayNow;premiumSave();applyPrefs();drawHome();if(location.hash==='#play')setTimeout(()=>openLab(),0);
+</script>
+
+</body>
+</html>

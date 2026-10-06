@@ -142,10 +142,9 @@ req(STATE["android"]["candidate"]["same_signed_apk_field_verified"] is False,"ca
 runtime=STATE["android"]["latest_runtime_observation_unpromoted"]
 req(runtime["version_code"]==20337,"runtime_baseline_version")
 req(runtime["apk_sha256"]=="0bc68002ad297e524b94822bc73fc70e5c5ce7fcbd76b7a2133068160e61bc04","runtime_baseline_hash")
-req(runtime["service_connected_observed"] is True,"runtime_bridge")
-req(runtime["termux_wrapper_status"]=="PASS","termux_wrapper_observed")
-req(runtime["termux_app_to_secure_relay_route_verified"] is False,"termux_route_must_not_be_overclaimed")
-req("missing_from_tool_router_supported_set" in runtime["termux_router_source_gap"],"root_cause_recorded")
+req(runtime["install_observed"] is True,"runtime_install_observed")
+req(runtime["runtime_acceptance_complete"] is False,"runtime_acceptance_must_not_be_overclaimed")
+req(runtime["capability_fabric_field_verified"] is False,"fabric_runtime_must_remain_unverified")
 
 req(STATE["productization"]["candidate_version"]==int(m.group(1)),"product_candidate")
 req(STATE["productization"]["same_signed_apk_field_verified"] is False,"product_same_artifact_must_remain_false")

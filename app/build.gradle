@@ -12,7 +12,7 @@ android {
         minSdk 26
         targetSdk 36
         versionCode 20338
-        versionName '3.5.0-product-foundation-v1-capability-fabric-r28'
+        versionName '3.5.0-termux-local-control-r27-capability-fabric-r28-product-foundation-v1'
     }
 
     buildFeatures {

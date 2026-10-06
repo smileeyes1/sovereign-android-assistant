@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]
 APP=ROOT/"app/src/main/java/ps/hakim/phoneagent"
 BUILD=(ROOT/"app/build.gradle").read_text(encoding="utf-8")
 MANIFEST=(ROOT/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+ADVANCED_MANIFEST=(ROOT/"app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 APPKT=(APP/"HakimApp.kt").read_text(encoding="utf-8")
 CENTER=(APP/"CommandCenterActivity.kt").read_text(encoding="utf-8")
 RES=(APP/"HakimConnectionResilience.kt").read_text(encoding="utf-8")
@@ -57,14 +58,15 @@ req("generation == loopGeneration" in RELAY,"relay_generation_guard")
 req("HakimResilienceAlarmReceiver.schedule(context, 90_000L)" in BOOT,"boot_alarm")
 req("HakimRelayWatchdog.install(context)" in BOOT,"boot_watchdog")
 
-req('android:name=".HakimResilienceAlarmReceiver"' in MANIFEST,"alarm_receiver")
-req("ps.hakim.stable.RESILIENCE_ALARM" in MANIFEST,"alarm_action")
-req("android.intent.action.USER_PRESENT" in MANIFEST,"user_present")
-req("android.intent.action.USER_UNLOCKED" in MANIFEST,"user_unlocked")
+req('android:name=".HakimResilienceAlarmReceiver"' in ADVANCED_MANIFEST,"advanced_alarm_receiver")
+req('android:name=".HakimResilienceAlarmReceiver"' not in MANIFEST,"consumer_alarm_receiver_leak")
+req("ps.hakim.stable.RESILIENCE_ALARM" in ADVANCED_MANIFEST,"advanced_alarm_action")
+req("android.intent.action.USER_PRESENT" in ADVANCED_MANIFEST,"advanced_user_present")
+req("android.intent.action.USER_UNLOCKED" in ADVANCED_MANIFEST,"advanced_user_unlocked")
 
 # لا نطلب استثناء بطارية قسريًا ولا exact-alarm خاصًا.
-req("REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" not in MANIFEST,"battery_whitelist_forbidden")
-req("SCHEDULE_EXACT_ALARM" not in MANIFEST,"exact_alarm_permission_forbidden")
+req("REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" not in MANIFEST+ADVANCED_MANIFEST,"battery_whitelist_forbidden")
+req("SCHEDULE_EXACT_ALARM" not in MANIFEST+ADVANCED_MANIFEST,"exact_alarm_permission_forbidden")
 
 req("python3 tests/verify_20310_resilience.py" in WORKFLOW,"workflow_gate")
 req("VERSION_CODE" in WORKFLOW,"workflow_version_present")

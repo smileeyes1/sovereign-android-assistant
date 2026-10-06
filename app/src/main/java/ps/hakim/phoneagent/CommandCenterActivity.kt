@@ -112,6 +112,7 @@ class CommandCenterActivity : ComponentActivity() {
         attachments.addAll(HakimAttachmentSessionStore.restore(this))
         handleIntent(intent)
         refreshAttachmentStatus()
+        HakimProductOnboarding.showIfNeeded(this)
     }
 
     override fun onResume() {

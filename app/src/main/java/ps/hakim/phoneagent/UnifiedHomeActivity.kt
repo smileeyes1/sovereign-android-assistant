@@ -151,7 +151,11 @@ class UnifiedHomeActivity : Activity() {
             "خدمة الذكاء: تحتاج ربطًا لمرة واحدة"
         }
 
-        updateStatus.text = AutoUpdater.statusSummary(this)
+        updateStatus.text = if (HakimProductMode.allowsSideloadUpdates(this)) {
+            AutoUpdater.statusSummary(this)
+        } else {
+            "التحديثات عبر قناة التوزيع الرسمية."
+        }
 
         val policy = HakimEnterprisePolicy.current(this)
         organizationStatus.text = if (policy.managed) {

@@ -7,6 +7,7 @@ router = (APP / "HakimRouterAuthActivity.kt").read_text(encoding="utf-8")
 guardian = (APP / "HakimNetworkGuardian.kt").read_text(encoding="utf-8")
 tasks = (APP / "HakimTaskManager.kt").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+advanced_manifest = (ROOT / "app/src/advanced/AndroidManifest.xml").read_text(encoding="utf-8")
 build = (ROOT / "app/build.gradle").read_text(encoding="utf-8")
 
 def req(ok, reason):
@@ -32,8 +33,9 @@ req("webviewBlocked" in tasks and "TIMEOUT" in tasks and "GATE_BLOCKED" in tasks
     "task_manager_blocker_missing")
 req("addJavascriptInterface" not in router, "javascript_interface_forbidden")
 req("evaluateJavascript" in router, "local_webview_execution_missing")
-req('android:name=".HakimRouterAuthActivity"' in manifest and 'android:exported="false"' in manifest,
-    "router_activity_not_private")
+req('android:name=".HakimRouterAuthActivity"' in advanced_manifest and 'android:exported="false"' in advanced_manifest,
+    "advanced_router_activity_not_private")
+req('android:name=".HakimRouterAuthActivity"' not in manifest, "consumer_router_activity_leak")
 req("FAMILY_DNS_1 = \"185.228.168.168\"" in router and
     "FAMILY_DNS_2 = \"185.228.169.168\"" in router,
     "family_dns_changed")

@@ -165,6 +165,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeOpenLocalRouterAuth() {
+        if (!HakimProductMode.allowsAdvancedDeviceControl(this)) return
         if (!HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
         val guardian = HakimNetworkGuardian.status(this)
         val nativeDnsResume =
@@ -180,6 +181,7 @@ class CommandCenterActivity : ComponentActivity() {
     }
 
     private fun maybeEnsureDeviceProtection() {
+        if (!HakimProductMode.allowsAdvancedDeviceControl(this)) return
         // أولوية واجهة الراوتر أولًا حتى لا تتراكب نافذتا نظام/ويب.
         if (HakimTaskManager.shouldAutoOpenRouterProtection(this)) return
 

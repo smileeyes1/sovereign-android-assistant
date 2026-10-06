@@ -117,7 +117,7 @@ object HakimConstraintDoctor {
         notificationsAllowed: Boolean
     ): Pair<String, Intent>? {
         if (disabled) return null
-        if (!paired) return "إكمال اقتران حكيم" to Intent(Intent.ACTION_MAIN).setClassName("ps.hakim.stable", "ps.hakim.phoneagent.MainActivity")
+        if (!paired) return "إكمال اقتران حكيم" to Intent(Intent.ACTION_MAIN).setClassName(context.packageName, "ps.hakim.phoneagent.MainActivity")
         if (backgroundRestricted || !batteryExempt) {
             return "رفع قيود الخلفية/البطارية عن حكيم" to Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         }

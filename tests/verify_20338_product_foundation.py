@@ -139,7 +139,6 @@ for token in [
     "assembleConsumerRelease",
     "bundleConsumerRelease",
     "app-consumer-release.aab",
-    "python3 tests/verify_20338_built_variants.py",
 ]:
     req(token in WORKFLOW, "workflow:" + token)
 

@@ -1,9 +1,9 @@
 name: بناء تطبيق حكيم الهاتف
-# 20337 capability fabric R28 + governed local Termux control R27 candidate
+# 20338 Product Foundation V1: Consumer/Play-safe + Advanced split
 
 on:
   push:
-    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*', 'release/hakim-20337-*' ]
+    branches: [ main, 'release/hakim-20313-*', 'release/hakim-20315-*', 'release/hakim-20316-*', 'release/hakim-20332-*', 'release/hakim-20333-*', 'release/hakim-20334-*', 'release/hakim-20336-*', 'release/hakim-20337-*', 'release/hakim-20338-*', 'feature/hakim-product-foundation-20338' ]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -102,6 +102,7 @@ jobs:
           python3 tests/verify_professional_cognitive_routing_20335.py
           python3 tests/verify_20336_termux_local_control.py
           python3 tests/verify_20337_capability_fabric.py
+          python3 tests/verify_20338_product_foundation.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -169,19 +170,54 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20337"
+          test "$VERSION_CODE" = "20338"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-      - name: بناء نسخة الاختبار والنسخة غير الموقعة
-        run: gradle assembleDebug assembleRelease --stacktrace
+      - name: بناء نسختي Advanced وConsumer وحزمة AAB
+        run: |
+          gradle \
+            assembleAdvancedDebug \
+            assembleAdvancedRelease \
+            assembleConsumerDebug \
+            assembleConsumerRelease \
+            bundleConsumerRelease \
+            --stacktrace
+      - name: بوابة الفصل الفعلي بين Consumer وAdvanced
+        run: |
+          AAPT_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/aapt"
+          CONSUMER_APK="app/build/outputs/apk/consumer/release/app-consumer-release-unsigned.apk"
+          ADVANCED_APK="app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk"
+          "$AAPT_BIN" dump badging "$CONSUMER_APK" | grep -q "package: name='ps.hakim.stable.consumer'"
+          "$AAPT_BIN" dump badging "$ADVANCED_APK" | grep -q "package: name='ps.hakim.stable'"
+          "$AAPT_BIN" dump badging "$CONSUMER_APK" | grep -q "targetSdkVersion:'36'"
+          "$AAPT_BIN" dump badging "$ADVANCED_APK" | grep -q "targetSdkVersion:'36'"
+          CONSUMER_PERMS="$("$AAPT_BIN" dump permissions "$CONSUMER_APK")"
+          ADVANCED_PERMS="$("$AAPT_BIN" dump permissions "$ADVANCED_APK")"
+          for forbidden in \
+            android.permission.FOREGROUND_SERVICE \
+            android.permission.RECEIVE_BOOT_COMPLETED \
+            android.permission.CAMERA \
+            android.permission.RECORD_AUDIO \
+            android.permission.ACCESS_FINE_LOCATION \
+            android.permission.ACCESS_WIFI_STATE \
+            com.termux.permission.RUN_COMMAND; do
+            if grep -q "$forbidden" <<<"$CONSUMER_PERMS"; then
+              echo "Consumer leaked advanced permission: $forbidden" >&2
+              exit 1
+            fi
+          done
+          grep -q "android.permission.FOREGROUND_SERVICE" <<<"$ADVANCED_PERMS"
+          grep -q "com.termux.permission.RUN_COMMAND" <<<"$ADVANCED_PERMS"
+          test -f app/build/outputs/bundle/consumerRelease/app-consumer-release.aab
       - name: بوابة توافق صفحات الذاكرة 16KB
         run: |
           ZIPALIGN_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/zipalign"
-          "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/release/app-release-unsigned.apk
+          "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
+          "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/consumer/release/app-consumer-release-unsigned.apk
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
         run: |
           APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
           set +e
-          GUARD_OUTPUT="$(APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh app/build/outputs/apk/debug/app-debug.apk 2>&1)"
+          GUARD_OUTPUT="$(APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh app/build/outputs/apk/advanced/debug/app-advanced-debug.apk 2>&1)"
           GUARD_RC=$?
           set -e
           printf '%s\n' "$GUARD_OUTPUT"
@@ -217,25 +253,34 @@ jobs:
             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
-            --out app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
+            --out app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}-advanced.apk \
+            app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
           APKSIGNER="$APKSIGNER_BIN" \
-            bash scripts/verify-field-signer.sh app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+            bash scripts/verify-field-signer.sh app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}-advanced.apk
           python3 tools/verify_hakim_d1_v2_structure.py \
-            app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+            app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}-advanced.apk
           echo "signed=true" >> "$GITHUB_OUTPUT"
-      - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
+      - name: حفظ ملفات Advanced CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v4
         with:
-          name: hakim-ci-NOT-INSTALLABLE
+          name: hakim-advanced-20338-NOT-INSTALLABLE
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/apk/advanced/debug/app-advanced-debug.apk
+            app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
+          if-no-files-found: error
+      - name: حفظ مرشح Consumer غير المخصص للنشر
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-consumer-20338-NOT-FOR-PUBLISHING
+          path: |
+            app/build/outputs/apk/consumer/debug/app-consumer-debug.apk
+            app/build/outputs/apk/consumer/release/app-consumer-release-unsigned.apk
+            app/build/outputs/bundle/consumerRelease/app-consumer-release.aab
           if-no-files-found: error
       - name: حفظ تحديث حكيم الميداني
         if: steps.field_sign.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hakim-field-${{ steps.candidate_version.outputs.code }}
-          path: app/build/outputs/apk/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+          name: hakim-field-${{ steps.candidate_version.outputs.code }}-advanced
+          path: app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}-advanced.apk
           if-no-files-found: error

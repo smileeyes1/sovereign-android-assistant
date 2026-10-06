@@ -43,12 +43,12 @@
   "capability_fabric_r28_source_ci_verified": false,
   "capability_fabric_r28_field_verified": false,
   "product_foundation_v1_source_integrated": true,
-  "product_foundation_v1_source_ci_verified": false,
+  "product_foundation_v1_source_ci_verified": true,
   "product_foundation_v1_field_verified": false,
   "consumer_advanced_split": true,
   "consumer_target_sdk_36": true,
   "advanced_target_sdk_36": true,
   "consumer_play_ready": false,
-  "consumer_aab_ci_verified": false,
-  "advanced_apk_ci_verified": false
+  "consumer_aab_ci_verified": true,
+  "advanced_apk_ci_verified": true
 }

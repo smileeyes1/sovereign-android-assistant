@@ -48,8 +48,20 @@ class UnifiedHomeActivity : Activity() {
         root.addView(TextView(this).apply {
             text = "الإعدادات"
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 20)
+            setPadding(8, 8, 8, 8)
             HakimUiKit.title(this)
+        })
+
+        root.addView(TextView(this).apply {
+            val edition = if (HakimProductMode.isConsumer(this@UnifiedHomeActivity)) {
+                "نسخة المستخدم"
+            } else {
+                "النسخة المتقدمة"
+            }
+            text = "$edition · " + BuildConfig.VERSION_NAME.substringBefore("-control-channel")
+            gravity = Gravity.CENTER
+            setPadding(8, 0, 8, 18)
+            HakimUiKit.status(this)
         })
 
         intelligenceStatus = TextView(this).apply {

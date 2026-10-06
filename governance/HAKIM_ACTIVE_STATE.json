@@ -28,19 +28,16 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20338,
-      "branch": "feature/hakim-20338-product-v1-foundation",
-      "source_ci_state": "SOURCE_CI_VERIFIED",
+      "version_code": 20339,
+      "branch": "feature/hakim-20339-private-voice-vault-r29",
+      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "product_foundation_v1_consumer_advanced_split_api36",
+      "purpose": "private_encrypted_owner_voice_profile_r29_on_product_foundation_v1_without_inheriting_field_success",
       "signed_d1_verified": false,
-      "installed_field_baseline_version": 20337,
-      "source_ci_run_number": 1655,
-      "source_ci_run_id": 37414588704,
-      "source_ci_verified_head": "c70259c407a98dcc4ba728ba37c20ddb2d409e59"
+      "installed_field_baseline_version": 20337
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -179,7 +176,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20338,
+    "candidate_version": 20339,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -196,7 +193,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20338",
+    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20339",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -366,7 +363,12 @@
     "consumer_release_unsigned_apk_sha256": "89430cd0d0c1e1a5a0d08e3531277c1f567031581b8a1707e56d49739db36d11",
     "advanced_release_unsigned_apk_sha256": "7d5f5031e8f341c994009c2c0d46fa0dcb955336236cc4ff1979afc185119226",
     "ci_artifact_sha256": "9588edfa770bc569398249c5719cde2d44579fc69c7659842defbd72f7991e66",
-    "ci_artifact_installable": false
+    "ci_artifact_installable": false,
+    "private_voice_vault_r29_source_integrated": true,
+    "private_voice_vault_r29_source_ci_verified": false,
+    "private_voice_vault_r29_field_verified": false,
+    "voice_sample_external_upload_default": false,
+    "voice_sample_portable_state_export": false
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

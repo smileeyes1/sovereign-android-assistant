@@ -11,6 +11,7 @@ CONSUMER_MANIFEST = (ROOT / "app/src/consumer/AndroidManifest.xml").read_text(en
 MODE = (APP / "HakimProductMode.kt").read_text(encoding="utf-8")
 APP_SRC = (APP / "HakimApp.kt").read_text(encoding="utf-8")
 BOOT = (APP / "BootReceiver.kt").read_text(encoding="utf-8")
+RECOVERY = (APP / "HakimConnectionRecoveryJobService.kt").read_text(encoding="utf-8")
 CENTER = (APP / "CommandCenterActivity.kt").read_text(encoding="utf-8")
 HOME = (APP / "UnifiedHomeActivity.kt").read_text(encoding="utf-8")
 STATE = json.loads((ROOT / "governance/HAKIM_ACTIVE_STATE.json").read_text(encoding="utf-8"))
@@ -91,6 +92,17 @@ for token in [
     'HakimProductMode.allowsSideloadUpdates(context)',
 ]:
     req(token in BOOT, "boot_gate:" + token)
+req(
+    'HakimProductMode.allowsAdvancedDeviceControl(this)' in APP_SRC and
+    'HakimConstraintDoctor.runAsync(this, "app_start")' in APP_SRC,
+    "consumer_startup_constraint_doctor_gate"
+)
+req(
+    'HakimProductMode.allowsAdvancedDeviceControl(app)' in RECOVERY and
+    'HakimConstraintDoctor.run(app, "periodic_watchdog")' in RECOVERY and
+    'HakimSelfImprovementLoop.scheduleEvaluation(applicationContext, "periodic_watchdog")' in RECOVERY,
+    "consumer_recovery_advanced_gate"
+)
 for token in [
     'if (!HakimProductMode.allowsAdvancedDeviceControl(this)) return',
 ]:
@@ -127,6 +139,7 @@ for token in [
     "assembleConsumerRelease",
     "bundleConsumerRelease",
     "app-consumer-release.aab",
+    "python3 tests/verify_20338_built_variants.py",
 ]:
     req(token in WORKFLOW, "workflow:" + token)
 

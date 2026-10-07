@@ -321,7 +321,7 @@ $('placeContinue').onclick=()=>{showOnly('movie');showScene(2)};
 document.querySelectorAll('.error-choice').forEach(b=>b.onclick=()=>{
   clearButtons('.error-choice');
   if(b.dataset.error==='tens'){
-    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').innerHTML='أحسنت! الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، لكن ٤ عشرات + ٢ عشرات = ٦ عشرات، لا ٧.';
+    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').innerHTML='أحسنت! الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، لكن مجموع العشرات هو ٦، وليس ٧.';
     $('errorContinue').classList.remove('hidden');
   }else{
     b.classList.add('bad');$('errorFeedback').className='feedback warn';

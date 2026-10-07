@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v5">
+<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v6">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -158,11 +158,11 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
     <div id="scene2" class="scene hidden">
       <h2>اجمع كل منزلة مع مثلها</h2>
       <div class="equations">
-        <div class="eq">٣ + ٤ = ٧</div>
-        <div class="eq">٤ + ٢ = ٦</div>
-        <div class="eq">٤٣ + ٢٤ = ٦٧</div>
+        <div id="workedOnes" class="eq"></div>
+        <div id="workedTens" class="eq"></div>
+        <div id="workedTotal" class="eq"></div>
       </div>
-      <p>لم نحتج إلى حمل؛ لأن <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، أي إن مجموع الآحاد أقل من عشرة.</p>
+      <p id="noCarryExplain"></p>
     </div>
 
     <div id="scene3" class="scene hidden">
@@ -190,7 +190,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 
   <section id="errorChallenge" class="card challenge hidden" aria-label="اكتشاف الخطأ">
     <h2>🧠 اكتشف الخطأ</h2>
-    <div class="character">قال صديقنا: «<bdi dir="ltr" class="math-inline">٤٣ + ٢٤ = ٧٩</bdi>» 🤔</div>
+    <div class="character">قال صديقنا: «<span id="intentionalEquation"></span>» 🤔</div>
     <p>أين حدث الخطأ؟</p>
     <div class="choice-grid three">
       <button class="choice-btn error-choice" data-error="ones">في الآحاد</button>
@@ -205,7 +205,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
     <h2>💡 لماذا لا يوجد حمل؟</h2>
     <p>اختر السبب الأقوى.</p>
     <div class="choice-grid three">
-      <button class="choice-btn why-choice" data-why="correct">لأن <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، وهو أقل من عشرة</button>
+      <button id="whyCorrectChoice" class="choice-btn why-choice" data-why="correct"></button>
       <button class="choice-btn why-choice" data-why="tens">لأن عدد العشرات أكبر</button>
       <button class="choice-btn why-choice" data-why="digits">لأن الناتج من منزلتين</button>
     </div>
@@ -216,7 +216,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
   <section id="tryCard" class="card try hidden">
     <h2>✍️ الآن جرّب وحدك</h2>
     <p>لا تطلب من أحد أن يحل لك. ابدأ بالآحاد ثم العشرات.</p>
-    <div class="question">٣٥ + ٥٤ = □</div>
+    <div id="transferQuestion" class="question"></div>
     <div class="answers">
       <button class="answer" data-answer="79">٧٩</button>
       <button class="answer" data-answer="89">٨٩</button>
@@ -228,7 +228,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 
   <section id="readyCard" class="card ready hidden">
     <h2>🌟 أصبحت جاهزًا للحصة القادمة</h2>
-    <p>في الدفتر اكتب مرة واحدة فقط: <b><bdi dir="ltr" class="math-inline">٤٣ + ٢٤ = □</bdi></b>، وضع خطًا تحت الآحاد ودائرة حول العشرات. ثم أغلق الصفحة واستعد للحصة.</p>
+    <p>في الدفتر اكتب مرة واحدة فقط: <b><span id="readyEquation"></span></b>، وضع خطًا تحت الآحاد ودائرة حول العشرات. ثم أغلق الصفحة واستعد للحصة.</p>
     <button id="replay" class="big secondary" style="margin-top:14px">أعد القصة إن أحببت</button>
   </section>
 
@@ -239,6 +239,62 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 const DIGITS='٠١٢٣٤٥٦٧٨٩';
 const ar=n=>String(n).replace(/\d/g,d=>DIGITS[d]);
 const $=id=>document.getElementById(id);
+const EXAMPLE={a:43,b:24};
+const TRANSFER={a:35,b:54};
+function noCarryFacts(a,b){
+  const ao=a%10,bo=b%10,at=Math.floor(a/10),bt=Math.floor(b/10);
+  const ones=ao+bo,tens=at+bt;
+  if(a<10||a>99||b<10||b>99||ones>=10||tens>=10)throw new Error('INVALID_NO_CARRY_EXAMPLE');
+  return {a,b,ao,bo,at,bt,ones,tens,result:tens*10+ones};
+}
+function singlePlaceWrong(facts,place){
+  let ones=facts.ones,tens=facts.tens;
+  if(place==='ones')ones=ones===9?8:ones+1;
+  else if(place==='tens')tens=tens===9?8:tens+1;
+  else throw new Error('INVALID_ERROR_TARGET');
+  const value=tens*10+ones;
+  const sameOnes=value%10===facts.ones;
+  const sameTens=Math.floor(value/10)===facts.tens;
+  if(place==='tens'&&(!sameOnes||sameTens))throw new Error('TENS_ERROR_NOT_ISOLATED');
+  if(place==='ones'&&(sameOnes||!sameTens))throw new Error('ONES_ERROR_NOT_ISOLATED');
+  return value;
+}
+function mathEq(a,b,c){return '<bdi dir="ltr" class="math-inline">'+ar(a)+' + '+ar(b)+' = '+ar(c)+'</bdi>'}
+function mathOpen(a,b){return '<bdi dir="ltr" class="math-inline">'+ar(a)+' + '+ar(b)+' = □</bdi>'}
+const MODEL=noCarryFacts(EXAMPLE.a,EXAMPLE.b);
+const TRANSFER_MODEL=noCarryFacts(TRANSFER.a,TRANSFER.b);
+const INTENTIONAL_WRONG=singlePlaceWrong(MODEL,'tens');
+function applyMathModel(){
+  $('workedOnes').innerHTML=mathEq(MODEL.ao,MODEL.bo,MODEL.ones);
+  $('workedTens').innerHTML=mathEq(MODEL.at,MODEL.bt,MODEL.tens);
+  $('workedTotal').innerHTML=mathEq(MODEL.a,MODEL.b,MODEL.result);
+  $('noCarryExplain').innerHTML='لم نحتج إلى حمل؛ لأن '+mathEq(MODEL.ao,MODEL.bo,MODEL.ones)+'، أي إن مجموع الآحاد أقل من عشرة.';
+  $('intentionalEquation').innerHTML=mathEq(MODEL.a,MODEL.b,INTENTIONAL_WRONG);
+  $('whyCorrectChoice').innerHTML='لأن '+mathEq(MODEL.ao,MODEL.bo,MODEL.ones)+'، وهو أقل من عشرة';
+  $('transferQuestion').innerHTML=mathOpen(TRANSFER_MODEL.a,TRANSFER_MODEL.b);
+  $('readyEquation').innerHTML=mathOpen(MODEL.a,MODEL.b);
+}
+function validateMathContract(){
+  if(MODEL.result!==67||MODEL.ones!==7||MODEL.tens!==6)throw new Error('EXAMPLE_SEMANTIC_MISMATCH');
+  if(INTENTIONAL_WRONG!==77)throw new Error('INTENTIONAL_ERROR_MISMATCH');
+  if(INTENTIONAL_WRONG%10!==MODEL.ones)throw new Error('INTENTIONAL_ERROR_CHANGED_ONES');
+  if(Math.floor(INTENTIONAL_WRONG/10)===MODEL.tens)throw new Error('INTENTIONAL_ERROR_DID_NOT_CHANGE_TENS');
+  if(TRANSFER_MODEL.result!==89)throw new Error('TRANSFER_SEMANTIC_MISMATCH');
+}
+function visibleWesternDigits(){
+  const nodes=[...document.querySelectorAll('body *')].filter(el=>!['SCRIPT','STYLE'].includes(el.tagName)&&el.offsetParent!==null);
+  return nodes.some(el=>el.children.length===0&&/[0-9]/.test(el.textContent||''));
+}
+function enforceStudentInvariant(){
+  validateMathContract();
+  applyMathModel();
+  requestAnimationFrame(()=>{
+    if(visibleWesternDigits()){
+      document.querySelector('main').innerHTML='<section class="card"><h2>تعذر فتح النشاط بصورة صحيحة</h2><p>أغلق الصفحة وافتح الرابط من جديد.</p></section>';
+      throw new Error('WESTERN_DIGIT_VISIBLE');
+    }
+  });
+}
 let scene=0,placeStep=0;
 const sceneText=[
 'لدينا ثلاثة وأربعون، ثم أضفنا أربعة وعشرين. سنرتب العددين حسب المنازل أولًا.',
@@ -300,6 +356,7 @@ function speak(){
   if(v)u.voice=v;
   speechSynthesis.speak(u);
 }
+enforceStudentInvariant();
 $('startBtn').onclick=()=>{$('parentNote').open=false;showOnly('predictCard')};
 document.querySelectorAll('.predict-choice').forEach(b=>b.onclick=()=>{
   clearButtons('.predict-choice');
@@ -321,11 +378,11 @@ $('placeContinue').onclick=()=>{showOnly('movie');showScene(2)};
 document.querySelectorAll('.error-choice').forEach(b=>b.onclick=()=>{
   clearButtons('.error-choice');
   if(b.dataset.error==='tens'){
-    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').innerHTML='أحسنت! الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، لكن مجموع العشرات هو ٦، وليس ٧.';
+    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').innerHTML='أحسنت! الآحاد صحيحة: '+mathEq(MODEL.ao,MODEL.bo,MODEL.ones)+'، لكن مجموع العشرات هو '+ar(MODEL.tens)+'، وليس '+ar(Math.floor(INTENTIONAL_WRONG/10))+'.';
     $('errorContinue').classList.remove('hidden');
   }else{
     b.classList.add('bad');$('errorFeedback').className='feedback warn';
-    $('errorFeedback').innerHTML=b.dataset.error==='ones'?'الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>. افحص العشرات.':'يوجد خطأ فعلًا. احسب العشرات وحدها.';
+    $('errorFeedback').innerHTML=b.dataset.error==='ones'?'الآحاد صحيحة: '+mathEq(MODEL.ao,MODEL.bo,MODEL.ones)+'. افحص العشرات.':'يوجد خطأ فعلًا. احسب العشرات وحدها.';
   }
 });
 $('errorContinue').onclick=()=>showOnly('whyChallenge');
@@ -335,25 +392,25 @@ document.querySelectorAll('.why-choice').forEach(b=>b.onclick=()=>{
     b.classList.add('good');$('whyFeedback').className='feedback good';$('whyFeedback').textContent='صحيح! مجموع الآحاد ٧، وهو أقل من عشرة؛ لذلك لا نحمل عشرة جديدة.';
     $('whyContinue').classList.remove('hidden');
   }else{
-    b.classList.add('bad');$('whyFeedback').className='feedback warn';$('whyFeedback').innerHTML='ارجع إلى الآحاد: <bdi dir="ltr" class="math-inline">٣ + ٤</bdi>. هل وصلت إلى عشرة؟';
+    b.classList.add('bad');$('whyFeedback').className='feedback warn';$('whyFeedback').innerHTML='ارجع إلى الآحاد: <bdi dir="ltr" class="math-inline">'+ar(MODEL.ao)+' + '+ar(MODEL.bo)+'</bdi>. هل وصلت إلى عشرة؟';
   }
 });
 $('whyContinue').onclick=()=>{showOnly('movie');showScene(3)};
 document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
-  const ok=b.dataset.answer==='89';
+  const ok=Number(b.dataset.answer)===TRANSFER_MODEL.result;
   document.querySelectorAll('.answer').forEach(x=>x.classList.remove('good','bad'));
   if(ok){
     b.classList.add('good');
     $('feedback').className='feedback good';
-    $('feedback').innerHTML='أحسنت! <bdi dir="ltr" class="math-inline">٥ + ٤ = ٩</bdi> في الآحاد، و<bdi dir="ltr" class="math-inline">٣ + ٥ = ٨</bdi> في العشرات.';
+    $('feedback').innerHTML='أحسنت! '+mathEq(TRANSFER_MODEL.ao,TRANSFER_MODEL.bo,TRANSFER_MODEL.ones)+' في الآحاد، و'+mathEq(TRANSFER_MODEL.at,TRANSFER_MODEL.bt,TRANSFER_MODEL.tens)+' في العشرات.';
     $('readyCard').classList.remove('hidden');
     setTimeout(()=>$('readyCard').scrollIntoView({behavior:'smooth',block:'start'}),300);
   }else{
     b.classList.add('bad');
     $('feedback').className='feedback warn';
     $('feedback').innerHTML=b.dataset.answer==='79'
-      ? 'قريب جدًا. في العدد ٥٤، رقم العشرات هو ٥. اجمع ٣ عشرات مع ٥ عشرات.'
-      : 'راجع الآحاد أولًا: <bdi dir="ltr" class="math-inline">٥ + ٤ = ٩</bdi>. ثم انتقل إلى العشرات.';
+      ? 'قريب جدًا. في العدد '+ar(TRANSFER_MODEL.b)+'، رقم العشرات هو '+ar(TRANSFER_MODEL.bt)+'. اجمع '+ar(TRANSFER_MODEL.at)+' عشرات مع '+ar(TRANSFER_MODEL.bt)+' عشرات.'
+      : 'راجع الآحاد أولًا: '+mathEq(TRANSFER_MODEL.ao,TRANSFER_MODEL.bo,TRANSFER_MODEL.ones)+'. ثم انتقل إلى العشرات.';
   }
 });
 $('replay').onclick=()=>{

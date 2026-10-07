@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-FINAL-2026-10-07-v3">
+<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v4">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -58,6 +58,18 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .movie-tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 15px;border-top:1px solid var(--line);background:#fafbff}
 .movie-tools button{border:0;border-radius:16px;min-height:50px;font-weight:900;font-size:15px;cursor:pointer}
 #listen{background:#eef6ff;color:#214f7a}#next{background:var(--pri);color:#fff}
+.challenge{border:2px solid #d9d4ff;background:linear-gradient(135deg,#fbfaff,#fff);text-align:center}
+.challenge h2{margin:0 0 8px;font-size:clamp(25px,7vw,31px)}
+.challenge p{line-height:1.75;color:#536078;margin:6px 0 13px}
+.choice-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.choice-grid.three{grid-template-columns:repeat(3,1fr)}
+.choice-btn{border:2px solid #cfd7e7;background:#fff;border-radius:19px;min-height:62px;padding:10px;font-size:20px;font-weight:900;color:var(--ink);cursor:pointer}
+.choice-btn.good{border-color:#73bd87;background:var(--good);color:#176b38}
+.choice-btn.bad{border-color:#e89b9b;background:#fff3f3}
+.character{max-width:520px;margin:12px auto;background:#f6f7fb;border:2px solid #e0e4ec;border-radius:20px;padding:14px;font-size:20px;font-weight:900;line-height:1.75}
+.mini-number{display:inline-flex;align-items:center;justify-content:center;min-width:64px;min-height:64px;border-radius:18px;background:#fff;border:3px solid #d8deeb;font-size:31px;font-weight:900;margin:5px}
+.challenge-next{margin-top:11px}
+.place-question{font-size:20px;font-weight:900;margin:10px 0}
 .try{border:2px solid #f1d277;background:#fffdf5}
 .try h2{margin:0 0 8px;text-align:center;font-size:27px}
 .try p{text-align:center;line-height:1.7;color:#5a6376}
@@ -74,6 +86,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .footer{text-align:center;color:#697386;font-size:12px;line-height:1.7;padding:18px 8px 6px}
 @media(max-width:520px){
   main{padding:10px}.hero{padding:17px}.scene{padding:14px;min-height:390px}
+  .choice-grid.three{grid-template-columns:1fr}.choice-btn{min-height:58px;font-size:18px}
   .story-box{grid-template-columns:1fr 34px 1fr}.group{padding:9px;min-height:200px}.rod{width:11px;height:110px}.one{width:11px;height:11px}.answers{gap:7px}
   .answer{font-size:24px;min-height:60px}
 }
@@ -96,8 +109,18 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 
   <section id="startCard" class="card start">
     <h2>جاهز للمغامرة؟ 🚀</h2>
-    <p>سنرى كيف تتعاون الآحاد والعشرات.</p>
-    <button id="startBtn" class="big">ابدأ القصة المتحركة</button>
+    <p>لن أعطيك الحل مباشرة. سنكتشفه معًا.</p>
+    <button id="startBtn" class="big">ابدأ الاكتشاف</button>
+  </section>
+
+  <section id="predictCard" class="card challenge hidden" aria-label="توقع البداية">
+    <h2>🤔 قبل أن نبدأ...</h2>
+    <p>عندما نجمع عددين من منزلتين، من أين نبدأ؟</p>
+    <div class="choice-grid">
+      <button class="choice-btn predict-choice" data-predict="ones">الآحاد</button>
+      <button class="choice-btn predict-choice" data-predict="tens">العشرات</button>
+    </div>
+    <div id="predictFeedback" class="feedback" aria-live="polite">اختر ما تتوقعه أولًا.</div>
   </section>
 
   <section id="movie" class="card movie hidden" aria-label="القصة المتحركة">
@@ -153,6 +176,42 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
     </div>
   </section>
 
+  <section id="placeChallenge" class="card challenge hidden" aria-label="تحدي المنازل">
+    <h2>🏠 أنت ترتّب المنازل</h2>
+    <p id="placePrompt" class="place-question">في العدد ٤٣، اضغط رقم الآحاد.</p>
+    <div id="placeChoices" class="choice-grid">
+      <button class="choice-btn place-choice" data-value="4">٤</button>
+      <button class="choice-btn place-choice" data-value="3">٣</button>
+    </div>
+    <div id="placeFeedback" class="feedback" aria-live="polite">انظر إلى العدد من اليمين.</div>
+    <button id="placeContinue" class="big challenge-next hidden">أكمل الاكتشاف</button>
+  </section>
+
+  <section id="errorChallenge" class="card challenge hidden" aria-label="اكتشاف الخطأ">
+    <h2>🧠 اكتشف الخطأ</h2>
+    <div class="character">قال صديقنا: «٤٣ + ٢٤ = ٧٩» 🤔</div>
+    <p>أين حدث الخطأ؟</p>
+    <div class="choice-grid three">
+      <button class="choice-btn error-choice" data-error="ones">في الآحاد</button>
+      <button class="choice-btn error-choice" data-error="tens">في العشرات</button>
+      <button class="choice-btn error-choice" data-error="none">لا يوجد خطأ</button>
+    </div>
+    <div id="errorFeedback" class="feedback" aria-live="polite">افحص الآحاد والعشرات كلًّا على حدة.</div>
+    <button id="errorContinue" class="big challenge-next hidden">التالي</button>
+  </section>
+
+  <section id="whyChallenge" class="card challenge hidden" aria-label="تفسير عدم وجود حمل">
+    <h2>💡 لماذا لا يوجد حمل؟</h2>
+    <p>اختر السبب الأقوى.</p>
+    <div class="choice-grid three">
+      <button class="choice-btn why-choice" data-why="correct">لأن ٣ + ٤ = ٧، وهو أقل من عشرة</button>
+      <button class="choice-btn why-choice" data-why="tens">لأن عدد العشرات أكبر</button>
+      <button class="choice-btn why-choice" data-why="digits">لأن الناتج من منزلتين</button>
+    </div>
+    <div id="whyFeedback" class="feedback" aria-live="polite">فكّر في مجموع الآحاد.</div>
+    <button id="whyContinue" class="big challenge-next hidden">ثبت الفكرة</button>
+  </section>
+
   <section id="tryCard" class="card try hidden">
     <h2>✍️ الآن جرّب وحدك</h2>
     <p>لا تطلب من أحد أن يحل لك. ابدأ بالآحاد ثم العشرات.</p>
@@ -179,7 +238,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 const DIGITS='٠١٢٣٤٥٦٧٨٩';
 const ar=n=>String(n).replace(/\d/g,d=>DIGITS[d]);
 const $=id=>document.getElementById(id);
-let scene=0;
+let scene=0,placeStep=0;
 const sceneText=[
 'لدينا ثلاثة وأربعون، ثم أضفنا أربعة وعشرين. سنرتب العددين حسب المنازل أولًا.',
 'الآحاد تحت الآحاد، والعشرات تحت العشرات.',
@@ -189,9 +248,46 @@ const sceneText=[
 function showScene(i){
   scene=Math.max(0,Math.min(3,i));
   for(let x=0;x<4;x++)$('scene'+x).classList.toggle('hidden',x!==scene);
-  $('progress').textContent='الخطوة '+ar(scene+1)+' من '+ar(4);
+  $('progress').textContent='المشهد '+ar(scene+1)+' من '+ar(4);
   $('next').textContent=scene===3?'جرّب وحدك':'التالي';
   window.scrollTo({top:$('movie').offsetTop-8,behavior:'smooth'});
+}
+function showOnly(id){
+  for(const x of ['startCard','predictCard','movie','placeChallenge','errorChallenge','whyChallenge','tryCard','readyCard'])$(x).classList.add('hidden');
+  $(id).classList.remove('hidden');
+  window.scrollTo({top:$(id).offsetTop-8,behavior:'smooth'});
+}
+function clearButtons(selector){document.querySelectorAll(selector).forEach(b=>b.classList.remove('good','bad'))}
+function renderPlaceStep(){
+  clearButtons('.place-choice');
+  if(placeStep===0){
+    $('placePrompt').textContent='في العدد ٤٣، اضغط رقم الآحاد.';
+    $('placeChoices').innerHTML='<button class="choice-btn place-choice" data-value="4">٤</button><button class="choice-btn place-choice" data-value="3">٣</button>';
+    $('placeFeedback').className='feedback';$('placeFeedback').textContent='انظر إلى العدد من اليمين.';
+  }else{
+    $('placePrompt').textContent='ممتاز. الآن في العدد ٢٤، اضغط رقم العشرات.';
+    $('placeChoices').innerHTML='<button class="choice-btn place-choice" data-value="2">٢</button><button class="choice-btn place-choice" data-value="4">٤</button>';
+    $('placeFeedback').className='feedback';$('placeFeedback').textContent='العشرات في الجهة اليسرى.';
+  }
+  document.querySelectorAll('.place-choice').forEach(b=>b.onclick=()=>handlePlace(b));
+}
+function handlePlace(b){
+  const correct=placeStep===0?'3':'2';
+  clearButtons('.place-choice');
+  if(b.dataset.value===correct){
+    b.classList.add('good');$('placeFeedback').className='feedback good';
+    if(placeStep===0){
+      $('placeFeedback').textContent='صحيح! ٣ هو الآحاد لأنه في الجهة اليمنى.';
+      setTimeout(()=>{placeStep=1;renderPlaceStep()},550);
+    }else{
+      $('placeFeedback').textContent='صحيح! ٢ هو رقم العشرات في ٢٤.';
+      $('placeContinue').classList.remove('hidden');
+      document.querySelectorAll('.place-choice').forEach(x=>x.disabled=true);
+    }
+  }else{
+    b.classList.add('bad');$('placeFeedback').className='feedback warn';
+    $('placeFeedback').textContent=placeStep===0?'تذكّر: الآحاد في الجهة اليمنى. جرّب مرة أخرى.':'تذكّر: العشرات في الجهة اليسرى. جرّب مرة أخرى.';
+  }
 }
 function speak(){
   if(!('speechSynthesis'in window))return;
@@ -203,13 +299,45 @@ function speak(){
   if(v)u.voice=v;
   speechSynthesis.speak(u);
 }
-$('startBtn').onclick=()=>{$('parentNote').open=false;$('startCard').classList.add('hidden');$('movie').classList.remove('hidden');showScene(0)};
+$('startBtn').onclick=()=>{$('parentNote').open=false;showOnly('predictCard')};
+document.querySelectorAll('.predict-choice').forEach(b=>b.onclick=()=>{
+  clearButtons('.predict-choice');
+  if(b.dataset.predict==='ones'){
+    b.classList.add('good');$('predictFeedback').className='feedback good';$('predictFeedback').textContent='أحسنت! نبدأ بالآحاد في الجهة اليمنى.';
+    setTimeout(()=>{showOnly('movie');showScene(0)},650);
+  }else{
+    b.classList.add('bad');$('predictFeedback').className='feedback warn';$('predictFeedback').textContent='فكرة جيدة، لكن في هذه الطريقة نبدأ من الجهة اليمنى: من هناك؟';
+  }
+});
 $('listen').onclick=speak;
 $('next').onclick=()=>{
-  if(scene<3){showScene(scene+1);return}
-  $('movie').classList.add('hidden');$('tryCard').classList.remove('hidden');
-  window.scrollTo({top:$('tryCard').offsetTop-8,behavior:'smooth'});
+  if(scene===0){showScene(1);return}
+  if(scene===1){placeStep=0;$('placeContinue').classList.add('hidden');renderPlaceStep();showOnly('placeChallenge');return}
+  if(scene===2){showOnly('errorChallenge');return}
+  if(scene===3){showOnly('tryCard');return}
 };
+$('placeContinue').onclick=()=>{showOnly('movie');showScene(2)};
+document.querySelectorAll('.error-choice').forEach(b=>b.onclick=()=>{
+  clearButtons('.error-choice');
+  if(b.dataset.error==='tens'){
+    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').textContent='أحسنت! الآحاد صحيحة: ٣ + ٤ = ٧، لكن ٤ عشرات + ٢ عشرات = ٦ عشرات، لا ٧.';
+    $('errorContinue').classList.remove('hidden');
+  }else{
+    b.classList.add('bad');$('errorFeedback').className='feedback warn';
+    $('errorFeedback').textContent=b.dataset.error==='ones'?'الآحاد صحيحة: ٣ + ٤ = ٧. افحص العشرات.':'يوجد خطأ فعلًا. احسب العشرات وحدها.';
+  }
+});
+$('errorContinue').onclick=()=>showOnly('whyChallenge');
+document.querySelectorAll('.why-choice').forEach(b=>b.onclick=()=>{
+  clearButtons('.why-choice');
+  if(b.dataset.why==='correct'){
+    b.classList.add('good');$('whyFeedback').className='feedback good';$('whyFeedback').textContent='صحيح! مجموع الآحاد ٧، وهو أقل من عشرة؛ لذلك لا نحمل عشرة جديدة.';
+    $('whyContinue').classList.remove('hidden');
+  }else{
+    b.classList.add('bad');$('whyFeedback').className='feedback warn';$('whyFeedback').textContent='ارجع إلى الآحاد: ٣ + ٤. هل وصلت إلى عشرة؟';
+  }
+});
+$('whyContinue').onclick=()=>{showOnly('movie');showScene(3)};
 document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
   const ok=b.dataset.answer==='89';
   document.querySelectorAll('.answer').forEach(x=>x.classList.remove('good','bad'));
@@ -228,7 +356,14 @@ document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
   }
 });
 $('replay').onclick=()=>{
-  $('readyCard').classList.add('hidden');$('tryCard').classList.add('hidden');$('movie').classList.remove('hidden');showScene(0)
+  scene=0;placeStep=0;
+  clearButtons('.predict-choice');clearButtons('.error-choice');clearButtons('.why-choice');clearButtons('.answer');
+  $('predictFeedback').className='feedback';$('predictFeedback').textContent='اختر ما تتوقعه أولًا.';
+  $('errorFeedback').className='feedback';$('errorFeedback').textContent='افحص الآحاد والعشرات كلًّا على حدة.';
+  $('whyFeedback').className='feedback';$('whyFeedback').textContent='فكّر في مجموع الآحاد.';
+  $('errorContinue').classList.add('hidden');$('whyContinue').classList.add('hidden');$('placeContinue').classList.add('hidden');
+  document.querySelectorAll('.place-choice').forEach(x=>x.disabled=false);
+  showOnly('predictCard');
 };
 </script>
 </body>

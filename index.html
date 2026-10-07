@@ -7,7 +7,7 @@
 <meta name="author" content="محمد وجيه">
 <meta name="copyright" content="© محمد وجيه">
 <meta name="license" content="Educational content: CC BY-NC-SA 4.0; application code: © محمد وجيه, all rights reserved">
-<meta name="application-version" content="CITY99-SCHOOL-READY-2026-10-07-v9">
+<meta name="application-version" content="CITY99-RESCUE-ACTION-2026-10-07-v10">
 <meta name="description" content="مدينة ٩٩: تجربة تعلم تفاعلية للوحدة الأولى في رياضيات الصف الثاني — المقارنة والترتيب والقيمة المنزلية والزوجي والفردي.">
 <meta property="og:title" content="مدينة ٩٩ — مغامرة الأعداد للصف الثاني">
 <meta property="og:description" content="تعلم تفاعلي مبسط للطالب، مع دفتر وقلم وإرشاد ذكي لولي الأمر في الرابط نفسه.">
@@ -74,6 +74,23 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
 
 /* رفيق ولي الأمر: إرشاد تكيفي قصير يحافظ على استقلال الطفل */
 .parent-view{max-width:760px;margin:auto}.parent-hero{padding:18px;border:2px solid #d8e5d8;border-radius:24px;background:linear-gradient(135deg,#f4fff7,#fffaf0);margin-bottom:14px}.parent-hero h1{margin:0 0 7px;font-size:clamp(26px,7vw,38px)}.parent-hero p{margin:0;color:#4b596f;line-height:1.8}.parent-grid{display:grid;grid-template-columns:1fr;gap:12px}.parent-card{border:2px solid var(--line);border-radius:20px;padding:15px;background:#fff;box-shadow:0 8px 22px rgba(31,42,68,.05)}.parent-card h2{font-size:18px;margin:0 0 8px}.parent-card p{margin:6px 0;line-height:1.8;color:#3d485e}.parent-card.good{border-color:#b8dfc4;background:#fbfffc}.parent-card.warn{border-color:#f0cd76;background:#fffaf0}.parent-status{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.parent-status div{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.parent-status b{display:block;font-size:14px}.parent-status span{font-size:12px;color:var(--muted);line-height:1.5}.parent-steps{margin:7px 0 0;padding:0 20px 0 0;line-height:1.95}.parent-script{padding:12px;border-radius:15px;background:#f6f8ff;line-height:1.85}.parent-do-not{padding:12px;border-radius:15px;background:#fff3f3;color:#7e2c2c;line-height:1.8}.parent-privacy{font-size:12px;color:var(--muted);line-height:1.75;margin-top:10px}.student-home-help.hidden{display:none!important}@media(max-width:430px){.parent-status{grid-template-columns:1fr}.parent-card{padding:13px}.parent-hero{padding:15px}}
+
+/* أكشن تعليمي v10: حركة بلا مؤقت أو خسارة؛ القرار الرياضي هو الذي يحرك الحدث */
+.rescue-offer{margin:12px 0;padding:12px;border:2px solid #ffd76f;border-radius:18px;background:linear-gradient(135deg,#fff9e8,#fff);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rescue-offer b{display:block;font-size:16px}.rescue-offer span{font-size:12px;color:#667085;line-height:1.5}.rescue-offer .primary{background:#7b4be2}
+.rescue-shell{max-width:760px;margin:auto}.rescue-card{background:#fff;border:2px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow)}
+.rescue-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}.rescue-head h2{margin:0;font-size:24px}.rescue-head p{margin:4px 0 0;color:#667085;line-height:1.6;font-size:13px}
+.rescue-scene{position:relative;min-height:210px;border-radius:22px;overflow:hidden;background:linear-gradient(#dff2ff 0 58%,#d9f0cb 58% 72%,#8b6d50 72%);border:2px solid #dbe5f0;margin:10px 0 14px}
+.rescue-city{position:absolute;inset:auto 0 28%;display:flex;justify-content:space-around;align-items:flex-end;padding:0 12px;font-size:38px;opacity:.9}.rescue-road{position:absolute;bottom:0;left:0;right:0;height:29%;background:linear-gradient(90deg,#4b5563,#6b7280);clip-path:polygon(38% 0,62% 0,92% 100%,8% 100%)}
+.rescue-hero{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:42px;z-index:3;transition:transform .45s ease,left .45s ease}.rescue-hero.step1{left:43%}.rescue-hero.step2{left:57%}.rescue-hero.step3{left:50%;transform:translateX(-50%) translateY(-18px) scale(1.12)}
+.rescue-question{font-size:clamp(22px,6.5vw,31px);font-weight:900;text-align:center;line-height:1.55;margin:10px 0}.rescue-sub{font-size:13px;text-align:center;color:#667085;margin:-4px 0 10px}
+.rescue-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rescue-choice{border:2px solid #cfd8e8;background:#fff;border-radius:19px;padding:15px 10px;min-height:64px;font-size:24px;font-weight:900;cursor:pointer}.rescue-choice:active{transform:scale(.98)}.rescue-choice.good{border-color:#74bd88;background:#effbf2}.rescue-choice.bad{animation:rescueShake .32s ease;border-color:#e6a2a2;background:#fff4f4}
+.rescue-order{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}.rescue-order button{border:2px solid #cfd8e8;background:#fff;border-radius:18px;min-width:68px;min-height:60px;font-size:23px;font-weight:900}.rescue-order button.used{opacity:.35;pointer-events:none}.rescue-path{display:flex;gap:7px;justify-content:center;min-height:45px;align-items:center;flex-wrap:wrap}.rescue-path span{background:#eef2ff;border-radius:999px;padding:8px 11px;font-weight:900}
+.rescue-feedback{min-height:48px;margin:12px 0 6px;padding:10px 12px;border-radius:15px;background:#f6f8fc;line-height:1.65;text-align:center;font-weight:800}.rescue-feedback.good{background:#eefaf1;color:#176b38}.rescue-feedback.warn{background:#fff8e9;color:#805a08}
+.rescue-note{font-size:12px;color:#667085;text-align:center;line-height:1.6;margin-top:9px}.rescue-home{grid-column:1/-1}
+@keyframes rescueShake{25%{transform:translateX(6px)}50%{transform:translateX(-6px)}75%{transform:translateX(3px)}}
+.motion-off .rescue-hero{transition:none}.motion-off .rescue-choice.bad{animation:none}
+@media(max-width:430px){.rescue-card{padding:14px}.rescue-scene{min-height:180px}.rescue-choices{grid-template-columns:1fr 1fr}.rescue-choice{font-size:22px;min-height:58px}.rescue-city{font-size:32px}}
 
 /* الاعتماد المدرسي v9: رابط واحد للطالب وولي الأمر مع تسليم واضح للهاتف */
 .family-card{max-width:560px}.family-card .family-icon{font-size:42px;margin-bottom:4px}.family-card h2{margin:4px 0 8px;font-size:clamp(25px,7vw,34px)}
@@ -158,6 +175,7 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
       <div class="premium-strip" aria-label="لعب وتفضيلات">
         <button id="playLabBtn" class="premium-btn">🎮 تدريب إضافي</button>
         <button id="prefsBtn" class="premium-btn">⚙️ إعدادات الراحة</button>
+        <button id="homeRescueBtn" class="premium-btn rescue-home">⚡ مهمة الإنقاذ</button>
       </div>
     <div id="recallCard" class="recall-card hidden">
       <div class="recall-icon" aria-hidden="true">🧠</div>
@@ -190,8 +208,25 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
     <div id="interaction"></div>
     <div id="support" class="support hidden" aria-live="polite"></div>
     <div id="feedback" class="feedback" aria-live="polite">أنا معك خطوة خطوة.</div>
+    <div id="rescueOffer" class="rescue-offer hidden" aria-live="polite"><div><b>⚡ مهمة سريعة؟</b><span>تدريب حركي قصير، بلا مؤقت وبلا خسارة.</span></div><button id="rescueStart" class="primary">ابدأ المهمة</button></div>
     <div class="actions"><button id="hint" class="secondary">💡 ساعدني</button><button id="next" class="primary wide hidden">التالي</button></div>
     <div id="micro" class="micro"></div>
+  </div>
+</section>
+
+<section id="rescue" class="hidden" aria-label="مهمة الإنقاذ">
+  <div class="rescue-shell">
+    <div class="top"><button id="rescueBack" class="secondary">← الدرس</button><div class="badge">⚡ <span id="rescueRound">١ / ٣</span></div></div>
+    <div class="rescue-card">
+      <div class="rescue-head"><div><h2 id="rescueTitle">مهمة الإنقاذ</h2><p id="rescueMission">ثلاث قرارات رياضية تحرّك المغامرة.</p></div><div class="badge" aria-hidden="true">🚀</div></div>
+      <div class="rescue-scene" aria-hidden="true"><div class="rescue-city"><span>🏠</span><span>🌳</span><span>🏰</span></div><div class="rescue-road"></div><div id="rescueHero" class="rescue-hero">🚀</div></div>
+      <div id="rescueQuestion" class="rescue-question"></div>
+      <div id="rescueSub" class="rescue-sub"></div>
+      <div id="rescueInteraction"></div>
+      <div id="rescueFeedback" class="rescue-feedback">فكّر، ثم حرّك المغامرة بقرارك.</div>
+      <div class="tools"><button id="rescueNext" class="primary wide hidden">التالي</button><button id="rescueExit" class="secondary wide">العودة إلى الدرس</button></div>
+      <div class="rescue-note">مهمة الإنقاذ للتدريب والتشويق؛ الإتقان يثبت في سؤال مستقل داخل الدرس.</div>
+    </div>
   </div>
 </section>
 
@@ -602,7 +637,7 @@ async function shareParentGuide(){const url=parentGuideUrl();const text='رفي�
 function speakParentGuide(){if(!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const text=[$('parentNowTitle')?.textContent,$('parentNowText')?.textContent,$('parentScript')?.textContent].filter(Boolean).join('. '),u=new SpeechSynthesisUtterance(text);u.lang='ar-PS';u.rate=.9;const vs=speechSynthesis.getVoices(),v=vs.find(x=>x.lang==='ar-PS')||vs.find(x=>x.lang&&x.lang.startsWith('ar'));if(v)u.voice=v;speechSynthesis.speak(u)}catch(_){}}
 
 let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installApp').classList.remove('hidden')});window.addEventListener('appinstalled',()=>{$('installApp').classList.add('hidden');installPrompt=null;showSpark('📲 أضيفت مدينة ٩٩ إلى الهاتف')});async function installApp(){if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installApp').classList.add('hidden')}
-function resetQuestionUi(){session.mistakes=0;session.help=0;session.answered=false;session.orderSelection=[];session.notebookUnlocked=false;$('visual').innerHTML='';$('q').textContent='';$('math').textContent='';$('interaction').innerHTML='';$('interaction').classList.remove('notebook-locked');$('notebookTask').classList.add('hidden');$('notebookTask').classList.remove('done');$('notebookTask').innerHTML='';$('support').classList.add('hidden');$('support').innerHTML='';$('feedback').className='feedback';$('feedback').textContent='انظر أولًا، فكر، ثم اختر. أنا معك.';updateGuideLine('فكّر أولًا، وأنا معك عندما تحتاجني.');$('hint').disabled=false;$('next').classList.add('hidden');$('next').textContent='التالي';$('masteryGate').classList.add('hidden')}
+function resetQuestionUi(){session.mistakes=0;session.help=0;session.answered=false;session.orderSelection=[];session.notebookUnlocked=false;$('visual').innerHTML='';$('q').textContent='';$('math').textContent='';$('interaction').innerHTML='';$('interaction').classList.remove('notebook-locked');$('notebookTask').classList.add('hidden');$('notebookTask').classList.remove('done');$('notebookTask').innerHTML='';$('support').classList.add('hidden');$('support').innerHTML='';$('feedback').className='feedback';$('feedback').textContent='انظر أولًا، فكر، ثم اختر. أنا معك.';if($('rescueOffer'))$('rescueOffer').classList.add('hidden');updateGuideLine('فكّر أولًا، وأنا معك عندما تحتاجني.');$('hint').disabled=false;$('next').classList.add('hidden');$('next').textContent='التالي';$('masteryGate').classList.add('hidden')}
 function journey(){const phases=session.kind==='review'?['فحص الوحدة','نتعلم ما نحتاجه','نتأكد من جديد']:['نستعد','نكتشف','نجرب معًا','أجرب بنفسي','أشرح فكرتي','أتأكد أني فهمت','تحدٍّ إضافي'];let active=0;if(session.kind==='review'){active=session.review.phase==='diagnostic'?0:session.review.phase==='repair'?1:2}else active=['readiness','concept','guided','practice','reason','mastery','enrich'].indexOf(session.phase);active=Math.max(0,active);$('journey').innerHTML='<span class="step-pill active">الآن: '+phases[active]+'</span>'}
 function progressValue(){if(session.kind==='review'){if(session.review.phase==='diagnostic')return Math.max(4,Math.round(((session.review.pos+1)/UNIT_CHECKS.length)*55));const map={repair:68,retest:86,done:100};return map[session.review.phase]||0}const map={readiness:5,concept:15,guided:30,practice:55,reason:72,mastery:85,enrich:100,done:100};return map[session.phase]||0}
 function phaseTitle(){if(session.kind==='review')return'';return phaseLabels[session.phase]||''}
@@ -764,9 +799,9 @@ function speakCurrent(){if(!('speechSynthesis'in window)){$('feedback').classNam
 function focusFirstInteractive(){setTimeout(()=>{const el=$('interaction').querySelector('button');if(el)el.focus({preventScroll:true})},0)}function focusNext(){setTimeout(()=>$('next').focus({preventScroll:true}),0)}
 document.querySelectorAll('.station').forEach(b=>b.addEventListener('click',()=>openStage(b.dataset.kind)));$('smartStart').onclick=()=>openStage($('smartStart').dataset.kind);$('shareProgress').onclick=shareProgress;$('shareParent').onclick=shareParentGuide;$('installApp').onclick=installApp;$('back').onclick=returnHome;$('hint').onclick=useHint;$('next').onclick=next;$('speak').onclick=speakCurrent;
 function teacherModeEnabled(){return location.hash==='#teacher'}
-function applyAudienceMode(){const parent=parentModeEnabled(),teacher=teacherModeEnabled();$('parentView').classList.toggle('hidden',!parent);$('home').classList.toggle('hidden',parent);if(parent){$('play').classList.add('hidden');$('lab').classList.add('hidden');$('prefsSheet').classList.add('hidden');$('welcome').classList.add('hidden');$('familyIntro').classList.add('hidden');renderParentView();window.scrollTo(0,0);return}$('teacherTools').classList.toggle('hidden',!teacher);if(!teacher){$('teacherPanel').classList.add('hidden');$('teacherToggle').setAttribute('aria-expanded','false');$('teacherToggle').textContent='متابعة المعلم'}else renderTeacherPanel()}
+function applyAudienceMode(){const parent=parentModeEnabled(),teacher=teacherModeEnabled();$('parentView').classList.toggle('hidden',!parent);$('home').classList.toggle('hidden',parent);if(parent){$('play').classList.add('hidden');$('lab').classList.add('hidden');$('rescue').classList.add('hidden');$('prefsSheet').classList.add('hidden');$('welcome').classList.add('hidden');$('familyIntro').classList.add('hidden');renderParentView();window.scrollTo(0,0);return}$('teacherTools').classList.toggle('hidden',!teacher);if(!teacher){$('teacherPanel').classList.add('hidden');$('teacherToggle').setAttribute('aria-expanded','false');$('teacherToggle').textContent='متابعة المعلم'}else renderTeacherPanel()}
 $('teacherToggle').onclick=()=>{if(!teacherModeEnabled())return;const p=$('teacherPanel'),show=p.classList.contains('hidden');p.classList.toggle('hidden',!show);$('teacherToggle').setAttribute('aria-expanded',show?'true':'false');$('teacherToggle').textContent=show?'إخفاء متابعة المعلم':'متابعة المعلم';if(show)renderTeacherPanel()};
-$('reset').onclick=()=>{if(!teacherModeEnabled())return;if(confirm('هل تريد إعادة النجوم والتقدم من البداية؟')){state={stars:0,completed:{},skills:{},reviewRound:0,unitProof:{},reviewProtocolVersion:0,guide:state.guide,welcomeDone:true,notebookEvidence:{},supportSignals:[],supportSummary:{},lastSupport:null};for(const k of SKILLS)state.skills[k]=defaultSkill();persist()}};
+$('reset').onclick=()=>{if(!teacherModeEnabled())return;if(confirm('هل تريد إعادة النجوم والتقدم من البداية؟')){state={stars:0,completed:{},skills:{},reviewRound:0,unitProof:{},reviewProtocolVersion:0,guide:state.guide,welcomeDone:true,notebookEvidence:{},supportSignals:[],supportSummary:{},lastSupport:null};safeStorage.set(RESCUE_KEY,JSON.stringify({lastDayBySkill:{},wins:0}));for(const k of SKILLS)state.skills[k]=defaultSkill();persist()}};
 function openParentInline(){parentInlineOpen=true;$('familyIntro').classList.add('hidden');$('welcome').classList.add('hidden');applyAudienceMode()}
 function familyIntroDone(){return safeStorage.get('city99_family_intro_v1','')==='1'}
 function markFamilyIntroDone(){safeStorage.set('city99_family_intro_v1','1')}
@@ -806,11 +841,113 @@ function celebrate(big=false){if(!premium.prefs.motion||matchMedia('(prefers-red
 function premiumWeakSkill(){let best=SKILLS[0],score=Infinity;for(const k of SKILLS){const s=state.skills[k]||defaultSkill();const accuracy=s.seen?((s.firstCorrect||0)/s.seen):0;const mastery=s.mastered?1:0;const need=Object.values(s.needs||{}).reduce((a,b)=>a+b,0);const v=mastery*3+accuracy*2-Math.min(need,5)*.12;if(v<score){score=v;best=k}}return best}
 function skillIcon(k){return {compare:'⚖️',order:'🚂',place:'🏠',evenodd:'👫'}[k]||'✨'}
 function showRecallCard(){const card=$('recallCard');if(!card)return;const day=todayKey();const mastered=SKILLS.filter(k=>state.skills[k]&&state.skills[k].mastered);const should=mastered.length>0&&premium.lastOpenDay&&premium.lastOpenDay!==day&&premium.lastRecallDay!==day;if(!should){card.classList.add('hidden');return}const k=mastered.sort((a,b)=>(premium.lastMastery[a]||0)-(premium.lastMastery[b]||0))[0];card.dataset.skill=k;$('recallText').textContent='هل ما زالت '+skillNames[k]+' ثابتة في ذاكرتك؟ سؤال لعب قصير يكفي.';card.classList.remove('hidden')}
-const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 مختبر اللعب الذكي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}}
+const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 تدريب إضافي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}const rb=$('homeRescueBtn');if(rb){const rk=recommendedKind()==='review'?premiumWeakSkill():recommendedKind();rb.innerHTML='⚡ مهمة الإنقاذ <small style="display:block;font-weight:700;color:#667085;margin-top:3px">'+skillNames[rk]+'</small>'}}
 const _wrong=wrong;wrong=function(q,choice=null){_wrong(q,choice);tone('hint');const g=document.querySelector('.guide-bubble');if(g){g.classList.remove('coach-attention');void g.offsetWidth;g.classList.add('coach-attention')}}
-const _finishCorrect=finishCorrect;finishCorrect=function(q,independent){_finishCorrect(q,independent);tone(independent?'good':'tap');if(independent){haptic(24);celebrate(false)}}
+const _finishCorrect=finishCorrect;finishCorrect=function(q){const wasIndependent=independentNow(),phaseBefore=session.phase,skillBefore=skillForCurrent();_finishCorrect(q);tone(wasIndependent?'good':'tap');if(wasIndependent){haptic(24);celebrate(false)}maybeOfferRescue(skillBefore,phaseBefore,wasIndependent)}
 const _showMasteryComplete=showMasteryComplete;showMasteryComplete=function(){_showMasteryComplete();premium.lastMastery[session.kind]=Date.now();premiumSave();tone('great');haptic(45);celebrate(true)}
 const _showReviewFinish=showReviewFinish;showReviewFinish=function(){_showReviewFinish();tone('great');haptic(55);celebrate(true)}
+
+// ===== مهمة الإنقاذ: أكشن معرفي قصير، لا يدخل في دليل الإتقان =====
+const RESCUE_KEY='city99_rescue_v10';
+let rescuePrefs={lastDayBySkill:{},wins:0};try{rescuePrefs=Object.assign(rescuePrefs,JSON.parse(safeStorage.get(RESCUE_KEY,'{}'))||{});rescuePrefs.lastDayBySkill=rescuePrefs.lastDayBySkill||{}}catch(_){}
+function rescueSave(){safeStorage.set(RESCUE_KEY,JSON.stringify(rescuePrefs))}
+let rescue={skill:'compare',round:0,total:3,q:null,selected:[],returnTo:'play',offeredSkill:null};
+function rescueToday(){return todayKey()}
+function rescueDifficulty(skill){const x=state.skills[skill]||defaultSkill();const a=x.seen?x.firstCorrect/x.seen:0;return x.mastered||a>=.72?2:1}
+function rescueRand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function rescueUnique(n,min=11,max=99){const z=new Set();while(z.size<n)z.add(rescueRand(min,max));return [...z]}
+function rescueMakeQuestion(skill,round){
+ const hard=rescueDifficulty(skill)>1;
+ if(skill==='compare'){
+  let a,b,ask,correct;
+  if(hard&&round%2===1){const t=rescueRand(2,8);a=t*10+rescueRand(1,8);do{b=t*10+rescueRand(1,9)}while(b===a)}else{[a,b]=rescueUnique(2,11,99)}
+  const larger=round%2===0;ask=larger?'اختر بوابة العدد الأكبر':'اختر بوابة العدد الأصغر';correct=larger?Math.max(a,b):Math.min(a,b);
+  return {type:'choice',ask,opts:[a,b],correct,visual:'⚖️'};
+ }
+ if(skill==='order'){
+  let nums=rescueUnique(3,hard?31:12,hard?79:69);
+  if(hard&&round===2){const t=rescueRand(3,8);nums=[t*10+1,t*10+7,t*10+4]}
+  const asc=round%2===0,correct=nums.slice().sort((a,b)=>asc?a-b:b-a);
+  return {type:'order',ask:asc?'اعبر الجسر من الأصغر إلى الأكبر':'اعبر الجسر من الأكبر إلى الأصغر',nums,correct,visual:'🚂'};
+ }
+ if(skill==='place'){
+  const t=rescueRand(2,8),o=rescueRand(1,9),n=t*10+o,mode=round%3;
+  if(mode===0)return {type:'choice',ask:'أين يقع الرقم '+ar(t)+' في العدد '+ar(n)+'؟',opts:['العشرات','الآحاد'],correct:'العشرات',visual:'🏠'};
+  if(mode===1)return {type:'choice',ask:'ما قيمة الرقم '+ar(t)+' في العدد '+ar(n)+'؟',opts:[t,t*10],correct:t*10,visual:'🔑'};
+  const distractor=o===t?(t===8?t-1:t+1):o;return {type:'choice',ask:'كم عشرة في العدد '+ar(n)+'؟',opts:[t,distractor],correct:t,visual:'🧱'};
+ }
+ const n=hard?rescueRand(21,79):rescueRand(5,29);
+ return {type:'choice',ask:'هل '+ar(n)+' زوجي أم فردي؟',opts:['زوجي','فردي'],correct:n%2===0?'زوجي':'فردي',n,visual:'👫'};
+}
+function rescueChoiceLabel(v){return typeof v==='number'?ar(v):String(v)}
+function rescueHeroStep(step){const h=$('rescueHero');h.className='rescue-hero'+(step?' step'+Math.min(step,3):'')}
+function renderRescue(){
+ rescue.q=rescueMakeQuestion(rescue.skill,rescue.round);rescue.selected=[];
+ $('rescueRound').textContent=ar(rescue.round+1)+' / '+ar(rescue.total);
+ $('rescueTitle').textContent='⚡ مهمة الإنقاذ — '+skillNames[rescue.skill];
+ $('rescueMission').textContent={compare:'اختر البوابة الصحيحة ليفتح الطريق.',order:'حرّك القطار فوق الجسر بالترتيب الصحيح.',place:'افتح بيت المنازل بالمفتاح الصحيح.',evenodd:'أنقذ الفريق باختيار النوع الصحيح.'}[rescue.skill];
+ $('rescueQuestion').textContent=rescue.q.ask;
+ $('rescueSub').textContent='لا يوجد مؤقت. فكر على راحتك.';
+ $('rescueFeedback').className='rescue-feedback';$('rescueFeedback').textContent='قرارك الرياضي هو الذي يحرك المغامرة.';
+ $('rescueNext').classList.add('hidden');rescueHeroStep(rescue.round);
+ const box=$('rescueInteraction');box.innerHTML='';
+ if(rescue.q.type==='choice'){
+  if(rescue.skill==='evenodd')box.innerHTML=unitsVisual(rescue.q.n);
+  const c=document.createElement('div');c.className='rescue-choices';
+  rescue.q.opts.forEach(v=>{const b=document.createElement('button');b.className='rescue-choice';b.textContent=rescueChoiceLabel(v);b.onclick=()=>rescueAnswerChoice(v,b);c.appendChild(b)});box.appendChild(c);
+ }else{
+  const path=document.createElement('div');path.id='rescuePath';path.className='rescue-path';path.textContent='ابدأ بالعدد الأول';
+  const c=document.createElement('div');c.className='rescue-order';
+  rescue.q.nums.forEach((n,i)=>{const b=document.createElement('button');b.textContent=ar(n);b.dataset.i=String(i);b.onclick=()=>rescuePickOrder(n,b);c.appendChild(b)});
+  box.append(path,c);
+ }
+}
+function rescueGood(){
+ $('rescueFeedback').className='rescue-feedback good';$('rescueFeedback').textContent=rescue.round===rescue.total-1?'أحسنت! اكتملت مهمة الإنقاذ ⚡':'أحسنت! تحركت المغامرة خطوة.';
+ tone('good');haptic(22);rescueHeroStep(rescue.round+1);
+ document.querySelectorAll('#rescueInteraction button').forEach(b=>b.disabled=true);
+ $('rescueNext').classList.remove('hidden');$('rescueNext').textContent=rescue.round===rescue.total-1?'إنهاء المهمة':'المهمة التالية';
+}
+function rescueWrong(b,hint){
+ b.classList.add('bad');setTimeout(()=>b.classList.remove('bad'),350);
+ $('rescueFeedback').className='rescue-feedback warn';$('rescueFeedback').textContent=hint;
+ tone('hint');
+}
+function rescueAnswerChoice(v,b){
+ if(v===rescue.q.correct){b.classList.add('good');rescueGood();return}
+ let hint='جرّب مرة أخرى؛ لا توجد خسارة.';
+ if(rescue.skill==='compare')hint='ابدأ بالعشرات، ثم الآحاد إذا تساوت.';
+ if(rescue.skill==='place')hint='فكر في مكان الرقم أولًا: عشرات أم آحاد؟';
+ if(rescue.skill==='evenodd')hint='كوّن أزواجًا من الآحاد: هل يبقى واحد؟';
+ rescueWrong(b,hint);
+}
+function rescuePickOrder(n,b){
+ const want=rescue.q.correct[rescue.selected.length];
+ if(n!==want){rescueWrong(b,rescue.selected.length===0?'اختر نقطة البداية الصحيحة أولًا.':'تابع في الاتجاه نفسه.');return}
+ rescue.selected.push(n);b.classList.add('used');$('rescuePath').innerHTML=rescue.selected.map(x=>'<span>'+ar(x)+'</span>').join('');
+ if(rescue.selected.length===rescue.q.correct.length)rescueGood();
+}
+function startRescue(skill,source='play'){
+ rescue={skill:SKILLS.includes(skill)?skill:premiumWeakSkill(),round:0,total:3,q:null,selected:[],returnTo:source,offeredSkill:skill};
+ $('home').classList.add('hidden');$('play').classList.add('hidden');$('lab').classList.add('hidden');$('parentView').classList.add('hidden');$('rescue').classList.remove('hidden');
+ renderRescue();window.scrollTo(0,0);
+}
+function exitRescue(){
+ $('rescue').classList.add('hidden');
+ if(rescue.returnTo==='home'){$('home').classList.remove('hidden');drawHome()}else{$('play').classList.remove('hidden')}
+ window.scrollTo(0,0);
+}
+function maybeOfferRescue(skill,phase,independent){
+ if(!independent||session.kind==='review'||!['practice','reason','mastery'].includes(phase))return;
+ if(rescuePrefs.lastDayBySkill[skill]===rescueToday())return;
+ rescuePrefs.lastDayBySkill[skill]=rescueToday();rescueSave();
+ const o=$('rescueOffer');if(o){o.classList.remove('hidden');o.dataset.skill=skill}
+}
+$('rescueStart').onclick=()=>startRescue($('rescueOffer').dataset.skill||session.kind,'play');
+$('rescueBack').onclick=exitRescue;$('rescueExit').onclick=exitRescue;
+$('rescueNext').onclick=()=>{if(rescue.round>=rescue.total-1){rescuePrefs.wins++;rescueSave();celebrate(true);exitRescue();return}rescue.round++;renderRescue()};
+$('homeRescueBtn').onclick=()=>startRescue(recommendedKind()==='review'?premiumWeakSkill():recommendedKind(),'home');
+
 
 // ===== مختبر اللعب =====
 let lab={skill:null,round:0,total:4,q:null,selected:[],wrong:0,hint:false,recall:false};

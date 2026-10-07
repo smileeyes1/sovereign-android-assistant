@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v6">
+<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v7">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -53,8 +53,24 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .place-table th,.place-table td{padding:13px;text-align:center;border-bottom:1px solid #dfe5ef;font-size:22px}
 .place-table th{background:#f0edff;font-size:17px}.place-table tr:last-child td{border-bottom:0}
 .equations{display:grid;gap:10px;max-width:520px;margin:auto;width:100%}
-.eq{background:#fbfcff;border:2px solid #dde3ef;border-radius:18px;padding:14px;text-align:center;font-size:clamp(25px,7vw,34px);font-weight:900;direction:ltr;unicode-bidi:isolate}
-.math-inline{direction:ltr;unicode-bidi:isolate;display:inline-block}
+.eq{background:#fbfcff;border:2px solid #dde3ef;border-radius:18px;padding:14px;text-align:center;font-size:clamp(25px,7vw,34px);font-weight:900}
+.math-visual{
+  direction:ltr;
+  unicode-bidi:isolate;
+  display:inline-grid;
+  grid-template-columns:auto auto auto auto auto;
+  align-items:center;
+  justify-content:center;
+  column-gap:.28em;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+.math-visual .m-result{grid-column:1}
+.math-visual .m-eq{grid-column:2}
+.math-visual .m-second{grid-column:3}
+.math-visual .m-plus{grid-column:4}
+.math-visual .m-first{grid-column:5}
+.math-inline{font:inherit}
 .rule{background:linear-gradient(135deg,#f7fff6,#fffdf1);border:3px solid #9fd7aa;border-radius:24px;padding:18px;text-align:center;font-size:clamp(22px,6vw,31px);font-weight:900;line-height:1.7}
 .movie-tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 15px;border-top:1px solid var(--line);background:#fafbff}
 .movie-tools button{border:0;border-radius:16px;min-height:50px;font-weight:900;font-size:15px;cursor:pointer}
@@ -74,7 +90,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .try{border:2px solid #f1d277;background:#fffdf5}
 .try h2{margin:0 0 8px;text-align:center;font-size:27px}
 .try p{text-align:center;line-height:1.7;color:#5a6376}
-.question{font-size:clamp(30px,9vw,44px);font-weight:900;text-align:center;margin:16px 0;direction:ltr;unicode-bidi:isolate}
+.question{font-size:clamp(30px,9vw,44px);font-weight:900;text-align:center;margin:16px 0}
 .answers{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
 .answer{border:2px solid #cfd7e7;background:#fff;border-radius:18px;min-height:66px;font-size:27px;font-weight:900;cursor:pointer}
 .answer.good{border-color:#73bd87;background:var(--good)}
@@ -259,8 +275,18 @@ function singlePlaceWrong(facts,place){
   if(place==='ones'&&(sameOnes||!sameTens))throw new Error('ONES_ERROR_NOT_ISOLATED');
   return value;
 }
-function mathEq(a,b,c){return '<bdi dir="ltr" class="math-inline">'+ar(a)+' + '+ar(b)+' = '+ar(c)+'</bdi>'}
-function mathOpen(a,b){return '<bdi dir="ltr" class="math-inline">'+ar(a)+' + '+ar(b)+' = □</bdi>'}
+function mathVisual(a,b,result,label){
+  const r=result===null?'□':ar(result);
+  return '<span class="math-visual math-inline" role="img" aria-label="'+label+'">'
+    +'<span class="m-result">'+r+'</span>'
+    +'<span class="m-eq">=</span>'
+    +'<span class="m-second">'+ar(b)+'</span>'
+    +'<span class="m-plus">+</span>'
+    +'<span class="m-first">'+ar(a)+'</span>'
+    +'</span>';
+}
+function mathEq(a,b,c){return mathVisual(a,b,c,ar(a)+' زائد '+ar(b)+' يساوي '+ar(c))}
+function mathOpen(a,b){return mathVisual(a,b,null,ar(a)+' زائد '+ar(b)+' يساوي مربع الإجابة')}
 const MODEL=noCarryFacts(EXAMPLE.a,EXAMPLE.b);
 const TRANSFER_MODEL=noCarryFacts(TRANSFER.a,TRANSFER.b);
 const INTENTIONAL_WRONG=singlePlaceWrong(MODEL,'tens');
@@ -285,15 +311,27 @@ function visibleWesternDigits(){
   const nodes=[...document.querySelectorAll('body *')].filter(el=>!['SCRIPT','STYLE'].includes(el.tagName)&&el.offsetParent!==null);
   return nodes.some(el=>el.children.length===0&&/[0-9]/.test(el.textContent||''));
 }
+function mathVisualOrderOk(el){
+  const q=c=>el.querySelector(c)?.getBoundingClientRect();
+  const first=q('.m-first'),plus=q('.m-plus'),second=q('.m-second'),eq=q('.m-eq'),result=q('.m-result');
+  if(!first||!plus||!second||!eq||!result)return false;
+  const cx=r=>r.left+r.width/2;
+  return cx(first)>cx(plus)&&cx(plus)>cx(second)&&cx(second)>cx(eq)&&cx(eq)>cx(result);
+}
+function visibleMathOrderOk(){
+  return [...document.querySelectorAll('.math-visual')].filter(el=>el.offsetParent!==null).every(mathVisualOrderOk);
+}
+function failStudentDisplay(code){
+  document.querySelector('main').innerHTML='<section class="card"><h2>تعذر فتح النشاط بصورة صحيحة</h2><p>أغلق الصفحة وافتح الرابط من جديد.</p></section>';
+  throw new Error(code);
+}
 function enforceStudentInvariant(){
   validateMathContract();
   applyMathModel();
-  requestAnimationFrame(()=>{
-    if(visibleWesternDigits()){
-      document.querySelector('main').innerHTML='<section class="card"><h2>تعذر فتح النشاط بصورة صحيحة</h2><p>أغلق الصفحة وافتح الرابط من جديد.</p></section>';
-      throw new Error('WESTERN_DIGIT_VISIBLE');
-    }
-  });
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(visibleWesternDigits())failStudentDisplay('WESTERN_DIGIT_VISIBLE');
+    if(!visibleMathOrderOk())failStudentDisplay('MATH_VISUAL_ORDER_INVALID');
+  }));
 }
 let scene=0,placeStep=0;
 const sceneText=[

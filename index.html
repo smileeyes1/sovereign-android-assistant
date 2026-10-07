@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-FINAL-2026-10-07">
+<meta name="application-version" content="TAMHEED-JAM-FINAL-2026-10-07-v2">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -98,7 +98,7 @@ main{max-width:760px;margin:auto;padding:14px}
   </section>
 
   <section id="movie" class="card movie hidden" aria-label="القصة المتحركة">
-    <div class="movie-head"><b>🎬 قصة قصيرة</b><span id="progress" class="progress">١ / ٤</span></div>
+    <div class="movie-head"><b>🎬 قصة قصيرة</b><span id="progress" class="progress">الخطوة ١ من ٤</span></div>
 
     <div id="scene0" class="scene">
       <h2>لدينا ٤٣ ثم أضفنا ٢٤</h2>
@@ -121,11 +121,11 @@ main{max-width:760px;margin:auto;padding:14px}
     <div id="scene1" class="scene hidden">
       <h2>ضع كل رقم في منزله</h2>
       <table class="place-table" aria-label="لوحة المنازل">
-        <tr><th>العشرات</th><th>الآحاد</th></tr>
-        <tr><td>٤</td><td>٣</td></tr>
-        <tr><td>٢</td><td>٤</td></tr>
+        <tr><th>الآحاد</th><th>العشرات</th></tr>
+        <tr><td>٣</td><td>٤</td></tr>
+        <tr><td>٤</td><td>٢</td></tr>
       </table>
-      <p>الآحاد تحت الآحاد، والعشرات تحت العشرات.</p>
+      <p>الآحاد في الجهة اليمنى، والعشرات في الجهة اليسرى. نبدأ بالآحاد، ثم العشرات.</p>
     </div>
 
     <div id="scene2" class="scene hidden">
@@ -186,7 +186,7 @@ const sceneText=[
 function showScene(i){
   scene=Math.max(0,Math.min(3,i));
   for(let x=0;x<4;x++)$('scene'+x).classList.toggle('hidden',x!==scene);
-  $('progress').textContent=ar(scene+1)+' / '+ar(4);
+  $('progress').textContent='الخطوة '+ar(scene+1)+' من '+ar(4);
   $('next').textContent=scene===3?'جرّب وحدك':'التالي';
   window.scrollTo({top:$('movie').offsetTop-8,behavior:'smooth'});
 }

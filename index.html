@@ -874,7 +874,7 @@ function rescueMakeQuestion(skill,round){
   const t=rescueRand(2,8),o=rescueRand(1,9),n=t*10+o,mode=round%3;
   if(mode===0)return {type:'choice',ask:'أين يقع الرقم '+ar(t)+' في العدد '+ar(n)+'؟',opts:['العشرات','الآحاد'],correct:'العشرات',visual:'🏠'};
   if(mode===1)return {type:'choice',ask:'ما قيمة الرقم '+ar(t)+' في العدد '+ar(n)+'؟',opts:[t,t*10],correct:t*10,visual:'🔑'};
-  return {type:'choice',ask:'كم عشرة في العدد '+ar(n)+'؟',opts:[t,o],correct:t,visual:'🧱'};
+  const distractor=o===t?(t===8?t-1:t+1):o;return {type:'choice',ask:'كم عشرة في العدد '+ar(n)+'؟',opts:[t,distractor],correct:t,visual:'🧱'};
  }
  const n=hard?rescueRand(21,79):rescueRand(5,29);
  return {type:'choice',ask:'هل '+ar(n)+' زوجي أم فردي؟',opts:['زوجي','فردي'],correct:n%2===0?'زوجي':'فردي',n,visual:'👫'};

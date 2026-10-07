@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v4">
+<meta name="application-version" content="TAMHEED-JAM-CREATIVE-2026-10-07-v5">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -53,7 +53,8 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .place-table th,.place-table td{padding:13px;text-align:center;border-bottom:1px solid #dfe5ef;font-size:22px}
 .place-table th{background:#f0edff;font-size:17px}.place-table tr:last-child td{border-bottom:0}
 .equations{display:grid;gap:10px;max-width:520px;margin:auto;width:100%}
-.eq{background:#fbfcff;border:2px solid #dde3ef;border-radius:18px;padding:14px;text-align:center;font-size:clamp(25px,7vw,34px);font-weight:900;direction:rtl}
+.eq{background:#fbfcff;border:2px solid #dde3ef;border-radius:18px;padding:14px;text-align:center;font-size:clamp(25px,7vw,34px);font-weight:900;direction:ltr;unicode-bidi:isolate}
+.math-inline{direction:ltr;unicode-bidi:isolate;display:inline-block}
 .rule{background:linear-gradient(135deg,#f7fff6,#fffdf1);border:3px solid #9fd7aa;border-radius:24px;padding:18px;text-align:center;font-size:clamp(22px,6vw,31px);font-weight:900;line-height:1.7}
 .movie-tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 15px;border-top:1px solid var(--line);background:#fafbff}
 .movie-tools button{border:0;border-radius:16px;min-height:50px;font-weight:900;font-size:15px;cursor:pointer}
@@ -73,7 +74,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .try{border:2px solid #f1d277;background:#fffdf5}
 .try h2{margin:0 0 8px;text-align:center;font-size:27px}
 .try p{text-align:center;line-height:1.7;color:#5a6376}
-.question{font-size:clamp(30px,9vw,44px);font-weight:900;text-align:center;margin:16px 0;direction:rtl}
+.question{font-size:clamp(30px,9vw,44px);font-weight:900;text-align:center;margin:16px 0;direction:ltr;unicode-bidi:isolate}
 .answers{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
 .answer{border:2px solid #cfd7e7;background:#fff;border-radius:18px;min-height:66px;font-size:27px;font-weight:900;cursor:pointer}
 .answer.good{border-color:#73bd87;background:var(--good)}
@@ -161,7 +162,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
         <div class="eq">٤ + ٢ = ٦</div>
         <div class="eq">٤٣ + ٢٤ = ٦٧</div>
       </div>
-      <p>لم نحتج إلى حمل؛ لأن ٣ + ٤ = ٧، أي إن مجموع الآحاد أقل من عشرة.</p>
+      <p>لم نحتج إلى حمل؛ لأن <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، أي إن مجموع الآحاد أقل من عشرة.</p>
     </div>
 
     <div id="scene3" class="scene hidden">
@@ -189,7 +190,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 
   <section id="errorChallenge" class="card challenge hidden" aria-label="اكتشاف الخطأ">
     <h2>🧠 اكتشف الخطأ</h2>
-    <div class="character">قال صديقنا: «٤٣ + ٢٤ = ٧٩» 🤔</div>
+    <div class="character">قال صديقنا: «<bdi dir="ltr" class="math-inline">٤٣ + ٢٤ = ٧٩</bdi>» 🤔</div>
     <p>أين حدث الخطأ؟</p>
     <div class="choice-grid three">
       <button class="choice-btn error-choice" data-error="ones">في الآحاد</button>
@@ -204,7 +205,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
     <h2>💡 لماذا لا يوجد حمل؟</h2>
     <p>اختر السبب الأقوى.</p>
     <div class="choice-grid three">
-      <button class="choice-btn why-choice" data-why="correct">لأن ٣ + ٤ = ٧، وهو أقل من عشرة</button>
+      <button class="choice-btn why-choice" data-why="correct">لأن <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، وهو أقل من عشرة</button>
       <button class="choice-btn why-choice" data-why="tens">لأن عدد العشرات أكبر</button>
       <button class="choice-btn why-choice" data-why="digits">لأن الناتج من منزلتين</button>
     </div>
@@ -227,7 +228,7 @@ button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 
   <section id="readyCard" class="card ready hidden">
     <h2>🌟 أصبحت جاهزًا للحصة القادمة</h2>
-    <p>في الدفتر اكتب مرة واحدة فقط: <b>٤٣ + ٢٤ = □</b>، وضع خطًا تحت الآحاد ودائرة حول العشرات. ثم أغلق الصفحة واستعد للحصة.</p>
+    <p>في الدفتر اكتب مرة واحدة فقط: <b><bdi dir="ltr" class="math-inline">٤٣ + ٢٤ = □</bdi></b>، وضع خطًا تحت الآحاد ودائرة حول العشرات. ثم أغلق الصفحة واستعد للحصة.</p>
     <button id="replay" class="big secondary" style="margin-top:14px">أعد القصة إن أحببت</button>
   </section>
 
@@ -320,11 +321,11 @@ $('placeContinue').onclick=()=>{showOnly('movie');showScene(2)};
 document.querySelectorAll('.error-choice').forEach(b=>b.onclick=()=>{
   clearButtons('.error-choice');
   if(b.dataset.error==='tens'){
-    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').textContent='أحسنت! الآحاد صحيحة: ٣ + ٤ = ٧، لكن ٤ عشرات + ٢ عشرات = ٦ عشرات، لا ٧.';
+    b.classList.add('good');$('errorFeedback').className='feedback good';$('errorFeedback').innerHTML='أحسنت! الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>، لكن مجموع العشرات هو ٦، وليس ٧.';
     $('errorContinue').classList.remove('hidden');
   }else{
     b.classList.add('bad');$('errorFeedback').className='feedback warn';
-    $('errorFeedback').textContent=b.dataset.error==='ones'?'الآحاد صحيحة: ٣ + ٤ = ٧. افحص العشرات.':'يوجد خطأ فعلًا. احسب العشرات وحدها.';
+    $('errorFeedback').innerHTML=b.dataset.error==='ones'?'الآحاد صحيحة: <bdi dir="ltr" class="math-inline">٣ + ٤ = ٧</bdi>. افحص العشرات.':'يوجد خطأ فعلًا. احسب العشرات وحدها.';
   }
 });
 $('errorContinue').onclick=()=>showOnly('whyChallenge');
@@ -334,7 +335,7 @@ document.querySelectorAll('.why-choice').forEach(b=>b.onclick=()=>{
     b.classList.add('good');$('whyFeedback').className='feedback good';$('whyFeedback').textContent='صحيح! مجموع الآحاد ٧، وهو أقل من عشرة؛ لذلك لا نحمل عشرة جديدة.';
     $('whyContinue').classList.remove('hidden');
   }else{
-    b.classList.add('bad');$('whyFeedback').className='feedback warn';$('whyFeedback').textContent='ارجع إلى الآحاد: ٣ + ٤. هل وصلت إلى عشرة؟';
+    b.classList.add('bad');$('whyFeedback').className='feedback warn';$('whyFeedback').innerHTML='ارجع إلى الآحاد: <bdi dir="ltr" class="math-inline">٣ + ٤</bdi>. هل وصلت إلى عشرة؟';
   }
 });
 $('whyContinue').onclick=()=>{showOnly('movie');showScene(3)};
@@ -344,15 +345,15 @@ document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
   if(ok){
     b.classList.add('good');
     $('feedback').className='feedback good';
-    $('feedback').textContent='أحسنت! ٥ + ٤ = ٩ في الآحاد، و٣ + ٥ = ٨ في العشرات.';
+    $('feedback').innerHTML='أحسنت! <bdi dir="ltr" class="math-inline">٥ + ٤ = ٩</bdi> في الآحاد، و<bdi dir="ltr" class="math-inline">٣ + ٥ = ٨</bdi> في العشرات.';
     $('readyCard').classList.remove('hidden');
     setTimeout(()=>$('readyCard').scrollIntoView({behavior:'smooth',block:'start'}),300);
   }else{
     b.classList.add('bad');
     $('feedback').className='feedback warn';
-    $('feedback').textContent=b.dataset.answer==='79'
+    $('feedback').innerHTML=b.dataset.answer==='79'
       ? 'قريب جدًا. في العدد ٥٤، رقم العشرات هو ٥. اجمع ٣ عشرات مع ٥ عشرات.'
-      : 'راجع الآحاد أولًا: ٥ + ٤ = ٩. ثم انتقل إلى العشرات.';
+      : 'راجع الآحاد أولًا: <bdi dir="ltr" class="math-inline">٥ + ٤ = ٩</bdi>. ثم انتقل إلى العشرات.';
   }
 });
 $('replay').onclick=()=>{

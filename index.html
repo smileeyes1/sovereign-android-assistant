@@ -86,7 +86,7 @@ main{max-width:760px;margin:auto;padding:14px}
     <p>شاهد الفكرة بهدوء، ثم جرّب سؤالًا واحدًا فقط. المطلوب أن تأتي للحصة مستعدًا للتفكير، لا أن تحفظ الحل.</p>
   </section>
 
-  <details class="card parent-note" open>
+  <details id="parentNote" class="card parent-note" open>
     <summary>🏠 لولي الأمر — دقيقة واحدة فقط</summary>
     <p>جهّز دفتر الرياضيات وقلمًا، ثم دع الطفل يشاهد ويجيب بنفسه. إذا تعثر، اسأله فقط: «أين الآحاد؟ وأين العشرات؟» ولا تعطِه الإجابة. التهيئة كلها نحو ست دقائق.</p>
   </details>
@@ -200,7 +200,7 @@ function speak(){
   if(v)u.voice=v;
   speechSynthesis.speak(u);
 }
-$('startBtn').onclick=()=>{$('startCard').classList.add('hidden');$('movie').classList.remove('hidden');showScene(0)};
+$('startBtn').onclick=()=>{$('parentNote').open=false;$('startCard').classList.add('hidden');$('movie').classList.remove('hidden');showScene(0)};
 $('listen').onclick=speak;
 $('next').onclick=()=>{
   if(scene<3){showScene(scene+1);return}

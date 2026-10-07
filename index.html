@@ -351,7 +351,7 @@ document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
   }else{
     b.classList.add('bad');
     $('feedback').className='feedback warn';
-    $('feedback').textContent=b.dataset.answer==='79'
+    $('feedback').innerHTML=b.dataset.answer==='79'
       ? 'قريب جدًا. في العدد ٥٤، رقم العشرات هو ٥. اجمع ٣ عشرات مع ٥ عشرات.'
       : 'راجع الآحاد أولًا: <bdi dir="ltr" class="math-inline">٥ + ٤ = ٩</bdi>. ثم انتقل إلى العشرات.';
   }

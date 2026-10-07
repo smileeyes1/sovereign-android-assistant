@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5b4bc4">
-<meta name="application-version" content="TAMHEED-JAM-FINAL-2026-10-07-v2">
+<meta name="application-version" content="TAMHEED-JAM-FINAL-2026-10-07-v3">
 <title>تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩</title>
 <meta name="description" content="تهيئة قصيرة لطلاب الصف الثاني قبل درس الجمع دون حمل ضمن ٩٩: قصة متحركة، تمثيل بالعشرات والآحاد، ثم محاولة مستقلة قصيرة.">
 <meta property="og:title" content="تهيئة الحصة القادمة — الجمع دون حمل ضمن ٩٩">
@@ -31,6 +31,8 @@ main{max-width:760px;margin:auto;padding:14px}
 .big{border:0;background:var(--pri);color:#fff;border-radius:18px;min-height:56px;padding:12px 18px;font-size:18px;font-weight:900;cursor:pointer;width:100%}
 .big.secondary{background:#eef0ff;color:#382c9a}
 .big:active{transform:scale(.99)}
+button{touch-action:manipulation}
+button:focus-visible{outline:4px solid #f0b429;outline-offset:3px}
 .hidden{display:none!important}
 .movie{padding:0;overflow:hidden}
 .movie-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 15px;border-bottom:1px solid var(--line);background:#fafbff}
@@ -42,9 +44,10 @@ main{max-width:760px;margin:auto;padding:14px}
 .group{background:#fbfcff;border:2px solid #dfe5ef;border-radius:20px;padding:12px;min-height:185px;display:flex;flex-direction:column;justify-content:center;align-items:center}
 .plus{font-size:34px;font-weight:900}
 .rods{display:flex;gap:5px;justify-content:center;align-items:flex-end;min-height:100px}
-.rod{width:16px;height:92px;border-radius:5px;background:repeating-linear-gradient(to bottom,#f0a25b 0 8px,#b96c2f 8px 10px);border:1px solid #a9622c}
+.rod{width:12px;height:120px;border-radius:3px;background:repeating-linear-gradient(to bottom,#f0a25b 0 9%,#b96c2f 9% 10%);border:1px solid #a9622c}
+.rod:after{content:"";display:block;height:100%;width:100%;background:repeating-linear-gradient(to bottom,transparent 0 9%,rgba(255,255,255,.22) 9% 10%)}
 .ones{display:flex;gap:7px;justify-content:center;margin-top:9px;min-height:30px;flex-wrap:wrap}
-.one{width:18px;height:18px;border-radius:5px;background:#7b67df;border:1px solid #5644b7}
+.one{width:12px;height:12px;border-radius:3px;background:#7b67df;border:1px solid #5644b7}
 .label{margin-top:9px;font-size:20px;font-weight:900}
 .place-table{width:100%;max-width:420px;margin:auto;border-collapse:separate;border-spacing:0;overflow:hidden;border:2px solid #cfd7e7;border-radius:18px}
 .place-table th,.place-table td{padding:13px;text-align:center;border-bottom:1px solid #dfe5ef;font-size:22px}
@@ -71,10 +74,10 @@ main{max-width:760px;margin:auto;padding:14px}
 .footer{text-align:center;color:#697386;font-size:12px;line-height:1.7;padding:18px 8px 6px}
 @media(max-width:520px){
   main{padding:10px}.hero{padding:17px}.scene{padding:14px;min-height:390px}
-  .story-box{grid-template-columns:1fr 34px 1fr}.group{padding:9px;min-height:170px}.rod{width:13px;height:82px}.answers{gap:7px}
+  .story-box{grid-template-columns:1fr 34px 1fr}.group{padding:9px;min-height:200px}.rod{width:11px;height:110px}.one{width:11px;height:11px}.answers{gap:7px}
   .answer{font-size:24px;min-height:60px}
 }
-@media(max-width:365px){.movie-tools{grid-template-columns:1fr}.story-box{gap:4px}.group{padding:7px}.rod{width:11px}.one{width:16px;height:16px}}
+@media(max-width:365px){.movie-tools{grid-template-columns:1fr}.story-box{gap:4px}.group{padding:7px}.rod{width:10px;height:100px}.one{width:10px;height:10px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -135,7 +138,7 @@ main{max-width:760px;margin:auto;padding:14px}
         <div class="eq">٤ + ٢ = ٦</div>
         <div class="eq">٤٣ + ٢٤ = ٦٧</div>
       </div>
-      <p>لم نحتج إلى حمل؛ لأن مجموع الآحاد بقي أقل من عشرة.</p>
+      <p>لم نحتج إلى حمل؛ لأن ٣ + ٤ = ٧، أي إن مجموع الآحاد أقل من عشرة.</p>
     </div>
 
     <div id="scene3" class="scene hidden">
@@ -159,7 +162,7 @@ main{max-width:760px;margin:auto;padding:14px}
       <button class="answer" data-answer="89">٨٩</button>
       <button class="answer" data-answer="88">٨٨</button>
     </div>
-    <div id="feedback" class="feedback">فكّر أولًا، ثم اختر.</div>
+    <div id="feedback" class="feedback" aria-live="polite">فكّر أولًا، ثم اختر.</div>
     <div class="small">إذا أخطأت فلا مشكلة. الخطأ هنا يساعدنا أن نعرف ماذا سنكتشف في الحصة.</div>
   </section>
 
@@ -213,13 +216,15 @@ document.querySelectorAll('.answer').forEach(b=>b.onclick=()=>{
   if(ok){
     b.classList.add('good');
     $('feedback').className='feedback good';
-    $('feedback').textContent='أحسنت! جمعت الآحاد مع الآحاد والعشرات مع العشرات.';
+    $('feedback').textContent='أحسنت! ٥ + ٤ = ٩ في الآحاد، و٣ + ٥ = ٨ في العشرات.';
     $('readyCard').classList.remove('hidden');
     setTimeout(()=>$('readyCard').scrollIntoView({behavior:'smooth',block:'start'}),300);
   }else{
     b.classList.add('bad');
     $('feedback').className='feedback warn';
-    $('feedback').textContent='حاول مرة أخرى. اسأل نفسك: كم يساوي ٥ + ٤ أولًا؟';
+    $('feedback').textContent=b.dataset.answer==='79'
+      ? 'قريب جدًا. في العدد ٥٤، رقم العشرات هو ٥. اجمع ٣ عشرات مع ٥ عشرات.'
+      : 'راجع الآحاد أولًا: ٥ + ٤ = ٩. ثم انتقل إلى العشرات.';
   }
 });
 $('replay').onclick=()=>{

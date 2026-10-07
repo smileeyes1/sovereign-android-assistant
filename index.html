@@ -7,8 +7,15 @@
 <meta name="author" content="محمد وجيه">
 <meta name="copyright" content="© محمد وجيه">
 <meta name="license" content="Educational content: CC BY-NC-SA 4.0; application code: © محمد وجيه, all rights reserved">
-<meta name="application-version" content="CITY99-PARENT-CAUSE-AWARE-2026-10-06-v8">
+<meta name="application-version" content="CITY99-SCHOOL-READY-2026-10-07-v9">
 <meta name="description" content="مدينة ٩٩: تجربة تعلم تفاعلية للوحدة الأولى في رياضيات الصف الثاني — المقارنة والترتيب والقيمة المنزلية والزوجي والفردي.">
+<meta property="og:title" content="مدينة ٩٩ — مغامرة الأعداد للصف الثاني">
+<meta property="og:description" content="تعلم تفاعلي مبسط للطالب، مع دفتر وقلم وإرشاد ذكي لولي الأمر في الرابط نفسه.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://madinat-99-mohammad-wajih.onrender.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="مدينة ٩٩ — مغامرة الأعداد للصف الثاني">
+<meta name="twitter:description" content="تعلم تفاعلي مبسط للطالب، مع إرشاد ولي الأمر في الرابط نفسه.">
 <link rel="manifest" href="./manifest.webmanifest">
 <title>مدينة ٩٩ — مغامرة الأعداد للصف الثاني</title>
 <style>
@@ -67,6 +74,14 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
 
 /* رفيق ولي الأمر: إرشاد تكيفي قصير يحافظ على استقلال الطفل */
 .parent-view{max-width:760px;margin:auto}.parent-hero{padding:18px;border:2px solid #d8e5d8;border-radius:24px;background:linear-gradient(135deg,#f4fff7,#fffaf0);margin-bottom:14px}.parent-hero h1{margin:0 0 7px;font-size:clamp(26px,7vw,38px)}.parent-hero p{margin:0;color:#4b596f;line-height:1.8}.parent-grid{display:grid;grid-template-columns:1fr;gap:12px}.parent-card{border:2px solid var(--line);border-radius:20px;padding:15px;background:#fff;box-shadow:0 8px 22px rgba(31,42,68,.05)}.parent-card h2{font-size:18px;margin:0 0 8px}.parent-card p{margin:6px 0;line-height:1.8;color:#3d485e}.parent-card.good{border-color:#b8dfc4;background:#fbfffc}.parent-card.warn{border-color:#f0cd76;background:#fffaf0}.parent-status{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.parent-status div{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}.parent-status b{display:block;font-size:14px}.parent-status span{font-size:12px;color:var(--muted);line-height:1.5}.parent-steps{margin:7px 0 0;padding:0 20px 0 0;line-height:1.95}.parent-script{padding:12px;border-radius:15px;background:#f6f8ff;line-height:1.85}.parent-do-not{padding:12px;border-radius:15px;background:#fff3f3;color:#7e2c2c;line-height:1.8}.parent-privacy{font-size:12px;color:var(--muted);line-height:1.75;margin-top:10px}.student-home-help.hidden{display:none!important}@media(max-width:430px){.parent-status{grid-template-columns:1fr}.parent-card{padding:13px}.parent-hero{padding:15px}}
+
+/* الاعتماد المدرسي v9: رابط واحد للطالب وولي الأمر مع تسليم واضح للهاتف */
+.family-card{max-width:560px}.family-card .family-icon{font-size:42px;margin-bottom:4px}.family-card h2{margin:4px 0 8px;font-size:clamp(25px,7vw,34px)}
+.family-card .family-lead{font-size:16px;line-height:1.75;color:#35415d;margin:0 0 12px}
+.family-points{display:grid;gap:8px;text-align:right;margin:12px 0}.family-point{display:flex;gap:9px;align-items:flex-start;border:1px solid #e0e6ef;background:#fbfcff;border-radius:15px;padding:10px 11px;line-height:1.6}.family-point b{font-size:14px}.family-point span{color:#58637a;font-size:13px}
+.family-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:14px}.family-small{font-size:12px;color:#667085;line-height:1.65;margin-top:9px;text-align:center}
+#parentHomeBtn{min-height:48px}
+@media(max-width:430px){.family-card{padding:20px 16px}.family-point{padding:9px 10px}}
 
 /* رفيق ولي الأمر v8: بطاقة واحدة أولًا، وتفاصيل اختيارية حسب مؤشر التعثر */
 .parent-now{border:3px solid #86c99b;background:linear-gradient(135deg,#f4fff7,#fffdf3);border-radius:24px;padding:17px;margin-bottom:12px;box-shadow:0 10px 26px rgba(37,117,67,.08)}
@@ -150,7 +165,7 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
       <button id="recallBtn" class="secondary">ابدأ</button>
     </div>
 
-      <div class="tools student-share"><button id="shareProgress" class="secondary wide">📤 مشاركة التقدم</button><button id="shareParent" class="secondary wide student-home-help hidden">🏠 مساعدة في البيت</button><button id="installApp" class="secondary wide hidden">📲 أضف إلى الهاتف</button></div>
+      <div class="tools student-share"><button id="parentHomeBtn" class="secondary wide">🏠 لولي الأمر</button><button id="shareProgress" class="secondary wide">📤 مشاركة التقدم</button><button id="shareParent" class="secondary wide student-home-help hidden">🏠 مساعدة مخصصة في البيت</button><button id="installApp" class="secondary wide hidden">📲 أضف إلى الهاتف</button></div>
     </details>
     <div class="mastery" id="mastery"></div>
     <div id="teacherTools" class="tools hidden"><button id="teacherToggle" class="secondary" aria-expanded="false">متابعة المعلم</button><button id="reset" class="secondary danger">إعادة التقدم من البداية</button></div>
@@ -235,6 +250,21 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
 
 <div class="footer">إعداد وتصميم تربوي: محمد وجيه<br>تعلّم بفضول • فكّر • جرّب • افهم • ثم أتقن</div>
 <div id="spark" class="spark" role="status" aria-live="polite"></div>
+<div id="familyIntro" class="welcome hidden" role="dialog" aria-modal="true" aria-labelledby="familyIntroTitle">
+  <div class="welcome-card family-card">
+    <div class="family-icon" aria-hidden="true">🏠</div>
+    <h2 id="familyIntroTitle">إلى ولي الأمر أولًا</h2>
+    <p class="family-lead">هذا الرابط للطالب وولي الأمر معًا. اقرأ هذه الدقيقة مرة واحدة، ثم سلّم الهاتف لطفلك.</p>
+    <div class="family-points">
+      <div class="family-point"><b>١</b><span>جهّز دفتر الرياضيات وقلمًا، ودع الطفل هو من يضغط ويجيب.</span></div>
+      <div class="family-point"><b>٢</b><span>لا تعطِ الإجابة. إذا تعثر، انتظر قليلًا ثم استخدم «ساعدني» أو إرشاد ولي الأمر.</span></div>
+      <div class="family-point"><b>٣</b><span>للاستمرار من حيث توقف، استخدموا الهاتف والمتصفح نفسيهما؛ التقدم محفوظ محليًا على الجهاز.</span></div>
+    </div>
+    <div class="family-actions"><button id="familyStudentStart" class="primary">سلّم الهاتف للطفل وابدأ</button><button id="familyParentOpen" class="secondary">إرشادات ولي الأمر</button></div>
+    <div class="family-small">لا يطلب التطبيق اسم الطفل أو صورته أو صوته، ولا يحتاج حسابًا.</div>
+  </div>
+</div>
+
 <div id="welcome" class="welcome hidden" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
   <div class="welcome-card">
     <div class="mascot" style="margin:auto">🏙️</div>
@@ -537,7 +567,7 @@ const PARENT_CAUSE_GUIDES={
  evenodd_units:{title:'استخدم الآحاد بعد فهم الأزواج',signal:'يحتاج ربط رقم الآحاد بما إذا كانت العناصر تتزاوج كاملة.',now:'كوّن أزواجًا لرقم الآحاد فقط، ثم احكم على العدد.',script:'قل: «العشرات أزواج كاملة. افحص الآحاد فقط: هل تتزاوج كلها؟»',activity:'للعدد ٣٤ ارسم ٤ نقاط فقط وكوّن زوجين؛ ثم جرّب ٣٥.'},
  evenodd_reason:{title:'اطلب برهانًا بالتزاوج',signal:'يعرف أو يقترب من النوع، لكنه يحتاج سببًا مرتبطًا بالأزواج.',now:'لا تسأل «زوجي أم فردي؟» فقط؛ أضف «كيف عرفت؟».',script:'قل: «كوّن الأزواج ثم أخبرني: هل بقي عنصر بلا شريك؟ هذا هو السبب.»',activity:'ارسم ٥ دوائر وصِل كل دائرتين، ثم اكتب جملة قصيرة: «بقي واحد، إذن فردي».'}
 };
-function parentModeEnabled(){return location.hash==='#parent'||location.hash.startsWith('#parent=')}
+let parentInlineOpen=false;function parentModeEnabled(){return parentInlineOpen||location.hash==='#parent'||location.hash.startsWith('#parent=')}
 function encodeParentPayload(obj){try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}catch(_){return''}}
 function decodeParentPayload(raw){try{let x=raw.replace(/-/g,'+').replace(/_/g,'/');while(x.length%4)x+='=';return JSON.parse(decodeURIComponent(escape(atob(x))))}catch(_){return null}}
 function parentSnapshotFromState(){const x=state.lastSupport;const m=x?(state.supportSummary?.[x.cause]||{}):{};return {v:2,rec:recommendedKind(),unit:isUnitComplete(),notebook:notebookEvidenceCount(),support:x?{skill:x.skill,obj:x.obj,cause:x.cause,kind:x.kind,mistakes:x.mistakes||0,help:x.help||0,repeat:m.count||x.repeat||0,days:Object.keys(m.days||{}).length||x.days||0}:null,skills:Object.fromEntries(SKILLS.map(k=>{const s=state.skills[k];return [k,{seen:s.seen||0,first:s.firstCorrect||0,errors:s.errors||0,mastered:!!s.mastered,ready:!!s.readiness,lesson:LESSONS[k].objectives.filter(o=>(s.masteryHits[o[0]]||0)>=2).length,unit:LESSONS[k].objectives.filter(o=>state.unitProof[o[0]]===true).length}]}))}}
@@ -734,16 +764,24 @@ function speakCurrent(){if(!('speechSynthesis'in window)){$('feedback').classNam
 function focusFirstInteractive(){setTimeout(()=>{const el=$('interaction').querySelector('button');if(el)el.focus({preventScroll:true})},0)}function focusNext(){setTimeout(()=>$('next').focus({preventScroll:true}),0)}
 document.querySelectorAll('.station').forEach(b=>b.addEventListener('click',()=>openStage(b.dataset.kind)));$('smartStart').onclick=()=>openStage($('smartStart').dataset.kind);$('shareProgress').onclick=shareProgress;$('shareParent').onclick=shareParentGuide;$('installApp').onclick=installApp;$('back').onclick=returnHome;$('hint').onclick=useHint;$('next').onclick=next;$('speak').onclick=speakCurrent;
 function teacherModeEnabled(){return location.hash==='#teacher'}
-function applyAudienceMode(){const parent=parentModeEnabled(),teacher=teacherModeEnabled();$('parentView').classList.toggle('hidden',!parent);$('home').classList.toggle('hidden',parent);if(parent){$('play').classList.add('hidden');$('lab').classList.add('hidden');$('prefsSheet').classList.add('hidden');$('welcome').classList.add('hidden');renderParentView();window.scrollTo(0,0);return}$('teacherTools').classList.toggle('hidden',!teacher);if(!teacher){$('teacherPanel').classList.add('hidden');$('teacherToggle').setAttribute('aria-expanded','false');$('teacherToggle').textContent='متابعة المعلم'}else renderTeacherPanel()}
+function applyAudienceMode(){const parent=parentModeEnabled(),teacher=teacherModeEnabled();$('parentView').classList.toggle('hidden',!parent);$('home').classList.toggle('hidden',parent);if(parent){$('play').classList.add('hidden');$('lab').classList.add('hidden');$('prefsSheet').classList.add('hidden');$('welcome').classList.add('hidden');$('familyIntro').classList.add('hidden');renderParentView();window.scrollTo(0,0);return}$('teacherTools').classList.toggle('hidden',!teacher);if(!teacher){$('teacherPanel').classList.add('hidden');$('teacherToggle').setAttribute('aria-expanded','false');$('teacherToggle').textContent='متابعة المعلم'}else renderTeacherPanel()}
 $('teacherToggle').onclick=()=>{if(!teacherModeEnabled())return;const p=$('teacherPanel'),show=p.classList.contains('hidden');p.classList.toggle('hidden',!show);$('teacherToggle').setAttribute('aria-expanded',show?'true':'false');$('teacherToggle').textContent=show?'إخفاء متابعة المعلم':'متابعة المعلم';if(show)renderTeacherPanel()};
 $('reset').onclick=()=>{if(!teacherModeEnabled())return;if(confirm('هل تريد إعادة النجوم والتقدم من البداية؟')){state={stars:0,completed:{},skills:{},reviewRound:0,unitProof:{},reviewProtocolVersion:0,guide:state.guide,welcomeDone:true,notebookEvidence:{},supportSignals:[],supportSummary:{},lastSupport:null};for(const k of SKILLS)state.skills[k]=defaultSkill();persist()}};
-$('parentShareGuide').onclick=shareParentGuide;$('parentRead').onclick=speakParentGuide;$('parentOpenStudent').onclick=()=>{history.replaceState(null,'',location.pathname+location.search);$('parentView').classList.add('hidden');$('home').classList.remove('hidden');drawHome();applyAudienceMode();window.scrollTo(0,0)};
-window.addEventListener('hashchange',()=>{applyAudienceMode();if(!parentModeEnabled())drawHome()});
+function openParentInline(){parentInlineOpen=true;$('familyIntro').classList.add('hidden');$('welcome').classList.add('hidden');applyAudienceMode()}
+function familyIntroDone(){return safeStorage.get('city99_family_intro_v1','')==='1'}
+function markFamilyIntroDone(){safeStorage.set('city99_family_intro_v1','1')}
+function applyFamilyIntro(){if(teacherModeEnabled()||parentModeEnabled())return false;if(!familyIntroDone()){ $('welcome').classList.add('hidden');$('familyIntro').classList.remove('hidden');return true}$('familyIntro').classList.add('hidden');return false}
+$('parentShareGuide').onclick=shareParentGuide;$('parentRead').onclick=speakParentGuide;
+$('parentHomeBtn').onclick=openParentInline;
+$('familyParentOpen').onclick=()=>{markFamilyIntroDone();openParentInline()};
+$('familyStudentStart').onclick=()=>{markFamilyIntroDone();$('familyIntro').classList.add('hidden');applyWelcome()};
+$('parentOpenStudent').onclick=()=>{parentInlineOpen=false;if(location.hash.startsWith('#parent'))history.replaceState(null,'',location.pathname+location.search);$('parentView').classList.add('hidden');$('home').classList.remove('hidden');drawHome();applyAudienceMode();if(!applyFamilyIntro())applyWelcome();window.scrollTo(0,0)};
+window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#parent'))parentInlineOpen=false;applyAudienceMode();if(!parentModeEnabled())drawHome()});
 document.querySelectorAll('.guide-choice').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.guide-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.guide=b.dataset.guide;}));
 $('beginAdventure').onclick=()=>{state.welcomeDone=true;persist();$('welcome').classList.add('hidden');showSpark('🚀 بدأت مغامرة مدينة ٩٩')};
 function applyWelcome(){if(teacherModeEnabled()||parentModeEnabled()){state.welcomeDone=true;return}if(!state.welcomeDone){document.querySelectorAll('.guide-choice').forEach(b=>b.classList.toggle('selected',b.dataset.guide===state.guide));$('welcome').classList.remove('hidden')}}
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
-drawHome();applyAudienceMode();applyWelcome();
+drawHome();applyAudienceMode();if(!applyFamilyIntro())applyWelcome();
 </script>
 <!--
 حقوق النشر: © محمد وجيه.
@@ -769,7 +807,7 @@ function premiumWeakSkill(){let best=SKILLS[0],score=Infinity;for(const k of SKI
 function skillIcon(k){return {compare:'⚖️',order:'🚂',place:'🏠',evenodd:'👫'}[k]||'✨'}
 function showRecallCard(){const card=$('recallCard');if(!card)return;const day=todayKey();const mastered=SKILLS.filter(k=>state.skills[k]&&state.skills[k].mastered);const should=mastered.length>0&&premium.lastOpenDay&&premium.lastOpenDay!==day&&premium.lastRecallDay!==day;if(!should){card.classList.add('hidden');return}const k=mastered.sort((a,b)=>(premium.lastMastery[a]||0)-(premium.lastMastery[b]||0))[0];card.dataset.skill=k;$('recallText').textContent='هل ما زالت '+skillNames[k]+' ثابتة في ذاكرتك؟ سؤال لعب قصير يكفي.';card.classList.remove('hidden')}
 const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 مختبر اللعب الذكي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}}
-const _wrong=wrong;wrong=function(q){_wrong(q);tone('hint');const g=document.querySelector('.guide-bubble');if(g){g.classList.remove('coach-attention');void g.offsetWidth;g.classList.add('coach-attention')}}
+const _wrong=wrong;wrong=function(q,choice=null){_wrong(q,choice);tone('hint');const g=document.querySelector('.guide-bubble');if(g){g.classList.remove('coach-attention');void g.offsetWidth;g.classList.add('coach-attention')}}
 const _finishCorrect=finishCorrect;finishCorrect=function(q,independent){_finishCorrect(q,independent);tone(independent?'good':'tap');if(independent){haptic(24);celebrate(false)}}
 const _showMasteryComplete=showMasteryComplete;showMasteryComplete=function(){_showMasteryComplete();premium.lastMastery[session.kind]=Date.now();premiumSave();tone('great');haptic(45);celebrate(true)}
 const _showReviewFinish=showReviewFinish;showReviewFinish=function(){_showReviewFinish();tone('great');haptic(55);celebrate(true)}

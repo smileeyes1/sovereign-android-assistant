@@ -7,7 +7,7 @@
 <meta name="author" content="محمد وجيه">
 <meta name="copyright" content="© محمد وجيه">
 <meta name="license" content="Educational content: CC BY-NC-SA 4.0; application code: © محمد وجيه, all rights reserved">
-<meta name="application-version" content="CITY99-RESCUE-ACTION-2026-10-07-v10">
+<meta name="application-version" content="CITY99-PILOT-READY-2026-10-07-v11">
 <meta name="description" content="مدينة ٩٩: تجربة تعلم تفاعلية للوحدة الأولى في رياضيات الصف الثاني — المقارنة والترتيب والقيمة المنزلية والزوجي والفردي.">
 <meta property="og:title" content="مدينة ٩٩ — مغامرة الأعداد للصف الثاني">
 <meta property="og:description" content="تعلم تفاعلي مبسط للطالب، مع دفتر وقلم وإرشاد ذكي لولي الأمر في الرابط نفسه.">
@@ -175,7 +175,7 @@ body:after{width:260px;height:260px;inset:auto -120px 6% auto;background:radial-
       <div class="premium-strip" aria-label="لعب وتفضيلات">
         <button id="playLabBtn" class="premium-btn">🎮 تدريب إضافي</button>
         <button id="prefsBtn" class="premium-btn">⚙️ إعدادات الراحة</button>
-        <button id="homeRescueBtn" class="premium-btn rescue-home">⚡ مهمة الإنقاذ</button>
+        <button id="homeRescueBtn" class="premium-btn rescue-home hidden">⚡ مهمة الإنقاذ</button>
       </div>
     <div id="recallCard" class="recall-card hidden">
       <div class="recall-icon" aria-hidden="true">🧠</div>
@@ -808,9 +808,9 @@ function markFamilyIntroDone(){safeStorage.set('city99_family_intro_v1','1')}
 function applyFamilyIntro(){if(teacherModeEnabled()||parentModeEnabled())return false;if(!familyIntroDone()){ $('welcome').classList.add('hidden');$('familyIntro').classList.remove('hidden');return true}$('familyIntro').classList.add('hidden');return false}
 $('parentShareGuide').onclick=shareParentGuide;$('parentRead').onclick=speakParentGuide;
 $('parentHomeBtn').onclick=openParentInline;
-$('familyParentOpen').onclick=()=>{markFamilyIntroDone();openParentInline()};
-$('familyStudentStart').onclick=()=>{markFamilyIntroDone();$('familyIntro').classList.add('hidden');applyWelcome()};
-$('parentOpenStudent').onclick=()=>{parentInlineOpen=false;if(location.hash.startsWith('#parent'))history.replaceState(null,'',location.pathname+location.search);$('parentView').classList.add('hidden');$('home').classList.remove('hidden');drawHome();applyAudienceMode();if(!applyFamilyIntro())applyWelcome();window.scrollTo(0,0)};
+$('familyParentOpen').onclick=()=>{markFamilyIntroDone();state.welcomeDone=true;persist();openParentInline()};
+$('familyStudentStart').onclick=()=>{markFamilyIntroDone();state.welcomeDone=true;persist();$('familyIntro').classList.add('hidden');$('welcome').classList.add('hidden');drawHome();window.scrollTo(0,0)};
+$('parentOpenStudent').onclick=()=>{parentInlineOpen=false;if(location.hash.startsWith('#parent'))history.replaceState(null,'',location.pathname+location.search);$('parentView').classList.add('hidden');$('home').classList.remove('hidden');drawHome();applyAudienceMode();if(!applyFamilyIntro()&&!state.welcomeDone)applyWelcome();window.scrollTo(0,0)};
 window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#parent'))parentInlineOpen=false;applyAudienceMode();if(!parentModeEnabled())drawHome()});
 document.querySelectorAll('.guide-choice').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.guide-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.guide=b.dataset.guide;}));
 $('beginAdventure').onclick=()=>{state.welcomeDone=true;persist();$('welcome').classList.add('hidden');showSpark('🚀 بدأت مغامرة مدينة ٩٩')};
@@ -841,7 +841,7 @@ function celebrate(big=false){if(!premium.prefs.motion||matchMedia('(prefers-red
 function premiumWeakSkill(){let best=SKILLS[0],score=Infinity;for(const k of SKILLS){const s=state.skills[k]||defaultSkill();const accuracy=s.seen?((s.firstCorrect||0)/s.seen):0;const mastery=s.mastered?1:0;const need=Object.values(s.needs||{}).reduce((a,b)=>a+b,0);const v=mastery*3+accuracy*2-Math.min(need,5)*.12;if(v<score){score=v;best=k}}return best}
 function skillIcon(k){return {compare:'⚖️',order:'🚂',place:'🏠',evenodd:'👫'}[k]||'✨'}
 function showRecallCard(){const card=$('recallCard');if(!card)return;const day=todayKey();const mastered=SKILLS.filter(k=>state.skills[k]&&state.skills[k].mastered);const should=mastered.length>0&&premium.lastOpenDay&&premium.lastOpenDay!==day&&premium.lastRecallDay!==day;if(!should){card.classList.add('hidden');return}const k=mastered.sort((a,b)=>(premium.lastMastery[a]||0)-(premium.lastMastery[b]||0))[0];card.dataset.skill=k;$('recallText').textContent='هل ما زالت '+skillNames[k]+' ثابتة في ذاكرتك؟ سؤال لعب قصير يكفي.';card.classList.remove('hidden')}
-const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 تدريب إضافي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}const rb=$('homeRescueBtn');if(rb){const rk=recommendedKind()==='review'?premiumWeakSkill():recommendedKind();rb.innerHTML='⚡ مهمة الإنقاذ <small style="display:block;font-weight:700;color:#667085;margin-top:3px">'+skillNames[rk]+'</small>'}}
+const _drawHome=drawHome;drawHome=function(){_drawHome();showRecallCard();const pb=$('playLabBtn');if(pb){const k=premiumWeakSkill();pb.innerHTML='🎮 تدريب إضافي <small style="display:block;font-weight:700;color:#667085;margin-top:3px">يقترح الآن: '+skillNames[k]+'</small>'}const rb=$('homeRescueBtn');if(rb){const started=SKILLS.filter(k=>(state.skills[k]?.seen||0)>0);rb.classList.toggle('hidden',started.length===0);const rk=started.length?started.slice().sort((a,b)=>ratio(a)-ratio(b)||state.skills[b].errors-state.skills[a].errors)[0]:(recommendedKind()==='review'?premiumWeakSkill():recommendedKind());rb.innerHTML='⚡ مهمة الإنقاذ <small style="display:block;font-weight:700;color:#667085;margin-top:3px">'+skillNames[rk]+'</small>';rb.dataset.skill=rk}}
 const _wrong=wrong;wrong=function(q,choice=null){_wrong(q,choice);tone('hint');const g=document.querySelector('.guide-bubble');if(g){g.classList.remove('coach-attention');void g.offsetWidth;g.classList.add('coach-attention')}}
 const _finishCorrect=finishCorrect;finishCorrect=function(q){const wasIndependent=independentNow(),phaseBefore=session.phase,skillBefore=skillForCurrent();_finishCorrect(q);tone(wasIndependent?'good':'tap');if(wasIndependent){haptic(24);celebrate(false)}maybeOfferRescue(skillBefore,phaseBefore,wasIndependent)}
 const _showMasteryComplete=showMasteryComplete;showMasteryComplete=function(){_showMasteryComplete();premium.lastMastery[session.kind]=Date.now();premiumSave();tone('great');haptic(45);celebrate(true)}
@@ -946,7 +946,7 @@ function maybeOfferRescue(skill,phase,independent){
 $('rescueStart').onclick=()=>startRescue($('rescueOffer').dataset.skill||session.kind,'play');
 $('rescueBack').onclick=exitRescue;$('rescueExit').onclick=exitRescue;
 $('rescueNext').onclick=()=>{if(rescue.round>=rescue.total-1){rescuePrefs.wins++;rescueSave();celebrate(true);exitRescue();return}rescue.round++;renderRescue()};
-$('homeRescueBtn').onclick=()=>startRescue(recommendedKind()==='review'?premiumWeakSkill():recommendedKind(),'home');
+$('homeRescueBtn').onclick=()=>startRescue($('homeRescueBtn').dataset.skill||premiumWeakSkill(),'home');
 
 
 // ===== مختبر اللعب =====

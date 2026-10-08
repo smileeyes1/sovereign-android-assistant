@@ -30,7 +30,7 @@
     "candidate": {
       "version_code": 20340,
       "branch": "feature/hakim-20340-sovereign-video-factory-r30",
-      "source_ci_state": "VERIFIED",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,

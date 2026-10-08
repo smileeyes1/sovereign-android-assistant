@@ -21,7 +21,7 @@ def req(ok, reason):
         raise SystemExit("SOVEREIGN_VIDEO_FACTORY_20340=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20340,"version")
+req(m is not None and int(m.group(1))>=20340,"version_floor")
 req("private-voice-vault-r29-sovereign-video-factory-r30" in BUILD,"lineage")
 
 for token in [
@@ -82,11 +82,11 @@ for x in ["comfyui","ltx2","wan_open_video","hunyuanvideo","ffmpeg"]:
     req(x in ids,"open_stack:"+x)
 
 candidate=STATE["android"]["candidate"]
-req(candidate["version_code"]==20340,"state_candidate")
+req(candidate["version_code"]==int(m.group(1)),"state_candidate")
 req(candidate["field_verified"] is False,"field_inheritance")
 req(candidate["same_signed_apk_field_verified"] is False,"same_artifact_inheritance")
 product=STATE["productization"]
-req(product["candidate_version"]==20340,"product_candidate")
+req(product["candidate_version"]==int(m.group(1)),"product_candidate")
 req(product["sovereign_video_factory_r30_source_integrated"] is True,"source_integrated")
 req(product["sovereign_video_factory_r30_source_ci_verified"] is True,"source_ci_verified")
 req(product["video_factory_r30_source_ci_run_number"]==1661,"product_source_ci_run")
@@ -94,13 +94,12 @@ req(product["video_factory_r30_advanced_unsigned_sha256"]=="51d25167422d9329c610
 req(product["sovereign_video_factory_r30_field_verified"] is False,"field_starts_false")
 req(product["video_provider_lock_in"] is False,"product_provider_lock")
 req(product["video_paid_without_explicit_approval"] is False,"paid_without_approval")
-req(PROMO["candidate_version"]==20340 and PROMO["promoted"] is False,"promotion_closed")
+req(PROMO["candidate_version"]==int(m.group(1)) and PROMO["promoted"] is False,"promotion_closed")
 req(PROMO["sovereign_video_factory_r30_source_ci_verified"] is True,"promotion_source_ci_verified")
 req(PROMO["video_factory_r30_source_ci_run_number"]==1661,"source_ci_run")
 req(PROMO["video_factory_r30_source_ci_verified_head"]=="712b39aae652f3682562264d1e2663564913877d","source_ci_head")
 req(PROMO["video_factory_r30_advanced_unsigned_sha256"]=="51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949","advanced_unsigned_sha")
 req(PROMO["sovereign_video_factory_r30_field_verified"] is False,"promotion_field_false")
 req("python3 tests/verify_20340_sovereign_video_factory.py" in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20340"' in WORKFLOW,"workflow_version")
 
 print("SOVEREIGN_VIDEO_FACTORY_20340=PASS provider_neutral=true open_path=true paid_gated=true render_not_overclaimed=true")

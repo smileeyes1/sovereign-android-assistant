@@ -30,6 +30,7 @@ object HakimCapabilityKernel {
         Capability("type_text", "كتابة نص غير حساس", true, false, true),
         Capability("browser_open", "فتح رابط أو صفحة", true, false, true),
         Capability("local_file_read", "قراءة ملف محلي مأذون", true, false, false),
+        Capability("plan_media", "تخطيط إنتاج وسائط محلي بلا أثر خارجي", true, false, false),
         Capability("local_file_write", "إنشاء/تعديل ملف محلي مأذون", true, false, true),
         Capability("build_candidate", "بناء مرشح داخل بيئة معزولة", true, false, false),
         Capability("install_candidate", "تثبيت/ترقية مرشح", false, true, true),
@@ -75,7 +76,7 @@ object HakimCapabilityKernel {
             "observe_termux" -> HakimTermuxControl.isInstalled(context)
             "observe_ui", "navigate_ui", "type_text" -> HakimAccessibilityService.instance != null
             "browser_open" -> true // متصفح حكيم مكوّن داخلي؛ الاتصال بالإنترنت يُفحص في مساره.
-            "local_file_read", "local_file_write" -> true // نطاق التطبيق المأذون فقط.
+            "local_file_read", "local_file_write", "plan_media" -> true // نطاق التطبيق المأذون فقط.
             "build_candidate" -> false // البناء ليس قدرة هاتفية داخل التطبيق.
             "install_candidate" -> false // لا self-installer ولا REQUEST_INSTALL_PACKAGES.
             "send_external" -> true // primitive موجود، ويبقى الإرسال نفسه خلف بوابة التفويض.

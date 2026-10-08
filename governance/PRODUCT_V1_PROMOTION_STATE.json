@@ -50,15 +50,18 @@
   "consumer_play_bundle_built": true,
   "consumer_play_bundle_publishable": false,
   "consumer_play_bundle_sha256": "05930f91b86d65ebe5f635cc00cdac88e61b1dd66b2f34c11077e64d083d1538",
-  "source_ci_run_number": 1661,
-  "source_ci_run_id": 37730569437,
-  "source_ci_verified_head": "712b39aae652f3682562264d1e2663564913877d",
+  "source_ci_run_number": 1655,
+  "source_ci_run_id": 37414588704,
+  "source_ci_verified_head": "c70259c407a98dcc4ba728ba37c20ddb2d409e59",
   "private_voice_vault_r29_source_integrated": true,
   "private_voice_vault_r29_source_ci_verified": false,
   "private_voice_vault_r29_field_verified": false,
   "sovereign_video_factory_r30_source_integrated": true,
   "sovereign_video_factory_r30_source_ci_verified": true,
   "sovereign_video_factory_r30_field_verified": false,
-  "source_ci_artifact_id": 11530185149,
-  "advanced_release_unsigned_apk_sha256": "51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949"
+  "video_factory_r30_source_ci_run_number": 1661,
+  "video_factory_r30_source_ci_run_id": 37730569437,
+  "video_factory_r30_source_ci_verified_head": "712b39aae652f3682562264d1e2663564913877d",
+  "video_factory_r30_source_ci_artifact_id": 11530185149,
+  "video_factory_r30_advanced_unsigned_sha256": "51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949"
 }

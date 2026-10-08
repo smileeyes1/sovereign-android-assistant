@@ -138,7 +138,7 @@ def compile_workflow(plan: dict[str, Any]) -> dict[str, Any]:
     width = max(256, min(4096, int(plan.get("width", 1280))))
     height = max(256, min(4096, int(plan.get("height", 720))))
     fps = max(1, min(120, int(plan.get("fps", 24))))
-    frames = max(1, min(10000, int(plan.get("frames", fps * max(1, int(plan.get("duration_sec", 5))))))
+    frames = max(1, min(10000, int(plan.get("frames", fps * max(1, int(plan.get("duration_sec", 5)))))))
     seed = int(plan.get("seed", secrets.randbits(31))) & 0x7FFFFFFF
     mapping = {
         "__HAKIM_PROMPT__": prompt,

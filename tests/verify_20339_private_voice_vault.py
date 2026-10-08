@@ -78,7 +78,7 @@ req('android:exported="false"' in block, "activity_exported")
 req('button("صوتي في حكيم", primary = true)' in SETTINGS, "settings_entry")
 req("لا تدخل تلقائيًا في السحابة أو GitHub أو نسخة الاستقلال" in SETTINGS, "privacy_copy")
 req('Contract("voice.profile.local"' in REGISTRY, "registry")
-req('"app.launch", "voice.profile.local" -> true' in REGISTRY, "registry_availability")
+req('"app.launch", "voice.profile.local"' in REGISTRY and '"voice.profile.local", "video.capabilities", "video.plan" -> true' in REGISTRY, "registry_availability")
 req("عينة صوت المالك الاختيارية" in PRIVACY, "privacy_map")
 
 # Portable state only contains an explicit allowlist unrelated to the voice profile.

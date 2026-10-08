@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "protocol": "hakim-video-runtime-v1",
+  "version": "VIDEO-RUNTIME-BRIDGE-2026-10-08-r31",
+  "endpoints": {
+    "capabilities": "GET /hakim/video/v1/capabilities",
+    "submit": "POST /hakim/video/v1/jobs",
+    "job": "GET /hakim/video/v1/jobs/{job_id}",
+    "artifact": "GET /hakim/video/v1/jobs/{job_id}/artifact?index={n}"
+  },
+  "security": {
+    "default_bind": "127.0.0.1",
+    "token_required_for_non_loopback": true,
+    "app_token_storage": "AndroidKeyStore",
+    "non_loopback_transport": "HTTPS_REQUIRED_BY_ANDROID_CLIENT",
+    "arbitrary_shell": false,
+    "model_download_automatic": false,
+    "paid_execution_automatic": false
+  },
+  "execution": {
+    "upstream": "ComfyUI",
+    "workflow_template": "operator_owned_fixed_file",
+    "prompt_token_replacement": true,
+    "job_idempotency": true,
+    "job_state_persistent": true,
+    "artifact_proxy": true
+  },
+  "authority": {
+    "runtime_probe": "read_only",
+    "job_read": "read_only",
+    "render_submission": "send_external_gate",
+    "paid_runtime": "blocked_by_default"
+  },
+  "field_verified": false
+}

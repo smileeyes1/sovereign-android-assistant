@@ -28,6 +28,12 @@ object HakimCapabilityVerifier {
                 result.optJSONArray("shots") != null &&
                 result.optJSONArray("quality_gates") != null &&
                 !result.optBoolean("artifact_created", true)
+            "video.runtime" ->
+                result.optString("protocol") == HakimVideoRuntime.PROTOCOL &&
+                result.has("verified_runtime")
+            "video.job.read" ->
+                result.optString("protocol") == HakimVideoRuntime.PROTOCOL &&
+                result.has("state") && result.has("job_id")
             else -> false
         }
         return JSONObject()

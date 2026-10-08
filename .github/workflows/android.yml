@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20341 Sovereign Video Runtime R31 on Video Factory; preserves 20337 field baseline
+# 20342 Play-Protect-safe field R32 on Sovereign Video Runtime R31; preserves 20337 field baseline
 
 on:
   push:
@@ -106,6 +106,7 @@ jobs:
           python3 tests/verify_20339_private_voice_vault.py
           python3 tests/verify_20340_sovereign_video_factory.py
           python3 tests/verify_20341_sovereign_video_runtime.py
+          python3 tests/verify_20342_play_protect_safe_field.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -174,10 +175,10 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20341"
+          test "$VERSION_CODE" = "20342"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
-        run: gradle assembleConsumerDebug assembleConsumerRelease assembleAdvancedDebug assembleAdvancedRelease bundleConsumerRelease --stacktrace
+        run: gradle assembleConsumerDebug assembleConsumerRelease assembleAdvancedDebug assembleAdvancedRelease assembleFieldDebug assembleFieldRelease bundleConsumerRelease --stacktrace
       - name: بوابة فصل Consumer و Advanced بعد الدمج
         run: |
           set -euo pipefail
@@ -209,6 +210,38 @@ jobs:
           grep -Fq "android.permission.BIND_ACCESSIBILITY_SERVICE" <<<"$ADVANCED_XML"
           grep -Fq "ps.hakim.phoneagent.HakimNotificationListener" <<<"$ADVANCED_XML"
           grep -Fq "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" <<<"$ADVANCED_XML"
+
+          FIELD_SAFE_APK="app/build/outputs/apk/field/release/app-field-release-unsigned.apk"
+          test -s "$FIELD_SAFE_APK"
+          FIELD_BADGING="$("$AAPT_BIN" dump badging "$FIELD_SAFE_APK" | head -n1)"
+          grep -Fq "package: name='ps.hakim.stable'" <<<"$FIELD_BADGING"
+          grep -Fq "versionCode='20342'" <<<"$FIELD_BADGING"
+          FIELD_XML="$("$AAPT_BIN" dump xmltree "$FIELD_SAFE_APK" AndroidManifest.xml)"
+          FIELD_PERMS="$("$AAPT_BIN" dump permissions "$FIELD_SAFE_APK")"
+          for token in \
+            android.permission.BIND_ACCESSIBILITY_SERVICE \
+            android.permission.BIND_NOTIFICATION_LISTENER_SERVICE \
+            android.accessibilityservice.AccessibilityService \
+            android.service.notification.NotificationListenerService \
+            ps.hakim.phoneagent.HakimAccessibilityService \
+            ps.hakim.phoneagent.HakimNotificationListener; do
+            if grep -Fq "$token" <<<"$FIELD_XML"; then
+              echo "Field-safe APK unexpectedly contains $token" >&2
+              exit 1
+            fi
+          done
+          for permission in \
+            android.permission.READ_SMS \
+            android.permission.RECEIVE_SMS \
+            android.permission.READ_PHONE_STATE \
+            android.permission.READ_EXTERNAL_STORAGE \
+            android.permission.REQUEST_INSTALL_PACKAGES; do
+            if grep -Fq "$permission" <<<"$FIELD_PERMS"; then
+              echo "Field-safe APK unexpectedly requests $permission" >&2
+              exit 1
+            fi
+          done
+          echo "PLAY_PROTECT_FIELD_APK_GATE=PASS"
           echo "PRODUCT_VARIANT_MERGE_GATE=PASS"
 
       - name: بوابة توافق صفحات الذاكرة 16KB
@@ -216,11 +249,12 @@ jobs:
           ZIPALIGN_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/zipalign"
           "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
           "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/consumer/release/app-consumer-release-unsigned.apk
+          "$ZIPALIGN_BIN" -c -P 16 -v 4 app/build/outputs/apk/field/release/app-field-release-unsigned.apk
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
         run: |
           APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
           set +e
-          GUARD_OUTPUT="$(APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh app/build/outputs/apk/advanced/debug/app-advanced-debug.apk 2>&1)"
+          GUARD_OUTPUT="$(APKSIGNER="$APKSIGNER_BIN" bash scripts/verify-field-signer.sh app/build/outputs/apk/field/debug/app-field-debug.apk 2>&1)"
           GUARD_RC=$?
           set -e
           printf '%s\n' "$GUARD_OUTPUT"
@@ -256,12 +290,12 @@ jobs:
             --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" \
             --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD \
             --key-pass env:HAKIM_FIELD_KEY_PASSWORD \
-            --out app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk \
-            app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
+            --out app/build/outputs/apk/field/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk \
+            app/build/outputs/apk/field/release/app-field-release-unsigned.apk
           APKSIGNER="$APKSIGNER_BIN" \
-            bash scripts/verify-field-signer.sh app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+            bash scripts/verify-field-signer.sh app/build/outputs/apk/field/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           python3 tools/verify_hakim_d1_v2_structure.py \
-            app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+            app/build/outputs/apk/field/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           echo "signed=true" >> "$GITHUB_OUTPUT"
       - name: حفظ ملفات CI غير القابلة للتثبيت الميداني
         uses: actions/upload-artifact@v4
@@ -272,6 +306,8 @@ jobs:
             app/build/outputs/apk/advanced/release/app-advanced-release-unsigned.apk
             app/build/outputs/apk/consumer/debug/app-consumer-debug.apk
             app/build/outputs/apk/consumer/release/app-consumer-release-unsigned.apk
+            app/build/outputs/apk/field/debug/app-field-debug.apk
+            app/build/outputs/apk/field/release/app-field-release-unsigned.apk
             app/build/outputs/bundle/consumerRelease/app-consumer-release.aab
           if-no-files-found: error
       - name: حفظ تحديث حكيم الميداني
@@ -279,5 +315,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hakim-field-${{ steps.candidate_version.outputs.code }}
-          path: app/build/outputs/apk/advanced/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
+          path: app/build/outputs/apk/field/release/hakim-field-${{ steps.candidate_version.outputs.code }}.apk
           if-no-files-found: error

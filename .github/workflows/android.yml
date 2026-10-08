@@ -1,5 +1,5 @@
 name: بناء تطبيق حكيم الهاتف
-# 20339 Private Voice Vault R29 on Product Foundation V1; preserves 20337 field baseline
+# 20340 Sovereign Video Factory R30 on Private Voice Vault; preserves 20337 field baseline
 
 on:
   push:
@@ -104,6 +104,7 @@ jobs:
           python3 tests/verify_20337_capability_fabric.py
           python3 tests/verify_20338_product_foundation.py
           python3 tests/verify_20339_private_voice_vault.py
+          python3 tests/verify_20340_sovereign_video_factory.py
           python3 tests/verify_20316_autoupdate_wakeup.py
           python3 tests/verify_offline_update_discovery.py
           python3 tests/verify_android_network_protection.py
@@ -171,7 +172,7 @@ jobs:
         id: candidate_version
         run: |
           VERSION_CODE="$(awk '/versionCode/{print $2; exit}' app/build.gradle)"
-          test "$VERSION_CODE" = "20339"
+          test "$VERSION_CODE" = "20340"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
         run: gradle assembleConsumerDebug assembleConsumerRelease assembleAdvancedDebug assembleAdvancedRelease bundleConsumerRelease --stacktrace

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-10-06",
+  "snapshot_date": "2026-10-08",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -28,16 +28,20 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20339,
-      "branch": "feature/hakim-20339-private-voice-vault-r29",
-      "source_ci_state": "PENDING_CURRENT_HEAD_CI",
+      "version_code": 20340,
+      "branch": "feature/hakim-20340-sovereign-video-factory-r30",
+      "source_ci_state": "SOURCE_CI_VERIFIED",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "private_encrypted_owner_voice_profile_r29_on_product_foundation_v1_without_inheriting_field_success",
+      "purpose": "sovereign_cinematic_video_factory_r30_on_private_voice_vault_without_inheriting_field_success",
       "signed_d1_verified": false,
-      "installed_field_baseline_version": 20337
+      "installed_field_baseline_version": 20337,
+      "source_ci_head": "712b39aae652f3682562264d1e2663564913877d",
+      "source_ci_run_number": 1661,
+      "source_ci_run_id": 37730569437,
+      "source_ci_artifact_id": 11530185149
     },
     "field_observed_current": {
       "observed_at": "2026-10-01",
@@ -135,7 +139,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20337_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20340_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -176,7 +180,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20339,
+    "candidate_version": 20340,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -193,7 +197,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20339",
+    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20340",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -268,10 +272,10 @@
     "cross_session_continuity_cloud_verified": true,
     "cross_session_continuity_android_field_verified": false,
     "same_signed_apk_field_verified": false,
-    "release_source_tested_head": "",
+    "release_source_tested_head": "712b39aae652f3682562264d1e2663564913877d",
     "release_merge_commit": "",
-    "release_ci_run_id": null,
-    "release_ci_artifact_id": null,
+    "release_ci_run_id": 37730569437,
+    "release_ci_artifact_id": 11530185149,
     "professional_observability_runtime_field_verified": false,
     "professional_observability_visual_field_verified": false,
     "chatgpt_control_source_integrated": true,
@@ -368,7 +372,22 @@
     "private_voice_vault_r29_source_ci_verified": false,
     "private_voice_vault_r29_field_verified": false,
     "voice_sample_external_upload_default": false,
-    "voice_sample_portable_state_export": false
+    "voice_sample_portable_state_export": false,
+    "sovereign_video_factory_r30_source_integrated": true,
+    "sovereign_video_factory_r30_source_ci_verified": true,
+    "sovereign_video_factory_r30_field_verified": false,
+    "video_provider_lock_in": false,
+    "video_phone_heavy_generation_proven": false,
+    "video_paid_without_explicit_approval": false,
+    "video_self_hosted_open_path": true,
+    "video_factory_r30_source_ci_head": "712b39aae652f3682562264d1e2663564913877d",
+    "video_factory_r30_source_ci_run_number": 1661,
+    "video_factory_r30_source_ci_run_id": 37730569437,
+    "video_factory_r30_source_ci_artifact_id": 11530185149,
+    "video_factory_r30_advanced_unsigned_sha256": "51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949",
+    "video_factory_r30_consumer_unsigned_sha256": "1336bca22994ca311ed89c7a13d3d4170075990c06a78a60ed6b7503eccb8d25",
+    "video_factory_r30_consumer_bundle_sha256": "ecb5b87cd7be5f4dc23bf44e2d29090dabbb9e0d25b893ed6c9848b117f95bea",
+    "video_factory_r30_ci_archive_sha256": "713cdf30f04d519c84432662a86515e2a66f72ca03639f7206fad1bb261c46a9"
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

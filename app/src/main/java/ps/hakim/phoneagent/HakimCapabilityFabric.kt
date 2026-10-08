@@ -67,6 +67,8 @@ object HakimCapabilityFabric {
                 else JSONObject().put("ok", true).put("notifications", HakimNotificationListener.snapshot())
             }
             "termux.status" -> HakimTermuxControl.status(context).put("ok", true)
+            "video.capabilities" -> HakimVideoFactory.capabilities(context)
+            "video.plan" -> HakimVideoFactory.plan(payload)
             else -> JSONObject().put("ok", false).put("error", "adapter_not_available")
         }
 

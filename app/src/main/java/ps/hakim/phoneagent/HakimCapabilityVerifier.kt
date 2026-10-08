@@ -20,6 +20,14 @@ object HakimCapabilityVerifier {
                 result.optBoolean("termux_local_control", false) &&
                 result.optBoolean("fixed_profiles_only", false) &&
                 !result.optBoolean("arbitrary_shell_exposed", true)
+            "video.capabilities" ->
+                result.optString("contract").startsWith("VIDEO-FACTORY-") &&
+                result.optJSONArray("provider_blueprints") != null &&
+                !result.optBoolean("render_verified", true)
+            "video.plan" ->
+                result.optJSONArray("shots") != null &&
+                result.optJSONArray("quality_gates") != null &&
+                !result.optBoolean("artifact_created", true)
             else -> false
         }
         return JSONObject()

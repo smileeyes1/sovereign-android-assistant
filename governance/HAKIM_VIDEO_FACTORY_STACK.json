@@ -75,5 +75,21 @@
     "https://github.com/Lightricks/LTX-Video",
     "https://github.com/Tencent-Hunyuan/HunyuanVideo"
   ],
-  "note": "Runtime availability, model licenses, costs and provider capabilities must be re-verified at execution time."
+  "note": "Runtime availability, model licenses, costs and provider capabilities must be re-verified at execution time.",
+  "runtime": {
+    "protocol": "hakim-video-runtime-v1",
+    "android_client": "HakimVideoRuntime.kt",
+    "bridge": "tools/hakim_video_runtime_bridge.py",
+    "bridge_default_bind": "127.0.0.1",
+    "non_loopback_requires_token": true,
+    "arbitrary_shell_exposed": false,
+    "automatic_model_download": false,
+    "automatic_paid_execution": false,
+    "comfyui_adapter": true,
+    "workflow_template_operator_owned": true,
+    "idempotent_jobs": true,
+    "persistent_job_mapping": true,
+    "artifact_proxy": true,
+    "field_runtime_verified": false
+  }
 }

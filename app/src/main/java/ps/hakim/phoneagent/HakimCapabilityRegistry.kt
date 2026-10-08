@@ -71,6 +71,9 @@ object HakimCapabilityRegistry {
         Contract("voice.profile.local", "حفظ عينة الصوت الشخصية محليًا", "voice", "owned", true, false, false, true, true, "explicit_scope", "voice_profile_store", "local_file_write"),
         Contract("video.capabilities", "قدرات مصنع الفيديو السيادي", "media", "owned", true, true, true, true, false, "none", "video_factory", "plan_media"),
         Contract("video.plan", "خطة إنتاج فيديو سينمائي", "media", "owned", true, true, true, true, false, "none", "video_factory", "plan_media"),
+        Contract("video.runtime", "حالة منفذ رندر الفيديو السيادي", "media", "owned", true, true, true, true, false, "none", "video_runtime", "observe_status"),
+        Contract("video.job.read", "قراءة حالة مهمة رندر فيديو", "media", "owned", true, true, true, true, false, "none", "video_runtime", "observe_status"),
+        Contract("video.render", "تنفيذ رندر فيديو على runtime مأذون", "media", "owned", true, false, false, true, true, "explicit_approval", "video_runtime", "send_external"),
         Contract("voice.dictate", "إملاء صوتي", "voice", "planned", false, true, false, true, true, "explicit_scope", "planned", "observe_status",
             listOf("android.permission.RECORD_AUDIO")),
         Contract("artifact.create", "إنشاء ملف أو أثر", "artifacts", "planned", false, false, false, true, false, "explicit_scope", "planned", "local_file_write"),
@@ -112,6 +115,7 @@ object HakimCapabilityRegistry {
             "termux.status" -> HakimTermuxControl.isInstalled(context)
             "screenshot.capture" -> Build.VERSION.SDK_INT >= 30 && HakimAccessibilityService.instance != null
             "app.launch", "voice.profile.local", "video.capabilities", "video.plan" -> true
+            "video.runtime", "video.job.read", "video.render" -> HakimVideoRuntime.status(context).optBoolean("configured", false)
             else -> false
         }
         return JSONObject()

@@ -47,6 +47,7 @@ object HakimVideoFactory {
             .put("render_executor_connected", prefs.getBoolean("render_executor_connected", false))
             .put("render_executor_name", prefs.getString("render_executor_name", "").orEmpty())
             .put("render_verified", false)
+            .put("runtime", HakimVideoRuntime.status(context))
             .put("provider_blueprints", providerBlueprints())
             .put("policy", JSONObject()
                 .put("local_or_self_hosted_first", true)
@@ -142,6 +143,12 @@ object HakimVideoFactory {
                 .put("delivered_artifact_must_match_tested_artifact", true)
             )
     }
+
+    fun render(context: Context, plan: JSONObject): JSONObject =
+        HakimVideoRuntime.submit(context, plan)
+
+    fun renderJob(context: Context, jobId: String): JSONObject =
+        HakimVideoRuntime.job(context, jobId)
 
     private fun providerBlueprints(): JSONArray = JSONArray()
         .put(JSONObject()

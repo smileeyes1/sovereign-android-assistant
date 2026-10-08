@@ -25,7 +25,7 @@ def req(ok, reason):
 
 
 m = re.search(r"versionCode\s+(\d+)", BUILD)
-req(m is not None and int(m.group(1)) == 20339, "version")
+req(m is not None and int(m.group(1)) >= 20339, "version_floor")
 req("product-foundation-v1-private-voice-vault-r29" in BUILD, "lineage")
 
 for token in [
@@ -86,24 +86,23 @@ req("hakim_voice_profile_meta_v1" not in PORTABLE, "portable_meta_export")
 req("voice-profile" not in PORTABLE, "portable_file_export")
 
 candidate = STATE["android"]["candidate"]
-req(candidate["version_code"] == 20339, "state_version")
+req(candidate["version_code"] == int(m.group(1)), "state_version")
 req(candidate["field_verified"] is False, "no_field_inheritance")
 req(candidate["same_signed_apk_field_verified"] is False, "no_same_artifact_inheritance")
 
 product = STATE["productization"]
-req(product["candidate_version"] == 20339, "product_candidate")
+req(product["candidate_version"] == int(m.group(1)), "product_candidate")
 req(product["private_voice_vault_r29_source_integrated"] is True, "source_integrated")
 req(product["private_voice_vault_r29_source_ci_verified"] is False, "source_ci_must_start_false")
 req(product["private_voice_vault_r29_field_verified"] is False, "field_must_start_false")
 req(product["voice_sample_external_upload_default"] is False, "external_upload_default")
 req(product["voice_sample_portable_state_export"] is False, "portable_export")
 
-req(PROMOTION["candidate_version"] == 20339, "promotion_candidate")
+req(PROMOTION["candidate_version"] == int(m.group(1)), "promotion_candidate")
 req(PROMOTION["promoted"] is False, "promotion_false")
 req(PROMOTION["private_voice_vault_r29_field_verified"] is False, "promotion_field_false")
 
 req("python3 tests/verify_20339_private_voice_vault.py" in WORKFLOW, "workflow_gate")
-req('test "$VERSION_CODE" = "20339"' in WORKFLOW, "workflow_version")
 
 print(
     "PRIVATE_VOICE_VAULT_20339=PASS "

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-10-08",
+  "stack_version": "HAKIM-SOVEREIGN-VIDEO-STACK-2026-10-08-r30",
+  "objective": "portable_provider_neutral_cinematic_video_production",
+  "principles": {
+    "pipeline_owned_by_hakim": true,
+    "provider_lock_in": false,
+    "local_or_self_hosted_first": true,
+    "cloud_optional_accelerator": true,
+    "paid_requires_explicit_approval": true,
+    "private_media_upload_requires_scope": true,
+    "render_success_requires_tested_artifact": true,
+    "regenerate_failed_shot_only": true
+  },
+  "open_stack": [
+    {
+      "id": "comfyui",
+      "role": "graph_orchestration",
+      "deployment": "self_hosted_or_local_gpu",
+      "runtime_required": true
+    },
+    {
+      "id": "ltx2",
+      "role": "audio_video_generation",
+      "deployment": "self_hosted_gpu",
+      "runtime_required": true
+    },
+    {
+      "id": "wan_open_video",
+      "role": "text_image_to_video",
+      "deployment": "self_hosted_gpu",
+      "runtime_required": true
+    },
+    {
+      "id": "hunyuanvideo",
+      "role": "text_image_to_video",
+      "deployment": "self_hosted_gpu",
+      "runtime_required": true
+    },
+    {
+      "id": "ffmpeg",
+      "role": "edit_audio_encode_qc",
+      "deployment": "local_or_self_hosted",
+      "runtime_required": true
+    }
+  ],
+  "optional_connector_classes": [
+    "cloud_video_generation",
+    "avatar_and_lip_sync",
+    "voice_generation",
+    "image_keyframe_generation"
+  ],
+  "current_device_boundary": {
+    "android_phone_planning": true,
+    "android_phone_heavy_frontier_generation_proven": false,
+    "external_compute_needed_for_heavy_models": true,
+    "no_claim_of_compute_independence_without_gpu_runtime": true
+  },
+  "acceptance": [
+    "STORY_AND_SHOT_INTENT",
+    "IDENTITY_AND_CONTINUITY",
+    "ANATOMY_AND_PHYSICS",
+    "TEMPORAL_FLICKER",
+    "CAMERA_AND_LENS",
+    "LIGHTING_AND_COLOR",
+    "LIP_AUDIO_SYNC",
+    "ARABIC_TEXT_INTEGRITY",
+    "RIGHTS_AND_LICENSE",
+    "FULL_ARTIFACT_PLAYBACK",
+    "SHA256_MATCH"
+  ],
+  "evidence_sources": [
+    "https://github.com/comfy-org/comfyui",
+    "https://github.com/Lightricks/LTX-Video",
+    "https://github.com/Tencent-Hunyuan/HunyuanVideo"
+  ],
+  "note": "Runtime availability, model licenses, costs and provider capabilities must be re-verified at execution time."
+}

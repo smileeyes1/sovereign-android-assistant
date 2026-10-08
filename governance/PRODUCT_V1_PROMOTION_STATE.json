@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20339,
+  "candidate_version": 20340,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -55,5 +55,8 @@
   "source_ci_verified_head": "c70259c407a98dcc4ba728ba37c20ddb2d409e59",
   "private_voice_vault_r29_source_integrated": true,
   "private_voice_vault_r29_source_ci_verified": false,
-  "private_voice_vault_r29_field_verified": false
+  "private_voice_vault_r29_field_verified": false,
+  "sovereign_video_factory_r30_source_integrated": true,
+  "sovereign_video_factory_r30_source_ci_verified": false,
+  "sovereign_video_factory_r30_field_verified": false
 }

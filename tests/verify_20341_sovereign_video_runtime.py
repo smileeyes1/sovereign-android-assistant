@@ -25,7 +25,8 @@ def req(ok, reason):
         raise SystemExit("SOVEREIGN_VIDEO_RUNTIME_20341=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))>=20341,"version")\nVERSION=int(m.group(1))
+req(m is not None and int(m.group(1))>=20341,"version")
+VERSION=int(m.group(1))
 req("sovereign-video-factory-r30-sovereign-video-runtime-r31" in BUILD,"lineage")
 
 for token in [

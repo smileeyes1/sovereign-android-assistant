@@ -88,12 +88,12 @@ req(candidate["same_signed_apk_field_verified"] is False,"same_artifact_inherita
 product=STATE["productization"]
 req(product["candidate_version"]==20340,"product_candidate")
 req(product["sovereign_video_factory_r30_source_integrated"] is True,"source_integrated")
-req(product["sovereign_video_factory_r30_source_ci_verified"] is True,"source_ci_verified")
+req(product["sovereign_video_factory_r30_source_ci_verified"] is True,"source_ci_verified")\nreq(product["video_factory_r30_source_ci_run_number"]==1661,"product_source_ci_run")\nreq(product["video_factory_r30_advanced_unsigned_sha256"]=="51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949","product_advanced_unsigned_sha")
 req(product["sovereign_video_factory_r30_field_verified"] is False,"field_starts_false")
 req(product["video_provider_lock_in"] is False,"product_provider_lock")
 req(product["video_paid_without_explicit_approval"] is False,"paid_without_approval")
 req(PROMO["candidate_version"]==20340 and PROMO["promoted"] is False,"promotion_closed")
-req(PROMO["sovereign_video_factory_r30_source_ci_verified"] is True,"promotion_source_ci_verified")\nreq(PROMO["source_ci_run_number"]==1661,"source_ci_run")\nreq(PROMO["source_ci_verified_head"]=="712b39aae652f3682562264d1e2663564913877d","source_ci_head")\nreq(PROMO["advanced_release_unsigned_apk_sha256"]=="51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949","advanced_unsigned_sha")\nreq(PROMO["sovereign_video_factory_r30_field_verified"] is False,"promotion_field_false")
+req(PROMO["sovereign_video_factory_r30_source_ci_verified"] is True,"promotion_source_ci_verified")\nreq(PROMO["video_factory_r30_source_ci_run_number"]==1661,"source_ci_run")\nreq(PROMO["video_factory_r30_source_ci_verified_head"]=="712b39aae652f3682562264d1e2663564913877d","source_ci_head")\nreq(PROMO["video_factory_r30_advanced_unsigned_sha256"]=="51d25167422d9329c6108ee5c4bcde0235d45744473d4ea2057f837ba36ac949","advanced_unsigned_sha")\nreq(PROMO["sovereign_video_factory_r30_field_verified"] is False,"promotion_field_false")
 req("python3 tests/verify_20340_sovereign_video_factory.py" in WORKFLOW,"workflow_gate")
 req('test "$VERSION_CODE" = "20340"' in WORKFLOW,"workflow_version")
 

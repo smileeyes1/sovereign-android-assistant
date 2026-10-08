@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-10-06",
+  "snapshot_date": "2026-10-08",
   "single_source_of_truth": true,
   "cloud": {
     "component": "ChatGPT bridge / Railway",
@@ -28,14 +28,14 @@
       "exact_apk_sha256": "0076d988d54f45b9fd7803e68c4ae9f1e1d84905f808d18c353dd91299dd0184"
     },
     "candidate": {
-      "version_code": 20339,
-      "branch": "feature/hakim-20339-private-voice-vault-r29",
+      "version_code": 20340,
+      "branch": "feature/hakim-20340-sovereign-video-factory-r30",
       "source_ci_state": "PENDING_CURRENT_HEAD_CI",
       "field_verified": false,
       "same_signed_apk_field_verified": false,
       "promoted": false,
       "control_channel_field_verified": false,
-      "purpose": "private_encrypted_owner_voice_profile_r29_on_product_foundation_v1_without_inheriting_field_success",
+      "purpose": "sovereign_cinematic_video_factory_r30_on_private_voice_vault_without_inheriting_field_success",
       "signed_d1_verified": false,
       "installed_field_baseline_version": 20337
     },
@@ -135,7 +135,7 @@
     "rollback_strategy": "FORWARD_ONLY_FROM_VERIFIED_BASELINE_SOURCE",
     "d1_gate": "D1_MATERIAL_AVAILABLE_LOCAL_NOT_IN_CI",
     "recurring_external_guard": "ENABLED",
-    "candidate_field_promotion": "BLOCKED_UNTIL_20337_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
+    "candidate_field_promotion": "BLOCKED_UNTIL_20340_SOURCE_CI_D1_AND_SAME_ARTIFACT_FIELD_EVIDENCE",
     "last_source_ci": {
       "run_number": 1200,
       "commit": "1769585409850130935847a48ecfc9344862417f",
@@ -176,7 +176,7 @@
   },
   "productization": {
     "version": "PRODUCT-V1-2026-09-25-v3",
-    "candidate_version": 20339,
+    "candidate_version": 20340,
     "primary_ui_productized": true,
     "technical_diagnostics_hidden": true,
     "embedded_browser_hidden_from_primary_ui": true,
@@ -193,7 +193,7 @@
     "worksheet_generic_pdf_fallback": true,
     "field_screenshot_failure_2026_09_25": "ROOT_CAUSE_REPLACED_BY_UNIVERSAL_PIPELINE",
     "universal_artifact_pipeline": true,
-    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20339",
+    "install_relation": "UPGRADE_FROM_OBSERVED_20337_TO_20340",
     "install_failure_2026_09_25": {
       "observed": "Android rejected the first two 20301 APK attempts before install.",
       "root_cause": "CONFIRMED: malformed custom APK Signature Scheme v2 framing in the first two externally signed 20301 artifacts; outer length-prefixed signers sequence was missing.",
@@ -368,7 +368,14 @@
     "private_voice_vault_r29_source_ci_verified": false,
     "private_voice_vault_r29_field_verified": false,
     "voice_sample_external_upload_default": false,
-    "voice_sample_portable_state_export": false
+    "voice_sample_portable_state_export": false,
+    "sovereign_video_factory_r30_source_integrated": true,
+    "sovereign_video_factory_r30_source_ci_verified": false,
+    "sovereign_video_factory_r30_field_verified": false,
+    "video_provider_lock_in": false,
+    "video_phone_heavy_generation_proven": false,
+    "video_paid_without_explicit_approval": false,
+    "video_self_hosted_open_path": true
   },
   "independence": {
     "version": "HAKIM-INDEPENDENCE-2026-10-02-v1",

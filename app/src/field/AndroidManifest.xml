@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Field-safe distribution keeps the sovereign runtime while removing
+      Android components that trigger Play Protect's high-risk
+      internet-sideload protection. The advanced lab flavor preserves those
+      optional components for controlled development only.
+    -->
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
+    <application>
+        <service android:name=".HakimAccessibilityService" tools:node="remove" />
+        <service android:name=".HakimNotificationListener" tools:node="remove" />
+    </application>
+</manifest>

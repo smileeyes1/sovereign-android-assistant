@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "candidate_version_code": 20339,
+  "integration_branch": "integration/hakim-20339-product-voice-candidate",
+  "merge_tree_parent_base": "d5b5bb8cefb8d813d3fdd1d695b405b8b2ecefbe",
+  "merge_tree_parent_voice": "7f089485814f00423f68e670ecfc5bc27a00205f",
+  "merge_commit": "b43bdd129bcae0e533fe9f4fcb3c96b8653358c6",
+  "purpose": "product_foundation_plus_private_voice_vault_r29",
+  "field_baseline_version": 20337,
+  "claim_policy": "NO_FIELD_SUCCESS_INHERITANCE",
+  "same_artifact_required": true
+}

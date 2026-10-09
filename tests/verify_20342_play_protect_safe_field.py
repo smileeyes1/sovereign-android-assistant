@@ -78,6 +78,23 @@ for kind, targets in (
             rejected_mutations+=1
 req(rejected_mutations==14, "negative_test_coverage")
 
+# The owner's explicit disconnect decision must not be silently reversed
+# by a previously valid deep link. Preserve local confirmation on re-enable.
+PAIRING=(ROOT/"app/src/main/java/ps/hakim/phoneagent/HakimPairingActivity.kt").read_text(encoding="utf-8")
+PAIRING_GUARD="if (matchesExisting && !userDisabled) {"
+req('getBoolean("pairing_disabled_by_user", false)' in PAIRING, "owner_disconnect_state")
+req(PAIRING.count(PAIRING_GUARD)==1, "owner_disconnect_reenable_guard")
+req('userDisabled -> "إعادة تفعيل قناة حكيم؟"' in PAIRING, "owner_reenable_dialog")
+req("userDisabled -> \"سبق أن أوقفت قناة حكيم بنفسك." in PAIRING, "owner_reenable_message")
+req('.setPositiveButton("اعتماد")' in PAIRING, "owner_local_approval")
+for unsafe in (
+    "if (matchesExisting) {",
+    "if (matchesExisting || userDisabled) {",
+    "if (matchesExisting && true) {",
+):
+    req(PAIRING_GUARD not in PAIRING.replace(PAIRING_GUARD, unsafe), "pairing_guard_negative_probe")
+# Do not confuse static regression assertions with Android runtime acceptance.
+
 # Preserve the full lab surface separately; only the installable field flavor is reduced.
 req('.HakimAccessibilityService' in ADV, "advanced_accessibility_preserved")
 req('.HakimNotificationListener' in ADV, "advanced_notification_preserved")

@@ -46,27 +46,37 @@ class HakimPairingActivity : Activity() {
             return
         }
 
-        if (HakimUnifiedRelay.configurationMatches(
-                this,
-                topic,
-                resultTopic,
-                relayKey,
-                bridgeBase,
-                fallbackBridgeBase
-            )
-        ) {
+        val matchesExisting = HakimUnifiedRelay.configurationMatches(
+            this,
+            topic,
+            resultTopic,
+            relayKey,
+            bridgeBase,
+            fallbackBridgeBase
+        )
+        // An external deep link must not revive a channel the owner disabled.
+        // Idempotent re-pairing is silent ONLY when the owner has not disabled it.
+        val userDisabled = getSharedPreferences("hakim", MODE_PRIVATE)
+            .getBoolean("pairing_disabled_by_user", false)
+        if (matchesExisting && !userDisabled) {
             commitPairing(token, topic, resultTopic, relayKey, bridgeBase, fallbackBridgeBase)
             return
         }
 
         val replacing = HakimUnifiedRelay.isConfigured(this)
         AlertDialog.Builder(this)
-            .setTitle(if (replacing) "تغيير قناة حكيم؟" else "ربط قناة حكيم؟")
+            .setTitle(
+                when {
+                    userDisabled -> "إعادة تفعيل قناة حكيم؟"
+                    replacing -> "تغيير قناة حكيم؟"
+                    else -> "ربط قناة حكيم؟"
+                }
+            )
             .setMessage(
-                if (replacing) {
-                    "سيؤدي هذا إلى استبدال قناة التنفيذ المشفّرة الحالية. اعتمد التغيير فقط إذا بدأت عملية الاقتران بنفسك."
-                } else {
-                    "سيتم ربط حكيم بقناة تنفيذ مشفّرة جديدة. اعتمدها فقط إذا بدأت عملية الاقتران بنفسك."
+                when {
+                    userDisabled -> "سبق أن أوقفت قناة حكيم بنفسك. يلزم موافقتك المحلية الصريحة لإعادة تفعيلها."
+                    replacing -> "سيؤدي هذا إلى استبدال قناة التنفيذ المشفّرة الحالية. اعتمد التغيير فقط إذا بدأت عملية الاقتران بنفسك."
+                    else -> "سيتم ربط حكيم بقناة تنفيذ مشفّرة جديدة. اعتمدها فقط إذا بدأت عملية الاقتران بنفسك."
                 }
             )
             .setPositiveButton("اعتماد") { _, _ ->

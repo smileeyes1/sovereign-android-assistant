@@ -1,5 +1,5 @@
 {
-  "candidate_version": 20341,
+  "candidate_version": 20342,
   "direct_engine_field_verified": false,
   "ordinary_chat_in_app_verified": false,
   "multimodal_in_app_verified": false,
@@ -68,5 +68,9 @@
   "sovereign_video_runtime_r31_source_ci_verified": false,
   "sovereign_video_runtime_r31_field_verified": false,
   "video_runtime_phone_configured": false,
-  "video_runtime_external_compute_field_verified": false
+  "video_runtime_external_compute_field_verified": false,
+  "field_safe_distribution_source_integrated": true,
+  "field_safe_distribution_source_ci_verified": false,
+  "field_safe_distribution_field_verified": false,
+  "field_safe_high_risk_sideload_components_declared": false
 }

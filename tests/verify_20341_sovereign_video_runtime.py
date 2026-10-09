@@ -25,7 +25,8 @@ def req(ok, reason):
         raise SystemExit("SOVEREIGN_VIDEO_RUNTIME_20341=FAIL reason="+reason)
 
 m=re.search(r"versionCode\s+(\d+)",BUILD)
-req(m is not None and int(m.group(1))==20341,"version")
+req(m is not None and int(m.group(1))>=20341,"version")
+VERSION=int(m.group(1))
 req("sovereign-video-factory-r30-sovereign-video-runtime-r31" in BUILD,"lineage")
 
 for token in [
@@ -134,18 +135,18 @@ req(STACK["runtime"]["protocol"]=="hakim-video-runtime-v1","stack_runtime")
 req(STACK["runtime"]["field_runtime_verified"] is False,"runtime_field_false")
 
 candidate=STATE["android"]["candidate"]
-req(candidate["version_code"]==20341,"state_candidate")
+req(candidate["version_code"]==VERSION,"state_candidate")
 req(candidate["field_verified"] is False and candidate["same_signed_apk_field_verified"] is False,"field_inheritance")
 product=STATE["productization"]
-req(product["candidate_version"]==20341,"product_candidate")
+req(product["candidate_version"]==VERSION,"product_candidate")
 req(product["sovereign_video_runtime_r31_source_integrated"] is True,"runtime_integrated")
 req(product["sovereign_video_runtime_r31_source_ci_verified"] is False,"runtime_ci_starts_false")
 req(product["sovereign_video_runtime_r31_field_verified"] is False,"runtime_field_starts_false")
 req(product["video_runtime_phone_configured"] is False,"phone_runtime_not_claimed")
 req(product["video_runtime_external_compute_field_verified"] is False,"compute_field_not_claimed")
-req(PROMO["candidate_version"]==20341 and PROMO["promoted"] is False,"promotion_closed")
+req(PROMO["candidate_version"]==VERSION and PROMO["promoted"] is False,"promotion_closed")
 req(PROMO["sovereign_video_runtime_r31_field_verified"] is False,"promotion_runtime_field_false")
 req("python3 tests/verify_20341_sovereign_video_runtime.py" in WORKFLOW,"workflow_gate")
-req('test "$VERSION_CODE" = "20341"' in WORKFLOW,"workflow_version")
+req(f'test "$VERSION_CODE" = "{VERSION}"' in WORKFLOW,"workflow_version")
 
 print("SOVEREIGN_VIDEO_RUNTIME_20341=PASS protocol=true self_hosted=true auth=true no_shell=true paid_auto=false field=false")

@@ -84,7 +84,17 @@ req("configurationMatches" in RELAY, "pairing_match_guard_missing")
 req("validConfigurationInput" in RELAY, "pairing_input_validation_missing")
 req("تغيير قناة حكيم؟" in PAIR, "pairing_takeover_confirmation_missing")
 req("setPositiveButton(\"اعتماد\")" in PAIR, "pairing_local_approval_missing")
-req("if (HakimUnifiedRelay.configurationMatches(" in PAIR and "fallbackBridgeBase" in PAIR,
+# Preserve the original idempotency guarantee while allowing the stricter
+# owner-disconnect rule: same active pairing is silent, explicitly disabled
+# pairing must request local consent before restarting.
+original_same_pair="if (HakimUnifiedRelay.configurationMatches(" in PAIR
+owner_safe_same_pair=(
+    "val matchesExisting = HakimUnifiedRelay.configurationMatches(" in PAIR
+    and "if (matchesExisting && !userDisabled)" in PAIR
+    and 'getBoolean("pairing_disabled_by_user", false)' in PAIR
+    and 'userDisabled -> "إعادة تفعيل قناة حكيم؟"' in PAIR
+)
+req((original_same_pair or owner_safe_same_pair) and "fallbackBridgeBase" in PAIR,
     "same_pairing_idempotency_missing")
 req(".remove(\"pair_token\")" in PAIR, "raw_pair_token_not_removed")
 req(".putString(\"pair_token\"" not in PAIR, "raw_pair_token_persisted")

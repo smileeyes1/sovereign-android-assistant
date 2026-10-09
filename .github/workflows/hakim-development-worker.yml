@@ -85,6 +85,18 @@ jobs:
     outputs:
       change_state: ${{ steps.package.outputs.change_state }}
     steps:
+      - name: تحميل سياسة فحص المرشح من التزام العامل نفسه
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: حفظ بوابة السلامة خارج مساحة تعديل النموذج
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tests/hakim_worker_candidate_gate.py /tmp/hakim-worker-candidate-gate.py
+          python3 /tmp/hakim-worker-candidate-gate.py --self-test
+
       - name: جلب خط التطوير المثبت
         uses: actions/checkout@v4
         with:
@@ -258,7 +270,10 @@ jobs:
             exit 0
           fi
 
-          printf '%s\n' "${changed[@]}" > changed-files.txt
+          trigger="$(jq -r '.trigger' development-request.json)"
+          python3 /tmp/hakim-worker-candidate-gate.py --trigger "$trigger" > changed-files.txt
+          mapfile -t approved < changed-files.txt
+          [[ "${#approved[@]}" -eq "${#changed[@]}" ]] || { echo "قائمة التغيير غير متطابقة" >&2; exit 1; }
           forbidden='^(\.github/|release-control/|governance/|scripts/|Dockerfile$|railway\.toml$|build\.gradle$|settings\.gradle$|gradle\.properties$|app/build\.gradle$|app/src/main/AndroidManifest\.xml$|app/src/main/java/ps/hakim/phoneagent/(HakimUnifiedRelay|HakimRemoteApprovalReceiver|HakimAccessibilityService|HakimCapabilityKernel|HakimConstitution|HakimAcceptanceGate|HakimSelfImprovementLoop|HakimFieldAcceptance|AutoUpdater|HakimApp)\.kt$)'
           if grep -Eq "$forbidden" changed-files.txt; then
             echo "رفض: محاولة تعديل مسار محمي" >&2
@@ -298,7 +313,9 @@ jobs:
             --arg state "changed" \
             --arg base_sha "$(git rev-parse HEAD)" \
             --arg request_id "$(jq -r '.request_id' development-request.json)" \
-            '{state:$state,base_sha:$base_sha,request_id:$request_id}' > candidate-meta.json
+            --arg trigger "$(jq -r '.trigger' development-request.json)" \
+            --arg patch_sha256 "$(sha256sum candidate.patch | cut -d' ' -f1)" \
+            '{state:$state,base_sha:$base_sha,request_id:$request_id,trigger:$trigger,patch_sha256:$patch_sha256}' > candidate-meta.json
           echo "change_state=changed" >> "$GITHUB_OUTPUT"
 
       - name: حفظ المرشح دون صلاحية كتابة للمستودع
@@ -323,6 +340,18 @@ jobs:
       actions: write
       id-token: write
     steps:
+      - name: تحميل سياسة فحص المرشح من التزام العامل نفسه
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: حفظ بوابة السلامة خارج مساحة تعديل النموذج
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tests/hakim_worker_candidate_gate.py /tmp/hakim-worker-candidate-gate.py
+          python3 /tmp/hakim-worker-candidate-gate.py --self-test
+
       - name: جلب خط التطوير
         uses: actions/checkout@v4
         with:
@@ -386,21 +415,33 @@ jobs:
           fi
 
           cp /tmp/hakim-candidate/candidate.patch .
+          jq -e --arg base "$(git rev-parse HEAD)" --arg id "$REQUEST_ID" \
+            '.state == "changed" and .base_sha == $base and .request_id == $id and (.patch_sha256 | test("^[a-f0-9]{64}$"))' \
+            /tmp/hakim-candidate/candidate-meta.json >/dev/null
+          expected_patch_sha="$(jq -er '.patch_sha256' /tmp/hakim-candidate/candidate-meta.json)"
+          actual_patch_sha="$(sha256sum candidate.patch | cut -d' ' -f1)"
+          [[ "$expected_patch_sha" == "$actual_patch_sha" ]] || { echo "المرشح لا يطابق بصمته" >&2; exit 1; }
           git apply --check candidate.patch
           git apply candidate.patch
           git diff --check
+          trigger="$(jq -er '.trigger' /tmp/hakim-candidate/candidate-meta.json)"
+          python3 /tmp/hakim-worker-candidate-gate.py --trigger "$trigger" > /tmp/approved-worker-paths.txt
+          mapfile -t safe_paths < /tmp/approved-worker-paths.txt
+          (( ${#safe_paths[@]} >= 2 )) || { echo "لم تجتز الملفات بوابة المصدر والاختبار" >&2; exit 1; }
 
           branch="auto/hakim-dev-${REQUEST_ID//:/-}"
           branch="${branch//[^A-Za-z0-9._\/-]/-}"
           git switch -c "$branch"
           git config user.name "hakim-development-worker[bot]"
           git config user.email "hakim-development-worker[bot]@users.noreply.github.com"
-          git add -A
+          git add -- "${safe_paths[@]}"
+          diff -u /tmp/approved-worker-paths.txt <(git diff --cached --name-only)
           git commit -m "fix: Hakim autonomous development $REQUEST_ID"
           candidate_sha="$(git rev-parse HEAD)"
           git push origin "$branch"
 
           pr_url="$(gh pr create \
+            --draft \
             --base "$HAKIM_DEVELOPMENT_BASE" \
             --head "$branch" \
             --title "حكيم: إصلاح ذاتي محكوم $REQUEST_ID" \
@@ -434,10 +475,9 @@ jobs:
             exit 1
           fi
 
-          gh pr merge "$pr_number" --squash --delete-branch
-          merge_sha="$(gh pr view "$pr_number" --json mergeCommit --jq '.mergeCommit.oid')"
-          [[ "$merge_sha" =~ ^[0-9a-f]{40}$ ]]
-          acknowledge "success" "$merge_sha" "$pr_number"
+          gh pr comment "$pr_number" --body "نجح CI المصدر فقط. لا دمج آلي، ولا اعتماد ميداني. هذا المرشح ينتظر مراجعة أمنية مستقلة وموافقة صريحة. حالة طلب الجسر تبقى دون إقرار بالنجاح إلى حين دعم حالة مراجعة موثقة."
+          echo "HAKIM_WORKER_RESULT=PENDING_INDEPENDENT_REVIEW pr=$pr_number sha=$candidate_sha"
+          # Do not send a fabricated /complete outcome or an unverified /defer reason.
 
   acknowledge-agent-failure:
     needs: [intake, develop]

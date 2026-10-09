@@ -22,16 +22,61 @@ field_block=BUILD.split("field {",1)[1].split("}",1)[0]
 req("applicationId 'ps.hakim.stable'" in field_block, "field_package")
 req('"field-safe"' in field_block, "field_channel")
 
-for token in [
-    'android.permission.READ_SMS',
-    'android.permission.RECEIVE_SMS',
-    'android.permission.READ_PHONE_STATE',
-    'android.permission.READ_EXTERNAL_STORAGE',
-    'android.permission.REQUEST_INSTALL_PACKAGES',
-    '.HakimAccessibilityService',
-    '.HakimNotificationListener',
-]:
-    req(token in FIELD and 'tools:node="remove"' in FIELD, "field_removal:"+token)
+# Parse the manifest; a comment, an unrelated tools:node, or one valid
+# removal must never make all field security gates pass.
+from copy import deepcopy
+from xml.etree import ElementTree as ET
+
+ANDROID_NAME="{http://schemas.android.com/apk/res/android}name"
+TOOLS_NODE="{http://schemas.android.com/tools}node"
+REQUIRED_PERMISSIONS=(
+    "android.permission.READ_SMS",
+    "android.permission.RECEIVE_SMS",
+    "android.permission.READ_PHONE_STATE",
+    "android.permission.READ_EXTERNAL_STORAGE",
+    "android.permission.REQUEST_INSTALL_PACKAGES",
+)
+REQUIRED_SERVICES=(
+    ".HakimAccessibilityService",
+    ".HakimNotificationListener",
+)
+
+def all_removals_enforced(root):
+    app=root.find("application")
+    if app is None:
+        return False
+    for kind, parent, targets in (
+        ("uses-permission", root, REQUIRED_PERMISSIONS),
+        ("service", app, REQUIRED_SERVICES),
+    ):
+        for target in targets:
+            hits=[e for e in parent.findall(kind) if e.get(ANDROID_NAME)==target]
+            if len(hits)!=1 or hits[0].get(TOOLS_NODE)!="remove":
+                return False
+    return True
+
+field_root=ET.fromstring(FIELD)
+req(all_removals_enforced(field_root), "missing_or_ineffective_manifest_removal")
+
+# Test the test: mutation and deletion of each individual security removal
+# must turn the gate red. No APK is installed or distributed by these tests.
+rejected_mutations=0
+for kind, targets in (
+    ("uses-permission", REQUIRED_PERMISSIONS),
+    ("service", REQUIRED_SERVICES),
+):
+    for target in targets:
+        for mutation in ("merge", "delete"):
+            altered=deepcopy(field_root)
+            parent=altered if kind=="uses-permission" else altered.find("application")
+            entry=next(e for e in parent.findall(kind) if e.get(ANDROID_NAME)==target)
+            if mutation=="merge":
+                entry.set(TOOLS_NODE, "merge")
+            else:
+                parent.remove(entry)
+            req(not all_removals_enforced(altered), "detector_missed:"+target+":"+mutation)
+            rejected_mutations+=1
+req(rejected_mutations==14, "negative_test_coverage")
 
 # Preserve the full lab surface separately; only the installable field flavor is reduced.
 req('.HakimAccessibilityService' in ADV, "advanced_accessibility_preserved")
@@ -52,4 +97,4 @@ req("python3 tests/verify_20342_play_protect_safe_field.py" in WORKFLOW, "workfl
 req('FIELD_SAFE_APK="app/build/outputs/apk/field/release/app-field-release-unsigned.apk"' in WORKFLOW, "workflow_built_gate")
 req("PLAY_PROTECT_FIELD_APK_GATE=PASS" in WORKFLOW, "workflow_apk_gate")
 
-print("PLAY_PROTECT_SAFE_FIELD_20342=PASS package=ps.hakim.stable advanced_lab_preserved=true field_evidence=false")
+print("PLAY_PROTECT_SAFE_FIELD_20342=PASS package=ps.hakim.stable advanced_lab_preserved=true field_evidence=false adversarial_manifest_tests=14")

@@ -345,3 +345,33 @@ test("conflicting request identity is never accepted",async()=>{
     }))),/development_request_collision/);
   });
 });
+
+
+test("parallel worker claims do not double-lease a request",async()=>{
+  await withDir(async dir=>{
+    const store1=new DevelopmentRequestStore(dir);
+    const store2=new DevelopmentRequestStore(dir);
+    const id="dev-parallel-"+("d".repeat(12));
+    await store1.capture(topic,key,carrier(request({request_id:id})));
+    const results=await Promise.allSettled([
+      store1.claimNext("gh:run-10101010",60_000),
+      store2.claimNext("gh:run-20202020",60_000)
+    ]);
+    assert.equal(results.filter(x=>x.status==="fulfilled"&&x.value?.request_id===id).length,1);
+    assert.equal((await store1.list())[0]?.attempt_count,1);
+  });
+});
+
+test("exclusive lock refuses another mutation and preserves the lock",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const lock=path.join(dir,"development-intake-v2",".development-writer.lock");
+    await fs.writeFile(lock,"locked","utf8");
+    await assert.rejects(
+      ()=>store.capture(topic,key,carrier(request({request_id:"dev-locked-"+("f".repeat(12))}))),
+      /development_store_busy_or_orphaned_lock/
+    );
+    assert.equal(await fs.readFile(lock,"utf8"),"locked");
+  });
+});

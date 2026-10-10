@@ -101,8 +101,10 @@ require("ps.hakim.stable" in relay, "P0: إجراءات القناة ليست م
 
 # العقد العربي الافتراضي: يمنع الانحدار إلى واجهة/مخرجات مختلطة أو مقلوبة.
 require('android:supportsRtl="true"' in manifest, "P0: دعم RTL على مستوى تطبيق حكيم غير مثبت")
-require("ARABIC-FIRST-RTL-AR-PS-2026-09-30-v2" in arabic_policy, "P0: نسخة العقد العربي الفلسطيني المركزي مفقودة")
+require("ARABIC-FIRST-RTL-AR-PS-2026-10-10-v3" in arabic_policy, "P0: نسخة العقد العربي الفلسطيني المركزي مفقودة")
 require("arabic_default" in arabic_policy and "rtl_default" in arabic_policy, "P0: العربية/RTL ليستا افتراضيتين")
+require("semantic_visual_order_required" in arabic_policy and "rtl_first_item_right_required" in arabic_policy, "P0: ترتيب العناصر الدلالي/المكاني العربي ليس شرط قبول")
+require("FOCUS-ORDER" in arabic_policy and "SEMANTIC-VISUAL-ORDER" in arabic_policy, "P0: بوابة الفحص العربي لا تشمل التسلسل البصري والتركيز")
 require("right_alignment_default" in arabic_policy, "P0: المحاذاة العربية الافتراضية غير مثبتة")
 require("٠١٢٣٤٥٦٧٨٩" in arabic_policy, "P0: الأرقام الشرقية غير مثبتة في العقد العربي")
 require("math_bidi_isolation_required" in arabic_policy and "\\u2066" in arabic_policy and "\\u2069" in arabic_policy, "P0: عزل الرياضيات عن BiDi غير مثبت")

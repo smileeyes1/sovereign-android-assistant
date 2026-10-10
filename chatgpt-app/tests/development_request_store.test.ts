@@ -126,14 +126,13 @@ test("development request lease is resumable and completion is owner-bound",asyn
       /development_lease_owner_mismatch/
     );
 
-    const done=await store.complete(first!.request_id,"gh:run-12345678","success",{
-      result_sha:"d".repeat(40),
-      pr_number:321
-    });
+    await assert.rejects(
+      ()=>store.complete(first!.request_id,"gh:run-12345678","success"),
+      /development_success_requires_independent_review/
+    );
+    const done=await store.complete(first!.request_id,"gh:run-12345678","no_change");
     assert.equal(done.state,"completed");
-    assert.equal(done.outcome,"success");
-    assert.equal(done.result_sha,"d".repeat(40));
-    assert.equal(done.pr_number,321);
+    assert.equal(done.outcome,"no_change");
   });
 });
 
@@ -239,5 +238,67 @@ test("v1 request remains readable as legacy evidence without free text",async()=
     const files=await fs.readdir(path.join(dir,"development-intake-v2"));
     const raw=await fs.readFile(path.join(dir,"development-intake-v2",files[0]!),"utf8");
     assert.equal(raw.includes("this free text must not be persisted"),false);
+  });
+});
+
+
+test("review handoff is owner-bound and never automatically reclaimed",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const id="dev-mg123rev-"+"5".repeat(12);
+    await store.capture(topic,key,carrier(request({request_id:id,fingerprint:"7".repeat(64)})));
+    const owner="gh:run-77777777";
+    const first=await store.claimNext(owner,60_000);
+    assert.equal(first?.state,"leased");
+    await assert.rejects(
+      ()=>store.markReviewPending(id,"gh:run-88888888",{result_sha:"c".repeat(40),pr_number:310}),
+      /development_lease_owner_mismatch/
+    );
+    await assert.rejects(
+      ()=>store.markReviewPending(id,owner,{result_sha:"not-a-sha",pr_number:310}),
+      /development_review_sha_invalid/
+    );
+    await assert.rejects(
+      ()=>store.markReviewPending(id,owner,{result_sha:"c".repeat(40),pr_number:0}),
+      /development_review_pr_invalid/
+    );
+    const inReview=await store.markReviewPending(id,owner,{result_sha:"c".repeat(40),pr_number:310});
+    assert.equal(inReview.state,"review_pending");
+    assert.equal(inReview.result_sha,"c".repeat(40));
+    assert.equal(inReview.pr_number,310);
+    assert.ok(inReview.review_requested_at_ms);
+    assert.equal(inReview.outcome,undefined);
+    assert.equal(inReview.completed_at_ms,undefined);
+    assert.equal(inReview.lease_owner,undefined);
+    assert.equal(inReview.lease_expires_at_ms,undefined);
+    assert.equal(await store.claimNext("gh:run-99999999",60_000),null);
+    assert.equal((await store.list())[0]?.state,"review_pending");
+    await assert.rejects(
+      ()=>store.complete(id,owner,"no_change"),/development_request_not_leased/
+    );
+    await assert.rejects(
+      ()=>store.markReviewPending(id,owner,{result_sha:"d".repeat(40),pr_number:311}),
+      /development_request_not_leased/
+    );
+  });
+});
+
+test("expired review handoff lease must fail closed",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const id="dev-mg123exp-"+"6".repeat(12);
+    await store.capture(topic,key,carrier(request({request_id:id,fingerprint:"8".repeat(64)})));
+    const owner="gh:run-00001111";
+    await store.claimNext(owner,60_000);
+    const file=path.join(dir,"development-intake-v2",id+".json");
+    const raw=JSON.parse(await fs.readFile(file,"utf8"));
+    raw.lease_expires_at_ms=Date.now()-1;
+    await fs.writeFile(file,JSON.stringify(raw),"utf8");
+    await assert.rejects(
+      ()=>store.markReviewPending(id,owner,{result_sha:"e".repeat(40),pr_number:500}),
+      /development_lease_expired/
+    );
   });
 });

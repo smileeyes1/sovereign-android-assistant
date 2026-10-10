@@ -448,6 +448,22 @@ jobs:
             --body "مرشح مولّد من طلب تطوير حكيم المحكوم. لا يمثل نجاحًا ميدانيًا. يلزم CI كامل، ولا يمنح أي صلاحية تثبيت أو نشر ميداني.")"
           pr_number="$(gh pr view "$pr_url" --json number --jq '.number')"
 
+          # Mark the candidate pending review BEFORE a potentially long CI run.
+          # The bridge must support this endpoint (companion draft PR #311).
+          review_token="$(get_oidc)"
+          jq -n --arg sha "$candidate_sha" --argjson pr "$pr_number" \
+            '{result_sha:$sha,pr_number:$pr}' > /tmp/review-pending.json
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $review_token" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/review-pending.json \
+            "$HAKIM_BRIDGE_BASE/development/v1/$REQUEST_ID/review-pending" \
+            > /tmp/review-pending-response.json
+          jq -e --arg sha "$candidate_sha" --argjson pr "$pr_number" \
+            '.ok == true and .state == "review_pending" and .result_sha == $sha and .pr_number == $pr' \
+            /tmp/review-pending-response.json > /dev/null
+
           gh workflow run android.yml --ref "$branch"
 
           run_id=""
@@ -464,18 +480,18 @@ jobs:
             sleep 3
           done
           [[ -n "$run_id" ]] || {
-            acknowledge "failed" "" "$pr_number" || true
+            gh pr comment "$pr_number" --body "تعذّر العثور على تشغيل CI؛ المرشح باقٍ للمراجعة، لا دمج أو اعتماد." || true
             echo "تعذر العثور على تشغيل CI للمرشح" >&2
             exit 1
           }
 
           if ! gh run watch "$run_id" --exit-status; then
             gh pr comment "$pr_number" --body "فشل CI الكامل؛ لم يُدمج المرشح ولم يصل إلى الخط الميداني."
-            acknowledge "failed" "$candidate_sha" "$pr_number" || true
+            echo "HAKIM_WORKER_CI_FAILED_REVIEW_PENDING pr=$pr_number sha=$candidate_sha"
             exit 1
           fi
 
-          gh pr comment "$pr_number" --body "نجح CI المصدر فقط. لا دمج آلي، ولا اعتماد ميداني. هذا المرشح ينتظر مراجعة أمنية مستقلة وموافقة صريحة. حالة طلب الجسر تبقى دون إقرار بالنجاح إلى حين دعم حالة مراجعة موثقة."
+          gh pr comment "$pr_number" --body "نجح CI المصدر فقط. لا دمج آلي ولا اعتماد ميداني. حالة الجسر review_pending ولا تُعد نجاحًا نهائيًا؛ ينتظر المرشح مراجعة أمنية مستقلة وموافقة صريحة."
           echo "HAKIM_WORKER_RESULT=PENDING_INDEPENDENT_REVIEW pr=$pr_number sha=$candidate_sha"
           # Do not send a fabricated /complete outcome or an unverified /defer reason.
 

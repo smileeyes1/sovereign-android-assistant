@@ -244,6 +244,7 @@ export class DevelopmentRequestStore{
     if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
     const workerId=safeWorkerId(workerIdRaw);
     if(!["success","no_change","failed"].includes(outcome)) throw new Error("development_outcome_invalid");
+    if(outcome==="success") throw new Error("development_success_requires_independent_review");
     const file=this.fileFor(requestId);
     const current=await this.readRecord(file);
     if(current.state!=="leased") throw new Error("development_request_not_leased");

@@ -2,8 +2,6 @@ name: عامل تطوير حكيم السيادي
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 concurrency:
   group: hakim-sovereign-development-worker

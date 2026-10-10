@@ -302,3 +302,76 @@ test("expired review handoff lease must fail closed",async()=>{
     );
   });
 });
+
+
+test("capacity rejects additional queued requests",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    for(let n=0;n<64;n++) await store.capture(topic,key,carrier(request({
+      request_id:"dev-cap"+n+"-"+n.toString(16).padStart(12,"0"),
+      fingerprint:n.toString(16).padStart(64,"0")
+    })));
+    assert.equal((await store.list()).length,64);
+    await assert.rejects(()=>store.capture(topic,key,carrier(request({
+      request_id:"dev-cap64-"+("f".repeat(12)),
+      fingerprint:"f".repeat(64)
+    }))),/development_backlog_full/);
+    assert.equal((await store.list()).length,64);
+  });
+});
+
+
+test("invalid stored JSON remains available for investigation",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const file=path.join(dir,"development-intake-v2","dev-damaged-"+("a".repeat(12))+".json");
+    await fs.writeFile(file,"{BAD JSON","utf8");
+    await assert.rejects(()=>store.list(),/development_record_corrupt/);
+    assert.equal(await fs.readFile(file,"utf8"),"{BAD JSON");
+  });
+});
+
+test("conflicting request identity is never accepted",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    const id="dev-replay-"+("b".repeat(12));
+    const first=request({request_id:id,fingerprint:"1".repeat(64)});
+    await store.capture(topic,key,carrier(first));
+    const replay=await store.capture(topic,key,carrier(first));
+    assert.equal(replay?.request_id,id);
+    await assert.rejects(()=>store.capture(topic,key,carrier(request({
+      request_id:id,fingerprint:"2".repeat(64)
+    }))),/development_request_collision/);
+  });
+});
+
+
+test("parallel worker claims do not double-lease a request",async()=>{
+  await withDir(async dir=>{
+    const store1=new DevelopmentRequestStore(dir);
+    const store2=new DevelopmentRequestStore(dir);
+    const id="dev-parallel-"+("d".repeat(12));
+    await store1.capture(topic,key,carrier(request({request_id:id})));
+    const results=await Promise.allSettled([
+      store1.claimNext("gh:run-10101010",60_000),
+      store2.claimNext("gh:run-20202020",60_000)
+    ]);
+    assert.equal(results.filter(x=>x.status==="fulfilled"&&x.value?.request_id===id).length,1);
+    assert.equal((await store1.list())[0]?.attempt_count,1);
+  });
+});
+
+test("exclusive lock refuses another mutation and preserves the lock",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const lock=path.join(dir,"development-intake-v2",".development-writer.lock");
+    await fs.writeFile(lock,"locked","utf8");
+    await assert.rejects(
+      ()=>store.capture(topic,key,carrier(request({request_id:"dev-locked-"+("f".repeat(12))}))),
+      /development_store_busy_or_orphaned_lock/
+    );
+    assert.equal(await fs.readFile(lock,"utf8"),"locked");
+  });
+});

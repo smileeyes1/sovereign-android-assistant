@@ -124,6 +124,7 @@ export class DevelopmentRequestStore{
   }
 
   async capture(resultTopic:string,relayKey:string,carrier:string):Promise<DevelopmentRecord|null>{
+    return this.withWriterLock(async()=>{
     const decoded=decryptResult(relayKey,carrier) as {
       status?:unknown;
       result?:{development_request?:unknown};
@@ -190,31 +191,47 @@ export class DevelopmentRequestStore{
     await this.init();
     const file=this.fileFor(record.request_id);
     try{
-      const existing=JSON.parse(await fs.readFile(file,"utf8")) as DevelopmentRecord;
+      const existing=await this.readRecord(file);
+      if(existing.device_id!==record.device_id||existing.fingerprint!==record.fingerprint||
+         existing.trigger!==record.trigger||existing.current_version_code!==record.current_version_code||
+         existing.requested_at_ms!==record.requested_at_ms||existing.severity!==record.severity||
+         existing.control_version!==record.control_version||
+         JSON.stringify(existing.evidence)!==JSON.stringify(record.evidence)){
+        throw new Error("development_request_collision");
+      }
       return existing;
     }catch(e){
       if((e as NodeJS.ErrnoException).code!=="ENOENT") throw e;
     }
+    if((await this.list()).length>=MAX_PENDING) throw new Error("development_backlog_full");
     await this.writeAtomic(file,record);
-    await this.trim();
     return record;
+    });
   }
 
   async list():Promise<DevelopmentRecord[]>{
     await this.init();
-    const names=(await fs.readdir(this.root)).filter(x=>x.endsWith(".json")).sort().slice(-MAX_PENDING);
+    // Inspect ALL records. Preserve invalid bytes for explicit investigation.
+    const names=(await fs.readdir(this.root)).filter(x=>x.endsWith(".json")).sort();
     const out:DevelopmentRecord[]=[];
     for(const name of names){
       try{
-        out.push(await this.readRecord(path.join(this.root,name)));
+        const record=await this.readRecord(path.join(this.root,name));
+        if(!record||typeof record!=="object"||typeof record.request_id!=="string"||
+           !REQUEST_ID.test(record.request_id)||record.request_id+".json"!==name||
+           !["pending","leased","review_pending","completed","failed"].includes(record.state)){
+          throw new Error("invalid_record_shape");
+        }
+        out.push(record);
       }catch{
-        await fs.unlink(path.join(this.root,name)).catch(()=>{});
+        throw new Error("development_record_corrupt:"+name);
       }
     }
     return out.sort((a,b)=>a.received_at_ms-b.received_at_ms);
   }
 
   async claimNext(workerIdRaw:string,leaseMs=DEFAULT_LEASE_MS):Promise<DevelopmentRecord|null>{
+    return this.withWriterLock(async()=>{
     const workerId=safeWorkerId(workerIdRaw);
     const boundedLease=Math.max(60_000,Math.min(leaseMs,60*60_000));
     const now=Date.now();
@@ -233,6 +250,7 @@ export class DevelopmentRequestStore{
       return claimed;
     }
     return null;
+    });
   }
 
   async complete(
@@ -241,6 +259,7 @@ export class DevelopmentRequestStore{
     outcome:DevelopmentOutcome,
     result:{result_sha?:string;pr_number?:number}={}
   ):Promise<DevelopmentRecord>{
+    return this.withWriterLock(async()=>{
     if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
     const workerId=safeWorkerId(workerIdRaw);
     if(!["success","no_change","failed"].includes(outcome)) throw new Error("development_outcome_invalid");
@@ -268,6 +287,7 @@ export class DevelopmentRequestStore{
     delete completed.lease_expires_at_ms;
     await this.writeAtomic(file,completed);
     return completed;
+    });
   }
 
 
@@ -279,6 +299,7 @@ export class DevelopmentRequestStore{
     workerIdRaw:string,
     result:{result_sha:string;pr_number:number}
   ):Promise<DevelopmentRecord>{
+    return this.withWriterLock(async()=>{
     if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
     const workerId=safeWorkerId(workerIdRaw);
     const candidateSha=result.result_sha?.trim();
@@ -305,6 +326,7 @@ export class DevelopmentRequestStore{
     delete review.lease_expires_at_ms;
     await this.writeAtomic(file,review);
     return review;
+    });
   }
 
   async defer(
@@ -313,6 +335,7 @@ export class DevelopmentRequestStore{
     reason:"free_engine_unavailable"|"insufficient_evidence"|"safe_patch_not_found"|"transient_runner_failure",
     delayMs:number
   ):Promise<DevelopmentRecord>{
+    return this.withWriterLock(async()=>{
     if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
     const workerId=safeWorkerId(workerIdRaw);
     if(!["free_engine_unavailable","insufficient_evidence","safe_patch_not_found","transient_runner_failure"].includes(reason)){
@@ -337,6 +360,30 @@ export class DevelopmentRequestStore{
     delete deferred.lease_expires_at_ms;
     await this.writeAtomic(file,deferred);
     return deferred;
+    });
+  }
+
+  // Exclusive file lock on the configured shared volume. Orphans fail closed.
+  private async withWriterLock<T>(work:()=>Promise<T>):Promise<T>{
+    await this.init();
+    const lockPath=path.join(this.root,".development-writer.lock");
+    let handle:Awaited<ReturnType<typeof fs.open>>|null=null;
+    for(let attempt=0;attempt<10;attempt++){
+      try{
+        handle=await fs.open(lockPath,"wx",0o600);
+        break;
+      }catch(e){
+        if((e as NodeJS.ErrnoException).code!=="EEXIST") throw e;
+        if(attempt===9) throw new Error("development_store_busy_or_orphaned_lock");
+        await new Promise(resolve=>setTimeout(resolve,30));
+      }
+    }
+    if(!handle) throw new Error("development_store_lock_unavailable");
+    try{
+      return await work();
+    }finally{
+      try{await handle.close();}finally{await fs.unlink(lockPath);}
+    }
   }
 
   private fileFor(requestId:string){
@@ -353,14 +400,6 @@ export class DevelopmentRequestStore{
     await fs.rename(tmp,file);
   }
 
-  private async trim(){
-    const records=await this.list();
-    const removable=records.filter(x=>x.state==="completed"||x.state==="failed");
-    const over=Math.max(0,records.length-MAX_PENDING);
-    for(const record of removable.slice(0,over)){
-      await fs.unlink(this.fileFor(record.request_id)).catch(()=>{});
-    }
-  }
 }
 
 export const developmentRequestStore=new DevelopmentRequestStore();

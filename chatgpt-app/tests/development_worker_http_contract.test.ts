@@ -9,6 +9,8 @@ test("development worker endpoints require pinned OIDC and expose bounded fields
   assert.ok(source.includes('app.post("/development/v1/lease"'));
   assert.ok(source.includes('app.post("/development/v1/:requestId/complete"'));
   assert.ok(source.includes('app.post("/development/v1/:requestId/defer"'));
+  assert.ok(source.includes('app.post("/development/v1/:requestId/review-pending"'));
+  assert.ok(source.includes("developmentRequestStore.markReviewPending("));
   assert.ok(source.includes("verifyGitHubWorkerOidc(workerOidcBearer(req))"));
   assert.ok(source.includes("developmentRequestStore.claimNext(workerId)"));
   assert.ok(source.includes("developmentRequestStore.complete("));
@@ -41,4 +43,16 @@ test("development worker receives structured evidence but never free text",()=>{
 
   assert.equal(store.includes("evidence_summary:"),false);
   assert.equal(store.includes("goal:"),false);
+});
+
+
+test("review handoff is bounded and does not claim approved success",()=>{
+  const store=fs.readFileSync(path.resolve(import.meta.dirname,"../src/development-request-store.ts"),"utf8");
+  const reviewRoute=source.split('app.post("/development/v1/:requestId/review-pending"',2)[1]?.split('app.post("/development/v1/:requestId/defer"',1)[0]??"";
+  assert.ok(reviewRoute.includes("verifyGitHubWorkerOidc(workerOidcBearer(req))"));
+  assert.ok(reviewRoute.includes('new Set(["result_sha","pr_number"])'));
+  assert.ok(reviewRoute.includes("markReviewPending("));
+  assert.equal(reviewRoute.includes('state:"completed"'),false);
+  assert.ok(store.includes('state:"review_pending"'));
+  assert.ok(store.includes('development_success_requires_independent_review'));
 });

@@ -10,7 +10,7 @@ const CONTROL_VERSION=/^HAKIM-DEVELOPMENT-CONTROL-[0-9-]+-v[0-9]+$/;
 const TRIGGERS=new Set(["field_candidate_regression","self_check_failed","repeated_runtime_failure"]);
 const SEVERITIES=new Set(["critical","high"]);
 const MAX_PENDING=64;
-const DEFAULT_LEASE_MS=20*60_000;
+const DEFAULT_LEASE_MS=60*60_000;
 
 export type DevelopmentOutcome="success"|"no_change"|"failed";
 export type DevelopmentEvidence={
@@ -20,7 +20,7 @@ export type DevelopmentEvidence={
   candidate_state:string;
   action_code:string;
 };
-export type DevelopmentState="pending"|"leased"|"completed"|"failed";
+export type DevelopmentState="pending"|"leased"|"review_pending"|"completed"|"failed";
 
 export type DevelopmentRecord={
   intake_version:"HAKIM-DEVELOPMENT-INTAKE-2026-09-30-v2";
@@ -39,6 +39,7 @@ export type DevelopmentRecord={
   lease_owner?:string;
   lease_expires_at_ms?:number;
   completed_at_ms?:number;
+  review_requested_at_ms?:number;
   outcome?:DevelopmentOutcome;
   result_sha?:string;
   pr_number?:number;
@@ -248,6 +249,7 @@ export class DevelopmentRequestStore{
     if(current.state!=="leased") throw new Error("development_request_not_leased");
     if(current.lease_owner!==workerId) throw new Error("development_lease_owner_mismatch");
     if((current.lease_expires_at_ms??0)<Date.now()) throw new Error("development_lease_expired");
+    if(outcome==="success") throw new Error("development_success_requires_independent_review");
 
     const resultSha=result.result_sha?.trim();
     if(resultSha!==undefined&&!/^[0-9a-f]{40}$/i.test(resultSha)) throw new Error("development_result_sha_invalid");
@@ -266,6 +268,43 @@ export class DevelopmentRequestStore{
     delete completed.lease_expires_at_ms;
     await this.writeAtomic(file,completed);
     return completed;
+  }
+
+
+  // A reviewed candidate is not a completed deployment. No lease expiry may
+  // cause it to re-enter the autonomous queue; a separate reviewed resolution
+  // procedure is required to advance this state.
+  async markReviewPending(
+    requestId:string,
+    workerIdRaw:string,
+    result:{result_sha:string;pr_number:number}
+  ):Promise<DevelopmentRecord>{
+    if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
+    const workerId=safeWorkerId(workerIdRaw);
+    const candidateSha=result.result_sha?.trim();
+    if(typeof candidateSha!=="string"||!/^[0-9a-f]{40}$/i.test(candidateSha)){
+      throw new Error("development_review_sha_invalid");
+    }
+    if(!Number.isSafeInteger(result.pr_number)||result.pr_number<1){
+      throw new Error("development_review_pr_invalid");
+    }
+    const file=this.fileFor(requestId);
+    const current=await this.readRecord(file);
+    if(current.state!=="leased") throw new Error("development_request_not_leased");
+    if(current.lease_owner!==workerId) throw new Error("development_lease_owner_mismatch");
+    if((current.lease_expires_at_ms??0)<Date.now()) throw new Error("development_lease_expired");
+
+    const review:DevelopmentRecord={
+      ...current,
+      state:"review_pending",
+      review_requested_at_ms:Date.now(),
+      result_sha:candidateSha.toLowerCase(),
+      pr_number:result.pr_number
+    };
+    delete review.lease_owner;
+    delete review.lease_expires_at_ms;
+    await this.writeAtomic(file,review);
+    return review;
   }
 
   async defer(

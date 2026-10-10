@@ -1317,6 +1317,40 @@ app.post("/development/v1/:requestId/complete",async(req,res)=>{
   }
 });
 
+app.post("/development/v1/:requestId/review-pending",async(req,res)=>{
+  try{
+    const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));
+    const workerId="gh:"+identity.run_id+":"+identity.run_attempt;
+    const body=(req.body&&typeof req.body==="object"&&!Array.isArray(req.body))
+      ?req.body as Record<string,unknown>:{};
+    const allowed=new Set(["result_sha","pr_number"]);
+    if(Object.keys(body).length!==2||Object.keys(body).some(k=>!allowed.has(k))){
+      throw new Error("development_review_body_invalid");
+    }
+    if(typeof body.result_sha!=="string"||typeof body.pr_number!=="number"){
+      throw new Error("development_review_body_invalid");
+    }
+    const pending=await developmentRequestStore.markReviewPending(
+      req.params.requestId,workerId,
+      {result_sha:body.result_sha,pr_number:body.pr_number}
+    );
+    noStore(res);
+    return res.json({
+      ok:true,
+      request_id:pending.request_id,
+      state:pending.state,
+      result_sha:pending.result_sha,
+      pr_number:pending.pr_number,
+      review_requested_at_ms:pending.review_requested_at_ms
+    });
+  }catch(error){
+    noStore(res);
+    const message=error instanceof Error?error.message:"development_review_failed";
+    const auth=message.startsWith("worker_oidc_");
+    return res.status(auth?401:409).json({ok:false,error:auth?"worker_unauthorized":message});
+  }
+});
+
 app.post("/development/v1/:requestId/defer",async(req,res)=>{
   try{
     const identity=await verifyGitHubWorkerOidc(workerOidcBearer(req));

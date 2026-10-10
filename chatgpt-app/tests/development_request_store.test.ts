@@ -302,3 +302,20 @@ test("expired review handoff lease must fail closed",async()=>{
     );
   });
 });
+
+
+test("capacity rejects additional queued requests",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    for(let n=0;n<64;n++) await store.capture(topic,key,carrier(request({
+      request_id:"dev-cap"+n+"-"+n.toString(16).padStart(12,"0"),
+      fingerprint:n.toString(16).padStart(64,"0")
+    })));
+    assert.equal((await store.list()).length,64);
+    await assert.rejects(()=>store.capture(topic,key,carrier(request({
+      request_id:"dev-cap64-"+("f".repeat(12)),
+      fingerprint:"f".repeat(64)
+    }))),/development_backlog_full/);
+    assert.equal((await store.list()).length,64);
+  });
+});

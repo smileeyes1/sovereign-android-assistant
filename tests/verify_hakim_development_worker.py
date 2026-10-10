@@ -10,7 +10,7 @@ def req(cond,reason):
         raise SystemExit("HAKIM_DEVELOPMENT_WORKER_GATE=FAIL reason="+reason)
 
 for token in [
-    'cron: "*/5 * * * *"',
+    "workflow_dispatch:",
     "cancel-in-progress: false",
     "HAKIM_DEVELOPMENT_BASE: autonomous/hakim-development",
     'LLAMA_CPP_TAG: "b11193"',
@@ -76,6 +76,7 @@ for forbidden in [
 
 req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")
 req("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
+req("\n  schedule:" not in WORKFLOW and "cron:" not in WORKFLOW,"scheduled_worker_must_remain_paused")
 req("git add -A" not in WORKFLOW,"bulk_stage_allowed")
 req("gh pr merge" not in WORKFLOW,"automatic_merge_allowed")
 req("acknowledge \"success\"" not in WORKFLOW,"premature_bridge_success")

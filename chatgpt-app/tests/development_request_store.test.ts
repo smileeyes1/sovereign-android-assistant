@@ -319,3 +319,29 @@ test("capacity rejects additional queued requests",async()=>{
     assert.equal((await store.list()).length,64);
   });
 });
+
+
+test("invalid stored JSON remains available for investigation",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    await store.init();
+    const file=path.join(dir,"development-intake-v2","dev-damaged-"+("a".repeat(12))+".json");
+    await fs.writeFile(file,"{BAD JSON","utf8");
+    await assert.rejects(()=>store.list(),/development_record_corrupt/);
+    assert.equal(await fs.readFile(file,"utf8"),"{BAD JSON");
+  });
+});
+
+test("conflicting request identity is never accepted",async()=>{
+  await withDir(async dir=>{
+    const store=new DevelopmentRequestStore(dir);
+    const id="dev-replay-"+("b".repeat(12));
+    const first=request({request_id:id,fingerprint:"1".repeat(64)});
+    await store.capture(topic,key,carrier(first));
+    const replay=await store.capture(topic,key,carrier(first));
+    assert.equal(replay?.request_id,id);
+    await assert.rejects(()=>store.capture(topic,key,carrier(request({
+      request_id:id,fingerprint:"2".repeat(64)
+    }))),/development_request_collision/);
+  });
+});

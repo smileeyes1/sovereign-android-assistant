@@ -83,6 +83,18 @@ jobs:
     outputs:
       change_state: ${{ steps.package.outputs.change_state }}
     steps:
+      - name: تحميل سياسة فحص المرشح من التزام العامل نفسه
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: حفظ بوابة السلامة خارج مساحة تعديل النموذج
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tests/hakim_worker_candidate_gate.py /tmp/hakim-worker-candidate-gate.py
+          python3 /tmp/hakim-worker-candidate-gate.py --self-test
+
       - name: جلب خط التطوير المثبت
         uses: actions/checkout@v4
         with:
@@ -256,7 +268,10 @@ jobs:
             exit 0
           fi
 
-          printf '%s\n' "${changed[@]}" > changed-files.txt
+          trigger="$(jq -r '.trigger' development-request.json)"
+          python3 /tmp/hakim-worker-candidate-gate.py --trigger "$trigger" > changed-files.txt
+          mapfile -t approved < changed-files.txt
+          [[ "${#approved[@]}" -eq "${#changed[@]}" ]] || { echo "قائمة التغيير غير متطابقة" >&2; exit 1; }
           forbidden='^(\.github/|release-control/|governance/|scripts/|Dockerfile$|railway\.toml$|build\.gradle$|settings\.gradle$|gradle\.properties$|app/build\.gradle$|app/src/main/AndroidManifest\.xml$|app/src/main/java/ps/hakim/phoneagent/(HakimUnifiedRelay|HakimRemoteApprovalReceiver|HakimAccessibilityService|HakimCapabilityKernel|HakimConstitution|HakimAcceptanceGate|HakimSelfImprovementLoop|HakimFieldAcceptance|AutoUpdater|HakimApp)\.kt$)'
           if grep -Eq "$forbidden" changed-files.txt; then
             echo "رفض: محاولة تعديل مسار محمي" >&2
@@ -296,7 +311,9 @@ jobs:
             --arg state "changed" \
             --arg base_sha "$(git rev-parse HEAD)" \
             --arg request_id "$(jq -r '.request_id' development-request.json)" \
-            '{state:$state,base_sha:$base_sha,request_id:$request_id}' > candidate-meta.json
+            --arg trigger "$(jq -r '.trigger' development-request.json)" \
+            --arg patch_sha256 "$(sha256sum candidate.patch | cut -d' ' -f1)" \
+            '{state:$state,base_sha:$base_sha,request_id:$request_id,trigger:$trigger,patch_sha256:$patch_sha256}' > candidate-meta.json
           echo "change_state=changed" >> "$GITHUB_OUTPUT"
 
       - name: حفظ المرشح دون صلاحية كتابة للمستودع
@@ -321,6 +338,18 @@ jobs:
       actions: write
       id-token: write
     steps:
+      - name: تحميل سياسة فحص المرشح من التزام العامل نفسه
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: حفظ بوابة السلامة خارج مساحة تعديل النموذج
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tests/hakim_worker_candidate_gate.py /tmp/hakim-worker-candidate-gate.py
+          python3 /tmp/hakim-worker-candidate-gate.py --self-test
+
       - name: جلب خط التطوير
         uses: actions/checkout@v4
         with:
@@ -384,26 +413,54 @@ jobs:
           fi
 
           cp /tmp/hakim-candidate/candidate.patch .
+          jq -e --arg base "$(git rev-parse HEAD)" --arg id "$REQUEST_ID" \
+            '.state == "changed" and .base_sha == $base and .request_id == $id and (.patch_sha256 | test("^[a-f0-9]{64}$"))' \
+            /tmp/hakim-candidate/candidate-meta.json >/dev/null
+          expected_patch_sha="$(jq -er '.patch_sha256' /tmp/hakim-candidate/candidate-meta.json)"
+          actual_patch_sha="$(sha256sum candidate.patch | cut -d' ' -f1)"
+          [[ "$expected_patch_sha" == "$actual_patch_sha" ]] || { echo "المرشح لا يطابق بصمته" >&2; exit 1; }
           git apply --check candidate.patch
           git apply candidate.patch
           git diff --check
+          trigger="$(jq -er '.trigger' /tmp/hakim-candidate/candidate-meta.json)"
+          python3 /tmp/hakim-worker-candidate-gate.py --trigger "$trigger" > /tmp/approved-worker-paths.txt
+          mapfile -t safe_paths < /tmp/approved-worker-paths.txt
+          (( ${#safe_paths[@]} >= 2 )) || { echo "لم تجتز الملفات بوابة المصدر والاختبار" >&2; exit 1; }
 
           branch="auto/hakim-dev-${REQUEST_ID//:/-}"
           branch="${branch//[^A-Za-z0-9._\/-]/-}"
           git switch -c "$branch"
           git config user.name "hakim-development-worker[bot]"
           git config user.email "hakim-development-worker[bot]@users.noreply.github.com"
-          git add -A
+          git add -- "${safe_paths[@]}"
+          diff -u /tmp/approved-worker-paths.txt <(git diff --cached --name-only)
           git commit -m "fix: Hakim autonomous development $REQUEST_ID"
           candidate_sha="$(git rev-parse HEAD)"
           git push origin "$branch"
 
           pr_url="$(gh pr create \
+            --draft \
             --base "$HAKIM_DEVELOPMENT_BASE" \
             --head "$branch" \
             --title "حكيم: إصلاح ذاتي محكوم $REQUEST_ID" \
             --body "مرشح مولّد من طلب تطوير حكيم المحكوم. لا يمثل نجاحًا ميدانيًا. يلزم CI كامل، ولا يمنح أي صلاحية تثبيت أو نشر ميداني.")"
           pr_number="$(gh pr view "$pr_url" --json number --jq '.number')"
+
+          # Mark the candidate pending review BEFORE a potentially long CI run.
+          # The bridge must support this endpoint (companion draft PR #311).
+          review_token="$(get_oidc)"
+          jq -n --arg sha "$candidate_sha" --argjson pr "$pr_number" \
+            '{result_sha:$sha,pr_number:$pr}' > /tmp/review-pending.json
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $review_token" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/review-pending.json \
+            "$HAKIM_BRIDGE_BASE/development/v1/$REQUEST_ID/review-pending" \
+            > /tmp/review-pending-response.json
+          jq -e --arg sha "$candidate_sha" --argjson pr "$pr_number" \
+            '.ok == true and .state == "review_pending" and .result_sha == $sha and .pr_number == $pr' \
+            /tmp/review-pending-response.json > /dev/null
 
           gh workflow run android.yml --ref "$branch"
 
@@ -421,21 +478,20 @@ jobs:
             sleep 3
           done
           [[ -n "$run_id" ]] || {
-            acknowledge "failed" "" "$pr_number" || true
+            gh pr comment "$pr_number" --body "تعذّر العثور على تشغيل CI؛ المرشح باقٍ للمراجعة، لا دمج أو اعتماد." || true
             echo "تعذر العثور على تشغيل CI للمرشح" >&2
             exit 1
           }
 
           if ! gh run watch "$run_id" --exit-status; then
             gh pr comment "$pr_number" --body "فشل CI الكامل؛ لم يُدمج المرشح ولم يصل إلى الخط الميداني."
-            acknowledge "failed" "$candidate_sha" "$pr_number" || true
+            echo "HAKIM_WORKER_CI_FAILED_REVIEW_PENDING pr=$pr_number sha=$candidate_sha"
             exit 1
           fi
 
-          gh pr merge "$pr_number" --squash --delete-branch
-          merge_sha="$(gh pr view "$pr_number" --json mergeCommit --jq '.mergeCommit.oid')"
-          [[ "$merge_sha" =~ ^[0-9a-f]{40}$ ]]
-          acknowledge "success" "$merge_sha" "$pr_number"
+          gh pr comment "$pr_number" --body "نجح CI المصدر فقط. لا دمج آلي ولا اعتماد ميداني. حالة الجسر review_pending ولا تُعد نجاحًا نهائيًا؛ ينتظر المرشح مراجعة أمنية مستقلة وموافقة صريحة."
+          echo "HAKIM_WORKER_RESULT=PENDING_INDEPENDENT_REVIEW pr=$pr_number sha=$candidate_sha"
+          # Do not send a fabricated /complete outcome or an unverified /defer reason.
 
   acknowledge-agent-failure:
     needs: [intake, develop]

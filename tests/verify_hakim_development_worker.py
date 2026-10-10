@@ -1,4 +1,6 @@
 from pathlib import Path
+import subprocess
+import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 WORKFLOW=(ROOT/".github/workflows/hakim-development-worker.yml").read_text(encoding="utf-8")
@@ -8,7 +10,7 @@ def req(cond,reason):
         raise SystemExit("HAKIM_DEVELOPMENT_WORKER_GATE=FAIL reason="+reason)
 
 for token in [
-    'cron: "*/5 * * * *"',
+    "workflow_dispatch:",
     "cancel-in-progress: false",
     "HAKIM_DEVELOPMENT_BASE: autonomous/hakim-development",
     'LLAMA_CPP_TAG: "b11193"',
@@ -38,7 +40,11 @@ for token in [
     "python3 tests/verify_unified_hakim.py",
     "gh workflow run android.yml --ref",
     "gh run watch",
-    "gh pr merge",
+    "git add --",
+    "--draft",
+    "HAKIM_WORKER_RESULT=PENDING_INDEPENDENT_REVIEW",
+    "hakim-worker-candidate-gate.py",
+    "patch_sha256",
     "transient_runner_failure",
     "safe_patch_not_found",
 ]:
@@ -70,6 +76,16 @@ for forbidden in [
 
 req("\\${" not in WORKFLOW,"escaped_expression_would_break_worker")
 req("autonomous/hakim-development" in WORKFLOW,"staging_line_missing")
+req("\n  schedule:" not in WORKFLOW and "cron:" not in WORKFLOW,"scheduled_worker_must_remain_paused")
+req("git add -A" not in WORKFLOW,"bulk_stage_allowed")
+req("gh pr merge" not in WORKFLOW,"automatic_merge_allowed")
+req("acknowledge \"success\"" not in WORKFLOW,"premature_bridge_success")
+req("git add -- \"${safe_paths[@]}\"" in WORKFLOW,"explicit_source_staging_missing")
+req('/development/v1/$REQUEST_ID/review-pending"' in WORKFLOW,"review_pending_callback_missing")
+req(WORKFLOW.index('/review-pending') < WORKFLOW.index('gh workflow run android.yml --ref'),"review_recorded_after_ci")
+req('HAKIM_WORKER_CI_FAILED_REVIEW_PENDING' in WORKFLOW,"ci_failure_review_state_unhandled")
+req('acknowledge "failed" "$candidate_sha"' not in WORKFLOW,"review_candidate_downgraded_after_ci_failure")
+
 req("release/hakim-20316-autoupdate-rootfix-candidate" not in WORKFLOW,"worker_writes_field_line_directly")
 req("governance/" in WORKFLOW and "scripts/" in WORKFLOW,"governance_or_script_guard_missing")
 req("HakimUnifiedRelay" in WORKFLOW,"remote_relay_guard_missing")
@@ -83,3 +99,5 @@ req("github.com/ggml-org/llama.cpp/releases/download/" in WORKFLOW,"llama_binary
 req("huggingface.co/Qwen/" in WORKFLOW,"local_model_not_pinned")
 
 print("HAKIM_DEVELOPMENT_WORKER_GATE=PASS")
+
+subprocess.run([sys.executable, str(ROOT/'tests/hakim_worker_candidate_gate.py'), '--self-test'],check=True)

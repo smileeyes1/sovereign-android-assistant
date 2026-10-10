@@ -10,7 +10,7 @@ const CONTROL_VERSION=/^HAKIM-DEVELOPMENT-CONTROL-[0-9-]+-v[0-9]+$/;
 const TRIGGERS=new Set(["field_candidate_regression","self_check_failed","repeated_runtime_failure"]);
 const SEVERITIES=new Set(["critical","high"]);
 const MAX_PENDING=64;
-const DEFAULT_LEASE_MS=20*60_000;
+const DEFAULT_LEASE_MS=60*60_000;
 
 export type DevelopmentOutcome="success"|"no_change"|"failed";
 export type DevelopmentEvidence={
@@ -244,12 +244,12 @@ export class DevelopmentRequestStore{
     if(!REQUEST_ID.test(requestId)) throw new Error("development_request_id_invalid");
     const workerId=safeWorkerId(workerIdRaw);
     if(!["success","no_change","failed"].includes(outcome)) throw new Error("development_outcome_invalid");
-    if(outcome==="success") throw new Error("development_success_requires_independent_review");
     const file=this.fileFor(requestId);
     const current=await this.readRecord(file);
     if(current.state!=="leased") throw new Error("development_request_not_leased");
     if(current.lease_owner!==workerId) throw new Error("development_lease_owner_mismatch");
     if((current.lease_expires_at_ms??0)<Date.now()) throw new Error("development_lease_expired");
+    if(outcome==="success") throw new Error("development_success_requires_independent_review");
 
     const resultSha=result.result_sha?.trim();
     if(resultSha!==undefined&&!/^[0-9a-f]{40}$/i.test(resultSha)) throw new Error("development_result_sha_invalid");

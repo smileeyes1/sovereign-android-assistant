@@ -1,0 +1,39 @@
+name: Hakim finite separate-run state proof
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'sandbox/state_continuity/**'
+      - '.github/workflows/hakim-state-continuity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: hakim-finite-state-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  finite-state-probe:
+    if: github.repository == 'smileeyes1/sovereign-android-assistant' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'review/hakim-state-continuity-20261012'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      CURRENT_PR: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Read exact isolated candidate without saved credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Read predecessor logs only when stage requires it
+        run: |
+          if python3 -c 'import json; import sys; sys.exit(0 if json.load(open("sandbox/state_continuity/control.json"))["stage"] == 1 else 1)'; then
+            true
+          else
+            python3 sandbox/state_continuity/hosted_state_probe.py fetch --control sandbox/state_continuity/control.json --snapshot "$RUNNER_TEMP/prior-state.json"
+          fi
+      - name: One bounded synthetic cycle, with expected first-cycle interruption
+        run: |
+          set +e
+          python3 sandbox/state_continuity/hosted_state_probe.py run --control sandbox/state_continuity/control.json --snapshot "$RUNNER_TEMP/prior-state.json" --repository "$GITHUB_WORKSPACE" --root "$RUNNER_TEMP/hakim-finite-state"
+          probe_exit=$?
+          expected_exit=$(python3 -c 'import json; print(23 if json.load(open("sandbox/state_continuity/control.json"))["stage"] == 1 else 0)')
+          test "$probe_exit" -eq "$expected_exit"

@@ -6,7 +6,10 @@ if ! tailscale ip -4 2>/dev/null | grep -qE '^100\.'; then
   exit 2
 fi
 # تجنُّب تعديل خدمة Tailscale Serve سابقة في حال وجود إعداد مختلف.
-existing="$(tailscale serve status 2>/dev/null || true)"
+if ! existing="$(tailscale serve status 2>&1)"; then
+  echo 'تعذّر قراءة إعداد Tailscale Serve؛ لم أغير الإعدادات حمايةً للخدمات الموجودة.' >&2
+  exit 3
+fi
 if [[ -n "$existing" ]] && [[ "$existing" != *'No serve config'* ]] && [[ "$existing" != *'No serve configuration'* ]] && [[ "$existing" != *'http://127.0.0.1:3000'* ]]; then
   echo 'يوجد إعداد Serve سابق مختلف؛ تُرك كما هو منعًا للتعارض.'
   exit 3

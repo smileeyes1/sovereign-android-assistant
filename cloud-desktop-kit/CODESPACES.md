@@ -1,6 +1,6 @@
 # حكيم — كمبيوتر لينكس مجاني مؤقت من متصفح الهاتف
 
-**الإصدار:** ١٫٢ — ١٣ تشرين الأول ٢٠٢٦.
+**الإصدار:** ١٫٣ — ١٣ تشرين الأول ٢٠٢٦.
 
 إذا لم يكن لديك حساب Oracle بعد، فهذا مسار **مستقل مؤقت** عبر GitHub Codespaces، ولا يحتاج إلى تشغيل الكمبيوتر الشخصي.
 
@@ -31,3 +31,18 @@ bash cloud-desktop-kit/codespaces-check.sh
 **توثيق:**
 - https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
 - https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/setting-up-your-repository/facilitating-quick-creation-and-resumption-of-codespaces
+
+## خيار تجريبي: سطح مكتب رسومي حقيقي من Codespaces
+
+بعد إنشاء Codespace، استخدم الأمر التالي **اختياريًا** إذا كانت حصة GitHub مجانية متاحة ومساحة القرص كافية:
+
+```bash
+bash cloud-desktop-kit/codespaces-desktop.sh
+```
+
+يشترط السكربت أن تعمل بالفعل داخل Codespaces؛ يتحقق من Docker وCompose ومساحة القرص (٦ جيجابايت على الأقل)، ويولد كلمة مرور محلية قبل تشغيل Webtop بدون Tailscale، ويستخدم المنفذ المحلي 3000 فقط. يرفض تبديل إعداد قائم مختلف. إذا لم يرد Webtop برمز `401` عند الدخول دون اعتماد، تُوقف الحاوية التجريبية ولا يُعلن النجاح. لتفتح الواجهة من هاتفك، انقر المنفذ `3000` في تبويب **PORTS** واحفظ الرؤية **Private** ولا تنشر المنفذ للعامة. لا تفعّل أي إنفاق مدفوع.
+
+**قيود مهمة:** هذه تجربة قابلة للفشل وغير مثبتة على جلسة المستخدم. حجم Docker Webtop يُحسب ضمن استخدام التخزين والمساحة؛ الوقت ضمن الحصة. توقف Codespaces يوقف سطح المكتب، ولا تتحول الجلسة إلى خادم دائم. الوصول من الهاتف واكتمال الواجهة الرسومية يحتاجان اختبارًا ميدانيًا.
+
+- مرجع المنافذ: https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace
+- مرجع Webtop: https://docs.linuxserver.io/images/docker-webtop/

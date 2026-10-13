@@ -67,7 +67,7 @@ if ! command -v tailscale >/dev/null 2>&1; then
   trap - EXIT
 fi
 sudo systemctl enable --now tailscaled
-if ! tailscale ip -4 2>/dev/null | grep -qE '^100\.'; then
+if ! sudo tailscale ip -4 2>/dev/null | grep -qE '^100\.'; then
   echo 'المتبقي: افتح رابط المصادقة الذي ستطبعه Tailscale، ثم شغّل connect.sh.'
   if ! sudo tailscale up --hostname=hakim-cloud; then
     echo 'سطح المكتب مثبت محليًا، لكن ربط Tailscale لم ينجح؛ أوقفنا إكمال الربط.' >&2
@@ -80,6 +80,7 @@ if ! "${HERE}/connect.sh"; then
 fi
 printf '\nتم تشغيل المكونات محليًا وربط Tailscale وفق مؤشرات الأوامر (لم يُختبر الاتصال من هاتف فعلي).\n'
 printf 'ملفاتك في: %s\n' "${DEST}"
-printf 'لإظهار حالة الاتصال: %s/status.sh\n' "${HERE}"
+printf 'لفحص الجاهزية المحلية: %s/doctor.sh\n' "${HERE}"
+printf 'لعرض الحالة التفصيلية: %s/status.sh\n' "${HERE}"
 printf 'اسم مستخدم سطح المكتب: hakim\n'
 printf 'قراءة كلمة المرور داخل الخادم فقط: grep ^DESKTOP_PASSWORD= "%s/.env"\n' "${DEST}"

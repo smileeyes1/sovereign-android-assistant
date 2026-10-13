@@ -1,12 +1,12 @@
 # حكيم — حزمة إعداد الكمبيوتر السحابي الخاص
 
-**الإصدار:** ١٫٢ — ١٣ تشرين الأول ٢٠٢٦
+**الإصدار:** ١٫٣ — ١٣ تشرين الأول ٢٠٢٦
 
 **الحالة:** حزمة إعداد وفحص، **غير منشورة وغير مختبرة على خادم Oracle حقيقي**.
 
 ## طريق أسرع قبل Oracle (من هاتفك)
 
-راجع `CODESPACES.md` لفتح **كمبيوتر تطوير لينكس مؤقت** من المتصفح باستخدام الحساب المجاني المتصل بـGitHub؛ لا يحتاج حساب Oracle. هذا المسار ليس سطح مكتب XFCE دائمًا ولا هاتفًا أندرويد سحابيًا.
+راجع `CODESPACES.md` لفتح **كمبيوتر تطوير لينكس مؤقت** من المتصفح باستخدام الحساب المجاني المتصل بـGitHub؛ لا يحتاج حساب Oracle. وأضفنا `codespaces-desktop.sh` لتجربة سطح مكتب XFCE كامل داخل Codespaces اختياريًا بعد فتح الجلسة، دون Tailscale أو خادم Oracle. **لم يُختبر على Codespaces حقيقي**؛ لا تستخدمه إن كانت حصة التخزين أو الساعات غير كافية.
 
 ## ما الذي توفره؟
 
@@ -28,7 +28,7 @@
 انقل محتويات هذا الملف المضغوط إلى حسابك العادي على الخادم (لا تعمل بصلاحيات root مباشرة)، ثم شغّل:
 
 ```bash
-chmod +x bootstrap.sh connect.sh status.sh doctor.sh codespaces-check.sh android-readiness.sh
+chmod +x bootstrap.sh connect.sh status.sh doctor.sh codespaces-check.sh codespaces-desktop.sh android-readiness.sh
 ./bootstrap.sh
 ```
 
@@ -61,11 +61,11 @@ grep '^DESKTOP_PASSWORD=' ~/hakim-cloud-desktop/.env
 ## اختبار ذاتي قبل التسليم
 
 ```bash
-bash -n bootstrap.sh connect.sh status.sh doctor.sh codespaces-check.sh android-readiness.sh
+bash -n bootstrap.sh connect.sh status.sh doctor.sh codespaces-check.sh codespaces-desktop.sh android-readiness.sh
 python3 -m unittest discover -s tests -v
 ```
 
-الاختبارات ٢١ (٦ للعزل، ٨ لمحاكاة Tailscale، ٧ لفحص الجاهزية والمصادقة دون إجراء تغييرات). اختبار Python يتطلب مكتبة `PyYAML` لدى جهاز الفحص فقط، وليس على خادم الإنتاج. فحص Bash اختبارات تركيب لا يثبت نجاح تشغيل Docker على Oracle.
+الاختبارات ٢٨ (٦ للعزل، ٨ لمحاكاة Tailscale، ٧ لفحص الجاهزية والمصادقة دون إجراء تغييرات). اختبار Python يتطلب مكتبة `PyYAML` لدى جهاز الفحص فقط، وليس على خادم الإنتاج. فحص Bash اختبارات تركيب لا يثبت نجاح تشغيل Docker على Oracle.
 
 ## مسار Codespaces للحد الأدنى من التكلفة
 

@@ -14,6 +14,21 @@ import kotlin.math.ceil
 object HakimVideoFactory {
     const val CONTRACT_VERSION = "VIDEO-FACTORY-2026-09-30-v1"
     const val CINEMA_VERSION = "HAKIM-CINEMA-V1-2026-09-30"
+    const val OPEN_FACTORY_VERSION = "HAKIM-OPEN-CINEMA-0.3-2026-10-13"
+
+    // Code availability is not installation, GPU availability or a verified render.
+    private fun offlineFactoryContract(): JSONObject = JSONObject()
+        .put("id", OPEN_FACTORY_VERSION)
+        .put("source", "cinema/open_source_factory")
+        .put("license", "MIT")
+        .put("scope", "offline_primary_number_motion_graphics_1_to_10")
+        .put("photorealistic_video", false)
+        .put("arabic_voice", false)
+        .put("runtime_on_android_verified", false)
+        .put("runtime_connected_to_hakim", false)
+        .put("requires_credits", false)
+        .put("gpu_generation_included", false)
+        .put("render_verified", false)
 
     private val supportedAspects = setOf("16:9", "9:16", "1:1", "4:5")
     private val framings = listOf("wide", "medium", "medium_close", "close", "insert")
@@ -26,6 +41,8 @@ object HakimVideoFactory {
             .put("ok", true)
             .put("contract", CONTRACT_VERSION)
             .put("cinema_version", CINEMA_VERSION)
+            .put("open_source_offline_factory", offlineFactoryContract())
+            .put("no_credit_default", true)
             .put("planner", true)
             .put("cinematic_director", true)
             .put("shot_level_prompt_compiler", true)
@@ -70,13 +87,16 @@ object HakimVideoFactory {
             else -> 6
         }
         val shotCount = ceil(durationSec.toDouble() / targetShotLength).toInt().coerceIn(2, 120)
-        val selectedProvider = selectProvider(payload.optJSONArray("providers"), durationSec)
+        val noCredits = payload.optBoolean("no_credits", true)
+        val selectedProvider = selectProvider(payload.optJSONArray("providers"), durationSec, noCredits)
 
         return JSONObject()
             .put("ok", true)
             .put("contract", CONTRACT_VERSION)
             .put("cinema_version", CINEMA_VERSION)
             .put("artifact_created", false)
+            .put("no_credits", noCredits)
+            .put("open_source_offline_factory", offlineFactoryContract())
             .put("goal", goal)
             .put("audience", audience)
             .put("style", style)
@@ -127,6 +147,9 @@ object HakimVideoFactory {
                     .put("مدفوع بعد موافقة صريحة فقط")
                 )
                 .put("no_provider_lock_in", true)
+                .put("no_credit_default", noCredits)
+                .put("no_paid_provider_without_explicit_approval", true)
+                .put("no_claim_of_local_render_without_runtime_probe", true)
                 .put("cache_successful_segments", true)
                 .put("avoid_full_regeneration", true)
             )
@@ -323,7 +346,7 @@ object HakimVideoFactory {
     /**
      * لا يُختار المزود باسمه التجاري، بل بقدراته المعلنة وقت التنفيذ.
      */
-    private fun selectProvider(providers: JSONArray?, durationSec: Int): JSONObject {
+    private fun selectProvider(providers: JSONArray?, durationSec: Int, noCredits: Boolean): JSONObject {
         if (providers == null || providers.length() == 0) {
             return JSONObject()
                 .put("state", "deferred")
@@ -338,6 +361,14 @@ object HakimVideoFactory {
             if (!p.optBoolean("rights_ok", false)) continue
             if (!p.optBoolean("privacy_ok", false)) continue
             if (p.optInt("max_duration_sec", 0) in 1 until durationSec) continue
+            val costClass = p.optString("cost_class").lowercase()
+            // Explicitly block the prior scoring fallback that could select an unapproved paid provider.
+            if (costClass == "paid" && !p.optBoolean("paid_approved", false)) continue
+            // For no-credit requests, only a probed, actually usable local runtime qualifies.
+            // "free", promotional and metered-free accounts still depend on quotas or credits.
+            if (noCredits && (costClass != "local" ||
+                    p.optBoolean("requires_credits", true) ||
+                    !p.optBoolean("execution_probe_verified", false))) continue
 
             var score = 0
             score += p.optInt("quality_score", 0).coerceIn(0, 100) * 5
@@ -345,7 +376,7 @@ object HakimVideoFactory {
             score += p.optInt("continuity_score", 0).coerceIn(0, 100) * 5
             score += p.optInt("motion_score", 0).coerceIn(0, 100) * 4
             score += p.optInt("control_score", 0).coerceIn(0, 100) * 3
-            score += when (p.optString("cost_class").lowercase()) {
+            score += when (costClass) {
                 "free", "local", "included" -> 260
                 "metered_free" -> 160
                 "paid" -> if (p.optBoolean("paid_approved", false)) 10 else -10_000

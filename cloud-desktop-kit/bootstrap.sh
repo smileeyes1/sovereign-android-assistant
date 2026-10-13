@@ -69,10 +69,16 @@ fi
 sudo systemctl enable --now tailscaled
 if ! tailscale ip -4 2>/dev/null | grep -qE '^100\.'; then
   echo 'المتبقي: افتح رابط المصادقة الذي ستطبعه Tailscale، ثم شغّل connect.sh.'
-  sudo tailscale up --hostname=hakim-cloud || true
+  if ! sudo tailscale up --hostname=hakim-cloud; then
+    echo 'سطح المكتب مثبت محليًا، لكن ربط Tailscale لم ينجح؛ أوقفنا إكمال الربط.' >&2
+    exit 4
+  fi
 fi
-"${HERE}/connect.sh" || true
-printf '\nاكتملت تهيئة المكونات محليًا على الخادم (ليس إثباتًا للوصول البعيد).\n'
+if ! "${HERE}/connect.sh"; then
+  echo 'سطح المكتب مثبت محليًا، لكن الاتصال الخاص غير مُثبت. راجع سبب الفشل أعلاه.' >&2
+  exit 5
+fi
+printf '\nتم تشغيل المكونات محليًا وربط Tailscale وفق مؤشرات الأوامر (لم يُختبر الاتصال من هاتف فعلي).\n'
 printf 'ملفاتك في: %s\n' "${DEST}"
 printf 'لإظهار حالة الاتصال: %s/status.sh\n' "${HERE}"
 printf 'اسم مستخدم سطح المكتب: hakim\n'

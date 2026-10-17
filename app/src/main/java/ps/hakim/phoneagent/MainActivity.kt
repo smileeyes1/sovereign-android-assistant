@@ -397,6 +397,12 @@ class MainActivity : Activity() {
                     .remove("command_topic")
                     .remove("result_topic")
                     .remove("auth_key")
+                    .remove("pair_token")
+                    .remove(HakimUnifiedRelay.KEY_TOPIC)
+                    .remove(HakimUnifiedRelay.KEY_RESULT_TOPIC)
+                    .remove(HakimUnifiedRelay.KEY_RELAY_KEY)
+                    .remove(HakimUnifiedRelay.KEY_BRIDGE_BASE)
+                    .putBoolean("secure_relay_configured", false)
                     .putBoolean("pairing_disabled_by_user", true)
                     .apply()
                 refreshPairingUi()
@@ -483,9 +489,12 @@ class MainActivity : Activity() {
         webView.loadUrl(url)
     }
 
-    private fun isPaired(): Boolean =
-        prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-        prefs.getString("result_topic", "").orEmpty().isNotBlank()
+    private fun isPaired(): Boolean {
+        if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
+        val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
+            prefs.getString("result_topic", "").orEmpty().isNotBlank()
+        return legacyPaired || HakimUnifiedRelay.isConfigured(this)
+    }
 
     private fun refreshPairingUi() {
         if (!::pairField.isInitialized || !::status.isInitialized) return
@@ -498,6 +507,7 @@ class MainActivity : Activity() {
             !paired -> "الحالة: يحتاج رمز الاقتران"
             HakimService.connected -> "الحالة: متصل فعليًا — حكيم جاهز"
             HakimService.running -> "الحالة: حكيم يعمل — جارٍ الاتصال"
+            HakimUnifiedRelay.isConfigured(this) -> "الحالة: الاقتران المشفّر مُهيّأ — الاتصال غير مثبت"
             else -> "الحالة: مقترن — الخدمة متوقفة"
         }
     }

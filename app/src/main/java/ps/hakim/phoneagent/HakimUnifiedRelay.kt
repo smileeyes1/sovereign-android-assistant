@@ -91,6 +91,7 @@ object HakimUnifiedRelay {
 
     fun isConfigured(context: Context): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (p.getBoolean("pairing_disabled_by_user", false)) return false
         return !p.getString(KEY_TOPIC, "").isNullOrBlank() &&
             !p.getString(KEY_RESULT_TOPIC, "").isNullOrBlank() &&
             !p.getString(KEY_RELAY_KEY, "").isNullOrBlank()
@@ -108,6 +109,10 @@ object HakimUnifiedRelay {
         var directFailures = 0
         while (running.get()) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (prefs.getBoolean("pairing_disabled_by_user", false)) {
+                sleep(10_000L)
+                continue
+            }
             val topic = prefs.getString(KEY_TOPIC, null)
             val resultTopic = prefs.getString(KEY_RESULT_TOPIC, null)
             val relayKey = prefs.getString(KEY_RELAY_KEY, null)
@@ -222,6 +227,8 @@ object HakimUnifiedRelay {
     }
 
     private fun handleCarrier(context: Context, carrier: String, resultTopic: String, relayKey: String): String? {
+        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("pairing_disabled_by_user", false)) return null
         if (carrier.length !in 32..131072) return null
         val raw = decryptCarrier(carrier, relayKey) ?: return null
         val envelope = runCatching { JSONObject(raw) }.getOrNull() ?: return null
@@ -350,6 +357,8 @@ object HakimUnifiedRelay {
 
     fun handleApproval(context: Context, requestId: String, approved: Boolean) {
         val pending = takePending(context, requestId) ?: return
+        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("pairing_disabled_by_user", false)) return
         val (envelope, resultTopic) = pending
         if (!approved) {
             sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
@@ -378,6 +387,10 @@ object HakimUnifiedRelay {
     }
 
     private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
+        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("pairing_disabled_by_user", false)) {
+            return JSONObject().put("ok", false).put("error", "pairing_disabled")
+        }
         val op = envelope.optString("op")
         val payload = decodePayload(envelope)
         return when (op) {

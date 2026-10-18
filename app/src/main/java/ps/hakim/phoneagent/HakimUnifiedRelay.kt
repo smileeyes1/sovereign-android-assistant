@@ -74,8 +74,10 @@ object HakimUnifiedRelay {
 
     /**
      * Commits all owner-approved pairing settings in one SharedPreferences transaction.
-     * A failed commit leaves the prior pairing untouched; only a successful commit
-     * changes the session and revokes earlier pending approvals.
+     * One Editor prevents two separately committed pairing states.
+     * When commit() reports failure, the UI must not start or acknowledge pairing;
+     * exact in-memory state after storage I/O failure is device-dependent.
+     * Only a successful commit revokes earlier pending approvals.
      * Call this only from the on-device confirmation action.
      */
     fun configure(

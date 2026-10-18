@@ -52,7 +52,9 @@ object HakimUnifiedRelay {
     private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "chatgpt_read", "video_capabilities", "video_plan")
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "chatgpt_action")
     private val running = AtomicBoolean(false)
-    private val executor = Executors.newSingleThreadExecutor()
+    // A blocking long-poll loop must not starve approval commands or pairing acknowledgements.
+    private val pollingExecutor = Executors.newSingleThreadExecutor()
+    private val commandExecutor = Executors.newSingleThreadExecutor()
 
     fun configure(
         context: Context,
@@ -101,7 +103,7 @@ object HakimUnifiedRelay {
         val app = context.applicationContext
         if (!running.compareAndSet(false, true)) return
         ensureApprovalChannel(app)
-        executor.execute { loop(app) }
+        pollingExecutor.execute { loop(app) }
     }
 
     private fun loop(context: Context) {
@@ -368,7 +370,7 @@ object HakimUnifiedRelay {
             sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
             return
         }
-        executor.execute {
+        commandExecutor.execute {
             val result = executeEnvelope(context.applicationContext, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
@@ -481,7 +483,7 @@ object HakimUnifiedRelay {
 
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        commandExecutor.execute {
             val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
             if (resultTopic.isBlank()) return@execute

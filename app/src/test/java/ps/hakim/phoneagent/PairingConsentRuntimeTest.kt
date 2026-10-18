@@ -9,6 +9,7 @@ import android.widget.TextView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -107,6 +108,42 @@ class PairingConsentRuntimeTest {
             )
         )
         assertEquals(before, prefs().all)
+    }
+
+    @Test
+    fun concurrentApprovalConsumptionIsExactlyOnce() {
+        val app = RuntimeEnvironment.getApplication()
+        val pending = app.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
+        val id = "test-once-only-approval"
+        assertTrue(pending.edit()
+            .putString("$id.envelope", "{\\"request_id\\":\\"$id\\",\\"op\\":\\"action\\"}")
+            .putString("$id.result_topic", "test-result-topic")
+            .putString("$id.session", "test-pairing-session")
+            .commit())
+
+        val consume = HakimUnifiedRelay::class.java.getDeclaredMethod(
+            "takePending", Context::class.java, String::class.java
+        )
+        consume.isAccessible = true
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(8)
+        try {
+            val start = java.util.concurrent.CountDownLatch(1)
+            val futures = (1..8).map {
+                pool.submit<Boolean> {
+                    start.await()
+                    consume.invoke(HakimUnifiedRelay, app, id) != null
+                }
+            }
+            start.countDown()
+            val winners = futures.count { it.get(15, java.util.concurrent.TimeUnit.SECONDS) }
+            assertEquals("A remote approval can only be claimed once", 1, winners)
+            assertFalse(pending.contains("$id.envelope"))
+            assertFalse(pending.contains("$id.result_topic"))
+            assertFalse(pending.contains("$id.session"))
+            assertNull(consume.invoke(HakimUnifiedRelay, app, id))
+        } finally {
+            pool.shutdownNow()
+        }
     }
 
     @Test

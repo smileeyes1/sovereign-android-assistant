@@ -39,6 +39,37 @@ def test_pending_session_identity() -> None:
     assert 'Triple(JSONObject(raw), topic, session)' in take
 
 
+def single_use_guard(relay: str) -> bool:
+    try:
+        take = section(relay, "private fun takePending(", "private fun showApproval(")
+    except AssertionError:
+        return False
+    return (
+        "@Synchronized\n    private fun takePending(" in relay
+        and '.remove("$requestId.session").commit()' in take
+        and "if (!removed) return null" in take
+        and ".apply()" not in take
+        and "return parsed" in take
+    )
+
+
+def test_pending_can_only_be_consumed_once() -> None:
+    assert single_use_guard(RELAY)
+    variants = {
+        "unsynchronized_claim": RELAY.replace(
+            "@Synchronized\n    private fun takePending(", "private fun takePending(", 1
+        ),
+        "async_claim": RELAY.replace(
+            '.remove("$requestId.session").commit()',
+            '.remove("$requestId.session").apply()', 1
+        ),
+    }
+    for label, source in variants.items():
+        assert source != RELAY
+        assert not single_use_guard(source), label
+        print("NEGATIVE_REJECTED", label)
+
+
 def test_approval_and_executor_check_epoch() -> None:
     assert guard_present(RELAY)
 

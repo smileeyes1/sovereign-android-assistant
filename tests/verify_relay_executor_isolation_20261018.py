@@ -41,8 +41,8 @@ mutations = {
         1,
     ),
     "ack_starved": SOURCE.replace(
-        "        commandExecutor.execute {\n            val p = app.getSharedPreferences(",
-        "        pollingExecutor.execute {\n            val p = app.getSharedPreferences(",
+        "        commandExecutor.execute {\n            if (resultTopic.isBlank()) return@execute",
+        "        pollingExecutor.execute {\n            if (resultTopic.isBlank()) return@execute",
         1,
     ),
     "poll_occupies_command_lane": SOURCE.replace(

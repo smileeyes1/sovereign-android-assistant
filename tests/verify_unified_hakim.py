@@ -55,7 +55,11 @@ secure_call = health_send.find('HakimUnifiedRelay.sendHealthBeacon(context, reas
 secure_success = health_send.find('if (secureOk) return true')
 legacy_start = health_send.find('val topic = prefs.getString("result_topic"')
 require(0 <= secure_call < secure_success < legacy_start, "P0: النقل القديم ليس fallback لنبضة الصحة")
-result_send = relay.split('private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {', 1)[1]
+result_send = relay.split('private fun sendResult(', 1)[1]
+require('expectedSession: String' in result_send.split('): Boolean {', 1)[0],
+        "P0: إرسال نتيجة القناة الآمنة لا يحمل هوية جلسة الأمر")
+require('if (!isResultSessionCurrent(context, resultTopic, expectedSession)) return false' in result_send,
+        "P0: إرسال النتائج لا يمنع الرسائل من جلسة أو وجهة منتهية")
 require(0 <= result_send.find('/device/v1/results') < result_send.find('https://ntfy.sh/'), "P0: نتيجة القناة الآمنة لا تفضل الجسر المباشر")
 require('relay_result_topic' in pair and 'bridge_base' in pair, "P0: الاقتران المباشر لا يحمل موضوع النتيجة وأصل الجسر")
 require('KEY_BRIDGE_BASE' in relay and 'DEFAULT_BRIDGE_BASE' in relay, "P0: خط أساس الجسر المباشر مفقود")

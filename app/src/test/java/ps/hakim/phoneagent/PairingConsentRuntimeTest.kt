@@ -5,10 +5,10 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
+import android.widget.TextView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -67,9 +67,10 @@ class PairingConsentRuntimeTest {
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull("A valid external link must show a phone-local consent dialog", dialog)
         assertTrue(dialog.isShowing)
-        assertTrue(dialog.message.toString().contains("hakim-chatgpt-bridge-production.up.railway.app"))
-        assertFalse("Never show relay secret", dialog.message.toString().contains(key))
-        assertFalse("Never show pairing token", dialog.message.toString().contains(token))
+        val promptText = dialog.findViewById<TextView>(android.R.id.message)?.text?.toString().orEmpty()
+        assertTrue(promptText.contains("hakim-chatgpt-bridge-production.up.railway.app"))
+        assertFalse("Never show relay secret", promptText.contains(key))
+        assertFalse("Never show pairing token", promptText.contains(token))
         assertEquals("existingChannelStillActive", prefs().getString(HakimUnifiedRelay.KEY_TOPIC, null))
         assertEquals("old-pair-token", prefs().getString("pair_token", null))
         assertTrue(prefs().getBoolean("pairing_disabled_by_user", false))

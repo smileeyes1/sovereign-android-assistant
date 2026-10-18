@@ -44,6 +44,7 @@ jobs:
           python3 tests/verify_secure_relay_disconnection_20261017.py
           python3 tests/verify_relay_executor_isolation_20261018.py
           python3 tests/verify_approval_session_revocation_20261018.py
+          python3 tests/verify_secure_result_epoch_20261018.py
           python3 tests/verify_legacy_queued_command_revocation_20261018.py
           python3 tests/verify_legacy_async_session_boundary_20261018.py
           python3 tests/verify_legacy_hmac_fail_closed_20261018.py

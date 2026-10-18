@@ -277,17 +277,17 @@ object HakimUnifiedRelay {
         if (payloadB64.length > 32768 || !SIGNATURE.matches(signature)) return null
         if (!validSignature(relayKey, requestId, op, expiresAt, payloadB64, signature)) return null
         if (expiresAt <= System.currentTimeMillis()) {
-            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("error", "request_expired"), approvalSession)
             return requestId
         }
         if (!claimRemoteRequest(context, requestId)) {
-            sendResult(context, resultTopic, requestId, "duplicate", JSONObject().put("error", "duplicate_request"))
+            sendResult(context, resultTopic, requestId, "duplicate", JSONObject().put("error", "duplicate_request"), approvalSession)
             return requestId
         }
 
         if (READ_ONLY_OPS.contains(op)) {
-            val result = executeEnvelope(context, envelope)
-            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            val result = executeEnvelope(context, envelope, approvalSession)
+            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result, approvalSession)
         } else {
             if (!savePending(context, envelope, resultTopic, approvalSession, relayKey)) return null
             showApproval(context, requestId, op)
@@ -434,16 +434,16 @@ object HakimUnifiedRelay {
         if (pairPrefs.getBoolean("pairing_disabled_by_user", false) ||
             pairPrefs.getString(KEY_APPROVAL_SESSION, null) != expectedSession) return
         if (!approved) {
-            sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
+            sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"), expectedSession)
             return
         }
         if (envelope.optLong("expires_at_ms", 0L) <= System.currentTimeMillis()) {
-            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"))
+            sendResult(context, resultTopic, requestId, "expired", JSONObject().put("ok", false).put("error", "request_expired"), expectedSession)
             return
         }
         commandExecutor.execute {
             val result = executeEnvelope(context.applicationContext, envelope, expectedSession)
-            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
+            sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result, expectedSession)
         }
     }
 
@@ -539,6 +539,7 @@ object HakimUnifiedRelay {
     }
 
     fun sendHealthBeacon(context: Context, reason: String): Boolean {
+        val expectedSession = currentApprovalSession(context) ?: return false
         if (!isConfigured(context)) return false
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
@@ -549,19 +550,21 @@ object HakimUnifiedRelay {
             resultTopic,
             requestId,
             "health",
-            status(context).put("event", "health").put("reason", reason.take(80))
+            status(context).put("event", "health").put("reason", reason.take(80)),
+            expectedSession
         )
     }
 
     fun sendPairingAckAsync(context: Context) {
         val app = context.applicationContext
+        val expectedSession = currentApprovalSession(app) ?: return
+        val resultTopic = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_RESULT_TOPIC, "").orEmpty()
         commandExecutor.execute {
-            val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val resultTopic = p.getString(KEY_RESULT_TOPIC, "").orEmpty()
             if (resultTopic.isBlank()) return@execute
             val requestId = "pair-${System.currentTimeMillis()}"
             val result = status(app).put("event", "paired")
-            sendResult(app, resultTopic, requestId, "paired", result)
+            sendResult(app, resultTopic, requestId, "paired", result, expectedSession)
         }
     }
 
@@ -579,7 +582,21 @@ object HakimUnifiedRelay {
         return RESULT_PREFIX + Base64.encodeToString(packed, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
     }
 
-    private fun sendResult(context: Context, resultTopic: String, requestId: String, status: String, result: JSONObject): Boolean {
+    private fun isResultSessionCurrent(context: Context, resultTopic: String, expectedSession: String): Boolean {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return expectedSession.isNotBlank() &&
+            !p.getBoolean("pairing_disabled_by_user", false) &&
+            p.getBoolean("secure_relay_configured", false) &&
+            p.getString(KEY_APPROVAL_SESSION, null) == expectedSession &&
+            p.getString(KEY_RESULT_TOPIC, null) == resultTopic &&
+            !p.getString(KEY_RELAY_KEY, null).isNullOrBlank()
+    }
+
+    private fun sendResult(
+        context: Context, resultTopic: String, requestId: String,
+        status: String, result: JSONObject, expectedSession: String
+    ): Boolean {
+        if (!isResultSessionCurrent(context, resultTopic, expectedSession)) return false
         val relayKey = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_RELAY_KEY, null) ?: return false
         val payload = JSONObject()
@@ -589,6 +606,7 @@ object HakimUnifiedRelay {
             .put("result", result)
         val carrier = encryptResult(relayKey, payload)
 
+        if (!isResultSessionCurrent(context, resultTopic, expectedSession)) return false
         val directOk = runCatching {
             val encodedTopic = URLEncoder.encode(resultTopic, "UTF-8")
             val url = bridgeBase(context) + "/device/v1/results?topic=" + encodedTopic
@@ -617,6 +635,7 @@ object HakimUnifiedRelay {
             return true
         }
 
+        if (!isResultSessionCurrent(context, resultTopic, expectedSession)) return false
         val legacyOk = runCatching {
             val conn = URL("https://ntfy.sh/" + resultTopic).openConnection() as HttpURLConnection
             try {

@@ -147,6 +147,36 @@ class PairingConsentRuntimeTest {
     }
 
     @Test
+    fun staleOrWrongDestinationSecureResultsNeverLeaveTheDevice() {
+        val app = RuntimeEnvironment.getApplication()
+        assertTrue(HakimUnifiedRelay.configure(app, topic, resultTopic, key, null, token))
+        val originalSession = prefs().getString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, null)!!
+        val send = HakimUnifiedRelay::class.java.getDeclaredMethod(
+            "sendResult", Context::class.java, String::class.java, String::class.java,
+            String::class.java, org.json.JSONObject::class.java, String::class.java
+        )
+        send.isAccessible = true
+        fun refused(destination: String, epoch: String): Boolean =
+            send.invoke(
+                HakimUnifiedRelay, app, destination, "fake-request",
+                "ok", org.json.JSONObject().put("ok", true), epoch
+            ) as Boolean
+
+        assertTrue(prefs().edit()
+            .putString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, "new-session")
+            .commit())
+        val afterRotation = prefs().all.toMap()
+        assertFalse("Old-session result must be denied before network", refused(resultTopic, originalSession))
+        assertFalse("Wrong result destination must be denied", refused("different-topic", "new-session"))
+        assertEquals(afterRotation, prefs().all)
+
+        assertTrue(prefs().edit().putBoolean("pairing_disabled_by_user", true).commit())
+        val afterDisconnect = prefs().all.toMap()
+        assertFalse("Explicit disconnect blocks any stale response", refused(resultTopic, "new-session"))
+        assertEquals(afterDisconnect, prefs().all)
+    }
+
+    @Test
     fun approvedConfigurationWritesAllFieldsAndRevokesOldPending() {
         val app = RuntimeEnvironment.getApplication()
         val pending = app.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)

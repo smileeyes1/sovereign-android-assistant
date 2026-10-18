@@ -88,6 +88,60 @@ class PairingDisconnectDeviceTest {
     }
 
     @Test
+    fun queuedSecureResultAfterOwnerDisconnectAndRepairNeverSends() {
+        // All identifiers are synthetic; the release latch keeps the result off the network.
+        val oldTopic = "fakeSecureResult_ABCDEF123456789"
+        val oldCommand = "fakeSecureCommand_ABCDEF12345"
+        val oldKey = "K".repeat(48)
+        val token = "T".repeat(48)
+        assertTrue(HakimUnifiedRelay.configure(app, oldCommand, oldTopic, oldKey, null, token))
+        val oldSession = store.getString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, null)!!
+        val send = HakimUnifiedRelay::class.java.getDeclaredMethod(
+            "sendResult", Context::class.java, String::class.java, String::class.java,
+            String::class.java, org.json.JSONObject::class.java, String::class.java
+        )
+        send.isAccessible = true
+        fun oldResult(): Boolean = send.invoke(
+            HakimUnifiedRelay, app, oldTopic, "delayed-fake-request",
+            "ok", org.json.JSONObject().put("ok", true), oldSession
+        ) as Boolean
+
+        val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val ready = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        try {
+            val delayed = worker.submit<Boolean> {
+                ready.countDown()
+                check(release.await(8, java.util.concurrent.TimeUnit.SECONDS))
+                oldResult()
+            }
+            assertTrue("The synthetic action should be queued before disconnect",
+                ready.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity ->
+                    val button = findDisconnect(activity.window.decorView)
+                    assertNotNull(button)
+                    assertTrue(button!!.performClick())
+                }
+            }
+            assertTrue(store.getBoolean("pairing_disabled_by_user", false))
+            assertNotEquals(oldSession, store.getString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, null))
+            release.countDown()
+            assertFalse("Delayed old-session result must be rejected before any HTTP call",
+                delayed.get(6, java.util.concurrent.TimeUnit.SECONDS))
+
+            assertTrue(HakimUnifiedRelay.configure(
+                app, "newSecureCommand_ABCDEF12345", "newSecureResult_ABCDEF12345678",
+                "N".repeat(48), null, token
+            ))
+            assertFalse("Re-pairing must not make the old result valid again", oldResult())
+        } finally {
+            release.countDown()
+            worker.shutdownNow()
+        }
+    }
+
+    @Test
     fun externalDeepLinkCancelNeverSavesPairing() {
         val uri = Uri.Builder().scheme("hakim").authority("pair")
             .appendQueryParameter("token", "T".repeat(48))

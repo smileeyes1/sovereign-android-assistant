@@ -45,7 +45,7 @@ def atomic_commit_guards(relay: str, activity: str) -> bool:
         ".apply()" not in commit,
         commit.count("getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()") == 1,
         all(commit.count(field) == 1 for field in FIELDS),
-        all(commit.index(field) < commit.index(".commit()") for field in FIELDS),
+        all(field in commit and commit.index(field) < commit.index(".commit()") for field in FIELDS),
         commit.index("if (pairToken.length !in 32..256)") < commit.index("getSharedPreferences("),
         commit.index("if (pairingDestinationHost(") < commit.index("getSharedPreferences("),
         commit.index(".commit()") < commit.index("if (committed) revokePendingApprovals(context)"),

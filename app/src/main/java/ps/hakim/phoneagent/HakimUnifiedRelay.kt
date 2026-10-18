@@ -58,6 +58,20 @@ object HakimUnifiedRelay {
     private val pollingExecutor = Executors.newSingleThreadExecutor()
     private val commandExecutor = Executors.newSingleThreadExecutor()
 
+    /** Read-only validation/preview for the exported pairing confirmation screen. */
+    fun pairingDestinationHost(
+        topic: String?,
+        resultTopic: String?,
+        relayKey: String?,
+        bridgeBase: String?
+    ): String? {
+        if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return null
+        if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return null
+        if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return null
+        val normalized = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return null
+        return runCatching { JavaUri(normalized).host }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
     fun configure(
         context: Context,
         topic: String?,
@@ -65,9 +79,7 @@ object HakimUnifiedRelay {
         relayKey: String?,
         bridgeBase: String? = null
     ): Boolean {
-        if (topic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(topic)) return false
-        if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return false
-        if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return false
+        if (pairingDestinationHost(topic, resultTopic, relayKey, bridgeBase) == null) return false
         val normalizedBridge = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return false
         val committed = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOPIC, topic)

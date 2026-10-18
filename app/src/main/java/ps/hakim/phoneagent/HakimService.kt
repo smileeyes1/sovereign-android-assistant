@@ -205,7 +205,8 @@ class HakimService : Service() {
     private fun isPaired(): Boolean =
         !prefs.getBoolean("pairing_disabled_by_user", false) &&
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-        prefs.getString("result_topic", "").orEmpty().isNotBlank()
+        prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
+        PairingDefaults.validLegacyAuthKey(prefs.getString("auth_key", null))
 
     private fun pairingSession(): String? =
         prefs.getString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, null)
@@ -284,8 +285,9 @@ class HakimService : Service() {
 
     private fun decodeCommandMessage(rawMessage: String): JSONObject? {
         val key = authKey()
-        if (key.isBlank()) {
-            return try { JSONObject(rawMessage) } catch (_: Exception) { null }
+        if (!PairingDefaults.validLegacyAuthKey(key)) {
+            prefs.edit().putString("last_auth_error", "قناة قديمة غير موثقة: مفتاح HMAC مطلوب").apply()
+            return null
         }
         return try {
             val envelope = JSONObject(rawMessage)
@@ -547,6 +549,7 @@ class HakimService : Service() {
         val chunkSize = 1700
         val total = ((raw.length + chunkSize - 1) / chunkSize).coerceAtLeast(1)
         val key = authKey()
+        if (!PairingDefaults.validLegacyAuthKey(key)) return
         for (i in 0 until total) {
             val part = if (raw.isEmpty()) "" else raw.substring(i * chunkSize, minOf(raw.length, (i + 1) * chunkSize))
             val chunk = i + 1
@@ -555,9 +558,7 @@ class HakimService : Service() {
                 .put("chunk", chunk)
                 .put("total", total)
                 .put("data", part)
-            if (key.isNotBlank()) {
-                wrapper.put("sig", hmacHex(key, "$requestId\n$chunk\n$total\n$part"))
-            }
+            wrapper.put("sig", hmacHex(key, "$requestId\n$chunk\n$total\n$part"))
             sendChunk(topic, wrapper.toString(), 0)
         }
     }

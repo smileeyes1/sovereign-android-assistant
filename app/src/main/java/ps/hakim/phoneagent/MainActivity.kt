@@ -499,7 +499,8 @@ class MainActivity : Activity() {
     private fun isPaired(): Boolean {
         if (prefs.getBoolean("pairing_disabled_by_user", false)) return false
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-            prefs.getString("result_topic", "").orEmpty().isNotBlank()
+            prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
+            PairingDefaults.validLegacyAuthKey(prefs.getString("auth_key", null))
         return legacyPaired || HakimUnifiedRelay.isConfigured(this)
     }
 
@@ -521,8 +522,9 @@ class MainActivity : Activity() {
 
     private fun savePairing() {
         val parts = pairField.text.toString().trim().split("|")
-        if (parts.size !in 2..3 || parts.take(2).any { it.isBlank() }) {
-            Toast.makeText(this, "رمز الاقتران غير صحيح", Toast.LENGTH_SHORT).show()
+        if (parts.size != 3 || parts.take(2).any { it.isBlank() } ||
+            !PairingDefaults.validLegacyAuthKey(parts[2])) {
+            Toast.makeText(this, "يلزم رمز يتضمن قناتين ومفتاح حماية صالحًا", Toast.LENGTH_LONG).show()
             return
         }
         val edit = prefs.edit()
@@ -530,7 +532,7 @@ class MainActivity : Activity() {
             .putString("result_topic", parts[1])
             .putString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, UUID.randomUUID().toString())
             .putBoolean("pairing_disabled_by_user", false)
-        if (parts.size == 3 && parts[2].isNotBlank()) edit.putString("auth_key", parts[2])
+        edit.putString("auth_key", parts[2].trim())
         if (!edit.commit()) {
             Toast.makeText(this, "تعذر حفظ الاقتران", Toast.LENGTH_LONG).show()
             return

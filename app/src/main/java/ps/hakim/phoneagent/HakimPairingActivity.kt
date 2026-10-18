@@ -82,20 +82,11 @@ class HakimPairingActivity : Activity() {
         relayKey: String?, bridgeBase: String?
     ) {
         // This must remain exclusively inside the explicit, user-tapped positive callback.
-        val configured = HakimUnifiedRelay.configure(this, topic, resultTopic, relayKey, bridgeBase)
+        val configured = HakimUnifiedRelay.configure(
+            this, topic, resultTopic, relayKey, bridgeBase, token
+        )
         if (!configured) {
-            Toast.makeText(this, "تعذر تأكيد الاقتران؛ لم يبدأ اتصال جديد", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        val saved = getSharedPreferences("hakim", MODE_PRIVATE).edit()
-            .putString("pair_token", token)
-            .putBoolean("pairing_disabled_by_user", false)
-            .putLong("secure_pairing_at", System.currentTimeMillis())
-            .commit()
-        if (!saved) {
-            Toast.makeText(this, "تعذر حفظ الاقتران", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "تعذر تأكيد الاقتران؛ بقي الاتصال السابق دون تغيير", Toast.LENGTH_LONG).show()
             finish()
             return
         }

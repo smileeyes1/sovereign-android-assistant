@@ -23,7 +23,8 @@ class BootReceiver : BroadcastReceiver() {
         PairingDefaults.ensure(prefs)
         val disabled = prefs.getBoolean("pairing_disabled_by_user", false)
         val legacyPaired = prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
-            prefs.getString("result_topic", "").orEmpty().isNotBlank()
+            prefs.getString("result_topic", "").orEmpty().isNotBlank() &&
+            PairingDefaults.validLegacyAuthKey(prefs.getString("auth_key", null))
         val securePaired = HakimUnifiedRelay.isConfigured(context)
         if (disabled || (!legacyPaired && !securePaired)) return
 

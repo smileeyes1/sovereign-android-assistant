@@ -17,6 +17,7 @@ import java.net.URI as JavaUri
 import java.net.URLEncoder
 import java.net.URL
 import java.security.MessageDigest
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Cipher
@@ -34,6 +35,7 @@ object HakimUnifiedRelay {
     const val KEY_RESULT_TOPIC = "relay_result_topic"
     const val KEY_RELAY_KEY = "relay_hmac_key"
     const val KEY_BRIDGE_BASE = "relay_bridge_base"
+    const val KEY_APPROVAL_SESSION = "relay_approval_session"
     private const val DEFAULT_BRIDGE_BASE = "https://hakim-chatgpt-bridge-production.up.railway.app"
 
     private const val APPROVAL_CHANNEL = "hakim_remote_approval"
@@ -67,16 +69,19 @@ object HakimUnifiedRelay {
         if (resultTopic.isNullOrBlank() || !Regex("^[A-Za-z0-9_-]{20,120}$").matches(resultTopic)) return false
         if (relayKey.isNullOrBlank() || !RELAY_KEY.matches(relayKey)) return false
         val normalizedBridge = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return false
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val committed = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOPIC, topic)
             .putString(KEY_RESULT_TOPIC, resultTopic)
             .putString(KEY_RELAY_KEY, relayKey)
             .putString(KEY_BRIDGE_BASE, normalizedBridge)
+            .putString(KEY_APPROVAL_SESSION, UUID.randomUUID().toString())
             .putBoolean("secure_relay_configured", true)
             .commit()
+        if (committed) revokePendingApprovals(context)
+        return committed
     }
 
-    private fun normalizeBridgeBase(raw: String): String? = runCatching {
+        private fun normalizeBridgeBase(raw: String): String? = runCatching {
         val uri = JavaUri(raw.trim())
         if (!uri.scheme.equals("https", true) || uri.host.isNullOrBlank() || uri.userInfo != null ||
             uri.query != null || uri.fragment != null || (uri.path.isNotEmpty() && uri.path != "/")
@@ -231,6 +236,9 @@ object HakimUnifiedRelay {
     private fun handleCarrier(context: Context, carrier: String, resultTopic: String, relayKey: String): String? {
         if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean("pairing_disabled_by_user", false)) return null
+        val approvalSession = currentApprovalSession(context) ?: return null
+        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_RELAY_KEY, null) != relayKey) return null
         if (carrier.length !in 32..131072) return null
         val raw = decryptCarrier(carrier, relayKey) ?: return null
         val envelope = runCatching { JSONObject(raw) }.getOrNull() ?: return null
@@ -256,7 +264,7 @@ object HakimUnifiedRelay {
             val result = executeEnvelope(context, envelope)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         } else {
-            savePending(context, envelope, resultTopic)
+            if (!savePending(context, envelope, resultTopic, approvalSession, relayKey)) return null
             showApproval(context, requestId, op)
         }
         return requestId
@@ -309,23 +317,56 @@ object HakimUnifiedRelay {
         return prefs.edit().putStringSet("ids", ids).commit()
     }
 
-    private fun savePending(context: Context, envelope: JSONObject, resultTopic: String) {
+    @Synchronized
+    private fun currentApprovalSession(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean("pairing_disabled_by_user", false)) return null
+        val existing = prefs.getString(KEY_APPROVAL_SESSION, null)
+        if (!existing.isNullOrBlank()) return existing
+        // Old untagged approvals do not acquire a valid session after an update.
+        val session = UUID.randomUUID().toString()
+        return if (prefs.edit().putString(KEY_APPROVAL_SESSION, session).commit()) session else null
+    }
+
+    fun revokePendingApprovals(context: Context) {
+        val pending = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
+        val ids = pending.all.keys.filter { it.endsWith(".envelope") }
+            .map { it.removeSuffix(".envelope") }
+        pending.edit().clear().commit()
+        val manager = context.getSystemService(NotificationManager::class.java)
+        ids.forEach { manager?.cancel(it.hashCode()) }
+    }
+
+    private fun savePending(
+        context: Context, envelope: JSONObject, resultTopic: String,
+        expectedSession: String, expectedKey: String
+    ): Boolean {
+        val current = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (current.getBoolean("pairing_disabled_by_user", false) ||
+            current.getString(KEY_APPROVAL_SESSION, null) != expectedSession ||
+            current.getString(KEY_RELAY_KEY, null) != expectedKey) return false
         val id = envelope.optString("request_id")
-        context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE).edit()
+        val saved = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE).edit()
             .putString("$id.envelope", envelope.toString())
             .putString("$id.result_topic", resultTopic)
-            .apply()
+            .putString("$id.session", expectedSession)
+            .commit()
+        return saved && !current.getBoolean("pairing_disabled_by_user", false) &&
+            current.getString(KEY_APPROVAL_SESSION, null) == expectedSession
     }
 
-    private fun takePending(context: Context, requestId: String): Pair<JSONObject, String>? {
+    private fun takePending(context: Context, requestId: String): Triple<JSONObject, String, String>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
-        val raw = prefs.getString("$requestId.envelope", null) ?: return null
-        val topic = prefs.getString("$requestId.result_topic", null) ?: return null
-        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic").apply()
-        return runCatching { JSONObject(raw) to topic }.getOrNull()
+        val raw = prefs.getString("$requestId.envelope", null)
+        val topic = prefs.getString("$requestId.result_topic", null)
+        val session = prefs.getString("$requestId.session", null)
+        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic")
+            .remove("$requestId.session").apply()
+        if (raw.isNullOrBlank() || topic.isNullOrBlank() || session.isNullOrBlank()) return null
+        return runCatching { Triple(JSONObject(raw), topic, session) }.getOrNull()
     }
 
-    private fun showApproval(context: Context, requestId: String, op: String) {
+        private fun showApproval(context: Context, requestId: String, op: String) {
         ensureApprovalChannel(context)
         val approve = PendingIntent.getBroadcast(
             context,
@@ -359,9 +400,10 @@ object HakimUnifiedRelay {
 
     fun handleApproval(context: Context, requestId: String, approved: Boolean) {
         val pending = takePending(context, requestId) ?: return
-        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean("pairing_disabled_by_user", false)) return
-        val (envelope, resultTopic) = pending
+        val (envelope, resultTopic, expectedSession) = pending
+        val pairPrefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (pairPrefs.getBoolean("pairing_disabled_by_user", false) ||
+            pairPrefs.getString(KEY_APPROVAL_SESSION, null) != expectedSession) return
         if (!approved) {
             sendResult(context, resultTopic, requestId, "rejected", JSONObject().put("ok", false).put("error", "rejected_by_user"))
             return
@@ -371,7 +413,7 @@ object HakimUnifiedRelay {
             return
         }
         commandExecutor.execute {
-            val result = executeEnvelope(context.applicationContext, envelope)
+            val result = executeEnvelope(context.applicationContext, envelope, expectedSession)
             sendResult(context, resultTopic, requestId, if (result.optBoolean("ok", false)) "ok" else "error", result)
         }
     }
@@ -388,9 +430,10 @@ object HakimUnifiedRelay {
         }.getOrElse { JSONObject() }
     }
 
-    private fun executeEnvelope(context: Context, envelope: JSONObject): JSONObject {
-        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean("pairing_disabled_by_user", false)) {
+    private fun executeEnvelope(context: Context, envelope: JSONObject, expectedSession: String? = null): JSONObject {
+        val pairPrefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (pairPrefs.getBoolean("pairing_disabled_by_user", false) ||
+            (expectedSession != null && pairPrefs.getString(KEY_APPROVAL_SESSION, null) != expectedSession)) {
             return JSONObject().put("ok", false).put("error", "pairing_disabled")
         }
         val op = envelope.optString("op")

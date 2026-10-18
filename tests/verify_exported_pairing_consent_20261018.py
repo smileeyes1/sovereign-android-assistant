@@ -84,7 +84,12 @@ def test_negative_mutations_rejected():
     }
     for name, mutant in mutations.items():
         assert mutant != ACTIVITY, f"mutation not applied: {name}"
-        assert not consent_guard(mutant), f"unsafe source passed: {name}"
+        try:
+            accepted = consent_guard(mutant)
+        except AssertionError:
+            # Removing a required element should fail closed, not abort the test harness.
+            accepted = False
+        assert not accepted, f"unsafe source passed: {name}"
         print("NEGATIVE_REJECTED", name)
 
 

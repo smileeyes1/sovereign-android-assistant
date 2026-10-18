@@ -44,13 +44,13 @@ for token in [
     req(token in WORKFLOW,"missing:"+token)
 
 def manual_only(config):
-    events=config.partition("\\non:\\n")[2].partition("\\nconcurrency:\\n")[0]
+    events=config.partition("\non:\n")[2].partition("\nconcurrency:\n")[0]
     return events.strip() == "workflow_dispatch:" and "cron:" not in config
 
 req(manual_only(WORKFLOW),"worker_must_remain_manual_only")
 scheduled_probe=WORKFLOW.replace(
     "  workflow_dispatch:",
-    '  workflow_dispatch:\\n  schedule:\\n    - cron: "*/5 * * * *"',
+    '  workflow_dispatch:\n  schedule:\n    - cron: "*/5 * * * *"',
     1,
 )
 req(not manual_only(scheduled_probe),"worker_scheduler_negative_probe_failed")

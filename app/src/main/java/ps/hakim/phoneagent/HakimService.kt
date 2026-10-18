@@ -343,35 +343,35 @@ class HakimService : Service() {
         val requestId = cmd.optString("request_id", UUID.randomUUID().toString()).trim().take(160)
         if (requestId.isBlank()) return
         if (!firstTime(requestId)) {
-            sendResult(JSONObject().put("request_id", requestId).put("status", "duplicate").put("message", "تم تجاهل أمر مكرر"))
+            sendResult(JSONObject().put("request_id", requestId).put("status", "duplicate").put("message", "تم تجاهل أمر مكرر"), expectedSession)
             return
         }
         when (cmd.optString("type")) {
-            "ping", "snapshot" -> sendSnapshot(target, requestId, "ok")
+            "ping", "snapshot" -> sendSnapshot(target, requestId, "ok", expectedSession)
             "open_url" -> {
                 navigate(target, cmd.optString("url").take(5000))
-                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, cmd.optLong("after_ms", 1500L).coerceIn(300L, 8000L))
+                target.postDelayed({ sendSnapshot(target, requestId, "ok", expectedSession) }, cmd.optLong("after_ms", 1500L).coerceIn(300L, 8000L))
             }
             "back" -> {
                 if (target.canGoBack()) target.goBack()
-                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 500)
+                target.postDelayed({ sendSnapshot(target, requestId, "ok", expectedSession) }, 500)
             }
             "forward" -> {
                 if (target.canGoForward()) target.goForward()
-                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 500)
+                target.postDelayed({ sendSnapshot(target, requestId, "ok", expectedSession) }, 500)
             }
             "reload" -> {
                 target.reload()
-                target.postDelayed({ sendSnapshot(target, requestId, "ok") }, 900)
+                target.postDelayed({ sendSnapshot(target, requestId, "ok", expectedSession) }, 900)
             }
-            "wait" -> target.postDelayed({ sendSnapshot(target, requestId, "ok") }, cmd.optLong("ms", 1000L).coerceIn(100L, 8000L))
-            "scroll" -> runJsAction(target, requestId, scrollScript(cmd.optString("direction", "down"), cmd.optInt("amount", 0)))
-            "tap_text" -> runJsAction(target, requestId, tapTextScript(cmd.optString("text").take(500), cmd.optBoolean("exact", false)))
-            "tap_index" -> runJsAction(target, requestId, tapIndexScript(cmd.optInt("index", -1)))
-            "set_text" -> runJsAction(target, requestId, setTextScript(cmd.optString("target").take(300), cmd.optString("value").take(6000)))
-            "set_text_index" -> runJsAction(target, requestId, setTextIndexScript(cmd.optInt("index", -1), cmd.optString("value").take(6000)))
-            "press_enter" -> runJsAction(target, requestId, pressEnterScript())
-            else -> sendResult(JSONObject().put("request_id", requestId).put("status", "failed").put("message", "أمر غير معروف"))
+            "wait" -> target.postDelayed({ sendSnapshot(target, requestId, "ok", expectedSession) }, cmd.optLong("ms", 1000L).coerceIn(100L, 8000L))
+            "scroll" -> runJsAction(target, requestId, scrollScript(cmd.optString("direction", "down"), cmd.optInt("amount", 0)), expectedSession)
+            "tap_text" -> runJsAction(target, requestId, tapTextScript(cmd.optString("text").take(500), cmd.optBoolean("exact", false)), expectedSession)
+            "tap_index" -> runJsAction(target, requestId, tapIndexScript(cmd.optInt("index", -1)), expectedSession)
+            "set_text" -> runJsAction(target, requestId, setTextScript(cmd.optString("target").take(300), cmd.optString("value").take(6000)), expectedSession)
+            "set_text_index" -> runJsAction(target, requestId, setTextIndexScript(cmd.optInt("index", -1), cmd.optString("value").take(6000)), expectedSession)
+            "press_enter" -> runJsAction(target, requestId, pressEnterScript(), expectedSession)
+            else -> sendResult(JSONObject().put("request_id", requestId).put("status", "failed").put("message", "أمر غير معروف"), expectedSession)
         }
     }
 
@@ -386,10 +386,17 @@ class HakimService : Service() {
         target.loadUrl(url)
     }
 
-    private fun runJsAction(target: WebView, requestId: String, script: String) {
+    private fun runJsAction(target: WebView, requestId: String, script: String, expectedSession: String?) {
+        // This cannot undo JavaScript already evaluated; it blocks callbacks from a revoked epoch.
+        if (!activePairingSession(expectedSession)) return
         target.evaluateJavascript(script) { raw ->
+            if (!activePairingSession(expectedSession)) return@evaluateJavascript
             val ok = raw == "true" || raw == "\"true\""
-            target.postDelayed({ sendSnapshot(target, requestId, if (ok) "ok" else "failed") }, 450)
+            target.postDelayed({
+                if (activePairingSession(expectedSession)) {
+                    sendSnapshot(target, requestId, if (ok) "ok" else "failed", expectedSession)
+                }
+            }, 450)
         }
     }
 
@@ -408,7 +415,8 @@ class HakimService : Service() {
         }
     """.trimIndent()
 
-    private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String) {
+    private fun sendSnapshot(target: WebView, requestId: String, actionStatus: String, expectedSession: String?) {
+        if (!activePairingSession(expectedSession)) return
         val script = """
             (function(){
               try {
@@ -450,11 +458,12 @@ class HakimService : Service() {
             })();
         """.trimIndent()
         target.evaluateJavascript(script) { raw ->
+            if (!activePairingSession(expectedSession)) return@evaluateJavascript
             val decoded = decodeJsString(raw)
             val page = try { JSONObject(decoded) } catch (_: Exception) { JSONObject().put("raw", decoded) }
             prefs.getString("last_web_error", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_error", it) }
             prefs.getString("last_download_name", "")?.takeIf { it.isNotBlank() }?.let { page.put("last_download", it) }
-            sendResult(JSONObject().put("request_id", requestId).put("status", actionStatus).put("page", page))
+            sendResult(JSONObject().put("request_id", requestId).put("status", actionStatus).put("page", page), expectedSession)
         }
     }
 
@@ -541,7 +550,8 @@ class HakimService : Service() {
         })();
     """.trimIndent()
 
-    private fun sendResult(obj: JSONObject) {
+    private fun sendResult(obj: JSONObject, expectedSession: String? = null) {
+        if (expectedSession != null && !activePairingSession(expectedSession)) return
         if (!isPaired()) return
         val topic = prefs.getString("result_topic", "").orEmpty()
         val raw = obj.toString()
@@ -559,17 +569,18 @@ class HakimService : Service() {
                 .put("total", total)
                 .put("data", part)
             wrapper.put("sig", hmacHex(key, "$requestId\n$chunk\n$total\n$part"))
-            sendChunk(topic, wrapper.toString(), 0)
+            sendChunk(topic, wrapper.toString(), 0, expectedSession)
         }
     }
 
-    private fun sendChunk(topic: String, body: String, attempt: Int) {
+    private fun sendChunk(topic: String, body: String, attempt: Int, expectedSession: String?) {
+        if (expectedSession != null && !activePairingSession(expectedSession)) return
         val req = Request.Builder().url("https://ntfy.sh/$topic")
             .post(body.toRequestBody("text/plain; charset=utf-8".toMediaType())).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (attempt < 2 && ::webView.isInitialized) {
-                    webView.postDelayed({ sendChunk(topic, body, attempt + 1) }, 700L * (attempt + 1))
+                    webView.postDelayed({ sendChunk(topic, body, attempt + 1, expectedSession) }, 700L * (attempt + 1))
                 }
             }
 
@@ -577,7 +588,7 @@ class HakimService : Service() {
                 val ok = response.isSuccessful
                 response.close()
                 if (!ok && attempt < 2 && ::webView.isInitialized) {
-                    webView.postDelayed({ sendChunk(topic, body, attempt + 1) }, 700L * (attempt + 1))
+                    webView.postDelayed({ sendChunk(topic, body, attempt + 1, expectedSession) }, 700L * (attempt + 1))
                 }
             }
         })

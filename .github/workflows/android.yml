@@ -61,7 +61,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: بناء نسخة الاختبار والنسخة غير الموقعة
-        run: gradle assembleDebug assembleRelease --stacktrace
+        run: gradle testDebugUnitTest assembleDebug assembleRelease --stacktrace
       - name: إثبات رفض نسخة الاختبار كتحديث ميداني
         run: |
           APKSIGNER_BIN="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"

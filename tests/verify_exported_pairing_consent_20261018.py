@@ -36,8 +36,10 @@ def consent_guard(activity):
         and "pairingDialog?.show()" in entry
         and "HakimUnifiedRelay.configure(" not in entry
         and "startForegroundService(" not in entry
-        and "HakimUnifiedRelay.configure(this, topic, resultTopic, relayKey, bridgeBase)" in accept
-        and 'putBoolean("pairing_disabled_by_user", false)' in accept
+        and "HakimUnifiedRelay.configure(" in accept
+        and "this, topic, resultTopic, relayKey, bridgeBase, token" in accept
+        and 'getSharedPreferences("hakim"' not in accept
+        and '.commit()' not in accept
         and "HakimUnifiedRelay.start(applicationContext)" in accept
         and "relayKey" not in prompt
         and "token" not in prompt

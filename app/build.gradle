@@ -23,9 +23,24 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+}
+
+// Robolectric runs on a host JVM. The Android-only Conscrypt native AAR cannot
+// be loaded there; exclude it from *test runtime only*, not from the production APK.
+configurations.configureEach {
+    if (name.endsWith("UnitTestRuntimeClasspath")) {
+        exclude group: 'org.conscrypt', module: 'conscrypt-android'
+    }
 }
 
 dependencies {
+    testRuntimeOnly 'org.conscrypt:conscrypt-openjdk-uber:2.5.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.13'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'

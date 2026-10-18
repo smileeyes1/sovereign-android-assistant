@@ -77,7 +77,13 @@ def test_boot_recovers_secure_only_without_overriding_disconnect() -> None:
 
 def test_user_repair_is_explicit() -> None:
     assert 'getBoolean("pairing_disabled_by_user", false)' in app
-    assert '.putBoolean("pairing_disabled_by_user", false)' in pair
+    confirm = section(pair, "private fun confirmPairing(", "\n}")
+    commit = section(relay, "fun configure(", "private fun normalizeBridgeBase(")
+    assert '.setPositiveButton("أوافق على الاقتران")' in pair
+    assert 'HakimUnifiedRelay.configure(' in confirm
+    assert 'this, topic, resultTopic, relayKey, bridgeBase, token' in confirm
+    assert '.putBoolean("pairing_disabled_by_user", false)' in commit
+    assert 'if (committed) revokePendingApprovals(context)' in commit
     assert '.putBoolean("pairing_disabled_by_user", false)' in main
 
 

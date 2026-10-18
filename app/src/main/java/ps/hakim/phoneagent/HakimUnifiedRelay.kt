@@ -72,13 +72,23 @@ object HakimUnifiedRelay {
         return runCatching { JavaUri(normalized).host }.getOrNull()?.takeIf { it.isNotBlank() }
     }
 
+    /**
+     * Commits all owner-approved pairing settings in one SharedPreferences transaction.
+     * One Editor prevents two separately committed pairing states.
+     * When commit() reports failure, the UI must not start or acknowledge pairing;
+     * exact in-memory state after storage I/O failure is device-dependent.
+     * Only a successful commit revokes earlier pending approvals.
+     * Call this only from the on-device confirmation action.
+     */
     fun configure(
         context: Context,
         topic: String?,
         resultTopic: String?,
         relayKey: String?,
-        bridgeBase: String? = null
+        bridgeBase: String?,
+        pairToken: String
     ): Boolean {
+        if (pairToken.length !in 32..256) return false
         if (pairingDestinationHost(topic, resultTopic, relayKey, bridgeBase) == null) return false
         val normalizedBridge = if (bridgeBase.isNullOrBlank()) DEFAULT_BRIDGE_BASE else normalizeBridgeBase(bridgeBase) ?: return false
         val committed = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -87,6 +97,9 @@ object HakimUnifiedRelay {
             .putString(KEY_RELAY_KEY, relayKey)
             .putString(KEY_BRIDGE_BASE, normalizedBridge)
             .putString(KEY_APPROVAL_SESSION, UUID.randomUUID().toString())
+            .putString("pair_token", pairToken)
+            .putLong("secure_pairing_at", System.currentTimeMillis())
+            .putBoolean("pairing_disabled_by_user", false)
             .putBoolean("secure_relay_configured", true)
             .commit()
         if (committed) revokePendingApprovals(context)

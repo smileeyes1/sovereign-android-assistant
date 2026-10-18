@@ -76,6 +76,8 @@ class PairingConsentRuntimeTest {
         assertTrue(prefs().getBoolean("pairing_disabled_by_user", false))
 
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        // Robolectric's paused main looper must deliver the AlertDialog dismissal callback.
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
         assertEquals("existingChannelStillActive", prefs().getString(HakimUnifiedRelay.KEY_TOPIC, null))
         assertEquals("old-pair-token", prefs().getString("pair_token", null))

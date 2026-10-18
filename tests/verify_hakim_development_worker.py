@@ -8,7 +8,6 @@ def req(cond,reason):
         raise SystemExit("HAKIM_DEVELOPMENT_WORKER_GATE=FAIL reason="+reason)
 
 for token in [
-    'cron: "*/5 * * * *"',
     "cancel-in-progress: false",
     "HAKIM_DEVELOPMENT_BASE: autonomous/hakim-development",
     'LLAMA_CPP_TAG: "b11193"',
@@ -43,6 +42,18 @@ for token in [
     "safe_patch_not_found",
 ]:
     req(token in WORKFLOW,"missing:"+token)
+
+def manual_only(config):
+    events=config.partition("\non:\n")[2].partition("\nconcurrency:\n")[0]
+    return events.strip() == "workflow_dispatch:" and "cron:" not in config
+
+req(manual_only(WORKFLOW),"worker_must_remain_manual_only")
+scheduled_probe=WORKFLOW.replace(
+    "  workflow_dispatch:",
+    '  workflow_dispatch:\n  schedule:\n    - cron: "*/5 * * * *"',
+    1,
+)
+req(not manual_only(scheduled_probe),"worker_scheduler_negative_probe_failed")
 
 develop=WORKFLOW.split("\n  develop:",1)[1].split("\n  publish:",1)[0]
 publish=WORKFLOW.split("\n  publish:",1)[1].split("\n  acknowledge-agent-failure:",1)[0]

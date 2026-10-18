@@ -380,15 +380,19 @@ object HakimUnifiedRelay {
             current.getString(KEY_APPROVAL_SESSION, null) == expectedSession
     }
 
+    @Synchronized
     private fun takePending(context: Context, requestId: String): Triple<JSONObject, String, String>? {
         val prefs = context.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
-        val raw = prefs.getString("$requestId.envelope", null)
+        val raw = prefs.getString("$requestId.envelope", null) ?: return null
         val topic = prefs.getString("$requestId.result_topic", null)
         val session = prefs.getString("$requestId.session", null)
-        prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic")
-            .remove("$requestId.session").apply()
-        if (raw.isNullOrBlank() || topic.isNullOrBlank() || session.isNullOrBlank()) return null
-        return runCatching { Triple(JSONObject(raw), topic, session) }.getOrNull()
+        val parsed = if (topic.isNullOrBlank() || session.isNullOrBlank()) null
+            else runCatching { Triple(JSONObject(raw), topic, session) }.getOrNull()
+        // Fail closed on I/O error; never expose the command until the claim is committed.
+        val removed = prefs.edit().remove("$requestId.envelope").remove("$requestId.result_topic")
+            .remove("$requestId.session").commit()
+        if (!removed) return null
+        return parsed
     }
 
         private fun showApproval(context: Context, requestId: String, op: String) {

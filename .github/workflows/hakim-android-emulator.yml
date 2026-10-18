@@ -1,0 +1,53 @@
+name: فحص حكيم على محاكي Android معزول
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/androidTest/**'
+      - '.github/workflows/hakim-android-emulator.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hakim-emulator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disconnect-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: تمكين KVM إن توفر
+        run: |
+          if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; fi
+      - name: اختبار الفصل والإلغاء على جهاز Android افتراضي
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          script: |
+            adb shell svc wifi disable || true
+            adb shell svc data disable || true
+            gradle connectedDebugAndroidTest --no-daemon --max-workers=2 --stacktrace
+      - name: حفظ تقرير اختبار المحاكي عند الإخفاق
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-emulator-disconnect-test-report
+          path: |
+            app/build/outputs/androidTest-results/connected/
+            app/build/reports/androidTests/connected/
+          if-no-files-found: ignore

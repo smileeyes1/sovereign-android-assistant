@@ -11,6 +11,7 @@ android {
         applicationId 'ps.hakim.stable'
         minSdk 26
         targetSdk 35
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         versionCode 20091
         versionName '2.0.91-direct-relay'
     }
@@ -38,6 +39,9 @@ configurations.configureEach {
 }
 
 dependencies {
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
     testRuntimeOnly 'org.conscrypt:conscrypt-openjdk-uber:2.5.2'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.13'

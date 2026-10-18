@@ -203,8 +203,15 @@ class HakimService : Service() {
     }
 
     private fun isPaired(): Boolean =
+        !prefs.getBoolean("pairing_disabled_by_user", false) &&
         prefs.getString("command_topic", "").orEmpty().isNotBlank() &&
         prefs.getString("result_topic", "").orEmpty().isNotBlank()
+
+    private fun pairingSession(): String? =
+        prefs.getString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, null)
+
+    private fun activePairingSession(expectedSession: String?): Boolean =
+        isPaired() && pairingSession() == expectedSession
 
     private fun authKey(): String = prefs.getString("auth_key", "").orEmpty().trim()
 
@@ -213,11 +220,16 @@ class HakimService : Service() {
         socket = null
         connected = false
         if (!isPaired()) return
+        val connectionSession = pairingSession()
         updateNotification("جارٍ الاتصال بقناة حكيم")
         val topic = prefs.getString("command_topic", "").orEmpty()
         val req = Request.Builder().url("wss://ntfy.sh/$topic/ws").build()
         socket = client.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (!activePairingSession(connectionSession)) {
+                    webSocket.close(1000, "pairing_changed")
+                    return
+                }
                 connected = true
                 reconnectDelay = 1500L
                 prefs.edit().putLong("last_connected_at", System.currentTimeMillis()).remove("last_socket_error").apply()
@@ -226,13 +238,14 @@ class HakimService : Service() {
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (!activePairingSession(connectionSession)) return
                 try {
                     val envelope = JSONObject(text)
                     if (envelope.optString("event") != "message") return
                     val rawMessage = envelope.optString("message")
                     if (rawMessage.isBlank()) return
                     val cmd = decodeCommandMessage(rawMessage) ?: return
-                    dispatchCommand(cmd)
+                    dispatchCommand(cmd, connectionSession)
                 } catch (e: Exception) {
                     prefs.edit().putString("last_command_error", e.message.orEmpty().take(300)).apply()
                 }
@@ -255,12 +268,17 @@ class HakimService : Service() {
         })
     }
 
-    private fun dispatchCommand(cmd: JSONObject) {
+    private fun dispatchCommand(cmd: JSONObject, expectedSession: String?) {
+        if (!activePairingSession(expectedSession)) return
         val visible = HakimRuntime.visibleWebView()
         if (visible != null) {
-            visible.post { executeCommand(visible, cmd) }
+            visible.post {
+                if (activePairingSession(expectedSession)) executeCommand(visible, cmd, expectedSession)
+            }
         } else {
-            webView.post { executeCommand(webView, cmd) }
+            webView.post {
+                if (activePairingSession(expectedSession)) executeCommand(webView, cmd, expectedSession)
+            }
         }
     }
 
@@ -318,7 +336,8 @@ class HakimService : Service() {
         }
     }
 
-    private fun executeCommand(target: WebView, cmd: JSONObject) {
+    private fun executeCommand(target: WebView, cmd: JSONObject, expectedSession: String?) {
+        if (!activePairingSession(expectedSession)) return
         val requestId = cmd.optString("request_id", UUID.randomUUID().toString()).trim().take(160)
         if (requestId.isBlank()) return
         if (!firstTime(requestId)) {

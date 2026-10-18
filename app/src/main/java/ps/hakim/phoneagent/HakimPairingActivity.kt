@@ -40,8 +40,8 @@ class HakimPairingActivity : Activity() {
 
     private fun handlePair(i: Intent?) {
         val uri = i?.data
-        if (i?.action != Intent.ACTION_VIEW || uri?.scheme != "hakim" ||
-            uri.host != "pair" || !uri.isHierarchical) {
+        if (i?.action != Intent.ACTION_VIEW || uri == null || !uri.isHierarchical ||
+            uri.scheme != "hakim" || uri.host != "pair") {
             rejectInvalidPairing()
             return
         }

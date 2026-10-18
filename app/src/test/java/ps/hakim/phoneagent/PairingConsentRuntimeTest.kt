@@ -116,7 +116,7 @@ class PairingConsentRuntimeTest {
         val pending = app.getSharedPreferences("hakim_remote_pending", Context.MODE_PRIVATE)
         val id = "test-once-only-approval"
         assertTrue(pending.edit()
-            .putString("$id.envelope", "{\\"request_id\\":\\"$id\\",\\"op\\":\\"action\\"}")
+            .putString("$id.envelope", org.json.JSONObject().put("request_id", id).put("op", "action").toString())
             .putString("$id.result_topic", "test-result-topic")
             .putString("$id.session", "test-pairing-session")
             .commit())

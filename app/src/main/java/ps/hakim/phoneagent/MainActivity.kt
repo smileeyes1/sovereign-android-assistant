@@ -29,6 +29,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import java.util.UUID
 
 class MainActivity : Activity() {
     companion object {
@@ -393,7 +394,7 @@ class MainActivity : Activity() {
             text = "فصل الاقتران"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, HakimService::class.java).setAction(HakimService.ACTION_STOP))
-                prefs.edit()
+                val disconnected = prefs.edit()
                     .remove("command_topic")
                     .remove("result_topic")
                     .remove("auth_key")
@@ -403,10 +404,16 @@ class MainActivity : Activity() {
                     .remove(HakimUnifiedRelay.KEY_RELAY_KEY)
                     .remove(HakimUnifiedRelay.KEY_BRIDGE_BASE)
                     .putBoolean("secure_relay_configured", false)
+                    .putString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, UUID.randomUUID().toString())
                     .putBoolean("pairing_disabled_by_user", true)
-                    .apply()
+                    .commit()
+                if (!disconnected) {
+                    Toast.makeText(this@MainActivity, "تعذر تثبيت فصل الاقتران؛ أوقفت الخدمة ولم أؤكد الفصل", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                HakimUnifiedRelay.revokePendingApprovals(this@MainActivity)
                 refreshPairingUi()
-                Toast.makeText(this@MainActivity, "تم فصل الاقتران ولن يُعاد تلقائيًا", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "تم فصل الاقتران وإلغاء الموافقات المعلقة", Toast.LENGTH_SHORT).show()
             }
         })
         root.addView(connectionRow)
@@ -521,9 +528,14 @@ class MainActivity : Activity() {
         val edit = prefs.edit()
             .putString("command_topic", parts[0])
             .putString("result_topic", parts[1])
+            .putString(HakimUnifiedRelay.KEY_APPROVAL_SESSION, UUID.randomUUID().toString())
             .putBoolean("pairing_disabled_by_user", false)
         if (parts.size == 3 && parts[2].isNotBlank()) edit.putString("auth_key", parts[2])
-        edit.apply()
+        if (!edit.commit()) {
+            Toast.makeText(this, "تعذر حفظ الاقتران", Toast.LENGTH_LONG).show()
+            return
+        }
+        HakimUnifiedRelay.revokePendingApprovals(this)
         pairField.setText("")
         startHakimService()
         refreshPairingUi()

@@ -234,6 +234,8 @@ object HakimUnifiedRelay {
     }
 
     private fun handleCarrier(context: Context, carrier: String, resultTopic: String, relayKey: String): String? {
+        if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("pairing_disabled_by_user", false)) return null
         val approvalSession = currentApprovalSession(context) ?: return null
         if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getString(KEY_RELAY_KEY, null) != relayKey) return null

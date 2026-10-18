@@ -30,6 +30,10 @@ def section(src: str, start: str, end: str) -> str:
     return text.split(end, 1)[0]
 
 
+def occurs_before(src: str, earlier: str, later: str) -> bool:
+    return earlier in src and later in src and src.index(earlier) < src.index(later)
+
+
 def atomic_commit_guards(relay: str, activity: str) -> bool:
     try:
         commit = section(relay, "fun configure(", "private fun normalizeBridgeBase(")
@@ -45,18 +49,18 @@ def atomic_commit_guards(relay: str, activity: str) -> bool:
         ".apply()" not in commit,
         commit.count("getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()") == 1,
         all(commit.count(field) == 1 for field in FIELDS),
-        all(field in commit and commit.index(field) < commit.index(".commit()") for field in FIELDS),
-        commit.index("if (pairToken.length !in 32..256)") < commit.index("getSharedPreferences("),
-        commit.index("if (pairingDestinationHost(") < commit.index("getSharedPreferences("),
-        commit.index(".commit()") < commit.index("if (committed) revokePendingApprovals(context)"),
+        all(occurs_before(commit, field, ".commit()") for field in FIELDS),
+        occurs_before(commit, "if (pairToken.length !in 32..256)", "getSharedPreferences("),
+        occurs_before(commit, "if (pairingDestinationHost(", "getSharedPreferences("),
+        occurs_before(commit, ".commit()", "if (committed) revokePendingApprovals(context)"),
         "return committed" in commit,
         'HakimUnifiedRelay.configure(' in confirmation,
         "this, topic, resultTopic, relayKey, bridgeBase, token" in confirmation,
         'getSharedPreferences("hakim"' not in confirmation,
         ".commit()" not in confirmation,
         ".apply()" not in confirmation,
-        confirmation.index("if (!configured)") < confirmation.index("HakimUnifiedRelay.start(applicationContext)"),
-        confirmation.index("if (!configured)") < confirmation.index("sendPairingAckAsync("),
+        occurs_before(confirmation, "if (!configured)", "HakimUnifiedRelay.start(applicationContext)"),
+        occurs_before(confirmation, "if (!configured)", "sendPairingAckAsync("),
     )
     return all(expected)
 

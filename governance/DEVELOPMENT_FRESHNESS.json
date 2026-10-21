@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "policy": "CROSS_CONVERSATION_FRESHNESS_V1",
+  "fail_closed": true,
+  "purpose": "Prevent an older conversation or branch from building, publishing, or promoting an Android candidate after a newer Hakim development baseline exists.",
+  "field_floor": {
+    "version_code": 20315,
+    "evidence": "field-observed signed health",
+    "inheritance_forbidden": true
+  },
+  "trusted_branch_prefixes": [
+    "main",
+    "release/hakim-",
+    "feature/hakim-",
+    "fix/hakim-",
+    "publish/hakim-"
+  ],
+  "rules": [
+    "Freshness is evaluated at execution time, never from conversation memory.",
+    "A later-finishing older conversation never outranks a newer proven or developed version.",
+    "Before Android build, signing, publication, merge promotion, or field installation, discover the highest trusted remote versionCode.",
+    "The effective floor is max(field_floor.version_code, highest trusted remote versionCode).",
+    "If the working candidate versionCode is below the effective floor, stop before build/publish and rebase or port only valid changes onto the newest compatible baseline.",
+    "Never downgrade the installed field app to satisfy an older branch.",
+    "Never infer field acceptance for a newer artifact from an older artifact.",
+    "Do not change pairing, signing identity, permissions, or user data as part of freshness reconciliation."
+  ]
+}

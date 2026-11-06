@@ -15,3 +15,9 @@ Status: investigation only; no production deployment or Android installation aut
 4. Do not modify app permissions, signing, remote authority, or field installation during this audit.
 
 This file records a verified investigation finding, not a successful build, running worker, or field acceptance.
+
+## Verified branch ancestry comparison
+- GitHub compare `autonomous/hakim-development...main` returned status `diverged`.
+- `main` is 17 commits ahead and 925 commits behind the development branch.
+- The comparison includes sensitive modifications to Android manifest, accessibility service, relay, constitution, and build configuration. A wholesale merge is not authorized or safe by default.
+- Next safe gate: isolate individual required changes; test on an isolated branch; no promotion without CI and field evidence.

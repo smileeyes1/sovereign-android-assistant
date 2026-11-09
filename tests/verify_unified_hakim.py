@@ -71,6 +71,8 @@ require('fun isActivePackage(expectedPackage: String)' in accessibility, "P0: ح
 require('"chatgpt_read"' in relay and '"chatgpt_action"' in relay, "P0: مسار ChatGPT غير موصول بالقناة الموحدة")
 require('READ_ONLY_OPS = setOf("status", "video_capabilities", "video_plan")' in relay, "P0: قراءات البيانات الحساسة يجب أن تتطلب موافقة محلية")
 require('if (READ_ONLY_OPS.contains(op)) {' in relay and 'savePending(context, envelope, resultTopic)' in relay and 'showApproval(context, requestId, op)' in relay, "P0: مسار الموافقة المحلي للقراءات الحساسة غير مثبت")
+require('CONSENT_REQUIRED_READ_OPS = setOf("ui", "notifications", "screenshot", "chatgpt_read")' in relay, "P0: القراءات الحساسة ليست معرفة ضمن مجموعة الموافقة")
+require('ALLOWED_OPS = READ_ONLY_OPS + CONSENT_REQUIRED_READ_OPS + setOf("action", "launch", "chatgpt_action")' in relay, "P0: القراءات الحساسة محظورة كليًا بدل السماح بها بعد الموافقة")
 require(all(f'"{op}"' in relay for op in ("ui", "notifications", "screenshot", "chatgpt_read")), "P0: إحدى عمليات القراءة الحساسة غير متاحة خلف الموافقة")
 require('const val CHATGPT_PACKAGE = "com.openai.chatgpt"' in chatgpt, "P0: نطاق ChatGPT غير مثبت")
 require('isActivePackage(CHATGPT_PACKAGE)' in chatgpt and 'chatgpt_not_active' in chatgpt, "P0: ChatGPT controller لا يفشل مغلقًا خارج التطبيق")

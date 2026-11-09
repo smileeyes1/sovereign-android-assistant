@@ -52,7 +52,8 @@ object HakimUnifiedRelay {
     // Only non-sensitive capabilities may run without an explicit local approval.
     // UI trees, notifications, screenshots and ChatGPT content expose private data.
     private val READ_ONLY_OPS = setOf("status", "video_capabilities", "video_plan")
-    private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "chatgpt_action")
+    private val CONSENT_REQUIRED_READ_OPS = setOf("ui", "notifications", "screenshot", "chatgpt_read")
+    private val ALLOWED_OPS = READ_ONLY_OPS + CONSENT_REQUIRED_READ_OPS + setOf("action", "launch", "chatgpt_action")
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()
 

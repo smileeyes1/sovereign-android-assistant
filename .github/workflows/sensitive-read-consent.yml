@@ -1,0 +1,17 @@
+name: Sensitive remote read consent regression
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/java/ps/hakim/phoneagent/HakimUnifiedRelay.kt'
+      - 'tests/verify_unified_hakim.py'
+      - '.github/workflows/sensitive-read-consent.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  consent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify unified contract and sensitive-read consent invariant
+        run: python3 tests/verify_unified_hakim.py

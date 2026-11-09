@@ -49,7 +49,9 @@ object HakimUnifiedRelay {
     private val REQUEST_ID = Regex("^[A-Za-z0-9._:-]{8,128}$")
     private val SIGNATURE = Regex("^[0-9a-fA-F]{64}$")
     private val RELAY_KEY = Regex("^[A-Za-z0-9_-]{40,100}$")
-    private val READ_ONLY_OPS = setOf("status", "ui", "notifications", "screenshot", "chatgpt_read", "video_capabilities", "video_plan")
+    // Only non-sensitive capabilities may run without an explicit local approval.
+    // UI trees, notifications, screenshots and ChatGPT content expose private data.
+    private val READ_ONLY_OPS = setOf("status", "video_capabilities", "video_plan")
     private val ALLOWED_OPS = READ_ONLY_OPS + setOf("action", "launch", "chatgpt_action")
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()

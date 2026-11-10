@@ -11,24 +11,27 @@ jobs:
     timeout-minutes: 3
     env:
       MANUS_EXECUTION_ENABLED: 'false'
+      MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Verify no paid execution
+      - name: Verify paid execution disabled
         shell: bash
         run: |
           set -euo pipefail
           test "$MANUS_EXECUTION_ENABLED" = "false"
-          echo "Hakim safe automation: no external tasks or API calls"
-      - name: Save check report
+          test -n "$MANUS_API_KEY" || { echo "BLOCKED: missing secret"; exit 1; }
+      - name: Verify Manus credentials (read only)
         shell: bash
         run: |
-          mkdir -p /tmp/hakim-report
-          printf 'status=PASS\nmode=free-local-check\nmanus_execution=disabled\n' > /tmp/hakim-report/status.txt
-          cat /tmp/hakim-report/status.txt
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        with:
-          name: hakim-safe-check
-          path: /tmp/hakim-report/status.txt
-          retention-days: 7
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
+            --header "x-manus-api-key: $MANUS_API_KEY" \
+            https://api.manus.ai/v2/user.me)
+          if [ "$status" != "200" ]; then
+            echo "Manus read-only authentication FAILED: HTTP $status"
+            exit 1
+          fi
+          echo "Manus read-only authentication PASS"
+      - name: Report safe mode
+        run: echo "No Manus tasks created; task execution disabled."

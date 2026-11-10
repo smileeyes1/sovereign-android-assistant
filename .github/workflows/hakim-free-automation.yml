@@ -1,0 +1,34 @@
+name: Hakim Free Safe Automation
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+permissions:
+  contents: read
+jobs:
+  safe-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      MANUS_EXECUTION_ENABLED: 'false'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify no paid execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$MANUS_EXECUTION_ENABLED" = "false"
+          echo "Hakim safe automation: no external tasks or API calls"
+      - name: Save check report
+        shell: bash
+        run: |
+          mkdir -p /tmp/hakim-report
+          printf 'status=PASS\nmode=free-local-check\nmanus_execution=disabled\n' > /tmp/hakim-report/status.txt
+          cat /tmp/hakim-report/status.txt
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-safe-check
+          path: /tmp/hakim-report/status.txt
+          retention-days: 7

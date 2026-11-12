@@ -1,0 +1,35 @@
+name: Sensitive remote read consent regression
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/verify_unified_hakim.py'
+      - '.github/workflows/sensitive-read-consent.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  consent-android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify unified contract and sensitive-read consent invariant
+        run: python3 tests/verify_unified_hakim.py
+      - name: Configure Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile debug APK for CI only
+        run: gradle assembleDebug --stacktrace
+      - name: Archive non-field debug artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakim-consent-ci-debug-NOT-FIELD-INSTALLABLE
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

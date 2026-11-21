@@ -1,0 +1,40 @@
+name: Hakim isolated shadow proof
+
+on:
+  pull_request:
+    paths:
+      - 'sandbox/shadow_worker/**'
+      - '.github/workflows/hakim-shadow-proof.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hakim-shadow-proof-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read exact candidate without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Negative tests and concurrency gate
+        run: python3 -m unittest discover -s sandbox/shadow_worker -p 'test_*.py' -v
+      - name: Three synthetic cycles with interrupted process and safe resume
+        run: python3 sandbox/shadow_worker/demo.py --root "$RUNNER_TEMP/hakim-shadow-proof"
+      - name: Separate read-only acceptance of the saved queue
+        run: python3 sandbox/shadow_worker/acceptance.py --root "$RUNNER_TEMP/hakim-shadow-proof"
+      - name: Preserve small synthetic evidence only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hakim-shadow-synthetic-proof
+          path: |
+            ${{ runner.temp }}/hakim-shadow-proof/queue.sqlite3
+            ${{ runner.temp }}/hakim-shadow-proof/cycles.json
+          retention-days: 1
+          if-no-files-found: error

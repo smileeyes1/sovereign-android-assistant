@@ -1,0 +1,14 @@
+{
+  "main_sha": "bedd863b636080a512b87bc0adae964a1944c6c3",
+  "worker_cron": "paused",
+  "bridge_deployed_sha": "d42a85b449532e403ec1a69d24ff3319eb37a604",
+  "production": "NO_GO",
+  "recurring": "NO_GO",
+  "phone": "FROZEN",
+  "model": "local_rules_only",
+  "prs": {
+    "310": "6d9ec71462d7911c0c574310735d84271dcbb574",
+    "311": "2589954269ade2bed0cce4e140474cdaca1d1a82",
+    "312": "5d00f060fc28ec7d549b8781bc0644edde4f385a"
+  }
+}

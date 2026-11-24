@@ -10,7 +10,7 @@ object HakimAgentGuardian {
         val adapter: String,
         val containsSensitiveData: Boolean = false,
         val targetIsExternal: Boolean = false,
-        val explicitApproval: Boolean = false
+        val explicitApproval: Boolean = false // Legacy caller hint; never trusted as authorization
     )
     data class Result(val decision: Decision, val reason: String)
 
@@ -23,7 +23,7 @@ object HakimAgentGuardian {
         val gated = request.targetIsExternal || request.effect in setOf(
             Effect.SEND, Effect.PUBLISH, Effect.PAY, Effect.PERMISSIONS, Effect.DEPLOY
         )
-        if (gated && !request.explicitApproval) return Result(Decision.REQUIRE_APPROVAL, "EXPLICIT_APPROVAL_REQUIRED")
+        if (gated) return Result(Decision.REQUIRE_APPROVAL, "TRUSTED_APPROVAL_GATE_REQUIRED")
         return Result(Decision.ALLOW, "POLICY_CHECK_PASSED")
     }
 }

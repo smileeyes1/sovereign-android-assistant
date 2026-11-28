@@ -64,7 +64,8 @@ object HakimArabicOutputGate {
     }
 
     fun audienceForPrompt(prompt: String): Audience {
-        val q = prompt.lowercase()
+        // The Arabic preposition لِ merges with the definite article (للصف).
+        val q = prompt.lowercase().replace("للصف", "الصف")
         return if (
             listOf(
                 "الصف الأول", "الصف الاول", "صف أول", "صف اول",

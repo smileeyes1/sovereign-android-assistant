@@ -16,5 +16,9 @@ fun main() {
     check(!accept("مسألة للصف الثاني", "= ٥"))
     check(!accept("مسألة للصف الثاني", "الجواب 5"))
     check(accept("اشرح الجمع", "الجواب 5"))
-    println("AR_PS_BACKGROUND_GATE_TEST=PASS 11/11")
+    check(!accept("نشاط للصف الأول", "الجواب 4"))
+    check(!accept("نشاط للصف الاول", "الجواب 4"))
+    check(accept("نشاط للصف الثاني", "الجواب ٤"))
+    check(!accept("نشاط بالصف الثاني", "الجواب 4"))
+    println("AR_PS_BACKGROUND_GATE_TEST=PASS 15/15")
 }

@@ -1,0 +1,45 @@
+name: Hakim isolated unsigned field validation
+on:
+  push:
+    branches: ['audit/hakim-field-boundary-20261128']
+    paths:
+      - '.github/workflows/hakim-isolated-field-validation.yml'
+      - 'app/**'
+      - 'tests/verify_field_boundary.py'
+permissions:
+  contents: read
+jobs:
+  source-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 tests/verify_field_boundary.py --self-test
+      - run: python3 tests/verify_field_boundary.py .
+  unsigned-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          cache-disabled: true
+      - name: Compile only; no signing, publishing or upload
+        run: gradle assembleFieldRelease --no-daemon --stacktrace
+      - name: Read effective manifest permissions
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/field/release/app-field-release-unsigned.apk
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/aapt"
+          "$AAPT" dump permissions "$APK"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml

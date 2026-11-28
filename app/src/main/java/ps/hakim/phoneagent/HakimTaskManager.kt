@@ -447,7 +447,9 @@ object HakimTaskManager {
     }
 
     private fun save(context: Context, items: MutableList<JSONObject>) {
-        val sorted = items.sortedByDescending { it.optLong("updated_at", 0L) }.take(MAX_TASKS)
+        val sorted = HakimTaskRetention.select(items, MAX_TASKS,
+            { stateOf(it.optString("state")) in terminalStates() },
+            { it.optLong("updated_at", 0L) })
         val arr = JSONArray()
         sorted.forEach(arr::put)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

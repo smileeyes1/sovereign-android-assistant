@@ -1,0 +1,100 @@
+name: Hakim encrypted private candidate
+on:
+  push:
+    branches: ['audit/hakim-field-boundary-20261128']
+    paths: ['.github/workflows/hakim-encrypted-candidate.yml']
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '29b74d94825b464c2430744a84086c5a2719f7a7'
+          persist-credentials: false
+      - run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "29b74d94825b464c2430744a84086c5a2719f7a7"
+          python3 tests/verify_field_boundary.py --self-test
+          python3 tests/verify_field_boundary.py .
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          cache-disabled: true
+      - run: gradle assembleFieldRelease --no-daemon --stacktrace
+      - name: Inspect unsigned candidate
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/field/release/app-field-release-unsigned.apk
+          test -s "$APK"
+          python3 tests/verify_field_apk_no_adb.py "$APK"
+          TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          "$TOOLS/aapt" dump badging "$APK" | head -1
+          "$TOOLS/zipalign" -c -P 16 -v 4 "$APK"
+      - name: Encrypt candidate; never upload plaintext
+        env:
+          HAKIM_FIELD_KEYSTORE_B64: ${{ secrets.HAKIM_FIELD_KEYSTORE_B64 }}
+          HAKIM_FIELD_KEYSTORE_PASSWORD: ${{ secrets.HAKIM_FIELD_KEYSTORE_PASSWORD }}
+          HAKIM_FIELD_KEY_ALIAS: ${{ secrets.HAKIM_FIELD_KEY_ALIAS }}
+          HAKIM_FIELD_KEY_PASSWORD: ${{ secrets.HAKIM_FIELD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          DIR="$(mktemp -d)"
+          trap 'rm -rf "$DIR"' EXIT
+          APK=app/build/outputs/apk/field/release/app-field-release-unsigned.apk
+          TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          STATE=UNSIGNED
+          if [[ -n "$HAKIM_FIELD_KEYSTORE_B64" && -n "$HAKIM_FIELD_KEYSTORE_PASSWORD" && -n "$HAKIM_FIELD_KEY_ALIAS" && -n "$HAKIM_FIELD_KEY_PASSWORD" ]]; then
+            printf '%s' "$HAKIM_FIELD_KEYSTORE_B64" | base64 --decode > "$DIR/field.jks"
+            "$TOOLS/apksigner" sign --ks "$DIR/field.jks" --ks-key-alias "$HAKIM_FIELD_KEY_ALIAS" --ks-pass env:HAKIM_FIELD_KEYSTORE_PASSWORD --key-pass env:HAKIM_FIELD_KEY_PASSWORD --out "$DIR/candidate.apk" "$APK"
+            APKSIGNER="$TOOLS/apksigner" bash scripts/verify-field-signer.sh "$DIR/candidate.apk"
+            python3 tools/verify_hakim_d1_v2_structure.py "$DIR/candidate.apk"
+            python3 tests/verify_field_apk_no_adb.py "$DIR/candidate.apk"
+            APK="$DIR/candidate.apk"
+            STATE=SIGNED_CANDIDATE_NOT_FIELD_TESTED
+          fi
+          cat > "$DIR/recipient.pem" <<'CERT'
+          -----BEGIN CERTIFICATE-----
+          MIIENzCCAp+gAwIBAgIUOfQ736k7rA3IqV+mI2w6sYO/LxUwDQYJKoZIhvcNAQEL
+          BQAwKzEpMCcGA1UEAwwgSGFraW0gcHJpdmF0ZSBjYW5kaWRhdGUgZGVsaXZlcnkw
+          HhcNMjYxMTI4MTA0OTQ4WhcNMjYxMjEyMTA0OTQ4WjArMSkwJwYDVQQDDCBIYWtp
+          bSBwcml2YXRlIGNhbmRpZGF0ZSBkZWxpdmVyeTCCAaIwDQYJKoZIhvcNAQEBBQAD
+          ggGPADCCAYoCggGBAMrcvDGCmu2AROUDGXJBscdbNxkMthXl6qFevp4u7Xkx116X
+          MY4G8XzoK9SLHFsD569JCFbkB7qAQmmz1PQAzMnzaPg0RgaKbCP/agSWL3LjrptB
+          84MWmpENHfmc8EsEH7tnLMk3DhHxIIiLmmLD4p4hzL7nnPbPu/NQvtUReKv+fyi8
+          EB3rpxeN72ueMggJ9t861SaHwxMC2P0mZur69mo0WLdlKaaIla+xdd/7+pISEboF
+          mSe5GihC1MMMEFbPz6Cbqunr5vYyt0hDg58leZqUhavKbSDqOXZSxZJ2ATt0J3Er
+          2EqTCVzPatvRwhM9JSBqdsfkbDh1gceJabeAh91SjwkSZwlvBZwE8W0Gul54WEmW
+          ROYqlg1gCtdvWFa+lu8kY+HRbkv/VUCSjF2WGp3JayRqCxVYMN9t7iuzlXWlEOk1
+          UEjaFQDiwS3eXYu5OV8MWHahUiBy3HviaiEZKx1V2yb7Y00NuYNdWbTya/nl6S0V
+          LfsJEvRsLVsEbLOxEwIDAQABo1MwUTAdBgNVHQ4EFgQUW0xsC22GJZiPOIIEwrpQ
+          aRtSvKEwHwYDVR0jBBgwFoAUW0xsC22GJZiPOIIEwrpQaRtSvKEwDwYDVR0TAQH/
+          BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAYEApGI/G2LD6+JdoRpwIKnCuER6w+pA
+          Olh3AOvC2+5bKQIhTxuol9ytBaPStgo3zP5HKSnpe+yuG8WIvpRH3PnRFDOK0/Gz
+          ZveeAzjvUV6SrwVUyzcBmPiXdBxE+lRKhZTU9US1BKn1YkZVmN7+QSh7v37/KYaM
+          8/ymP9lFx1SA5WTONojWzynkSDpUE+DISkyv9jvB4GaST28/9l4NxwcA/tA3Z5E4
+          ma3eA9LRc7HJZDCZvuXjH/rsEK0rswRSB1tnAg4tsCEMLvYTR8M/KvjL/VACMthQ
+          fQFDdG26Ws+NLdPS4Ip1EHTu5Tvu/qfmjqBymKq5qedpNdwMCGOHKhtB4FmYZYh/
+          VPBdewUcbz4g8nhV5WSSfoB5as9/wW4/nrMiC/MfxFgWYBJdc91RykrVDbVkfB9v
+          3T/lfq0Vg/ETNhXcRnhgxHVdSEqSZD2IPrpegAUC7l/+SHPwnaG0ALRoFbt9ZS79
+          B44V/Atw0dhmjFodlZ/W5a72k/tGhp7jdAPB
+          -----END CERTIFICATE-----
+          CERT
+          mkdir -p "$RUNNER_TEMP/hakim-delivery"
+          openssl cms -encrypt -binary -aes-256-gcm -in "$APK" -outform DER -out "$RUNNER_TEMP/hakim-delivery/candidate.cms" "$DIR/recipient.pem"
+          printf '%s\n' "$STATE" > "$RUNNER_TEMP/hakim-delivery/status.txt"
+          sha256sum "$APK" | awk '{print $1}' > "$RUNNER_TEMP/hakim-delivery/apk.sha256"
+          echo "CANDIDATE_STATE=$STATE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hakim-encrypted-candidate
+          path: ${{ runner.temp }}/hakim-delivery/
+          retention-days: 7
+          if-no-files-found: error

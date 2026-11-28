@@ -925,9 +925,9 @@ class CommandCenterActivity : ComponentActivity() {
         excluded: Set<String> = emptySet(),
         repairFrom: String? = null
     ) {
-        val engine = HakimEngineRegistry.directEngines(this)
-            .firstOrNull { it.id == preferredEngineId && it.id !in excluded }
-            ?: HakimWisdomMatrix.choose(this, request.topic, attachments, excluded)?.engine
+        val eligible = HakimWisdomMatrix.rank(this, request.topic, attachments, excluded)
+        val engine = eligible.firstOrNull { it.engine.id == preferredEngineId }?.engine
+            ?: eligible.firstOrNull()?.engine
 
         if (engine == null) {
             if (!HakimEngineRegistry.hasConfiguredGeneralChat(this)) {
@@ -962,20 +962,17 @@ class CommandCenterActivity : ComponentActivity() {
                 // محتوى وسيط لا يُعرض؛ الملف النهائي هو سطح التسليم.
             }
             val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
-            HakimEngineTelemetry.record(
-                this,
-                engine.id,
-                success = result is HakimInferenceEngine.Result.Success,
-                latencyMs = latency
-            )
-
             runOnUiThread {
                 if (currentDirectEngine !== engine) return@runOnUiThread
                 currentDirectEngine = null
+                if (result !is HakimInferenceEngine.Result.Success) {
+                    HakimEngineTelemetry.record(this, engine.id, false, latency)
+                }
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
                         val validated = HakimArtifactPipeline.validateContent(request, result.text)
+                        HakimEngineTelemetry.record(this, engine.id, validated.isSuccess, latency)
                         validated.onSuccess { content ->
                             HakimResiliencePolicy.recordSuccess(this, engine.id)
                             renderUniversalArtifact(request, content, "model_content")
@@ -1329,9 +1326,9 @@ class CommandCenterActivity : ComponentActivity() {
         deliveryAttachments: List<HakimAttachmentGateway.Attachment>? = null
     ) {
         val routedAttachments = deliveryAttachments ?: attachments.toList()
-        val engine = HakimEngineRegistry.directEngines(this)
-            .firstOrNull { it.id == engineId && it.id !in excluded }
-            ?: HakimWisdomMatrix.choose(this, text, routedAttachments, excluded)?.engine
+        val eligible = HakimWisdomMatrix.rank(this, text, routedAttachments, excluded)
+        val engine = eligible.firstOrNull { it.engine.id == engineId }?.engine
+            ?: eligible.firstOrNull()?.engine
             ?: run {
                 appendConversation(
                     "حكيم",
@@ -1377,16 +1374,12 @@ class CommandCenterActivity : ComponentActivity() {
                 }
             }
             val latency = (System.currentTimeMillis() - startedAt).coerceAtLeast(0L)
-            HakimEngineTelemetry.record(
-                this,
-                engine.id,
-                success = result is HakimInferenceEngine.Result.Success,
-                latencyMs = latency
-            )
-
             runOnUiThread {
                 if (currentDirectEngine !== engine) return@runOnUiThread
                 currentDirectEngine = null
+                if (result !is HakimInferenceEngine.Result.Success) {
+                    HakimEngineTelemetry.record(this, engine.id, false, latency)
+                }
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
@@ -1432,6 +1425,7 @@ class CommandCenterActivity : ComponentActivity() {
                                     HakimExecutiveLoop.Phase.GATED,
                                     "رفض/تفريغ وسيط لمهمة ملف؛ يمنع اعتبار الرد نجاحًا"
                                 )
+                                HakimEngineTelemetry.record(this, engine.id, false, latency)
                                 recordRoute("direct_artifact_refusal:" + engine.id, false)
                                 status.text = "تعذر إنشاء الملف"
                                 return@runOnUiThread
@@ -1448,6 +1442,7 @@ class CommandCenterActivity : ComponentActivity() {
                             audience = HakimArabicOutputGate.audienceForPrompt(text),
                             explicitNonArabic = HakimPalestinianArabicProfile.explicitNonArabicRequested(text)
                         )
+                        HakimEngineTelemetry.record(this, engine.id, arabicGate.passed, latency)
                         if (!arabicGate.passed) {
                             HakimResiliencePolicy.recordFailure(
                                 this,

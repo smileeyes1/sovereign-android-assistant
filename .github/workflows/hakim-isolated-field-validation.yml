@@ -8,6 +8,7 @@ on:
       - 'tests/verify_field_boundary.py'
       - 'tests/jvm/**'
       - 'tests/verify_field_apk_no_adb.py'
+      - 'tests/verify_foreground_quality_wiring.py'
 permissions:
   contents: read
 jobs:
@@ -20,6 +21,7 @@ jobs:
           persist-credentials: false
       - run: python3 tests/verify_field_boundary.py --self-test
       - run: python3 tests/verify_field_boundary.py .
+      - run: python3 tests/verify_foreground_quality_wiring.py
   task-retention:
     runs-on: ubuntu-latest
     timeout-minutes: 5

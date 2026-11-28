@@ -39,7 +39,7 @@ android {
         field {
             dimension "distribution"
             applicationId 'ps.hakim.stable'
-            buildConfigField "boolean", "HAKIM_ADVANCED", "true"
+            buildConfigField "boolean", "HAKIM_ADVANCED", "false"
             buildConfigField "String", "HAKIM_DISTRIBUTION_CHANNEL", '"field-safe"'
             versionNameSuffix "-field-safe"
         }

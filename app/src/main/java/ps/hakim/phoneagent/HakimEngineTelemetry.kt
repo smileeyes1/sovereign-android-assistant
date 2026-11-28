@@ -31,6 +31,7 @@ object HakimEngineTelemetry {
                 .roundToInt().coerceIn(0, 100)
     }
 
+    @Synchronized
     fun snapshot(context: Context, engineId: String): Snapshot {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return Snapshot(
@@ -42,6 +43,7 @@ object HakimEngineTelemetry {
         )
     }
 
+    @Synchronized
     fun record(context: Context, engineId: String, success: Boolean, latencyMs: Long) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val okKey = engineId + "_ok"

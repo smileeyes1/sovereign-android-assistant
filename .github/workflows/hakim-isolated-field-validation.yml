@@ -42,6 +42,24 @@ jobs:
           set -euo pipefail
           kotlinc app/src/main/java/ps/hakim/phoneagent/HakimResumeEligibility.kt tests/jvm/ResumeEligibilityTest.kt -include-runtime -d "$RUNNER_TEMP/resume-eligibility.jar"
           java -jar "$RUNNER_TEMP/resume-eligibility.jar"
+  response-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify actual Arabic output gate on JVM
+        run: |
+          set -euo pipefail
+          ANDROID_JAR="$(find "$ANDROID_HOME/platforms" -name android.jar | sort -V | tail -1)"
+          test -f "$ANDROID_JAR"
+          kotlinc -classpath "$ANDROID_JAR" app/src/main/java/ps/hakim/phoneagent/HakimArabicOutputGate.kt app/src/main/java/ps/hakim/phoneagent/HakimPalestinianArabicProfile.kt tests/jvm/BackgroundResponseGateTest.kt -include-runtime -d "$RUNNER_TEMP/response-gate.jar"
+          java -cp "$RUNNER_TEMP/response-gate.jar:$ANDROID_JAR" ps.hakim.phoneagent.BackgroundResponseGateTestKt
   unsigned-compile:
     runs-on: ubuntu-latest
     timeout-minutes: 12

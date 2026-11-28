@@ -83,9 +83,10 @@ object HakimAutonomousGoalRunner {
             }
 
             HakimModelToolRouter.Channel.DIRECT_MODEL -> {
-                val engine = HakimEngineRegistry.directEngines(context)
-                    .firstOrNull { it.id == decision.engineId }
-                    ?: HakimEngineRegistry.bestGeneralChat(context, task.goal, emptyList())
+                // Re-evaluate eligibility at dispatch time, not just when queued.
+                val eligible = HakimWisdomMatrix.rank(context, task.goal, emptyList())
+                val engine = eligible.firstOrNull { it.engine.id == decision.engineId }?.engine
+                    ?: eligible.firstOrNull()?.engine
 
                 if (engine == null) {
                     fail(context, task, "direct_engine_unavailable", true)
@@ -99,11 +100,20 @@ object HakimAutonomousGoalRunner {
 
                 when (result) {
                     is HakimInferenceEngine.Result.Success -> {
-                        HakimEngineTelemetry.record(context, engine.id, true, latency)
                         val answer = HakimProductOutput.clean(result.text)
-                        if (answer.isBlank()) {
-                            fail(context, task, "direct_result_empty", true)
+                        val gate = HakimArabicOutputGate.validateText(
+                            answer,
+                            audience = HakimArabicOutputGate.audienceForPrompt(task.goal),
+                            explicitNonArabic = HakimPalestinianArabicProfile.explicitNonArabicRequested(task.goal)
+                        )
+                        // Transport success is not acceptance. Failed language/format
+                        // checks must never increase the engine's reliability score.
+                        HakimEngineTelemetry.record(context, engine.id, gate.passed, latency)
+                        if (!gate.passed) {
+                            HakimResiliencePolicy.recordFailure(context, engine.id, true, "ar_ps_output_gate_failed")
+                            fail(context, task, "direct_output_gate_failed", true)
                         } else {
+                            HakimResiliencePolicy.recordSuccess(context, engine.id)
                             storePendingVisibleResult(context, task, answer, "direct_model")
                         }
                     }
@@ -125,6 +135,7 @@ object HakimAutonomousGoalRunner {
                     }
                     is HakimInferenceEngine.Result.Failure -> {
                         HakimEngineTelemetry.record(context, engine.id, false, latency)
+                        HakimResiliencePolicy.recordFailure(context, engine.id, result.retryable, "direct_engine_failure")
                         fail(context, task, "engine_failure", result.retryable)
                     }
                 }

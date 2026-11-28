@@ -45,14 +45,9 @@ object HakimProductOutput {
             .trim()
 
         val internalHeadings = listOf(
-            "الدليل والقيود",
-            "القيود التقنية",
             "التحقق الداخلي",
             "سلسلة التفكير",
-            "القياس",
-            "ملاحظة أخيرة",
-            "internal reasoning",
-            "technical limitations"
+            "internal reasoning"
         )
         s = stripInternalDiagnosticBlocks(s, internalHeadings)
             .replace(Regex("\\n{3,}"), "\n\n")
@@ -73,7 +68,7 @@ object HakimProductOutput {
                     lower.startsWith(hh + ":") ||
                     lower.startsWith(hh + " ")
             } || lower.matches(
-                Regex("^(🔎\\s*)?(الدليل والقيود|القيود|التحقق|القياس|internal reasoning|technical limitations)\\b.*")
+                Regex("^(🔎\\s*)?(التحقق الداخلي|سلسلة التفكير|internal reasoning)\\b.*")
             )
 
             if (startsInternal) {
@@ -94,7 +89,7 @@ object HakimProductOutput {
             }
 
             val looksLikeInternalBullet = lower.matches(
-                Regex("^([•\\-*]\\s*)?(القياس|القيود|التحقق|المحرك|المزود|binary|binaries|joining|addition|subtraction)\\s*[:：].*")
+                Regex("^([•\\-*]\\s*)?(التحقق الداخلي|سلسلة التفكير|internal reasoning|المحرك|المزود|binary|binaries|joining|addition|subtraction)\\s*[:：].*")
             )
             if (!looksLikeInternalBullet) out += line
         }
@@ -108,8 +103,7 @@ object HakimProductOutput {
             "<tr", "</tr", "<td", "</td", "<div", "</div", "class=\\\"",
             "\\n<tr", "\\n<td",
             "###", "**", "```",
-            "الدليل والقيود", "القيود التقنية", "التحقق الداخلي",
-            "internal reasoning", "technical limitations"
+            "التحقق الداخلي", "سلسلة التفكير", "internal reasoning"
         ).any { q.contains(it) }
     }
 

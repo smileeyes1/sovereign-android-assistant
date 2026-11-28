@@ -62,6 +62,13 @@ jobs:
           test -f "$ANDROID_JAR"
           kotlinc -classpath "$ANDROID_JAR" app/src/main/java/ps/hakim/phoneagent/HakimArabicOutputGate.kt app/src/main/java/ps/hakim/phoneagent/HakimPalestinianArabicProfile.kt tests/jvm/BackgroundResponseGateTest.kt -include-runtime -d "$RUNNER_TEMP/response-gate.jar"
           java -cp "$RUNNER_TEMP/response-gate.jar:$ANDROID_JAR" ps.hakim.phoneagent.BackgroundResponseGateTestKt
+      - name: Preserve public evidence and uncertainty in delivered text
+        run: |
+          set -euo pipefail
+          ANDROID_JAR="$(find "$ANDROID_HOME/platforms" -name android.jar | sort -V | tail -1)"
+          test -f "$ANDROID_JAR"
+          kotlinc -classpath "$ANDROID_JAR" app/src/main/java/ps/hakim/phoneagent/HakimProductOutput.kt app/src/main/java/ps/hakim/phoneagent/HakimTeacherArtifactSpec.kt tests/jvm/PublicEvidencePreservationTest.kt -include-runtime -d "$RUNNER_TEMP/public-evidence.jar"
+          java -cp "$RUNNER_TEMP/public-evidence.jar:$ANDROID_JAR" ps.hakim.phoneagent.PublicEvidencePreservationTestKt
   unsigned-compile:
     runs-on: ubuntu-latest
     timeout-minutes: 12

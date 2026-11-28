@@ -7,6 +7,7 @@ on:
       - 'app/**'
       - 'tests/verify_field_boundary.py'
       - 'tests/jvm/**'
+      - 'tests/verify_field_apk_no_adb.py'
 permissions:
   contents: read
 jobs:
@@ -61,3 +62,4 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/aapt"
           "$AAPT" dump permissions "$APK"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml
+          python3 tests/verify_field_apk_no_adb.py "$APK"

@@ -45,6 +45,12 @@ android {
         }
     }
 
+    // Keep the native ADB implementation in the original non-field variants.
+    sourceSets {
+        advanced.java.srcDir 'src/adb/java'
+        consumer.java.srcDir 'src/adb/java'
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -59,6 +65,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.activity:activity-ktx:1.12.4'
-    implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
+    advancedImplementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
+    consumerImplementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'
 }

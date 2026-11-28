@@ -11,6 +11,10 @@ on:
       - 'tests/verify_foreground_quality_wiring.py'
 permissions:
   contents: read
+# This isolated validation lane supersedes only stale runs of itself.
+concurrency:
+  group: hakim-isolated-field-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   source-boundary:
     runs-on: ubuntu-latest
@@ -95,3 +99,25 @@ jobs:
           "$AAPT" dump permissions "$APK"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml
           python3 tests/verify_field_apk_no_adb.py "$APK"
+
+  qualification:
+    name: Automated source qualification receipt
+    needs: [source-boundary, task-retention, response-quality, unsigned-compile]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      BOUNDARY: ${{ needs.source-boundary.result }}
+      RETENTION: ${{ needs.task-retention.result }}
+      QUALITY: ${{ needs.response-quality.result }}
+      COMPILE: ${{ needs.unsigned-compile.result }}
+    steps:
+      - name: Gate the exact revision, without signing or release
+        run: |
+          set -euo pipefail
+          status=SOURCE_QUALIFIED
+          for result in "$BOUNDARY" "$RETENTION" "$QUALITY" "$COMPILE"; do
+            if [ "$result" != success ]; then status=BLOCKED; fi
+          done
+          printf 'HAKIM_SOURCE_GATE=%s\nSHA=%s\nRUN=%s\nBOUNDARY=%s\nRETENTION=%s\nQUALITY=%s\nCOMPILE=%s\nSIGNED_APK=NOT_TESTED\nPHONE=NOT_TESTED\n' "$status" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$BOUNDARY" "$RETENTION" "$QUALITY" "$COMPILE" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$status" = SOURCE_QUALIFIED

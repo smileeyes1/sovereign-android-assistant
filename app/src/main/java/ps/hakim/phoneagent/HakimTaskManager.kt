@@ -119,6 +119,9 @@ object HakimTaskManager {
                     .put("auto_resume", true)
             }
 
+        // Preserve a terminal receipt against late callbacks for this same task.
+        if (stateOf(item.optString("state")) in terminalStates()) return
+
         val state = when (phase) {
             HakimExecutiveLoop.Phase.VERIFYING -> State.VERIFYING
             HakimExecutiveLoop.Phase.WAITING_EXTERNAL -> State.WAITING
@@ -153,7 +156,7 @@ object HakimTaskManager {
         val items = load(context)
         val item = items.firstOrNull { it.optString("id") == id } ?: return null
         val task = toTask(item) ?: return null
-        if (!task.resumable || task.state in terminalStates()) return null
+        if (!HakimResumeEligibility.canResume(task.state.name, task.resumable)) return null
         val now = System.currentTimeMillis()
         for (other in items) {
             if (other.optString("id") != id &&
@@ -175,19 +178,27 @@ object HakimTaskManager {
         return toTask(item)
     }
 
+    @Synchronized
     fun consumeResumeRequest(context: Context): Task? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val id = p.getString(KEY_RESUME_REQUEST, "").orEmpty()
         if (id.isBlank()) return null
+        val task = get(context, id)?.takeIf {
+            HakimResumeEligibility.canResume(it.state.name, it.resumable)
+        }
+        // A cancelled/completed/stale request cannot be dispatched.
         p.edit().remove(KEY_RESUME_REQUEST).apply()
-        return get(context, id)
+        return task
     }
 
+    @Synchronized
     fun pendingResumeRequest(context: Context): Task? {
         val id = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_RESUME_REQUEST, "").orEmpty()
         if (id.isBlank()) return null
-        return get(context, id)
+        return get(context, id)?.takeIf {
+            HakimResumeEligibility.canResume(it.state.name, it.resumable)
+        }
     }
 
     fun nextAutoResume(context: Context): Task? =
@@ -208,6 +219,10 @@ object HakimTaskManager {
             .put("next_action", "لا توجد خطوة تالية")
             .put("resumable", false)
         save(context, items)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_RESUME_REQUEST, "") == id) {
+            prefs.edit().remove(KEY_RESUME_REQUEST).apply()
+        }
         return true
     }
 

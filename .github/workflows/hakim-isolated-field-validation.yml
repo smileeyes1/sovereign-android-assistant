@@ -37,6 +37,11 @@ jobs:
           command -v kotlinc
           kotlinc app/src/main/java/ps/hakim/phoneagent/HakimTaskRetention.kt tests/jvm/TaskRetentionTest.kt -include-runtime -d "$RUNNER_TEMP/task-retention.jar"
           java -jar "$RUNNER_TEMP/task-retention.jar"
+      - name: Run actual Kotlin resume eligibility regression
+        run: |
+          set -euo pipefail
+          kotlinc app/src/main/java/ps/hakim/phoneagent/HakimResumeEligibility.kt tests/jvm/ResumeEligibilityTest.kt -include-runtime -d "$RUNNER_TEMP/resume-eligibility.jar"
+          java -jar "$RUNNER_TEMP/resume-eligibility.jar"
   unsigned-compile:
     runs-on: ubuntu-latest
     timeout-minutes: 12
